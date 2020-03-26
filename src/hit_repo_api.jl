@@ -54,6 +54,7 @@ end
 function _hit_repo_finish(cur_paths)
   cur_data_dict = OrderedDict(
     "package" => [],
+    "owner" => [],
     "stargazers_count" => [],
     "description" => [],
     "homepage" => [],
@@ -67,11 +68,13 @@ function _hit_repo_finish(cur_paths)
     @assert isfile(package_file)
 
     push!(cur_data_dict["package"], cur_package)
+    push!(cur_data_dict["owner"], split(cur_path, "/")[1])
 
     cur_json = JSON.parse(open(f->read(f, String), package_file))
 
     for (cur_key, cur_value) in cur_data_dict
-      ( cur_key == "package" ) && continue
+      ( cur_key in ["owner", "package"] ) && continue
+
       if endswith(cur_key, "_at")
         push!(cur_value, DateTime(chop(cur_json[cur_key])))
       else
