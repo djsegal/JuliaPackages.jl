@@ -60,7 +60,8 @@ function _hit_repo_finish(cur_paths)
     "homepage" => [],
     "pushed_at" => [],
     "updated_at" => [],
-    "created_at" => []
+    "created_at" => [],
+    "html_url" => []
   )
 
   for (cur_package, cur_path) in cur_paths
@@ -85,7 +86,12 @@ function _hit_repo_finish(cur_paths)
 
   packages_db = DataFrame(cur_data_dict)
 
-  rename!(packages_db, :stargazers_count => :stars, :created_at => :created)
+  rename!(
+    packages_db,
+    :stargazers_count => :stars,
+    :created_at => :created,
+    :html_url => :github_url
+  )
 
   packages_db[!, :updated] = maximum.(collect(zip(packages_db.pushed_at, packages_db.updated_at)))
 
