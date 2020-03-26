@@ -1,0 +1,44 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-gridapgmsh" class="anchor" aria-hidden="true" href="#gridapgmsh"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>GridapGmsh</h1>
+<p><a href="https://travis-ci.com/gridap/GridapGmsh.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3c34f597ec86df3bcb4295cc007c028d434ba66c/68747470733a2f2f7472617669732d63692e636f6d2f6772696461702f477269646170476d73682e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/gridap/GridapGmsh.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/gridap/GridapGmsh.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/45596cbcc1d6327d2ac01fdea58e290843818060/68747470733a2f2f636f6465636f762e696f2f67682f6772696461702f477269646170476d73682e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/gridap/GridapGmsh.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<h2><a id="user-content-demo" class="anchor" aria-hidden="true" href="#demo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Demo</h2>
+<p><a target="_blank" rel="noopener noreferrer" href="demo/demo-gmsh.png"><img src="demo/demo-gmsh.png" alt="" style="max-width:100%;"></a></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Gridap
+<span class="pl-k">using</span> GridapGmsh
+
+model <span class="pl-k">=</span> <span class="pl-c1">GmshDiscreteModel</span>(<span class="pl-s"><span class="pl-pds">"</span>demo/demo.msh<span class="pl-pds">"</span></span>)
+
+order <span class="pl-k">=</span> <span class="pl-c1">1</span>
+diritags <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>boundary1<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>boundary2<span class="pl-pds">"</span></span>]
+
+V <span class="pl-k">=</span> <span class="pl-c1">TestFESpace</span>(
+  reffe<span class="pl-k">=</span><span class="pl-c1">:Lagrangian</span>,
+  order<span class="pl-k">=</span><span class="pl-c1">1</span>,
+  valuetype<span class="pl-k">=</span>Float64,
+  model<span class="pl-k">=</span>model,
+  dirichlet_tags<span class="pl-k">=</span>[<span class="pl-s"><span class="pl-pds">"</span>boundary1<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>boundary2<span class="pl-pds">"</span></span>])
+
+U <span class="pl-k">=</span> <span class="pl-c1">TrialFESpace</span>(V,[<span class="pl-c1">0</span>,<span class="pl-c1">1</span>])
+
+trian <span class="pl-k">=</span> <span class="pl-c1">get_triangulation</span>(model)
+degree <span class="pl-k">=</span> <span class="pl-c1">2</span>
+quad <span class="pl-k">=</span> <span class="pl-c1">CellQuadrature</span>(trian,degree)
+
+<span class="pl-en">a</span>(v,u) <span class="pl-k">=</span> <span class="pl-c1">inner</span>(<span class="pl-c1">∇</span>(v), <span class="pl-c1">∇</span>(u))
+t_Ω <span class="pl-k">=</span> <span class="pl-c1">LinearFETerm</span>(a,trian,quad)
+
+op <span class="pl-k">=</span> <span class="pl-c1">AffineFEOperator</span>(V,U,t_Ω)
+
+uh <span class="pl-k">=</span> <span class="pl-c1">solve</span>(op)
+<span class="pl-c1">writevtk</span>(trian,<span class="pl-s"><span class="pl-pds">"</span>demo<span class="pl-pds">"</span></span>,cellfields<span class="pl-k">=</span>[<span class="pl-s"><span class="pl-pds">"</span>uh<span class="pl-pds">"</span></span><span class="pl-k">=&gt;</span>uh])</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="demo/demo.png"><img src="demo/demo.png" alt="" style="max-width:100%;"></a></p>
+<h2><a id="user-content-gotchas" class="anchor" aria-hidden="true" href="#gotchas"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Gotchas</h2>
+<ul>
+<li>
+<p>Gmsh does not allow to include entities of different dimension in the same physical group. In order to overcome this limitation, all phsysical groups defined in Gmesh with the same name will be merged in the same physical tag independently of their dimension.</p>
+</li>
+<li>
+<p>Vertices are always assigned to the corresponding CAD entity. However, this is not true for higher dimensional objects (i.e., edges, faces, cells). The later objects are associated with the right CAD entity if and only if thay are present in a physical group of the same dimension of the object. If the object does not belong to a physical group of the same dimension, but it belongs to the clousure of a higher dimensional object appearing in a physical group, then the low dimensional object receives the CAD id of the high dimensional object. If several high dimensional objects fullfill this requirement, we choose one arbitrary of the lowest dimension possible. This ensures, that edges and faces are assigned to the right CAD entity if the are in the interior of the CAD entity. The same is not true if the object is on the boundary of the CAD entity. In this case, include the corresponding object in a physical group if the right CAD ids are required.</p>
+</li>
+</ul>
+</article></div>

@@ -1,0 +1,48 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-positivefactorizations" class="anchor" aria-hidden="true" href="#positivefactorizations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>PositiveFactorizations</h1>
+<p><a href="https://travis-ci.org/timholy/PositiveFactorizations.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/a0b5fb84920c63eba49c33df07fe0e91cfd73ecc/68747470733a2f2f7472617669732d63692e6f72672f74696d686f6c792f506f736974697665466163746f72697a6174696f6e732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/timholy/PositiveFactorizations.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<h2><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview</h2>
+<p>PositiveFactorizations is a package for computing a positive definite
+matrix decomposition (factorization) from an arbitrary symmetric
+input.  The motivating application is optimization (Newton or
+quasi-Newton methods), in which the canonical search direction <code>-H\g</code>
+(<code>H</code> being the Hessian and <code>g</code> the gradient) may not be a descent
+direction if <code>H</code> is not positive definite.  This package provides an
+efficient approach to computing <code>-Htilde\g</code>, where <code>Htilde</code> is equal
+to <code>H</code> if <code>H</code> is positive definite, and otherwise is a
+positive definite matrix that is "spiritually like <code>H</code>."</p>
+<p>The approach favored here is different from the well-known
+Gill-Murray-Wright approach of computing the Cholesky factorization of
+<code>H+E</code>, where <code>E</code> is a minimal correction needed to make <code>H+E</code>
+positive-definite (sometimes known as GMW81).  See the discussion
+starting
+<a href="https://github.com/JuliaOpt/Optim.jl/issues/153#issuecomment-161268535">here</a>
+for justification; briefly, the idea of a small correction conflates
+large negative eigenvalues with numerical roundoff error, which (when
+stated that way) seems like a puzzling choice.  In contrast, this
+package provides methods that are largely equivalent to taking the
+absolute value of the diagonals D in an LDLT factorization, and setting
+any "tiny" diagonals (those consistent with roundoff error) to 1.  For
+a diagonal matrix with some entries negative, this results in
+approximately twice the correction used in GMW81.</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>Given a symmetric matrix <code>H</code>, compute a positive factorization <code>F</code> like this:</p>
+<div class="highlight highlight-source-julia"><pre>F <span class="pl-k">=</span> <span class="pl-c1">cholesky</span>(Positive, H, [pivot<span class="pl-k">=</span>Val{<span class="pl-c1">false</span>}])</pre></div>
+<p>Pivoting (turned on with <code>Val{true}</code>) can make the correction smaller
+and increase accuracy, but is not necessary for existence or stability.</p>
+<p>For a little more information, call <code>ldlt</code> instead:</p>
+<div class="highlight highlight-source-julia"><pre>F, d <span class="pl-k">=</span> <span class="pl-c1">ldlt</span>(Positive, H, [pivot<span class="pl-k">=</span>Val{<span class="pl-c1">false</span>}])</pre></div>
+<p><code>F</code> will be the same as for <code>cholesky</code>, but this also returns <code>d</code>, a
+vector of <code>Int8</code> with values +1, 0, or -1 indicating the sign of the
+diagonal as encountered during processing (so in order of rows/columns
+if not using pivoting, in order of pivot if using pivoting).  This
+output can be useful for determining whether the original matrix was
+already positive (semi)definite.</p>
+<p>Note that <code>cholesky</code>/<code>ldlt</code> can be used with any matrix, even
+those which lack a conventional LDLT factorization.  For example, the
+matrix <code>[0 1; 1 0]</code> is factored as <code>L = [1 0; 0 1]</code> (the identity matrix),
+with all entries of <code>d</code> being 0.  Symmetry is assumed but not checked;
+only the lower-triangle of the input is used.</p>
+<p><code>cholesky</code> is recommended because it is very efficient.  A slower alternative is to use <code>eigen</code>:</p>
+<div class="highlight highlight-source-julia"><pre>F <span class="pl-k">=</span> <span class="pl-c1">eigen</span>(Positive, H)</pre></div>
+<p>which may be easier to reason about from the standpoint of fundamental linear algebra.</p>
+</article></div>

@@ -1,0 +1,132 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-runtestsjl" class="anchor" aria-hidden="true" href="#runtestsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>RunTests.jl</h1>
+<p><a href="https://travis-ci.org/burrowsa/RunTests.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/579f724fdef7c8234b6feba5978d79b458fe9c71/68747470733a2f2f7472617669732d63692e6f72672f627572726f7773612f52756e54657374732e6a6c2e706e673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/burrowsa/RunTests.jl.png?branch=master" style="max-width:100%;"></a></p>
+<p>RunTests.jl is a test running framework for Julia. In its simplest form RunTests.jl saves you from writing <code>test/runtests.jl</code> scripts that look like this:</p>
+<pre><code>my_tests = ["sometests.jl",
+            "somemoretests.jl",
+            "evenmoretests.jl"]
+
+println("Running tests:")
+for my_test in my_tests
+  include(my_test)
+end
+</code></pre>
+<p>and allows you to write them, more simply, like this:</p>
+<pre><code>using RunTests
+exit(run_tests())
+</code></pre>
+<p>Or if you wish to be explicit what test files are run and in what order (not recomended, ideally the order tests are run should not matter) you can do this:</p>
+<pre><code>using RunTests
+exit(run_tests(["sometests.jl",
+                "somemoretests.jl",
+                "evenmoretests.jl"]))
+</code></pre>
+<p>But it has more to offer than that! RunTests.jl builds on top of Julia's <code>Base.Test</code> library to make it easy to add structure to your tests. Structuring your tests with RunTests.jl gives the following advantages:</p>
+<ul>
+<li>All the tests are run - the tests script doesn't bomb out after the first failure so you can see all your test results at once.</li>
+<li>A summary of how many tests passed/failed is produced so you can judge at a glance how the test run went.</li>
+<li>The <code>STDOUT</code> and <code>STDERR</code> output from each test is captured and reported along with the details of the test failure.</li>
+<li>You get a progress bar showing how far through the tests you are, it is green while all the tests are passing and goes red if any fail</li>
+<li>Using modules and functions to structure test files gives you a natural isolation between tests.</li>
+<li>You can selectively skip tests with <code>@skipif</code> and mark failing tests with <code>@xfail</code>.</li>
+<li>Using <code>@parameterize</code> you can run the same test again again with different parameters and see which pass and which fail.</li>
+</ul>
+<p>Here is an example test file written using RunTests.jl that demonstrates a number of features of the package:</p>
+<pre><code>using RunTests
+using Base.Test
+
+@testmodule ExampleTests begin
+
+  function test_one()
+      @test true
+  end
+
+  function test_two()
+    println("seen")
+    @test true
+    println("also seen")
+    @test false
+    println("never seen")
+  end
+
+  @skipif false function test_not_skipped()
+    @test true
+  end
+
+  @skipif true function test_skipped()
+    @test true
+  end
+
+  @xfail function test_xfails()
+    @test false
+  end
+
+  @xfail function test_xpasses()
+    @test true
+  end
+
+  @parameterize 1:4 function test_parameterized(x)
+    @test x&lt;3
+  end
+
+end
+</code></pre>
+<p>Running the file will run the tests and you will get this output:</p>
+<pre><code>Running 10 tests 100%|##############################| Time: 0:00:01
+
+Tests:
+======
+
+ExampleTests.test_not_skipped PASSED
+ExampleTests.test_one PASSED
+ExampleTests.test_parameterized[1] PASSED
+ExampleTests.test_parameterized[2] PASSED
+ExampleTests.test_parameterized[3] FAILED
+ExampleTests.test_parameterized[4] FAILED
+ExampleTests.test_skipped SKIPPED
+ExampleTests.test_two FAILED
+ExampleTests.test_xfails XFAILED
+ExampleTests.test_xpasses XPASSED
+
+=================================== Failures ===================================
+
+---------------------- ExampleTests.test_parameterized[3] ---------------------
+
+test failed: :((x&lt;3))
+ in error at error.jl:21
+ in default_handler at test.jl:19
+ in do_test at test.jl:39
+
+ --------------------------------------------------------------------------------
+
+---------------------- ExampleTests.test_parameterized[4] ---------------------
+
+test failed: :((x&lt;3))
+ in error at error.jl:21
+ in default_handler at test.jl:19
+ in do_test at test.jl:39
+
+--------------------------------------------------------------------------------
+
+----------------------------- ExampleTests.test_two ----------------------------
+
+test failed: false
+ in error at error.jl:21
+ in default_handler at test.jl:19
+
+Captured Output:
+================
+
+seen
+also seen
+
+--------------------------------------------------------------------------------    
+
+================ 3 failed 4 passed 1 skipped 1 xfailed 1 xpassed ===============
+</code></pre>
+<p>But you can also run the file along with many others by putting them under the same directory (sub directories work too) and running them all together with:</p>
+<pre><code>using RunTests
+exit(run_tests(&lt;path_to_directory_containing_tests&gt;))
+</code></pre>
+<p>When you run many test files together, like this, all their tests are pooled and you get one report for them all. If you don't specify a directory <code>run_tests</code> will default to running tests from the "test" folder.</p>
+<p>RunTests.jl is extensible, in fact <code>@xfail</code>, <code>@skipif</code> and <code>@parameterize</code> are implemented as extensions. You can extend RunTests.jl to add further types of tests or categories of test result.</p>
+</article></div>

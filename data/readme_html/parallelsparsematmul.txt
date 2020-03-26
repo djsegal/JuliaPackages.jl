@@ -1,0 +1,58 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-parallelsparsematmul" class="anchor" aria-hidden="true" href="#parallelsparsematmul"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ParallelSparseMatMul</h1>
+
+<p>A Julia library for parallel sparse matrix multiplication using shared memory.
+This library implements SharedSparseMatrixCSC and SharedBilinearOperator types
+to make it easy to multiply by sparse matrices in parallel on shared memory systems.</p>
+<h1><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h1>
+<p>To install, just open a Julia prompt and call</p>
+<pre><code>Pkg.clone("git@github.com:madeleineudell/ParallelSparseMatMul.jl.git")
+</code></pre>
+<h1><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h1>
+<p>Before you begin, initialize all the processes you want to participate in multiplying by your matrix.
+You'll suffer decreased performance if you add more processes
+than you have hyperthreads on your shared-memory computer.</p>
+<pre><code>addprocs(3)
+using ParallelSparseMatMul
+</code></pre>
+<p>Create a shared sparse matrix by sharing a sparse matrix.
+For example, if <code>typeof(A) == SparseMatrixCSC</code>, then you can share it by calling</p>
+<pre><code>S = share(A)
+</code></pre>
+<p>If you're just experimenting, you might try calling one of the matrix creation functions,
+eg random uniform entries <code>shsprand</code>, random normal entries <code>shsprandn</code>,
+or an identity matrix <code>shspeye</code>.
+These are often faster than their serial counterparts, since
+they parallelize the generation of random numbers.</p>
+<pre><code>m,n,p = 100,30,.1 # generate an 100 x 30 matrix with 10% fill
+S = shsprandn(m,n,p) # entries are normal random variables
+</code></pre>
+<p>You can multiply by your matrix and its transpose.
+Multiplication by shared arrays will be faster than multiplication by other kinds of vectors,
+which have to be shared first.</p>
+<pre><code>x = Base.shmem_randn(n) # create a shared memory array of length n
+y = S*x
+x = S'*y
+</code></pre>
+<p>The matrices are stored in CSC format, which means that transpose multiplication <code>x = S'*y</code>
+will be faster than multiplication <code>y = S*x</code>.
+You can examine the entries of a shared sparse matrix by indexing into it,
+eg <code>S[3,5]</code>.
+Setting entries is not yet supported.
+Instead, you can always convert your matrix to a local sparse matrix,
+set entries, and re-share it.</p>
+<pre><code>A = localize(S)
+A[3,5] = 42
+S = share(A)
+</code></pre>
+<p>Shared bilinear operators implement fast multiplication by A and A'.
+This feature is useful in iterative algorithms that require many multiplications
+by a fixed matrix and its transpose.</p>
+<pre><code>L = operator(A) # make A into a shared bilinear operator L
+# multiplication by L' should be faster than multiplication by A'
+y = L*x 
+x = L'*y
+</code></pre>
+<p>The command <code>L=operator(A)</code> forms and stores <code>A'</code>.
+This allows multiplication by <code>A</code> to be as fast as multiplication by <code>A'</code>,
+at the cost of doubling the storage requirements.</p>
+</article></div>

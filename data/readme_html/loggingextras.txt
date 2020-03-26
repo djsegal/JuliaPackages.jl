@@ -1,0 +1,276 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-loggingextras" class="anchor" aria-hidden="true" href="#loggingextras"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>LoggingExtras</h1>
+<p><a href="https://travis-ci.org/oxinabox/LoggingExtras.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/2f99fbb9efe3a93f4d18eea477d456d5b554593e/68747470733a2f2f7472617669732d63692e6f72672f6f78696e61626f782f4c6f6767696e674578747261732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/oxinabox/LoggingExtras.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="http://codecov.io/github/oxinabox/LoggingExtras.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/fcebb852deacfbc9403a08fbf9dae6bd582b8d28/687474703a2f2f636f6465636f762e696f2f6769746875622f6f78696e61626f782f4c6f6767696e674578747261732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/oxinabox/LoggingExtras.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer" href="diag.svg"><img src="diag.svg" alt="Diagram showing how loggers connect" style="max-width:100%;"></a></p>
+<h1><a id="user-content-discussion-compositional-loggers" class="anchor" aria-hidden="true" href="#discussion-compositional-loggers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Discussion: Compositional Loggers</h1>
+<p>LoggingExtras is designs around allowing you to build arbitrarily complicated
+systems for "log plumbing". That is to say basically routing logged information to different places.
+It is built around the idea of simple parts which are composed together,
+to allow for powerful and flexible definition of your logging system.
+Without you having to define any custom loggers by subtyping <code>AbstractLogger</code>.
+When we talk about composability we mean to say that the composition of any set of Loggers is itself a Logger.
+LoggingExtras is a composable logging system.</p>
+<p>Loggers can be broken down into 4 types:</p>
+<ul>
+<li><em>Sinks</em>: Sinks are the final end point of a log messages journey. They write it to file, or display it on the console, or set off a red flashing light in the laboratory. A Sink should never decide what to accept, only what to do with it.</li>
+<li><em>Filters</em>: Filters wrap around other loggers and decide wether or not to pass on a message. Thery can further be broken down by when that decision occurs (See <code>ActiveFilteredLogger</code> vs <code>EarlyFilteredLogger</code>).</li>
+<li><em>Transformers</em>: Transformers modify the content of log messages, before passing them on. This includes the metadata like severity level. Unlike Filters they can't block a log message, but they could drop its level down to say <code>Debug</code> so that normally noone would see it.</li>
+<li><em>Demux</em>: There is only one possible Demux Logger. and it is central to log routing. It acts as a hub that recieves 1 log message, and then sends copies of it to all its child loggers. Like iin the diagram above, it can be composed with Filters to control what goes where.</li>
+</ul>
+<p>This is a basically full taxonomy of all compositional loggers.
+Other than <code>Sinks</code>, this package implements the full set. So you shouldn't need to build your own routing components, just configure the ones included in this package.</p>
+<p>It is worth understanding the idea of logging purity.
+The loggers defined in this package are all pure.
+The Filters, only filter, the Sinks only sink, the transformers only Transform.</p>
+<p>We can contrast this to the the <code>ConsoleLogger</code> (the standard logger in the REPL).
+The <code>ConsoleLogger</code> is an impure sink.
+As well as displaying logs to the user (as a Sink);
+it uses the log content, in the form of the <code>max_log</code> kwarg to decide if a log should be displayed (Active Filtering);
+and it has a min_enabled_level setting, that controls if it will accept a message at all
+(Early Filtering, in particular see <code>MinLevelLogger</code>).
+If it was to be defined in a compositional way,
+we would write something along the lines of:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">ConsoleLogger</span>(stream, min_level) <span class="pl-k">=</span>
+    <span class="pl-c1">MinLevelLogger</span>(
+        <span class="pl-c1">ActiveFilteredLogger</span>(max_log_filter,
+            <span class="pl-c1">PureSinkConsoleLogger</span>(stream)
+        ),
+        min_level
+    )</pre></div>
+<h1><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h1>
+<p>Load the package with <code>using LoggingExtras</code>.
+You likely also want to load the <code>Logging</code> standard lib.
+Loggers can be constructed and used like normal.</p>
+<h3><a id="user-content-basics-of-working-with-loggers" class="anchor" aria-hidden="true" href="#basics-of-working-with-loggers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Basics of working with loggers</h3>
+<p>For full details, see the <a href="https://docs.julialang.org/en/v1/stdlib/Logging/index.html" rel="nofollow">Julia documentation on Logging</a></p>
+<p>To use a <code>logger</code> in a given scope do</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">with_logger</span>(logger) <span class="pl-k">do</span>
+    <span class="pl-c"><span class="pl-c">#</span>things</span>
+<span class="pl-k">end</span></pre></div>
+<p>To make a logger the global logger, use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">global_logger</span>(logger)</pre></div>
+<p>to get the current global logger, use</p>
+<div class="highlight highlight-source-julia"><pre>logger <span class="pl-k">=</span> <span class="pl-c1">global_logger</span>()</pre></div>
+<h1><a id="user-content-loggers-introduced-by-this-package" class="anchor" aria-hidden="true" href="#loggers-introduced-by-this-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Loggers introduced by this package:</h1>
+<p>This package introduces 6 new loggers.
+The <code>TeeLogger</code>, the <code>TransformerLogger</code>, 3 types of filtered logger, and the <code>FileLogger</code>.
+All of them just wrap existing loggers.</p>
+<ul>
+<li>The <code>TeeLogger</code> sends the logs to multiple different loggers.</li>
+<li>The <code>TransformerLogger</code> applies a function to modify log messages before passing them on.</li>
+<li>The 3 filter loggers are used to control if a message is written or not
+<ul>
+<li>The <code>MinLevelLogger</code> only allowes messages to pass that are above a given level of severity</li>
+<li>The <code>EarlyFilteredLogger</code> lets you write filter rules based on the <code>level</code>, <code>module</code>, <code>group</code> and <code>id</code> of the log message</li>
+<li>The <code>ActiveFilteredLogger</code> lets you filter based on the full content</li>
+</ul>
+</li>
+<li>The <code>FileLogger</code> is a simple logger sink that writes to file.</li>
+</ul>
+<p>By combining <code>TeeLogger</code> with filter loggers you can arbitrarily route log messages, wherever you want.</p>
+<h2><a id="user-content-teelogger" class="anchor" aria-hidden="true" href="#teelogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>TeeLogger</code></h2>
+<p>The <code>TeeLogger</code> sends the log messages to multiple places.
+It takes a list of loggers.
+You often want to pass the <code>current_logger()</code> or <code>global_logger()</code>
+as one of those inputs so it keeps going to that one as well.</p>
+<p>It is up to those loggers to determine if they will accept it.
+Which they do using their methods for <code>shouldlog</code> and <code>min_enabled_level</code>.
+Or you can do, by wrapping them in a filtered logger  as discussed below.</p>
+<h2><a id="user-content-filelogger" class="anchor" aria-hidden="true" href="#filelogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>FileLogger</code></h2>
+<p>The <code>FileLogger</code> does logging to file.
+It is just a convience wrapper around the base julia <code>SimpleLogger</code>,
+to make it easier to pass in a filename, rather than a stream.
+It is really simple.</p>
+<ul>
+<li>It takes a filename,</li>
+<li>a kwarg to check if should <code>always_flush</code> (default: <code>true</code>).</li>
+<li>a kwarg to <code>append</code> rather than overwrite (default <code>false</code>. i.e. overwrite by default)
+The resulting file format is similar to that which is shown in the REPL.
+(Not identical, but similar)</li>
+</ul>
+<h3><a id="user-content-demo-teelogger-and-filelogger" class="anchor" aria-hidden="true" href="#demo-teelogger-and-filelogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Demo: <code>TeeLogger</code> and <code>FileLogger</code></h3>
+<p>We are going to log info and above to one file,
+and warnings and above to another.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Logging; <span class="pl-k">using</span> LoggingExtras;
+
+julia<span class="pl-k">&gt;</span> demux_logger <span class="pl-k">=</span> <span class="pl-c1">TeeLogger</span>(
+    <span class="pl-c1">MinLevelLogger</span>(<span class="pl-c1">FileLogger</span>(<span class="pl-s"><span class="pl-pds">"</span>info.log<span class="pl-pds">"</span></span>), Logging<span class="pl-k">.</span>Info),
+    <span class="pl-c1">MinLevelLogger</span>(<span class="pl-c1">FileLogger</span>(<span class="pl-s"><span class="pl-pds">"</span>warn.log<span class="pl-pds">"</span></span>), Logging<span class="pl-k">.</span>Warn),
+);
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">with_logger</span>(demux_logger) <span class="pl-k">do</span>
+    <span class="pl-c1">@warn</span>(<span class="pl-s"><span class="pl-pds">"</span>It is bad<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">@info</span>(<span class="pl-s"><span class="pl-pds">"</span>normal stuff<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">@error</span>(<span class="pl-s"><span class="pl-pds">"</span>THE WORSE THING<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">@debug</span>(<span class="pl-s"><span class="pl-pds">"</span>it is chill<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+shell<span class="pl-k">&gt;</span>  cat warn<span class="pl-k">.</span>log
+┌ Warning<span class="pl-k">:</span> It is bad
+└ @ Main REPL[<span class="pl-c1">34</span>]<span class="pl-k">:</span><span class="pl-c1">2</span>
+┌ Error<span class="pl-k">:</span> THE WORSE THING
+└ @ Main REPL[<span class="pl-c1">34</span>]<span class="pl-k">:</span><span class="pl-c1">4</span>
+
+shell<span class="pl-k">&gt;</span>  cat info<span class="pl-k">.</span>log
+┌ Warning<span class="pl-k">:</span> It is bad
+└ @ Main REPL[<span class="pl-c1">34</span>]<span class="pl-k">:</span><span class="pl-c1">2</span>
+┌ Info<span class="pl-k">:</span> normal stuff
+└ @ Main REPL[<span class="pl-c1">34</span>]<span class="pl-k">:</span><span class="pl-c1">3</span>
+┌ Error<span class="pl-k">:</span> THE WORSE THING
+└ @ Main REPL[<span class="pl-c1">34</span>]<span class="pl-k">:</span><span class="pl-c1">4</span></pre></div>
+<h2><a id="user-content-activefilteredlogger" class="anchor" aria-hidden="true" href="#activefilteredlogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>ActiveFilteredLogger</code></h2>
+<p>The <code>ActiveFilteredLogger</code> exists to give more control over which messages should be logged.
+It warps any logger, and before sending messages to the logger to log,
+checks them against a filter function.
+The filter function takes the full set of parameters of the message.
+(See it's docstring with <code>?ActiveFilteredLogger</code> for more details.)</p>
+<h3><a id="user-content-demo" class="anchor" aria-hidden="true" href="#demo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Demo</h3>
+<p>We want to filter to only log strings staring with <code>"Yo Dawg!"</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">yodawg_filter</span>(log_args)
+    <span class="pl-c1">startswith</span>(log_args<span class="pl-k">.</span>message, <span class="pl-s"><span class="pl-pds">"</span>Yo Dawg!<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+ yodawg_filter (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> filtered_logger <span class="pl-k">=</span> <span class="pl-c1">ActiveFilteredLogger</span>(yodawg_filter, <span class="pl-c1">global_logger</span>());
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">with_logger</span>(filtered_logger) <span class="pl-k">do</span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Boring message<span class="pl-pds">"</span></span>
+    <span class="pl-c1">@warn</span> <span class="pl-s"><span class="pl-pds">"</span>Yo Dawg! it is bad<span class="pl-pds">"</span></span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Another boring message<span class="pl-pds">"</span></span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Yo Dawg! it is all good<span class="pl-pds">"</span></span>
+<span class="pl-k">end</span>
+┌ Warning<span class="pl-k">:</span> Yo Dawg! it is bad
+└ @ Main REPL[<span class="pl-c1">28</span>]<span class="pl-k">:</span><span class="pl-c1">3</span>
+[ Info<span class="pl-k">:</span> Yo Dawg! it is all good</pre></div>
+<h2><a id="user-content-earlyfilteredlogger" class="anchor" aria-hidden="true" href="#earlyfilteredlogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>EarlyFilteredLogger</code></h2>
+<p>The <code>EarlyFilteredLogger</code> is similar to the <code>ActiveFilteredLogger</code>,
+but it runs earlier in the logging pipeline.
+In particular it runs before the message is computed.
+It can be useful to filter things early if creating the log message is expensive.
+E.g. if it includes summary statistics of the error.
+The filter function for early filter logging only has access to the
+<code>level</code>, <code>_module</code>, <code>id</code> and <code>group</code> fields of the log message.
+The most notable use of it is to filter based on modules,
+see the HTTP example below.</p>
+<p>Another example is using them to stop messages every being repeated within a given time period.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Dates, Logging, LoggingExtras
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">make_throttled_logger</span>(period)
+    history <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{Symbol, DateTime}</span>()
+    <span class="pl-c"><span class="pl-c">#</span> We are going to use a closure</span>
+    <span class="pl-c1">EarlyFilteredLogger</span>(<span class="pl-c1">global_logger</span>()) <span class="pl-k">do</span> log
+        <span class="pl-k">if</span> <span class="pl-k">!</span><span class="pl-c1">haskey</span>(history, log<span class="pl-k">.</span>id) <span class="pl-k">||</span> (period <span class="pl-k">&lt;</span> <span class="pl-c1">now</span>() <span class="pl-k">-</span> history[log<span class="pl-k">.</span>id])
+            <span class="pl-c"><span class="pl-c">#</span> then we will log it, and update record of when we did</span>
+            history[log<span class="pl-k">.</span>id] <span class="pl-k">=</span> <span class="pl-c1">now</span>()
+            <span class="pl-k">return</span> <span class="pl-c1">true</span>
+        <span class="pl-k">else</span>
+            <span class="pl-k">return</span> <span class="pl-c1">false</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+make_throttled_logger (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> throttled_logger <span class="pl-k">=</span> <span class="pl-c1">make_throttled_logger</span>(<span class="pl-c1">Second</span>(<span class="pl-c1">3</span>));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">with_logger</span>(throttled_logger) <span class="pl-k">do</span>
+    <span class="pl-k">for</span> ii <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>
+        <span class="pl-c1">sleep</span>(<span class="pl-c1">1</span>)
+        <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>It happened<span class="pl-pds">"</span></span> ii
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+┌ Info<span class="pl-k">:</span> It happened
+└   ii <span class="pl-k">=</span> <span class="pl-c1">1</span>
+┌ Info<span class="pl-k">:</span> It happened
+└   ii <span class="pl-k">=</span> <span class="pl-c1">4</span>
+┌ Info<span class="pl-k">:</span> It happened
+└   ii <span class="pl-k">=</span> <span class="pl-c1">7</span>
+┌ Info<span class="pl-k">:</span> It happened
+└   ii <span class="pl-k">=</span> <span class="pl-c1">10</span></pre></div>
+<h2><a id="user-content-minlevellogger" class="anchor" aria-hidden="true" href="#minlevellogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>MinLevelLogger</code></h2>
+<p>This is basically a special case of the early filtered logger,
+that just checks if the level of the message is above the level specified when it was created.</p>
+<h2><a id="user-content-transformerlogger" class="anchor" aria-hidden="true" href="#transformerlogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>TransformerLogger</code></h2>
+<p>The transformer logger allows for the modification of log messages.
+This modification includes such things as its log level, and content,
+and all the other arguments passed to <code>handle_message</code>.</p>
+<p>When constructing a <code>TransformerLogger</code> you pass in a tranformation function,
+and a logger to be wrapped.
+The  transformation function takes a named tuple containing all the log message fields,
+and should return a new modified named tuple.</p>
+<p>A simple example of its use is truncating messages.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Logging, LoggingExtras
+
+julia<span class="pl-k">&gt;</span> truncating_logger  <span class="pl-k">=</span> <span class="pl-c1">TransformerLogger</span>(<span class="pl-c1">global_logger</span>()) <span class="pl-k">do</span> log
+    <span class="pl-k">if</span> <span class="pl-c1">length</span>(log<span class="pl-k">.</span>message) <span class="pl-k">&gt;</span> <span class="pl-c1">128</span>
+        short_message <span class="pl-k">=</span> log<span class="pl-k">.</span>message[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">min</span>(<span class="pl-k">end</span>, <span class="pl-c1">125</span>)] <span class="pl-k">*</span> <span class="pl-s"><span class="pl-pds">"</span>...<span class="pl-pds">"</span></span>
+        <span class="pl-k">return</span> <span class="pl-c1">merge</span>(log, (;message<span class="pl-k">=</span>short_message))
+    <span class="pl-k">else</span>
+        <span class="pl-k">return</span> log
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">with_logger</span>(truncating_logger) <span class="pl-k">do</span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>the truncating logger only truncates long messages<span class="pl-pds">"</span></span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Like this one that is this is a long and rambling message, it just keeps going and going and going,  and it seems like it will never end.<span class="pl-pds">"</span></span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Not like this one, that is is short<span class="pl-pds">"</span></span>
+<span class="pl-k">end</span>
+[ Info<span class="pl-k">:</span> the truncating logger only truncates long messages
+[ Info<span class="pl-k">:</span> Like this one that is this is a long and rambling message, it just keeps going and going and going,  and it seems like it wil<span class="pl-k">...</span>
+[ Info<span class="pl-k">:</span> Not like this one, that is is short</pre></div>
+<p>It can also be used to do things such as change the log level of messages from a particular module (see the example below).
+Or to set common properties for all log messages within the <code>with_logger</code> block,
+for example to set them all to the same <code>group</code>.</p>
+<h1><a id="user-content-more-examples" class="anchor" aria-hidden="true" href="#more-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>More Examples</h1>
+<h2><a id="user-content-filter-out-any-overly-long-messages" class="anchor" aria-hidden="true" href="#filter-out-any-overly-long-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Filter out any overly long messages</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LoggingExtras
+<span class="pl-k">using</span> Logging
+
+<span class="pl-k">function</span> <span class="pl-en">sensible_message_filter</span>(log)
+    <span class="pl-c1">length</span>(log<span class="pl-k">.</span>message) <span class="pl-k">&lt;</span> <span class="pl-c1">1028</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">global_logger</span>(<span class="pl-c1">ActiveFilteredLogger</span>(sensible_message_filter, <span class="pl-c1">global_logger</span>()))</pre></div>
+<h2><a id="user-content-filterout-any-messages-from-http" class="anchor" aria-hidden="true" href="#filterout-any-messages-from-http"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Filterout any messages from HTTP</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LoggingExtras
+<span class="pl-k">using</span> Logging
+<span class="pl-k">using</span> HTTP
+
+<span class="pl-k">function</span> <span class="pl-en">not_HTTP_message_filter</span>(log)
+    log<span class="pl-k">.</span>_module <span class="pl-k">!=</span> HTTP
+<span class="pl-k">end</span>
+
+<span class="pl-c1">global_logger</span>(<span class="pl-c1">EarlyFilteredLogger</span>(not_HTTP_message_filter, <span class="pl-c1">global_logger</span>()))</pre></div>
+<h2><a id="user-content-raising-http-debug-level-errors-to-be-info-level" class="anchor" aria-hidden="true" href="#raising-http-debug-level-errors-to-be-info-level"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Raising HTTP debug level errors to be Info level</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LoggingExtras
+<span class="pl-k">using</span> Logging
+<span class="pl-k">using</span> HTTP
+
+<span class="pl-c1">transformer_logger</span>(<span class="pl-c1">global_logger</span>()) <span class="pl-k">do</span> log
+    <span class="pl-k">if</span> log<span class="pl-k">.</span>_module <span class="pl-k">==</span> HTTP <span class="pl-k">&amp;&amp;</span> log<span class="pl-k">.</span>level<span class="pl-k">=</span>Logging<span class="pl-k">.</span>Debug
+        <span class="pl-c"><span class="pl-c">#</span> Merge can be used to construct a new NamedTuple</span>
+        <span class="pl-c"><span class="pl-c">#</span> which effectively is the overwriting of fields of a NamedTuple</span>
+        <span class="pl-k">return</span> <span class="pl-c1">merge</span>(log, (; level<span class="pl-k">=</span>Logging<span class="pl-k">.</span>Info))
+    <span class="pl-k">else</span>
+        <span class="pl-k">return</span> log
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">global_logger</span>(transformer_logger)</pre></div>
+<h2><a id="user-content-add-timestamp-to-all-logging" class="anchor" aria-hidden="true" href="#add-timestamp-to-all-logging"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Add timestamp to all logging</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Logging, LoggingExtras, Dates 
+
+<span class="pl-k">const</span> date_format <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>yyyy-mm-dd HH:MM:SS<span class="pl-pds">"</span></span>
+
+<span class="pl-en">timestamp_logger</span>(logger) <span class="pl-k">=</span> <span class="pl-c1">TransformerLogger</span>(logger) <span class="pl-k">do</span> log
+  <span class="pl-c1">merge</span>(log, (; message <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$(Dates<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-c1">now</span>(), date_format))</span> <span class="pl-v">$(log<span class="pl-k">.</span>message)</span><span class="pl-pds">"</span></span>))
+<span class="pl-k">end</span>
+
+<span class="pl-c1">ConsoleLogger</span>(stdout, Logging<span class="pl-k">.</span>Debug) <span class="pl-k">|&gt;</span> timestamp_logger <span class="pl-k">|&gt;</span> global_logger</pre></div>
+<p>This will produce output similar to:</p>
+<div class="highlight highlight-source-julia"><pre>[ Info<span class="pl-k">:</span> <span class="pl-c1">2019</span><span class="pl-k">-</span><span class="pl-c1">09</span><span class="pl-k">-</span><span class="pl-c1">20</span> <span class="pl-c1">17</span><span class="pl-k">:</span><span class="pl-c1">43</span><span class="pl-k">:</span><span class="pl-c1">54</span> <span class="pl-k">/</span>es<span class="pl-k">/</span>update <span class="pl-c1">200</span>
+┌ Debug<span class="pl-k">:</span> <span class="pl-c1">2019</span><span class="pl-k">-</span><span class="pl-c1">09</span><span class="pl-k">-</span><span class="pl-c1">20</span> <span class="pl-c1">18</span><span class="pl-k">:</span><span class="pl-c1">03</span><span class="pl-k">:</span><span class="pl-c1">25</span> Recompiling stale cache file <span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>compiled<span class="pl-k">/</span>v1<span class="pl-c1">.2</span><span class="pl-k">/</span>TranslationsController<span class="pl-k">.</span>ji <span class="pl-k">for</span> TranslationsController [top<span class="pl-k">-</span>level]
+└ @ Base loading<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">1240</span>
+┌ Error<span class="pl-k">:</span> <span class="pl-c1">2019</span><span class="pl-k">-</span><span class="pl-c1">09</span><span class="pl-k">-</span><span class="pl-c1">20</span> <span class="pl-c1">17</span><span class="pl-k">:</span><span class="pl-c1">43</span><span class="pl-k">:</span><span class="pl-c1">54</span> <span class="pl-c1">ErrorException</span>(<span class="pl-s"><span class="pl-pds">"</span>SearchLight validation error(s) for Translations.Translation<span class="pl-pds">"</span></span>)
+└ @ TranslationsController <span class="pl-k">~</span><span class="pl-k">/</span>Dropbox<span class="pl-k">/</span>Projects<span class="pl-k">/</span>LiteCMS<span class="pl-k">/</span>app<span class="pl-k">/</span>resources<span class="pl-k">/</span>translations<span class="pl-k">/</span>TranslationsController<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">69</span></pre></div>
+</article></div>

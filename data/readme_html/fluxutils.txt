@@ -1,0 +1,83 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-sklearn-interface-and-distributed-training-for-fluxjl" class="anchor" aria-hidden="true" href="#sklearn-interface-and-distributed-training-for-fluxjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Sklearn Interface and Distributed Training for Flux.jl</h1>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Pkg
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">pkg</span>"</span>add FluxUtils<span class="pl-pds">"</span></span></pre></div>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Flux, FluxUtils
+<span class="pl-k">using</span> FluxUtils<span class="pl-k">:</span> fit!, predict!</pre></div>
+<h3><a id="user-content-sklearn-interface-for-time-series-prediction" class="anchor" aria-hidden="true" href="#sklearn-interface-for-time-series-prediction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Sklearn Interface for Time Series Prediction</h3>
+<p>First, define a simple LSTM network model.</p>
+<div class="highlight highlight-source-julia"><pre>model <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(<span class="pl-c1">LSTM</span>(<span class="pl-c1">10</span>, <span class="pl-c1">10</span>), <span class="pl-c1">Dense</span>(<span class="pl-c1">10</span>, <span class="pl-c1">1</span>)) <span class="pl-k">|&gt;</span> gpu</pre></div>
+<p>Then, sepify the loss function for this model. <code>xs</code>/<code>ys</code> is a <code>Vector</code> of <code>AbstractArray</code>s of length <code>seqsize</code>.</p>
+<div class="highlight highlight-source-julia"><pre>loss <span class="pl-k">=</span> <span class="pl-k">function</span> (m, xs, ys)
+    l, seqsize <span class="pl-k">=</span> <span class="pl-c1">0</span>f0, <span class="pl-c1">length</span>(xs)
+    <span class="pl-k">for</span> t <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>seqsize
+        x, y <span class="pl-k">=</span> xs[t], ys[t]
+        l <span class="pl-k">+=</span> <span class="pl-c1">mse</span>(<span class="pl-c1">m</span>(x), y)
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> l <span class="pl-k">/</span> <span class="pl-c1">Float32</span>(seqsize)
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> The above is equivalent to </span>
+<span class="pl-c"><span class="pl-c">#</span> loss = seqloss(mse)</span></pre></div>
+<p>A <code>spec</code> is also need, which can be a NamedTuple, Dict or custom struct with at least three fileds defined.</p>
+<pre><code>spec = (epochs = 2, batchsize = 20, seqsize = 10)
+</code></pre>
+<p>Finally, create the optimizer <code>opt</code> and estimator <code>est</code>.</p>
+<div class="highlight highlight-source-julia"><pre>opt <span class="pl-k">=</span> <span class="pl-c1">ADAMW</span>(<span class="pl-c1">1</span>f<span class="pl-k">-</span><span class="pl-c1">3</span>)
+est <span class="pl-k">=</span> <span class="pl-c1">Estimator</span>(model, loss, opt, spec)</pre></div>
+<p>You can use <code>fit!</code> to fit this estimator just like <code>fit</code> in sklearn, with minibatching, logging, parameter syncronization, callbacks all handled internally. <code>fit!</code> will first create an minibatch sequence iterator from <code>x</code> and <code>y</code> with batch size <code>@unpack batchsize = spec</code> and sequence length <code>@unpack seqsize = spec</code> (truncated backpropagation).</p>
+<div class="highlight highlight-source-julia"><pre>F <span class="pl-k">=</span> <span class="pl-c1">10</span>     <span class="pl-c"><span class="pl-c">#</span> feature dimension</span>
+N <span class="pl-k">=</span> <span class="pl-c1">10000</span>  <span class="pl-c"><span class="pl-c">#</span> batch dimension</span>
+T <span class="pl-k">=</span> <span class="pl-c1">1000</span>   <span class="pl-c"><span class="pl-c">#</span> time dimension</span>
+x <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float32, F, N, T)
+y <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float32, <span class="pl-c1">1</span>, N, T)</pre></div>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">fit!</span>(est, x, y)</pre></div>
+<p>After the model is trained, you can use <code>predict!</code> to fill in the preallocated <code>ŷ</code> with predictions of <code>est</code> on <code>x</code> (because it's difficult to infer the output shape of a model wihtout running it).</p>
+<div class="highlight highlight-source-julia"><pre>ŷ <span class="pl-k">=</span> <span class="pl-c1">fill!</span>(<span class="pl-c1">similar</span>(y), <span class="pl-c1">0</span>)
+<span class="pl-c1">predict!</span>(ŷ, est, x)</pre></div>
+<p>Note that the type of <code>x</code>, <code>y</code> or <code>ŷ</code> is not restricted to AbstractArray, it can be Tuples of AbstractArrays. This is similar to the notion of multiple inputs and outputs in Keras.</p>
+<p>If you are not dealing with time series problems, just add a dummy time dimension to your data. If your input is multidimensional, for example <code>size(x) == (W, H, C, N, T)</code>, you can reshape it to be of three dimensions <code>(F, N, T)</code> and reshape back in the definition of <code>m(x)</code> like this</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> (m<span class="pl-k">::</span><span class="pl-c1">MyModel</span>)(x)
+    x <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(x, W, H, C, N)
+    <span class="pl-k">...</span>
+<span class="pl-k">end</span></pre></div>
+<h3><a id="user-content-distributed-training-with-mpi" class="anchor" aria-hidden="true" href="#distributed-training-with-mpi"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Distributed Training with MPI</h3>
+<p>Distributed training can be achived with MPI with just a couple lines of code needed to be added. <code>fit!</code> internally will intercept <code>Flux</code>'s parameter updating step, apply <code>Allreduce</code> to average gradients from diffrent processes, then continue the updating. It will also synchronize parameters by broadcasting parameters from rank 0 to the rest before backpropagation starts.</p>
+<p>If you want to train on NVIDIA GPUs, make sure you have built MPI with CUDA support (see <a href="https://www.open-mpi.org/faq/?category=buildcuda" rel="nofollow">link</a>).</p>
+<p>A template may be like this (run with <code>mpirun -np 4 julia *</code>)</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> MPI
+MPI<span class="pl-k">.</span><span class="pl-c1">Init</span>()
+<span class="pl-c"><span class="pl-c">#</span> ... code to load data</span>
+<span class="pl-c"><span class="pl-c">#</span> ... code to define est</span>
+<span class="pl-c1">fit!</span>(est, x, y)
+<span class="pl-c"><span class="pl-c">#</span> ... code to predict</span>
+MPI<span class="pl-k">.</span><span class="pl-c1">Finalize</span>()</pre></div>
+<p>The complete example is located at <code>test/mpi.jl</code>.</p>
+<h3><a id="user-content-dealing-with-big-data" class="anchor" aria-hidden="true" href="#dealing-with-big-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Dealing with Big Data</h3>
+<p>Because data is only lazily subsliced in the training process, you can use memory mapping to read large datasets. <a href="https://github.com/JuliaIO/HDF5.jl">HDF5.jl</a> is recommended for this kind of usage. The function <code>h5concat</code> in <a href="https://github.com/AStupidBear/HDF5Utils.jl">HDF5Utils.jl</a> can help you concatenate a large amount of files into a single file efficiently.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> HDF5
+x, y <span class="pl-k">=</span> <span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>data.h5<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>r<span class="pl-pds">"</span></span>) <span class="pl-k">do</span> fid
+    <span class="pl-c1">readmmap</span>(fid[<span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>]), 
+    <span class="pl-c1">readmmap</span>(fid[<span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>])
+<span class="pl-k">end</span></pre></div>
+<h3><a id="user-content-utility-functions" class="anchor" aria-hidden="true" href="#utility-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Utility Functions</h3>
+<div class="highlight highlight-source-julia"><pre>m <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(<span class="pl-c1">LSTM</span>(<span class="pl-c1">10</span>, <span class="pl-c1">10</span>), <span class="pl-c1">Dense</span>(<span class="pl-c1">10</span>, <span class="pl-c1">1</span>))</pre></div>
+<p>untrack all tracked objects in m</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">notrack</span>(m)</pre></div>
+<p>concatenate all parameters of a model to a single vector</p>
+<div class="highlight highlight-source-julia"><pre>v <span class="pl-k">=</span> <span class="pl-c1">net2vec</span>(m)</pre></div>
+<p>copy <code>v</code> to parameters of <code>m</code></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">vec2net!</span>(m, v)</pre></div>
+<p>concatenate all gradients of a model to a single vector</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">net2grad</span>(m)</pre></div>
+<p>get all parameters of a model with names</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">namedparams</span>(m)</pre></div>
+<p>get all states of a model</p>
+<div class="highlight highlight-source-julia"><pre>s <span class="pl-k">=</span> <span class="pl-c1">states</span>(m)</pre></div>
+<p>load states <code>s</code> back into model <code>m</code></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">loadstates!</span>(m, s)</pre></div>
+<p>get all weights of a model (without biases), useful for regularization</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">weights</span>(m)</pre></div>
+<p>batch matrix-matrix product (can be differentiated)</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">bmm</span>(A, B)</pre></div>
+</article></div>

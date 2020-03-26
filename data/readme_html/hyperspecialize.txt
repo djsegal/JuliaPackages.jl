@@ -1,0 +1,261 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-hyperspecialize" class="anchor" aria-hidden="true" href="#hyperspecialize"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Hyperspecialize</h1>
+<p><a href="https://travis-ci.org/peterahrens/Hyperspecialize.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6dcf29a2ee039c479dff910ed03165828588ec9a/68747470733a2f2f7472617669732d63692e6f72672f7065746572616872656e732f48797065727370656369616c697a652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Travis" data-canonical-src="https://travis-ci.org/peterahrens/Hyperspecialize.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/peterahrens/hyperspecialize-jl/branch/master" rel="nofollow"><img src="https://camo.githubusercontent.com/3e35b0cb2fbfcb9dda94673ef2934c1df6c8e3ad/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f333272377332736b72676d39756276612f6272616e63682f6d61737465723f7376673d74727565" alt="AppVeyor" data-canonical-src="https://ci.appveyor.com/api/projects/status/32r7s2skrgm9ubva/branch/master?svg=true" style="max-width:100%;"></a>
+<a href="https://coveralls.io/github/peterahrens/Hyperspecialize.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/5b16773dcfcfac8235676c5a620a6cf98690d411/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f7065746572616872656e732f48797065727370656369616c697a652e6a6c2f62616467652e7376673f6272616e63683d6d617374657226736572766963653d676974687562" alt="Coveralls" data-canonical-src="https://coveralls.io/repos/peterahrens/Hyperspecialize.jl/badge.svg?branch=master&amp;service=github" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/peterahrens/Hyperspecialize.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/f5a681ad978d8bf869f81cd30c30e0ff75ea9b8a/687474703a2f2f636f6465636f762e696f2f6769746875622f7065746572616872656e732f48797065727370656369616c697a652e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="Codecov" data-canonical-src="http://codecov.io/github/peterahrens/Hyperspecialize.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>Hyperspecialize is a proud hack of a Julia package designed to resolve method ambiguity errors by automating the task of redefining functions on more specific types!</p>
+<h2><a id="user-content-problem" class="anchor" aria-hidden="true" href="#problem"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Problem</h2>
+<p>It is best to explain the problem (and solution) by example <sup><a href="#promote_type">1</a></sup>. Suppose Peter and his friend Jarrett have both developed eponymous modules <code>Peter</code> and <code>Jarrett</code> as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> Peter
+  <span class="pl-k">import</span> Base<span class="pl-k">.+</span>
+
+  <span class="pl-k">struct</span> PeterNumber <span class="pl-k">&lt;:</span> <span class="pl-c1">Number</span>
+    x<span class="pl-k">::</span><span class="pl-c1">Number</span>
+  <span class="pl-k">end</span>
+
+  Base.:<span class="pl-k">+</span>(p<span class="pl-k">::</span><span class="pl-c1">PeterNumber</span>, y<span class="pl-k">::</span><span class="pl-c1">Number</span>) <span class="pl-k">=</span> <span class="pl-c1">PeterNumber</span>(p<span class="pl-k">.</span>x <span class="pl-k">+</span> y)
+
+  <span class="pl-k">export</span> PeterNumber
+<span class="pl-k">end</span>
+
+<span class="pl-k">module</span> Jarrett
+  <span class="pl-k">import</span> Base<span class="pl-k">.+</span>
+
+  <span class="pl-k">struct</span> JarrettNumber <span class="pl-k">&lt;:</span> <span class="pl-c1">Number</span>
+    y<span class="pl-k">::</span><span class="pl-c1">Number</span>
+  <span class="pl-k">end</span>
+
+  Base.:<span class="pl-k">+</span>(x<span class="pl-k">::</span><span class="pl-c1">Number</span>, j<span class="pl-k">::</span><span class="pl-c1">JarrettNumber</span>) <span class="pl-k">=</span> <span class="pl-c1">JarrettNumber</span>(x <span class="pl-k">+</span> j<span class="pl-k">.</span>y)
+
+  <span class="pl-k">export</span> JarrettNumber
+<span class="pl-k">end</span></pre></div>
+<p>Peter and Jarrett have both defined fun numeric types! However, look what
+happens when the user tries to use Peter's and Jarrett's numbers together...</p>
+<pre lang="julia-repl"><code>julia&gt; using .Peter
+
+julia&gt; using .Jarrett
+
+julia&gt; p = PeterNumber(1.0) + 3
+PeterNumber(4.0)
+
+julia&gt; j = 2.0 + JarrettNumber(2.0)
+JarrettNumber(4.0)
+
+julia&gt; friends = p + j
+ERROR: MethodError: +(::PeterNumber, ::JarrettNumber) is ambiguous. Candidates:
+  +(x::Number, j::JarrettNumber) in Main.Jarrett at REPL[2]:8
+  +(p::PeterNumber, y::Number) in Main.Peter at REPL[1]:8
+Possible fix, define
+  +(::PeterNumber, ::JarrettNumber)
+</code></pre>
+<p>Oh no! Since a <code>PeterNumber</code> is a <code>Number</code> and a <code>JarrettNumber</code> is a <code>Number</code>,
+both <code>+</code> methods are applicable, and neither method is more specific. Julia has
+no way to decide which method to use, and asks the user to decide by defining a
+more specific method.</p>
+<p>There is a question of what role developers should play in the resolution of
+this ambiguity.</p>
+<ul>
+<li>
+<p>All developers can coordinate their efforts to agree on how their types
+should interact, and then define methods for each interaction. This solution is
+unrealistic since it poses an undue burden of communication on the developers
+and since multiple behaviors may be desired for an interaction between types.
+In the above example, the two definitions of <code>+</code> have different behavior and
+either may be desired by the user.</p>
+</li>
+<li>
+<p>The developer can write their library to run in a modifed execution
+environment like <a href="https://github.com/jrevels/Cassette.jl">Cassette</a>. This
+solution creates different contexts for multiple dispatch.</p>
+</li>
+<li>
+<p>A single developer can define their ambiguous methods only on concrete
+subtypes in <code>Base</code>, and provide utilities to extend these definitions. For
+example, Peter could define <code>+</code> on all concrete subtypes of <code>Number</code> in Base.
+In cases of ambiguity, <code>+</code> would then default to Jarrett's definition unless
+the user asks for Peter's definition.</p>
+</li>
+</ul>
+<p>Hyperspecialize is designed to standardize and provide utilities for the
+latter approach.</p>
+<h2><a id="user-content-load-order-dependent-solution" class="anchor" aria-hidden="true" href="#load-order-dependent-solution"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Load-Order Dependent Solution</h2>
+<p>Peter decided to use Hyperspecialize, and now his definition looks like this:</p>
+<div class="highlight highlight-source-julia"><pre>  <span class="pl-c1">@replicable</span> Base.:<span class="pl-k">+</span>(p<span class="pl-k">::</span><span class="pl-c1">PeterNumber</span>, y<span class="pl-k">:</span>:<span class="pl-c1">@hyperspecialize</span>(Number)) <span class="pl-k">=</span> <span class="pl-c1">PeterNumber</span>(p<span class="pl-k">.</span>x <span class="pl-k">+</span> y)</pre></div>
+<p>This solution will replicate this definition once for all concrete
+subtypes of <code>Number</code>. This list of subtypes depends on the module load order.
+If Peter's module is loaded first, we get the following behavior:</p>
+<pre lang="julia-repl"><code>julia&gt; friends = p + j
+JarrettNumber(PeterNumber(8.0))
+</code></pre>
+<p>If Jarrett's module is loaded first, we get the following behavior:</p>
+<pre lang="julia-repl"><code>julia&gt; friends = p + j
+PeterNumber(JarrettNumber(8.0))
+</code></pre>
+<h2><a id="user-content-explicit-solution" class="anchor" aria-hidden="true" href="#explicit-solution"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Explicit Solution</h2>
+<p>Peter doesn't like this unpredictable behavior, so he decides to explicitly
+define the load order for his types. He asks for his code to only be defined on
+the concrete subtypes of <code>Number</code> in <code>Base</code>. He uses the <code>@concretize</code> macro to
+define which subtypes of <code>Number</code> to use.  Now his definition looks like this:</p>
+<div class="highlight highlight-source-julia"><pre>  <span class="pl-c1">@concretize</span> myNumber [BigFloat, Float16, Float32, Float64, Bool, BigInt, Int128, Int16, Int32, Int64, Int8, UInt128, UInt16, UInt32, UInt64, UInt8]
+
+  <span class="pl-c1">@replicable</span> Base.:<span class="pl-k">+</span>(p<span class="pl-k">::</span><span class="pl-c1">PeterNumber</span>, y<span class="pl-k">:</span>:<span class="pl-c1">@hyperspecialize</span>(myNumber)) <span class="pl-k">=</span> <span class="pl-c1">PeterNumber</span>(p<span class="pl-k">.</span>x <span class="pl-k">+</span> y)</pre></div>
+<p>Since Peter has only defined <code>+</code> for the concrete subtypes of Number, the user
+will need to ask for a specific definition of <code>+</code> for a type they would like to
+use. Consider what happens when Peter's package and Jarrett's package are
+loaded together.</p>
+<pre lang="julia-repl"><code>julia&gt; friends = p + j
+JarrettNumber(PeterNumber(8.0))
+
+julia&gt; using Hyperspecialize
+
+julia&gt; @widen Peter.myNumber JarrettNumber
+Set(Type[BigInt, Bool, UInt32, Float64, Float32, Int64, Int128, Float16, JarrettNumber, UInt128, UInt8, UInt16, BigFloat, Int8, UInt64, Int16, Int32])
+
+julia&gt; friends = p + j
+PeterNumber(JarrettNumber(8.0))
+</code></pre>
+<p>Before the <code>myNumber</code> type tag in the <code>Peter</code> module is widened, there is no
+definition of <code>+</code> for <code>PeterNumber</code> and <code>JarrettNumber</code> in the <code>Peter</code> package,
+but since the <code>Jarrett</code> module defines a more generic method, that one is
+chosen. After the user widens Peter's definition to include a JarrettNumber
+(triggering a specific definition of <code>+</code> to be evaluated in Peter's module),
+the more specific method in Peter's package is chosen.</p>
+<h2><a id="user-content-opt-in-but-everyone-can-join" class="anchor" aria-hidden="true" href="#opt-in-but-everyone-can-join"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Opt-In, But Everyone Can Join</h2>
+<p>Suppose Jarrett has also been thinking about method ambiguities with Peter's
+package and decides he will also use <code>Hyperspecialize</code>.</p>
+<p>Now Jarret has added</p>
+<div class="highlight highlight-source-julia"><pre>  <span class="pl-c1">@concretize</span> myNumber [BigFloat, Float16, Float32, Float64, Bool, BigInt, Int128, Int16, Int32, Int64, Int8, UInt128, UInt16, UInt32, UInt64, UInt8]
+
+  <span class="pl-c1">@replicable</span> Base.:<span class="pl-k">+</span>(x<span class="pl-k">:</span>:<span class="pl-c1">@hyperspecialize</span>(myNumber), j<span class="pl-k">::</span><span class="pl-c1">JarrettNumber</span>) <span class="pl-k">=</span> <span class="pl-c1">JarrettNumber</span>(x <span class="pl-k">+</span> j<span class="pl-k">.</span>y)</pre></div>
+<p>to his module, and the behavior is as follows:</p>
+<pre lang="julia-repl"><code>julia&gt; p + j
+ERROR: no promotion exists for PeterNumber and JarrettNumber
+Stacktrace:
+ [1] error(::String, ::Type, ::String, ::Type) at ./error.jl:42
+ [2] promote_to_supertype at ./promotion.jl:284 [inlined]
+ [3] promote_result at ./promotion.jl:275 [inlined]
+ [4] promote_type at ./promotion.jl:210 [inlined]
+ [5] _promote at ./promotion.jl:249 [inlined]
+ [6] promote at ./promotion.jl:292 [inlined]
+ [7] +(::PeterNumber, ::JarrettNumber) at ./promotion.jl:321
+ [8] top-level scope
+</code></pre>
+<p>There is now no method for adding a PeterNumber and a JarrettNumber! The user
+must ask for one explicitly using <code>@widen</code> on either Peter or Jarrett's
+<code>myNumber</code> type tag. If the user chooses to widen Jarrett's definitions, we get</p>
+<pre lang="julia-repl"><code>julia&gt; @widen Jarrett.myNumber PeterNumber
+Set(Type[BigInt, Bool, UInt32, Float64, Float32, Int64, Int128, Float16, PeterNumber, UInt128, UInt8, UInt16, BigFloat, Int8, UInt64, Int16, Int32])
+
+julia&gt; p + j
+JarrettNumber(PeterNumber(8.0))
+</code></pre>
+<p>If the user instead chooses to widen Peter's definitions, we get</p>
+<pre lang="julia-repl"><code>julia&gt; @widen Peter.myNumber JarrettNumber
+Set(Type[BigInt, Bool, UInt32, Float64, Float32, Int64, Int128, Float16, UInt128, UInt8, UInt16, BigFloat, Int8, UInt64, JarrettNumber, Int16, Int32])
+
+julia&gt; p + j
+PeterNumber(JarrettNumber(8.0))
+</code></pre>
+<h1><a id="user-content-getting-started" class="anchor" aria-hidden="true" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Getting Started</h1>
+<p>This library provides several functions for managing the defintions to
+replicate and the types they are replicated over.</p>
+<h2><a id="user-content-concretization" class="anchor" aria-hidden="true" href="#concretization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Concretization</h2>
+<p>The user must enumerate the types that a definition is to replicated over. We
+use <em>type tags</em> to describe a particular set of types. The type tag arguments
+to macros are interpreted literally as symbols. The set of types is referred to
+as the <em>concretization</em>.</p>
+<p>You may specify the concretization of a type tag using the <code>@concretize</code>
+macro like this:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@concretize</span> Key Int</pre></div>
+<p>You may specify more than one type:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@concretize</span> Key (Int, Float64, Float32)</pre></div>
+<p>If you would like to expand the concretization of a type tag, use the
+<code>@widen</code> macro.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@widen</span> Key (BigFloat, Bool)</pre></div>
+<p>You may query the concretization of a type tag with the <code>@concretization</code>
+macro.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@concretization</span> Key</pre></div>
+<p>Type tags always have module-local scope and if no module is specified, they
+are interpreted as belonging to the module in which they are expanded. You may
+use the type tag form <code>mod.Key</code> to specify a module anywhere a type tag is
+an argument to a macro.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@concretization</span>(mod<span class="pl-k">.</span>Key)</pre></div>
+<p>If no concretization is given for a type tag <code>Key</code> in module <code>mod</code>, the tag
+is given the default concretization corresponding to all the concrete subtypes
+of whatever the symbol <code>Key</code> means when evaluated in <code>mod</code> (so if you are
+making up a tag name, please define a concretization for it).</p>
+<h2><a id="user-content-replicable" class="anchor" aria-hidden="true" href="#replicable"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Replicable</h2>
+<p>The heart of the Hyperspecialize package is the <code>@replicable</code> macro, which
+promises to replicate a definition for all combinations of types in the
+concretization of type tags that appear in the definition. <code>@replicable</code> takes
+only one argument, the code to be replicated at global scope in the current
+module. To specify type tags, use the @hyperspecialize macro where the types in
+the concretization of a tag should be substituted.</p>
+<p>Thus, the following example</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> Foo
+  <span class="pl-c1">@concretize</span> MyKey (Int, Float32)
+  <span class="pl-c1">@replicable</span> <span class="pl-en">bar</span>(x<span class="pl-k">:</span>:<span class="pl-c1">@hyperspecialize</span>(MyKey), y<span class="pl-k">::</span><span class="pl-c1">(@hyperspecialize MyKey)</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-k">end</span></pre></div>
+<p>will execute the following code at global scope in <code>Foo</code>.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Int</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Float32</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Int</span>, y<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Float32</span>, y<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y</pre></div>
+<p>If someone has loaded the <code>Foo</code> module and calls</p>
+<div class="highlight highlight-source-julia"><pre>  <span class="pl-c1">@widen</span> Foo<span class="pl-k">.</span>MyKey Float64</pre></div>
+<p>then the following code will execute at global scope in <code>Foo</code>.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Float64</span>, y<span class="pl-k">::</span><span class="pl-c1">Float64</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Int</span>, y<span class="pl-k">::</span><span class="pl-c1">Float64</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Float32</span>, y<span class="pl-k">::</span><span class="pl-c1">Float64</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Float64</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+<span class="pl-en">bar</span>(x<span class="pl-k">::</span><span class="pl-c1">Float64</span>, y<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y</pre></div>
+<p>Notice that the earlier definitions are not repeated.</p>
+<h1><a id="user-content-the-fine-print" class="anchor" aria-hidden="true" href="#the-fine-print"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The Fine Print</h1>
+<p>This is an example of a module where the idea is simple and the details are not.</p>
+<h2><a id="user-content-data-and-precompilation" class="anchor" aria-hidden="true" href="#data-and-precompilation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Data And Precompilation</h2>
+<p>Data is stored in <code>const global</code> dictionaries named <code>__hyperspecialize__</code> in
+every module that calls <code>@concretize</code> (Note that this can happen implicitly if
+other methods are called that expect a concretization to exist already).</p>
+<p>For this reason (and to keep things simple), you cannot concretize a type tag
+in a module that is not your own.</p>
+<p>Since this package works by calling "eval" on different modules to widen
+types, if you want to call <code>@widen</code> on a type key in another module, you must
+do so from the <code>__init__()</code> function in your module. See the documentation on
+<code>__init__()</code>.</p>
+<h2><a id="user-content-when-is-hyperspecialize-right-for-me" class="anchor" aria-hidden="true" href="#when-is-hyperspecialize-right-for-me"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>When Is Hyperspecialize Right For Me?</h2>
+<p>There are three main drawbacks to the Hyperspecialize package.</p>
+<ul>
+<li>
+<p>These macros may generate a very large number of definitions if the
+function definition includes many hyperspecialized type tags. For mathematical
+operators this can be alleviated using Julia's promotion rules, but the problem
+of how to define an unambiguous <code>promote_type</code> still stands. To further reduce
+the number of methods that are defined, in some situations it may be sufficient
+to only concretize the type tag to be a union of concrete types in Base. This
+strategy works best if it is unlikely that the method will be redefined using
+those types.</p>
+</li>
+<li>
+<p>The second drawback is that the user must manually choose desired behavior,
+so if the ambiguity is related to an internal type, the user may not know how
+to resolve it.</p>
+</li>
+<li>
+<p>The third drawback is that both methods that create an ambiguity may be
+desired by a user, and they are forced to choose one global behavior. This can
+be problematic if a different library has widened the same type tag and made
+that choice for them already.</p>
+</li>
+</ul>
+<p>In short, Hyperspecialize works best when the user knows which types are
+being concretized, and when the resolution to method ambiguities is clear. A
+major benefit to using Hyperspecialize is that you may keep your type-based
+API, you are not forced to adopt a function-based API. If this is not something
+that is important to you and you cannot work around difficulties involved in
+using Hyperspecialize, you will likely be better off using a contextual
+dispatch solution such as <a href="https://github.com/jrevels/Cassette.jl">Cassette</a>.</p>
+<p><a name="user-content-promote_type">1</a>: I have
+chosen <code>+</code> as an example function, but it would be possible to define promotion
+rules to avoid some ambiguities. However, it is possible that type ambiguities
+may occur in the definition of the <code>promote_type</code> function.</p>
+</article></div>

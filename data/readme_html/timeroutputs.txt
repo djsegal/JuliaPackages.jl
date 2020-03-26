@@ -1,0 +1,246 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-timeroutputs" class="anchor" aria-hidden="true" href="#timeroutputs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TimerOutputs</h1>
+<p><a href="https://travis-ci.org/KristofferC/TimerOutputs.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/0c10de8d05efe89411d5950f47665c92cb55863f/68747470733a2f2f7472617669732d63692e6f72672f4b726973746f66666572432f54696d65724f7574707574732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/KristofferC/TimerOutputs.jl.svg?branch=master" style="max-width:100%;"></a> <a href="https://codecov.io/gh/KristofferC/TimerOutputs.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/dfab65879024dd775428bed8834a2d779802d785/68747470733a2f2f636f6465636f762e696f2f67682f4b726973746f66666572432f54696d65724f7574707574732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/KristofferC/TimerOutputs.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p><code>TimerOutputs</code> is a small Julia package that is used to generate formatted output from timings made in different sections of a program.
+It's main functionality is the <code>@timeit</code> macro, similar to the <code>@time</code> macro in Base except one also assigns a label to the code section being timed.
+Multiple calls to code sections with the same label (and in the same "scope") will accumulate the data for that label.
+After the program has executed, it is possible to print a nicely formatted table presenting how much time, allocations and number of calls were made in each section.
+The output can be customized as to only show the things you are interested in.</p>
+<p>If you find this package useful please give it a star. I like stars and it also helps me know where my development time is best spent.</p>
+<h2><a id="user-content-example-output" class="anchor" aria-hidden="true" href="#example-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example output</h2>
+<p>An example of the output (used in a finite element simulation) is shown below</p>
+<pre><code> ───────────────────────────────────────────────────────────────────────────────
+                                        Time                   Allocations
+                                ──────────────────────   ───────────────────────
+        Tot / % measured:            6.89s / 97.8%           5.20GiB / 85.0%
+
+ Section                ncalls     time   %tot     avg     alloc   %tot      avg
+ ───────────────────────────────────────────────────────────────────────────────
+ assemble                    6    3.27s  48.6%   545ms   3.65GiB  82.7%   624MiB
+   inner assemble         240k    1.92s  28.4%  7.98μs   3.14GiB  71.1%  13.7KiB
+ linear solve                5    2.73s  40.5%   546ms    108MiB  2.39%  21.6MiB
+ create sparse matrix        6    658ms  9.77%   110ms    662MiB  14.6%   110MiB
+ export                      1   78.4ms  1.16%  78.4ms   13.1MiB  0.29%  13.1MiB
+ ───────────────────────────────────────────────────────────────────────────────
+</code></pre>
+<p>The first line shows the total (wall) time passed and allocations made since the start of the timer as well as
+the percentage of those totals spent inside timed sections.
+The following lines shows data for all the timed sections.
+The section label is shown first followed by the number of calls made to that section.
+Finally, the total time elapsed or allocations made in that section are shown together with the
+percentage of the total in that section and the average (time / allocations per call).</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>The easiest way to show how the package work is with a few examples of timing sections.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> TimerOutputs
+
+<span class="pl-c"><span class="pl-c">#</span> Create a TimerOutput, this is the main type that keeps track of everything.</span>
+<span class="pl-k">const</span> to <span class="pl-k">=</span> <span class="pl-c1">TimerOutput</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> Time a section code with the label "sleep" to the `TimerOutput` named "to"</span>
+<span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>sleep<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.02</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Create a function to later time</span>
+<span class="pl-en">rands</span>() <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">7</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Time the function, @timeit returns the value being evaluated, just like Base @time</span>
+rand_vals <span class="pl-k">=</span> <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>randoms<span class="pl-pds">"</span></span> <span class="pl-c1">rands</span>();
+
+<span class="pl-c"><span class="pl-c">#</span> Nested sections (sections with same name are not accumulated</span>
+<span class="pl-c"><span class="pl-c">#</span> if they have different parents)</span>
+<span class="pl-k">function</span> <span class="pl-en">time_test</span>()
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+        <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+        <span class="pl-c"><span class="pl-c">#</span> 3 calls to the same label</span>
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.03</span>)
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.03</span>)
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.03</span>)
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.2<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.2</span>)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 2<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.3</span>)
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.2<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.4</span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">time_test</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> exception safe</span>
+<span class="pl-k">function</span> <span class="pl-en">i_will_throw</span>()
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>throwing<span class="pl-pds">"</span></span> <span class="pl-k">do</span>
+        <span class="pl-c1">sleep</span>(<span class="pl-c1">0.5</span>)
+        <span class="pl-c1">throw</span>(<span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>this is fine...<span class="pl-pds">"</span></span>))
+        <span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds">"</span>nope<span class="pl-pds">"</span></span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">i_will_throw</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> Call to a previously used label accumulates data</span>
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>sleep<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.01</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Can also annotate function definitions</span>
+<span class="pl-c1">@timeit</span> to <span class="pl-en">funcdef</span>(x) <span class="pl-k">=</span> x
+
+<span class="pl-c1">funcdef</span>(<span class="pl-c1">2</span>)</pre></div>
+<p>Printing <code>to</code> shows a formatted table showing the number of calls,
+the total time spent in each section, and the percentage of the time
+spent in each section since <code>to</code> was created as well as averages (per call).
+Similar information is available for allocations:</p>
+<pre><code> ──────────────────────────────────────────────────────────────────────
+                               Time                   Allocations
+                       ──────────────────────   ───────────────────────
+   Tot / % measured:        5.09s / 56.0%            106MiB / 74.6%
+
+ Section       ncalls     time   %tot     avg     alloc   %tot      avg
+ ──────────────────────────────────────────────────────────────────────
+ sleep            101    1.17s  41.2%  11.6ms   1.48MiB  1.88%  15.0KiB
+ nest 2             1    703ms  24.6%   703ms   2.38KiB  0.00%  2.38KiB
+   level 2.2        1    402ms  14.1%   402ms      368B  0.00%   368.0B
+   level 2.1        1    301ms  10.6%   301ms      368B  0.00%   368.0B
+ throwing           1    502ms  17.6%   502ms      384B  0.00%   384.0B
+ nest 1             1    396ms  13.9%   396ms   5.11KiB  0.01%  5.11KiB
+   level 2.2        1    201ms  7.06%   201ms      368B  0.00%   368.0B
+   level 2.1        3   93.5ms  3.28%  31.2ms   1.08KiB  0.00%   368.0B
+ randoms            1   77.5ms  2.72%  77.5ms   77.3MiB  98.1%  77.3MiB
+ funcdef            1   2.66μs  0.00%  2.66μs         -  0.00%        -
+ ──────────────────────────────────────────────────────────────────────
+</code></pre>
+<h2><a id="user-content-settings-for-printing" class="anchor" aria-hidden="true" href="#settings-for-printing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Settings for printing:</h2>
+<p>The <code>print_timer([io::IO = stdout], to::TimerOutput, kwargs)</code>, (or <code>show</code>) takes a number of keyword arguments to change the output. They are listed here:</p>
+<ul>
+<li><code>title::String</code> ─ title for the timer</li>
+<li><code>allocations::Bool</code> ─ show the allocation columns (default <code>true</code>)</li>
+<li><code>sortby::Symbol</code> ─ sort the sections according to <code>:time</code> (default), <code>:ncalls</code>, <code>:allocations</code> or <code>:name</code></li>
+<li><code>linechars::Symbol</code> ─ use either <code>:unicode</code> (default) or <code>:ascii</code> to draw the horizontal lines in the table</li>
+<li><code>compact::Bool</code> ─ hide the <code>avg</code> column (default <code>false</code>)</li>
+</ul>
+<h2><a id="user-content-flattening" class="anchor" aria-hidden="true" href="#flattening"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Flattening</h2>
+<p>If sections are nested like in the example below:</p>
+<div class="highlight highlight-source-julia"><pre>to <span class="pl-k">=</span> <span class="pl-c1">TimerOutput</span>()
+
+<span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+    <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">20</span>; <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.2<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.02</span>); <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+<span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 2<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">30</span>; <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.01</span>); <span class="pl-k">end</span>
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>level 2.2<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+<span class="pl-k">end</span></pre></div>
+<p>the table is displayed as:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">show</span>(to, allocations <span class="pl-k">=</span> <span class="pl-c1">false</span>, compact <span class="pl-k">=</span> <span class="pl-c1">true</span>)
+ ────────────────────────────────────
+ Section       ncalls     time   <span class="pl-k">%</span>tot
+ ────────────────────────────────────
+ nest <span class="pl-c1">1</span>             <span class="pl-c1">1</span>    <span class="pl-c1">669</span>ms  <span class="pl-c1">60.5</span><span class="pl-k">%</span>
+   level <span class="pl-c1">2.2</span>       <span class="pl-c1">20</span>    <span class="pl-c1">423</span>ms  <span class="pl-c1">38.3</span><span class="pl-k">%</span>
+   level <span class="pl-c1">2.1</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">9.15</span><span class="pl-k">%</span>
+ nest <span class="pl-c1">2</span>             <span class="pl-c1">1</span>    <span class="pl-c1">437</span>ms  <span class="pl-c1">39.5</span><span class="pl-k">%</span>
+   level <span class="pl-c1">2.1</span>       <span class="pl-c1">30</span>    <span class="pl-c1">335</span>ms  <span class="pl-c1">30.3</span><span class="pl-k">%</span>
+   level <span class="pl-c1">2.2</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">9.16</span><span class="pl-k">%</span>
+ ────────────────────────────────────</pre></div>
+<p>It is possible to flatten this timer using the <code>TimerOutputs.flatten</code> function that accumulates the data for all sections with identical labels:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> to_flatten <span class="pl-k">=</span> TimerOutputs<span class="pl-k">.</span><span class="pl-c1">flatten</span>(to);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">show</span>(to_flatten; compact <span class="pl-k">=</span> <span class="pl-c1">true</span>, allocations <span class="pl-k">=</span> <span class="pl-c1">false</span>)
+ ──────────────────────────────────
+ Section     ncalls     time   <span class="pl-k">%</span>tot
+ ──────────────────────────────────
+ nest <span class="pl-c1">1</span>           <span class="pl-c1">1</span>    <span class="pl-c1">669</span>ms  <span class="pl-c1">60.5</span><span class="pl-k">%</span>
+ level <span class="pl-c1">2.2</span>       <span class="pl-c1">21</span>    <span class="pl-c1">525</span>ms  <span class="pl-c1">47.5</span><span class="pl-k">%</span>
+ nest <span class="pl-c1">2</span>           <span class="pl-c1">1</span>    <span class="pl-c1">437</span>ms  <span class="pl-c1">39.5</span><span class="pl-k">%</span>
+ level <span class="pl-c1">2.1</span>       <span class="pl-c1">31</span>    <span class="pl-c1">436</span>ms  <span class="pl-c1">39.5</span><span class="pl-k">%</span>
+ ──────────────────────────────────</pre></div>
+<h2><a id="user-content-resetting" class="anchor" aria-hidden="true" href="#resetting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Resetting</h2>
+<p>A timer is reset by calling <code>reset_timer!(to::TimerOutput)</code>. This will remove all sections and reset the start of the timer to the current time / allocation values.</p>
+<h2><a id="user-content-indexing-into-a-table" class="anchor" aria-hidden="true" href="#indexing-into-a-table"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Indexing into a table</h2>
+<p>Any <code>TimerOutput</code> can be indexed with the name of a section which returns a new <code>TimerOutput</code> with that section as the "root". For example:</p>
+<div class="highlight highlight-source-julia"><pre>to <span class="pl-k">=</span> <span class="pl-c1">TimerOutput</span>()
+
+<span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+    <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 2<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 3.1<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 3.2<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+        <span class="pl-c1">@timeit</span> to <span class="pl-s"><span class="pl-pds">"</span>nest 3.3<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">sleep</span>(<span class="pl-c1">0.3</span>)
+<span class="pl-k">end</span></pre></div>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">show</span>(to; compact <span class="pl-k">=</span> <span class="pl-c1">true</span>, allocations <span class="pl-k">=</span> <span class="pl-c1">false</span>, linechars <span class="pl-k">=</span> <span class="pl-c1">:ascii</span>)
+ <span class="pl-k">-------------------------------------</span>
+ Section        ncalls     time   <span class="pl-k">%</span>tot
+ <span class="pl-k">-------------------------------------</span>
+ nest <span class="pl-c1">1</span>              <span class="pl-c1">1</span>    <span class="pl-c1">605</span>ms   <span class="pl-c1">100</span><span class="pl-k">%</span>
+   nest <span class="pl-c1">2</span>            <span class="pl-c1">1</span>    <span class="pl-c1">304</span>ms  <span class="pl-c1">50.2</span><span class="pl-k">%</span>
+     nest <span class="pl-c1">3.2</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">16.7</span><span class="pl-k">%</span>
+     nest <span class="pl-c1">3.1</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">16.7</span><span class="pl-k">%</span>
+     nest <span class="pl-c1">3.3</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">16.7</span><span class="pl-k">%</span>
+ <span class="pl-k">-------------------------------------</span>
+
+julia<span class="pl-k">&gt;</span> to_2 <span class="pl-k">=</span> to[<span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>nest 2<span class="pl-pds">"</span></span>];
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">show</span>(to_2; compact <span class="pl-k">=</span> <span class="pl-c1">true</span>, allocations <span class="pl-k">=</span> <span class="pl-c1">false</span>, linechars <span class="pl-k">=</span> <span class="pl-c1">:ascii</span>)
+ <span class="pl-k">---------------------------------</span>
+ Section    ncalls     time   <span class="pl-k">%</span>tot
+ <span class="pl-k">---------------------------------</span>
+ nest <span class="pl-c1">3.2</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">33.3</span><span class="pl-k">%</span>
+ nest <span class="pl-c1">3.1</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">33.3</span><span class="pl-k">%</span>
+ nest <span class="pl-c1">3.3</span>        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">33.3</span><span class="pl-k">%</span>
+ <span class="pl-k">---------------------------------</span></pre></div>
+<p>The percentages showed are now relative to that "root".</p>
+<h2><a id="user-content-querying-data" class="anchor" aria-hidden="true" href="#querying-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Querying data</h2>
+<p>The (unexported) functions <code>ncalls</code>, <code>time</code>, <code>allocated</code> give the accumulated data for a section.
+The returned time has units in nano seconds and allocations in bytes.
+For example (using the <code>to</code> object from above):</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> TimerOutputs<span class="pl-k">.</span><span class="pl-c1">ncalls</span>(to[<span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span>])
+<span class="pl-c1">1</span>
+
+julia<span class="pl-k">&gt;</span> TimerOutputs<span class="pl-k">.</span><span class="pl-c1">time</span>(to[<span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>nest 2<span class="pl-pds">"</span></span>])
+<span class="pl-c1">350441733</span>
+
+julia<span class="pl-k">&gt;</span> TimerOutputs<span class="pl-k">.</span><span class="pl-c1">allocated</span>(to[<span class="pl-s"><span class="pl-pds">"</span>nest 1<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>nest 2<span class="pl-pds">"</span></span>])
+<span class="pl-c1">5280</span></pre></div>
+<p>Furthermore, you can request the total time spent in the "root" timer:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> TimerOutputs<span class="pl-k">.</span><span class="pl-c1">tottime</span>(to)
+<span class="pl-c1">604937208</span>
+
+julia<span class="pl-k">&gt;</span> TimerOutputs<span class="pl-k">.</span><span class="pl-c1">totallocated</span>(to)
+<span class="pl-c1">7632</span></pre></div>
+<h2><a id="user-content-default-timer" class="anchor" aria-hidden="true" href="#default-timer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Default Timer</h2>
+<p>It is often the case that it is enough to only use one timer. For convenience, there is therefore a version of
+all the functions and macros that do not take a <code>TimerOutput</code> instance and then use a global timer defined in the package.
+Note that this global timer is shared among all users of the package.
+For example:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">reset_timer!</span>()
+
+<span class="pl-c1">@timeit</span> <span class="pl-s"><span class="pl-pds">"</span>section<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.02</span>)
+<span class="pl-c1">@timeit</span> <span class="pl-s"><span class="pl-pds">"</span>section2<span class="pl-pds">"</span></span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.1</span>)
+
+<span class="pl-c1">print_timer</span>()</pre></div>
+<p>which prints:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_timer</span>()
+ ───────────────────────────────────────────────────────────────────
+                            Time                   Allocations
+                    ──────────────────────   ───────────────────────
+  Tot <span class="pl-k">/</span> <span class="pl-k">%</span> measured<span class="pl-k">:</span>      <span class="pl-c1">276</span>ms <span class="pl-k">/</span> <span class="pl-c1">44.3</span><span class="pl-k">%</span>            <span class="pl-c1">422</span>KiB <span class="pl-k">/</span> <span class="pl-c1">0.21</span><span class="pl-k">%</span>
+
+ Section    ncalls     time   <span class="pl-k">%</span>tot     avg     alloc   <span class="pl-k">%</span>tot      avg
+ ───────────────────────────────────────────────────────────────────
+ section2        <span class="pl-c1">1</span>    <span class="pl-c1">101</span>ms  <span class="pl-c1">82.7</span><span class="pl-k">%</span>   <span class="pl-c1">101</span>ms      <span class="pl-c1">464</span>B  <span class="pl-c1">50.0</span><span class="pl-k">%</span>     <span class="pl-c1">464</span>B
+ section         <span class="pl-c1">1</span>   <span class="pl-c1">21.1</span>ms  <span class="pl-c1">17.3</span><span class="pl-k">%</span>  <span class="pl-c1">21.1</span>ms      <span class="pl-c1">464</span>B  <span class="pl-c1">50.0</span><span class="pl-k">%</span>     <span class="pl-c1">464</span>B
+ ───────────────────────────────────────────────────────────────────</pre></div>
+<p>The default timer object can be retrieved with <code>TimerOutputs.get_defaulttimer()</code>.</p>
+<h2><a id="user-content-overhead" class="anchor" aria-hidden="true" href="#overhead"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overhead</h2>
+<p>There is a small overhead in timing a section (0.25 μs) which means that this package is not suitable for measuring sections that finish very quickly.
+For proper benchmarking you want to use a more suitable tool like <a href="https://github.com/JuliaCI/BenchmarkTools.jl"><em>BenchmarkTools</em></a>.</p>
+<p>It is sometimes desireable to be able "turn on and off" the <code>@timeit</code> macro, for instance you may wish to instrument a package with <code>@timeit</code> macros, but then not deal with the overhead of the timings during normal package operation.
+To enable this, we provide the <code>@timeit_debug</code> macro, which wraps the <code>@timeit</code> macro with a conditional, checking if debug timings have been enabled.
+Because you may wish to turn on only certain portions of your instrumented code base (or multiple codebases may have instrumented their code), debug timings are enabled on a module-by-module basis.
+By default, debug timings are disabled, and this conditional should be optimized away, allowing for truly zero-overhead.
+If a user calls <code>TimerOutputs.enable_debug_timings(&lt;module&gt;)</code>, the <code>&lt;module&gt;.timeit_debug_enabled()</code> method will be redefined, causing all dependent methods to be recompiled within that module.
+This may take a while, and hence is intended only for debugging usage, however all calls to <code>@timeit_debug</code> (within that Module) will thereafter be enabled.</p>
+<h2><a id="user-content-author" class="anchor" aria-hidden="true" href="#author"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Author</h2>
+<p>Kristoffer Carlsson - @KristofferC</p>
+<h2><a id="user-content-acknowledgments" class="anchor" aria-hidden="true" href="#acknowledgments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Acknowledgments</h2>
+<p>This package is inspired by the <code>TimerOutput</code> class in <a href="https://dealii.org/" rel="nofollow">deal.ii</a>.</p>
+</article></div>

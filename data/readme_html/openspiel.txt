@@ -1,0 +1,45 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-openspieljl" class="anchor" aria-hidden="true" href="#openspieljl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>OpenSpiel.jl</h1>
+<p><a href="https://travis-ci.com/JuliaReinforcementLearning/OpenSpiel.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/aafa6ea8df29b96061c9b8482898f29f910e16c7/68747470733a2f2f7472617669732d63692e636f6d2f4a756c69615265696e666f7263656d656e744c6561726e696e672f4f70656e537069656c2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/JuliaReinforcementLearning/OpenSpiel.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>This package provides a Julia wrapper for the <a href="https://github.com/deepmind/open_spiel">OpenSpiel</a> project. Most APIs are aligned with those in Python. Here's a quick example:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> OpenSpiel
+
+<span class="pl-c"><span class="pl-c">#</span> Here we need the StatsBase package for weighted sampling</span>
+<span class="pl-k">using</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>StatsBase<span class="pl-pds">"</span></span>)
+<span class="pl-k">using</span> StatsBase
+
+<span class="pl-k">function</span> <span class="pl-en">run_once</span>(name)
+    game <span class="pl-k">=</span> <span class="pl-c1">load_game</span>(name)
+    state <span class="pl-k">=</span> <span class="pl-c1">new_initial_state</span>(game)
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Initial state of game[<span class="pl-v">$(name)</span>] is:<span class="pl-cce">\n</span><span class="pl-v">$(state)</span><span class="pl-pds">"</span></span>)
+
+    <span class="pl-k">while</span> <span class="pl-k">!</span><span class="pl-c1">is_terminal</span>(state)
+        <span class="pl-k">if</span> <span class="pl-c1">is_chance_node</span>(state)
+            outcomes_with_probs <span class="pl-k">=</span> <span class="pl-c1">chance_outcomes</span>(state)
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Chance node, got <span class="pl-v">$(<span class="pl-c1">length</span>(outcomes_with_probs))</span> outcomes<span class="pl-pds">"</span></span>)
+            actions, probs <span class="pl-k">=</span> <span class="pl-c1">zip</span>(outcomes_with_probs<span class="pl-k">...</span>)
+            action <span class="pl-k">=</span> actions[<span class="pl-c1">sample</span>(<span class="pl-c1">weights</span>(<span class="pl-c1">collect</span>(probs)))]
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Sampled outcome: <span class="pl-v">$(<span class="pl-c1">action_to_string</span>(state, action))</span><span class="pl-pds">"</span></span>)
+            <span class="pl-c1">apply_action</span>(state, action)
+        <span class="pl-k">elseif</span> <span class="pl-c1">is_simultaneous_node</span>(state)
+            chosen_actions <span class="pl-k">=</span> [<span class="pl-c1">rand</span>(<span class="pl-c1">legal_actions</span>(state, pid<span class="pl-k">-</span><span class="pl-c1">1</span>)) <span class="pl-k">for</span> pid <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">num_players</span>(game)]  <span class="pl-c"><span class="pl-c">#</span> in Julia, indices start at 1</span>
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Chosen actions: <span class="pl-v">$([<span class="pl-c1">action_to_string</span>(state, pid<span class="pl-k">-</span><span class="pl-c1">1</span>, action) <span class="pl-k">for</span> (pid, action) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(chosen_actions)])</span><span class="pl-pds">"</span></span>)
+            <span class="pl-c1">apply_action</span>(state, chosen_actions)
+        <span class="pl-k">else</span>
+            action <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">legal_actions</span>(state))
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Player <span class="pl-v">$(<span class="pl-c1">current_player</span>(state))</span> randomly sampled action: <span class="pl-v">$(<span class="pl-c1">action_to_string</span>(state, action))</span><span class="pl-pds">"</span></span>)
+            <span class="pl-c1">apply_action</span>(state, action)
+        <span class="pl-k">end</span>
+        <span class="pl-c1">println</span>(state)
+    <span class="pl-k">end</span>
+    rts <span class="pl-k">=</span> <span class="pl-c1">returns</span>(state)
+    <span class="pl-k">for</span> pid <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">num_players</span>(game)
+        <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Utility for player <span class="pl-v">$(pid<span class="pl-k">-</span><span class="pl-c1">1</span>)</span> is <span class="pl-v">$(rts[pid])</span><span class="pl-pds">"</span></span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">run_once</span>(<span class="pl-s"><span class="pl-pds">"</span>tic_tac_toe<span class="pl-pds">"</span></span>)
+<span class="pl-c1">run_once</span>(<span class="pl-s"><span class="pl-pds">"</span>kuhn_poker<span class="pl-pds">"</span></span>)
+<span class="pl-c1">run_once</span>(<span class="pl-s"><span class="pl-pds">"</span>goofspiel(imp_info=True,num_cards=4,points_order=descending)<span class="pl-pds">"</span></span>)</pre></div>
+<p>For higher level APIs you may refer <a href="https://github.com/JuliaReinforcementLearning/ReinforcementLearningEnvironments.jl">ReinforcementLearningEnvironments.jl</a>.</p>
+</article></div>

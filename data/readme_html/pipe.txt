@@ -1,0 +1,52 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-pipe" class="anchor" aria-hidden="true" href="#pipe"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Pipe</h1>
+<ul>
+<li>Julia 0.7: <a href="https://travis-ci.org/oxinabox/Pipe.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/395758471ca77f0df7194ca71a7cf716d033a4a1/68747470733a2f2f7472617669732d6d61747269782d6261646765732e6865726f6b756170702e636f6d2f7265706f732f6f78696e61626f782f506970652e6a6c2f6272616e636865732f6d61737465722f31" alt="Build Status 0.6" data-canonical-src="https://travis-matrix-badges.herokuapp.com/repos/oxinabox/Pipe.jl/branches/master/1" style="max-width:100%;"></a></li>
+<li>Julia 1.0: <a href="https://travis-ci.org/oxinabox/Pipe.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c12baf86fb2afb4acb3422e386092ec4e4a44a48/68747470733a2f2f7472617669732d6d61747269782d6261646765732e6865726f6b756170702e636f6d2f7265706f732f6f78696e61626f782f506970652e6a6c2f6272616e636865732f6d61737465722f32" alt="Build Status 0.6" data-canonical-src="https://travis-matrix-badges.herokuapp.com/repos/oxinabox/Pipe.jl/branches/master/2" style="max-width:100%;"></a></li>
+<li>Julia Nightly: <a href="https://travis-ci.org/oxinabox/Pipe.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c53e7577fbe8fda7e9b3a8ce3d9016ae4abd8f56/68747470733a2f2f7472617669732d6d61747269782d6261646765732e6865726f6b756170702e636f6d2f7265706f732f6f78696e61626f782f506970652e6a6c2f6272616e636865732f6d61737465722f37" alt="Build Status Nightly" data-canonical-src="https://travis-matrix-badges.herokuapp.com/repos/oxinabox/Pipe.jl/branches/master/7" style="max-width:100%;"></a></li>
+</ul>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>To use this place <code>@pipe</code> at the start of the line for which you want "advanced piping functionality" to work.</p>
+<p>This works the same as Julia Piping,
+except if you place a underscore in the right hand of the expressing, it will be replaced with the lefthand side.</p>
+<p>So:</p>
+<pre><code>@pipe a |&gt; b(x,_) # == b(x,a) #Not: (b(x,_))(a) 
+</code></pre>
+<p>Futher  the _ can be unpacked, called, deindexed offetc.</p>
+<pre><code>@pipe a |&gt; b(_...) # == b(a...)
+@pipe a |&gt; b(_(1,2)) # == b(a(1,2))
+@pipe a |&gt; b(_[3]) # == b(a[3])
+</code></pre>
+<p>This last can be used for interacting with multiple returned values. In general however, this is frowned upon.
+Generally a pipeline is good for expressing a logical flow data through Single Input Single Output functions. When you deindex multiple times, that is case of working with Multiple Input Multiple Output functions.
+In that case it is likely more clear to create named variables, and call the functions normally in sequence.
+There is also a performace cost for doing multiple deindexes (see below).</p>
+<p>For example:</p>
+<pre><code>function get_angle(rise,run)
+    atan(rise/run)
+end
+
+@pipe (2,4) |&gt; get_angle(_[1],_[2]) # == 0.4636476090008061
+get_angle(2,4) # == 0.4636476090008061 #Note the ordinary way is much clearer
+
+</code></pre>
+<p>However, for each <code>_</code> right hand side of the <code>|&gt;</code>, the left hand side will be called.
+This can incurr a performance cost.
+Eg</p>
+<pre><code>function ratio(value, lr, rr)
+    println("slitting on ratio $lr:$rr")
+    value*lr/(lr+rr), value*rr/(lr+rr)
+end
+
+function percent(left, right)
+    left/right*100
+end
+
+@pipe 10 |&gt; ratio(_,4,1) |&gt; percent(_[1],_[2]) # = 400.0, outputs splitting on ratio 4:1 Twice
+@pipe 10 |&gt; ratio(_,4,1) |&gt; percent(_...) # = 400.0, outputs splitting on ratio 4:1 Once
+</code></pre>
+<hr>
+<h2><a id="user-content-see-also" class="anchor" aria-hidden="true" href="#see-also"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>See Also:</h2>
+<ul>
+<li><a href="https://github.com/JuliaLang/julia/issues/5571#issuecomment-205754539">List of similar/related works</a></li>
+</ul>
+</article></div>

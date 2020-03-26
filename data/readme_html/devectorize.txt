@@ -1,0 +1,200 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h2><a id="user-content-devectorize----a-julia-framework-for-de-vectorized-evaluation" class="anchor" aria-hidden="true" href="#devectorize----a-julia-framework-for-de-vectorized-evaluation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Devectorize -- A Julia Framework for De-vectorized Evaluation</h2>
+<p><a href="https://travis-ci.org/lindahua/Devectorize.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/5d782b4ad0c37e9a42f04a56f4d6bcbb010a4be4/68747470733a2f2f7472617669732d63692e6f72672f6c696e64616875612f4465766563746f72697a652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/lindahua/Devectorize.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><em>Devectorize</em> is a Julia framework, which provides macros and functions to <em>de-vectorize</em> a vector expression. With <em>Devectorize</em>, users can write computations in high-level vectorized way and at the same time enjoying the high run-time performance of de-vectorized loops. <em>Devectorize</em> automatically translates vectorized expressions into faster tight-loops, which often results in 2x - 8x performance gain.</p>
+<h2><a id="user-content-why-devectorize" class="anchor" aria-hidden="true" href="#why-devectorize"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Why <em>Devectorize</em></h2>
+<p>In many programming languages (including Julia), expressions are immediately evaluated upon construction. This simple strategy often results in less than optimal behaviors, which, for example, include <em>creation of unnecessary temporaries</em> and <em>repeated memory round-trips</em>. Consider the following example,</p>
+<div class="highlight highlight-source-julia"><pre>r <span class="pl-k">=</span> a <span class="pl-k">.*</span> b <span class="pl-k">+</span> c <span class="pl-k">.*</span> d <span class="pl-k">+</span> a</pre></div>
+<p>With immediate evaluation, three temporaries, respectively for storing the results of <code>a .* b</code>, <code>c .* d </code>, and <code>a .* b + c .* d</code>. Also, the array <code>a</code> will be traversed twice. Moreover, computation on large arrays is often memory-bound -- the run-time performance largely depends on how many times you have to scan the arrays.</p>
+<p>For the formula above, a much more efficient way to evaluate it can be expressed using for-loops as follows</p>
+<div class="highlight highlight-source-julia"><pre>n <span class="pl-k">=</span> <span class="pl-c1">length</span>(a)
+r <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(n)
+<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span> : n
+	r[i] <span class="pl-k">=</span> a[i] <span class="pl-k">*</span> b[i] <span class="pl-k">+</span> c[i] <span class="pl-k">*</span> d[i] <span class="pl-k">+</span> a[i]
+<span class="pl-k">end</span></pre></div>
+<p>With this piece of code, you can get all the results in one pass, without creating any temporary arrays.
+However, low-level for-loops are often much longer and more difficult to read, write, and maintain.</p>
+<blockquote>
+<p>Is it possible to combine the elegance of high-level expressions and the performance of low-level for-loops?</p>
+</blockquote>
+<p>The answer is <em>Yes</em>. Let's look at the examples above, we can hold off the evaluation of all the temporaries until the assignment to <code>r</code> happens -- at this point, an integrated loop is emitted to compute all results in one pass.</p>
+<p>The powerful meta-programming framework of Julia makes it possible to achieve this goal using incredibly simple syntax. Taking advantage of this framework, <em>Devectorize</em> provides a macro <code>@devec</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">=</span> a <span class="pl-k">.*</span> b <span class="pl-k">+</span> c <span class="pl-k">.*</span> d <span class="pl-k">+</span> a</pre></div>
+<p>This statement is exactly the same as the one we saw above -- except for the macro <code>@devec</code>, which performs all the magic of translating the formula into a one-pass loop behind the scenes.</p>
+<p>The remaining part is organized into two section: <strong>Basic Usage</strong>, which introduces how to use <em>Devectorize</em> to improve the performance of your code, and <strong>Design of the Framework</strong>, which provides a brief overview of the framework and its structures.</p>
+<h2><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Basic Usage</h2>
+<p>You may install the package using Julia's official package manager:</p>
+<div class="highlight highlight-source-julia"><pre>Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>Devectorize<span class="pl-pds">"</span></span>)</pre></div>
+<p>To keep it always updated, you may have to switch Devectorize to the <code>master</code> branch, and <code>git pull</code> the latest commits.</p>
+<p>For ordinary use, you only have to remember one macro -- <code>@devec</code>. Putting it before the assignments that you want to <em>de-vectorize</em>, it will automatically translate your expressions into efficient loops. For example, you can write</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">=</span> <span class="pl-c1">exp</span>(a <span class="pl-k">+</span> b) <span class="pl-k">.*</span> <span class="pl-c1">sum</span>(c)</pre></div>
+<p>To inspect the code generated by <em>Devectorize</em>, you can use the <code>@inspect_devec</code> macro:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@inspect_devec</span> r <span class="pl-k">=</span> <span class="pl-c1">exp</span>(a <span class="pl-k">+</span> b) <span class="pl-k">.*</span> <span class="pl-c1">sum</span>(c)</pre></div>
+<p>This statement will prints the generated codes (prior to evaluating them).</p>
+<h3><a id="user-content-benchmark" class="anchor" aria-hidden="true" href="#benchmark"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Benchmark</h3>
+<p>Here is a table of benchmark results on some typical cases.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>julia vec</th>
+<th>@devec</th>
+<th>hand-coded loop</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>simple-ewise</td>
+<td>1.0000</td>
+<td>2.6032x</td>
+<td>2.5719x</td>
+</tr>
+<tr>
+<td>complex-ewise</td>
+<td>1.0000</td>
+<td>2.4581x</td>
+<td>2.4364x</td>
+</tr>
+<tr>
+<td>shift-dot</td>
+<td>1.0000</td>
+<td>8.3237x</td>
+<td>8.2959x</td>
+</tr>
+<tr>
+<td>colwise-sum</td>
+<td>1.0000</td>
+<td>1.3321x</td>
+<td>1.2771x</td>
+</tr>
+<tr>
+<td>rowwise-sum</td>
+<td>1.0000</td>
+<td>4.2736x</td>
+<td>4.2444x</td>
+</tr>
+<tr>
+<td>colwise-eucdist</td>
+<td>1.0000</td>
+<td>5.6502x</td>
+<td>5.5356x</td>
+</tr>
+</tbody>
+</table>
+<p><em>The result was obtained with Julia <code>commit 3f92b13210 (2013-02-03)</code> on Mac OS X 10.8, using the script <code>test/bench_devec.jl</code>, which comes with the Devectorize package.</em></p>
+<p>Here, we use vectorized Julia code as the baseline, and report the performance gains (for example, if the baseline takes 1 sec, and devec takes 0.5sec, then the gain is 2x). We can see that codes tagged with the <code>@devec</code> macro typically performs 2x to 5x faster than vectorized codes, and is comparable (sometimes even slightly faster than) a hand-coded for loop.</p>
+<p>It is important to note that <em>Devectorize</em> only recognizes a subset of expressions of Julia (but the most commonly used subset), as listed below.</p>
+<h3><a id="user-content-element-wise-map-of-numbers-and-arrays" class="anchor" aria-hidden="true" href="#element-wise-map-of-numbers-and-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Element-wise map of numbers and arrays</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">=</span> a <span class="pl-k">+</span> b <span class="pl-k">+</span> c
+<span class="pl-c1">@devec</span> r <span class="pl-k">=</span> <span class="pl-c1">sin</span>(a) <span class="pl-k">+</span> <span class="pl-c1">exp</span>(a <span class="pl-k">+</span> <span class="pl-c1">1.0</span>) <span class="pl-k">.*</span> <span class="pl-c1">log</span>(c)</pre></div>
+<p>Here is the list of operators and functions currently supported by <em>Devectorize</em>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">+</span>, <span class="pl-k">-</span>, <span class="pl-k">.+</span>, <span class="pl-k">.-</span>, <span class="pl-k">.*</span>, <span class="pl-k">./</span>, <span class="pl-k">.^</span>, max, min, clamp, blend,
+<span class="pl-k">.==</span>, <span class="pl-k">.!=</span>, <span class="pl-k">.&lt;</span>, <span class="pl-k">.&gt;</span>, <span class="pl-k">.&lt;=</span>, <span class="pl-k">.&gt;=</span>, 
+sqrt, cbrt, sqr, rcp, floor, ceil, round, trunc,
+exp, log, log10, exp2, log2, expm1, log1p, 
+sin, cos, tan, asin, acos, atan, 
+sinh, cosh, tanh, asinh, acosh, atanh,
+erf, erfc, gamma, lgamma, digamma</pre></div>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>
+<p>Operator <code>*</code> and <code>/</code> are not supported, as they entail complex semantics depending on the arguments which may only be known at run-time. Users can use <code>.*</code> and <code>./</code> to express element-wise multiplication and division, which are perfectly supported in <em>Devectorize</em>.</p>
+</li>
+<li>
+<p>These three functions: <code>sqr</code>(x -&gt; x * x), <code>rcp</code>(x -&gt; 1 / x), and <code>blend</code>((c, x, y) -&gt; c ? x : y) are not in the Base module of Julia. They are provided by <em>Devectorize</em> as extensions to make it easier to write vectorized expressions (and then <code>@devec</code> it).</p>
+</li>
+</ul>
+<h3><a id="user-content-simple-references" class="anchor" aria-hidden="true" href="#simple-references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Simple references</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">=</span> x[:,<span class="pl-c1">1</span>] <span class="pl-k">+</span> y[:,<span class="pl-c1">2</span>]
+<span class="pl-c1">@devec</span> r <span class="pl-k">=</span> a[i,:] <span class="pl-k">.*</span> b
+<span class="pl-c1">@devec</span> r[:,j] <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">sin</span>(a[:,j])</pre></div>
+<p>Simple reference here means the reference expressions in either of the following forms:
+```a[:], a[i], a[i, j], a[:, :], a[:, i], a[i, :]``, where i can be either an integer or a symbol that refers to an integer variable. Reference expressions can appear in both left and right hand side of an assignment. Support of more flexible references is planned for future releases.</p>
+<p>Note that when you write</p>
+<div class="highlight highlight-source-julia"><pre>r <span class="pl-k">=</span> a <span class="pl-k">+</span> b <span class="pl-k">.*</span> c</pre></div>
+<p><em>Devectorize</em> will emit codes that creates an array to store the results and bound it to <code>r</code>, this process may entails some overhead of inferring the type and shape of the result and creating a new array. When <code>r</code> has been created, you may eliminate such runtime overheads by writing</p>
+<pre><code>r[:] = a + b .* c
+</code></pre>
+<p>Then, the results will be directly written to <code>r</code>, and no array will be created before evaluation.</p>
+<h3><a id="user-content-op-assignment" class="anchor" aria-hidden="true" href="#op-assignment"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Op-assignment</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">+=</span> a
+<span class="pl-c1">@devec</span> r[:,i] <span class="pl-k">.*=</span> <span class="pl-c1">sin</span>(a)</pre></div>
+<p><em>Devectorize</em> will automatically translate them into ordinary assignment expressions.</p>
+<h3><a id="user-content-fullcolwiserowwise-reduction" class="anchor" aria-hidden="true" href="#fullcolwiserowwise-reduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Full/Colwise/Rowwise reduction</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">=</span> <span class="pl-c1">sum</span>(a <span class="pl-k">+</span> b)
+<span class="pl-c1">@devec</span> r <span class="pl-k">=</span> <span class="pl-c1">maximum</span>(<span class="pl-c1">sin</span>(a), <span class="pl-c1">1</span>)
+<span class="pl-c1">@devec</span> r[:,j] <span class="pl-k">=</span> <span class="pl-c1">mean</span>(a, <span class="pl-c1">2</span>)</pre></div>
+<p><em>Devectorize</em> currently recognizes five reduction functions <code>sum</code>, <code>maximum</code>, <code>minimum</code>, <code>mean</code>, and <code>dot</code>.</p>
+<h3><a id="user-content-hybrid-expressions" class="anchor" aria-hidden="true" href="#hybrid-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Hybrid expressions</h3>
+<p>Consider the example below,</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> r <span class="pl-k">=</span> (a <span class="pl-k">-</span> <span class="pl-c1">sum</span>(a)) <span class="pl-k">.*</span> b</pre></div>
+<p>This seemingly simple expression actually requires two loops to evaluate, one for computing <code>sum(a)</code>, and the other for the top-level element-wise expression. <em>Devectorize</em> recognizes such situations, and will emit correct codes to perform the evaluation. For the example above, <em>Devectorize</em> will first break the expression into two ones, as</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> tmp1 <span class="pl-k">=</span> <span class="pl-c1">sum</span>(a)
+<span class="pl-c1">@devec</span> r <span class="pl-k">=</span> (a <span class="pl-k">-</span> tmp1) <span class="pl-k">.*</span> b</pre></div>
+<p>Note that <em>Devectorize</em> only breaks expressions only when it is really necessary to do so, and tries to generate as few memory traversals as possible.</p>
+<h3><a id="user-content-block-expressions" class="anchor" aria-hidden="true" href="#block-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Block expressions</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@devec</span> <span class="pl-k">begin</span>
+	a <span class="pl-k">=</span> <span class="pl-c1">sin</span>(x) <span class="pl-k">-</span> <span class="pl-c1">cos</span>(y)
+	b <span class="pl-k">=</span> <span class="pl-c1">sum</span>(a) <span class="pl-k">+</span> <span class="pl-c1">exp</span>(z)
+	c <span class="pl-k">=</span> x <span class="pl-k">.*</span> y <span class="pl-k">-</span> <span class="pl-c1">maximum</span>(b)
+<span class="pl-k">end</span></pre></div>
+<p>In current implementation, <em>Devectorize</em> simply de-vectorizes each assignment expression respectively. In future version, it may use a more sophisticated algorithm to identify opportunities of sharing some computation across expressions.</p>
+<h2><a id="user-content-design-of-the-framework" class="anchor" aria-hidden="true" href="#design-of-the-framework"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Design of the Framework</h2>
+<p>In <em>Devectorize</em>, the process of translating a Julia expression into de-vectorized codes goes through two stages:</p>
+<ul>
+<li>
+<p>translate a Julia expression to a typed expression (enriched with semantic information), using <code>texpr</code></p>
+</li>
+<li>
+<p>compile the typed expression into de-vectorized codes, using <code>compile</code>, which itself takes three steps:</p>
+<ul>
+<li>decompose a given expression into a sequence of basic expressions (e.g. break a hybrid expression or a block expression)</li>
+<li>compose loops for each basic expression via a <em>back-end</em> factory, using <code>compose</code></li>
+<li>integrate all generated loops into a code block and return</li>
+</ul>
+</li>
+</ul>
+<h3><a id="user-content-typed-expressions" class="anchor" aria-hidden="true" href="#typed-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Typed expressions</h3>
+<p>Julia front-end parses any input expression into an instance of <code>Expr</code>, which contains only syntatic information but not semantic information. To generate the code, one has to first understand the <em>semantics</em> (i.e. <em>meaning</em>) of the expression, e.g. whether it is doing a reduction or a element-wise transformation.</p>
+<p>To express the <em>semantics</em> of an expression, <em>Devectorize</em> establishes a type hierarchy in <code>src/texpr.jl</code>. The hierarchy can be briefly summarized as follows</p>
+<pre><code>TExpr
+-- TEWise  	   # everything can serve as an element-wise argument
+   -- TScalar  # everything that is sure to be a scalar 
+      -- TNum  # numerical literals, e.g. 1, 2.0, ...
+      -- TScalarSym     # a symbol that is known to be a scalar (e.g. result of a full reduction)
+      -- TRefScalar1    # a[i]
+      -- TRefScalar2    # a[i,j]
+   -- TSym     # a symbol that refers to a variable (can be an array or a scalar)
+   -- TRef
+      -- TRef1D     # a[:]
+      -- TRef2D     # a[:,:]
+      -- TRefCol    # a[:,j]
+      -- TRefRow    # a[i,:]
+   -- TMap     # element-wise map, e.g. sin(a), a + b, a + b .* c, ...
+-- TReduc           # full reduction, e.g. sum(a), sum(a + b .* c), ...
+-- TColwiseReduc    # column-wise reduction
+-- TRowwiseReduc    # row-wise reduction
+-- TAssign     # asssignment, e.g. a = sin(x), r[:,i] = a + cos(x[:,j]), ...
+-- TBlock      # a block of expressions
+</code></pre>
+<p>The function <code>texpr</code> (also defined in <code>src/texpr.jl</code>) takes an instance of <code>Expr</code> as an argument, analyzes it. If the expression is recognized, it returns a typed expression (i.e. an instance of <code>TExpr</code>), otherwise, it raises an error (to be more specific, throws an exception of type <code>DeError</code>.)</p>
+<p>The analysis performed in <code>texpr</code> relies on the semantic information provided by the functions in <code>src/fun_traits.jl</code>. These functions can tell you <code>sin</code> is an element-wise mapping that takes one argument, while <code>sum</code> is a reduction. They also tell you result type information, e.g. the element type of <code>a + b</code> is <code>promote_type(eltype(a), eltype(b))</code>, while that for <code>.==</code> is <code>Bool</code>.</p>
+<h3><a id="user-content-contexts" class="anchor" aria-hidden="true" href="#contexts"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Contexts</h3>
+<p>To make the framework extensible, <em>Devectorize</em> introduces the notion of <em>Context</em>, which refers to a specific setting in which the codes are generated (e.g. CPU, SIMD, CUDA, OpenCL, etc)</p>
+<p>The abstract type <em>EvalContext</em> (in <code>src/compile_base.jl</code>) is used as the super class of all contexts. In current version, <em>Devectorize</em> provides a specific context type, namely <code>ScalarContext</code>, in which expressions are mapped to de-vectorized for-loops.</p>
+<p>In future, other contexts might be introduced (e.g. SIMD and CUDA), thus providing users options to choose specific ways to emit the evaluation code for their expressions.</p>
+<h3><a id="user-content-compilation" class="anchor" aria-hidden="true" href="#compilation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Compilation</h3>
+<p>The function <code>compile</code> takes two arguments: a context and a typed expression, and returns a the generated codes. Generally, this function is a driver, which actually delegates the code generation to two functions: <code>compose_init</code> (for generating codes for initialization) and <code>compose_main</code> (for generating the main loops). These two functions are provided by specific back-ends.</p>
+<p>To reduce the complexity of back-end implementation, the <code>compile</code> function performs some preprocessing, which includes</p>
+<ul>
+<li>translates blocks and hybrid expressions into a sequence of basic expressions</li>
+<li>identifies trivial assignments (i.e. <code>a = b</code>), and simply emits it (as <code>a = b</code>). Note that this simply bounds the name <code>a</code> to the object referred by <code>b</code>, which does not involve any <em>real computation</em>.</li>
+<li>take precautions to prevent potential alias problems. For example, it translates <code>a = b + sin(a)</code> into two statements, <code>tmp = b + sin(a)</code>, and a trivial assignment <code>a = tmp</code>. The temporary name is generated using <code>gensym</code> to avoid collision with other names.</li>
+</ul>
+<p>After this processing, the back-end can be implemented in a much simpler way, without taking into account such intricacies.</p>
+<p>The functions to generate codes for <code>ScalarContext</code> are in <code>src/scalar_backend.jl</code>.</p>
+<h3><a id="user-content-code-composition" class="anchor" aria-hidden="true" href="#code-composition"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Code composition</h3>
+<p>The routines in <code>src/scalar_backend.jl</code> uses <em>recursive kernel composition</em> to generate loop kernels.</p>
+<p>Take the expression <code>a + b .* c</code> for example. It first generates <code>get_value(a, i)</code>, <code>get_value(b, i)</code>, and <code>get_value(c, i)</code> for the terminals <code>a</code>, <code>b</code>, and <code>c</code>. Here, <code>get_value</code> is an overloaded function to ensure correct behavior for different cases (e.g. <code>a</code> can be either a scalar or an array).</p>
+<p>For <code>b .* c</code>, it takes the generated kernel for <code>b</code> and <code>c</code> (as above), combines them with the operator <code>.*</code>, and then emits <code>.*(get_value(b, i), get_value(c, i)</code>. Likewise, for <code>a + b .* c</code>, it emits <code>+(get_value(a, i), .*(get_value(b, i), get_value(c, i))</code>.</p>
+<p>The <code>compose_main</code> function will generate a loop that uses the generated kernel as the loop body.</p>
+</article></div>

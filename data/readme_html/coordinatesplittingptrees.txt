@@ -1,0 +1,126 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-coordinatesplittingptrees" class="anchor" aria-hidden="true" href="#coordinatesplittingptrees"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CoordinateSplittingPTrees</h1>
+<p><a href="https://travis-ci.org/timholy/CoordinateSplittingPTrees.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/0b3c0d21262b219ad3e0528cb49df0456f3dcc40/68747470733a2f2f7472617669732d63692e6f72672f74696d686f6c792f436f6f7264696e61746553706c697474696e675054726565732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/timholy/CoordinateSplittingPTrees.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="http://codecov.io/github/timholy/CoordinateSplittingPTrees.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/ff8efafd2e668aca9595d0bfe20fc78d6b92a550/687474703a2f2f636f6465636f762e696f2f6769746875622f74696d686f6c792f436f6f7264696e61746553706c697474696e675054726565732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/timholy/CoordinateSplittingPTrees.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>Note: this package is under active development and is subject to change.</p>
+<h2><a id="user-content-interpolation-accuracy-and-the-curse-of-dimensionality" class="anchor" aria-hidden="true" href="#interpolation-accuracy-and-the-curse-of-dimensionality"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Interpolation, accuracy, and the curse of dimensionality</h2>
+<p>Interpolation is the process of building a model from data available
+at discrete locations. Full-degree multidimensional polynomial
+interpolation differs from most other interpolation schemes in that it
+is not, in general, continuous over space. Instead, the goal is to
+find a local polynomial fit of full degree and use this for detailed
+investigations of local structure---in essence, prioritizing accuracy
+of local interpolation over any global property like continuity or
+smoothness.</p>
+<p>An important application full-degree interpolation is derivative-free
+optimization (DFO), where many algorithms work by constructing a
+quadratic fit to the local function values and then minimizing the
+quadratic over some trust region---since the goal is to find the
+location of the minimum (or minima, when there are several), global
+continuity of the interpolation scheme is not an urgent priority.  For
+use in DFO (and presumably most other interpolation applications), one
+therefore requires a rule to select a "complete" subset of evaluation
+positions to determine the model coefficients. If different point
+subsets are selected in different regions of space, the polynomial
+will change discontinuously as one moves around the space; but for
+purposes of optimization, this is an acceptable tradeoff that enables
+one to quickly find the exact minimum via quasi-Newton methods.</p>
+<p>Unfortunately, when <code>n</code> is large the computational burden of building
+the model can be high. For example, the number of parameters in a
+full-degree quadratic model in <code>n</code> dimensions is <code>(n+1)*(n+2)/2</code>.
+This implies that data from (at least) an equal number of evaluation
+points must be used; moreover, solving for the model via linear
+regression is in the general case an <code>O(n^6)</code> problem. This becomes
+prohibitive for <code>n</code> in the hundreds and extremely costly even for much
+more modest problems. Powell
+<a href="https://www.tol-project.org/export/3776/tolp/OfficialTolArchiveNetwork/NonLinGloOpt/doc/NEWUOA.pdf" rel="nofollow">described</a>
+a method for updating a quadratic model with a new data point; this
+method has a cost in the range <code>O(n^2)--O(n^4)</code> per update depending
+on the amount of history maintained, and for local DFO this represents
+a significant improvement. However, this method is less attractive in
+the context of global optimization, where multiple regions in space
+may be pursued simultaneously but for which one may not wish to
+maintain storage of <code>O(n^2)</code> parameters for many different local
+models.</p>
+<h2><a id="user-content-reducing-the-burden-with-csp-trees" class="anchor" aria-hidden="true" href="#reducing-the-burden-with-csp-trees"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Reducing the burden with CSp-trees</h2>
+<p>This repository implements a new (?) data structure, the <em>coordinate
+splitting tree of degree p</em> or CSp-trees for short.  As shown
+<a href="notyetwritten">here</a>, this data structure supports efficient and
+accurate full-degree multidimensional polynomial interpolation. For
+example, a CS1-tree reduces the burden of fitting a quadratic model to
+<code>~O(n^4)</code>, and a CS2-tree reduces it to <code>O(n^2)</code>.  Moreover, the
+resulting coefficients are determined with significantly higher
+precision than by traditional approaches.  CSp trees naturally
+implement adaptive mesh refinement (AMR), as adding new evaluation
+points to the interpolation scheme corresponds to adding new nodes to
+the tree. This package is written in the
+<a href="https://julialang.org/" rel="nofollow">Julia programming language</a>.</p>
+<p>CSp-trees have a close relationship with
+<a href="https://en.wikipedia.org/wiki/K-d_tree" rel="nofollow">k-d trees</a>, and indeed CS1
+trees can be implemented essentially as a k-d tree with only one
+evaluation point (and substantial restrictions on its position) per
+box. Specifically, a k-d tree "splits" space along one dimension at a
+time; a CS1 tree selects a new evaluation point that differs from its
+"parent" position in only one coordinate, thus creating a new box that
+splits the parent along this coordinate. A general CSp tree splits <code>p</code>
+dimensions simultaneously, creating a set of <code>2^p-1</code> new boxes each
+associated with a unique position and new function evaluation.</p>
+<p>For now, to learn how to use this pacakge just type
+<code>?CoordinateSplittingPTrees</code> at the Julia prompt, and then read the
+help associated with each function. For convenience, that overall
+summary help-text is reproduced below.</p>
+<h2><a id="user-content-usage-summary" class="anchor" aria-hidden="true" href="#usage-summary"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage summary</h2>
+<p>Note that more detail is available in the help for each function.</p>
+<p>The world bounds are specified by creating a <code>World</code> object (see <code>?World</code>).</p>
+<p>The tree is initialized with <code>root = Box{p}(world)</code>, and new leaves are
+added with <code>Box(parent, dims, xs, metas)</code> (see <code>?Box</code>).</p>
+<p>You can interact with boxes using the following API (again, this is
+currently under development and may be unimplemented, outdated, or in
+flux):</p>
+<h4><a id="user-content-polynomial-fits" class="anchor" aria-hidden="true" href="#polynomial-fits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Polynomial fits</h4>
+<ul>
+<li><code>polynomial_full</code>: construct a full polynomial of the specified degree</li>
+<li><code>polynomial_minimal</code>: construct a minimal polynomial of the specified degree</li>
+</ul>
+<h4><a id="user-content-tree-api" class="anchor" aria-hidden="true" href="#tree-api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tree API</h4>
+<ul>
+<li>
+<p><code>position</code>: retrieve the position of a <code>Box</code></p>
+</li>
+<li>
+<p><code>meta</code>: retrieve the metadata associated with a <code>Box</code></p>
+</li>
+<li>
+<p><code>value</code>: retrieve just the function value associated with a <code>Box</code></p>
+</li>
+<li>
+<p><code>boxbounds</code>: retrieve the edges of a <code>Box</code></p>
+</li>
+<li>
+<p><code>isroot</code>: determine whether a given <code>Box</code> is the root-node</p>
+</li>
+<li>
+<p><code>isleaf</code>: determine whether a given <code>Box</code> is a leaf-node</p>
+</li>
+<li>
+<p><code>getroot</code>: get the root node associated with a tree</p>
+</li>
+<li>
+<p><code>getleaf</code>: get the leaf node associated with a (possibly-parent) box</p>
+</li>
+<li>
+<p><code>find_leaf_at</code>: find the leaf node containing a particular position</p>
+</li>
+<li>
+<p><code>addpoint!</code>: add a new n-dimensional evaluation point</p>
+</li>
+<li>
+<p><code>leaves</code>: returns an iterator for visiting all leaf-nodes</p>
+</li>
+</ul>
+<h4><a id="user-content-display" class="anchor" aria-hidden="true" href="#display"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Display</h4>
+<ul>
+<li><code>print_tree</code>: display the tree structure (from AbstractTrees.jl)</li>
+<li><code>splitprint</code>: a more compact display of the tree structure</li>
+<li><code>splitprint_colored</code>: similar to <code>splitprint</code> but with highlights</li>
+</ul>
+</article></div>

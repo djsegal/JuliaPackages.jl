@@ -1,0 +1,30 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-typedcodeutils" class="anchor" aria-hidden="true" href="#typedcodeutils"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TypedCodeUtils</h1>
+<p>This package performs operations on Julia's typed IR.</p>
+<h2><a id="user-content-example-your-own-cthulhujl" class="anchor" aria-hidden="true" href="#example-your-own-cthulhujl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example: Your own Cthulhu.jl</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> TypedCodeUtils
+<span class="pl-k">import</span> TypedCodeUtils<span class="pl-k">:</span> reflect, filter, lookthrough,
+                       DefaultConsumer, Reflection, Callsite,
+                       identify_invoke, identify_call,
+                       process_invoke, process_call
+
+<span class="pl-c"><span class="pl-c">#</span> Cthulhu's inner loop</span>
+<span class="pl-k">function</span> <span class="pl-en">cthulhu</span>(ref<span class="pl-k">::</span><span class="pl-c1">Reflection</span>)
+    callsites <span class="pl-k">=</span> Callsite[]
+
+    invokes      <span class="pl-k">=</span> <span class="pl-c1">filter</span>((c)<span class="pl-k">-&gt;</span><span class="pl-c1">lookthrough</span>(identify_invoke,      c), ref<span class="pl-k">.</span>CI<span class="pl-k">.</span>code)
+    calls        <span class="pl-k">=</span> <span class="pl-c1">filter</span>((c)<span class="pl-k">-&gt;</span><span class="pl-c1">lookthrough</span>(identify_call,        c), ref<span class="pl-k">.</span>CI<span class="pl-k">.</span>code)
+
+    invokes <span class="pl-k">=</span> <span class="pl-c1">map</span>((arg) <span class="pl-k">-&gt;</span> <span class="pl-c1">process_invoke</span>(<span class="pl-c1">DefaultConsumer</span>(), ref, arg<span class="pl-k">...</span>), invokes)
+    <span class="pl-c1">append!</span>(callsites, invokes)
+    calls <span class="pl-k">=</span> <span class="pl-c1">map</span>((arg) <span class="pl-k">-&gt;</span> <span class="pl-c1">process_call</span>(<span class="pl-c1">DefaultConsumer</span>(), ref, arg<span class="pl-k">...</span>), calls)
+    <span class="pl-c1">append!</span>(callsites, calls)
+
+    <span class="pl-c1">sort!</span>(callsites, by<span class="pl-k">=</span>(c)<span class="pl-k">-&gt;</span>c<span class="pl-k">.</span>id)
+    <span class="pl-k">return</span> callsites
+<span class="pl-k">end</span>
+
+params <span class="pl-k">=</span> TypedCodeUtils<span class="pl-k">.</span><span class="pl-c1">current_params</span>()
+ref <span class="pl-k">=</span> <span class="pl-c1">reflect</span>(f, Tuple{Int, Int}, params<span class="pl-k">=</span>params)
+calls <span class="pl-k">=</span> <span class="pl-c1">cthulhu</span>(ref)
+nextrefs <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">reflect</span>(c) <span class="pl-k">for</span> c <span class="pl-k">in</span> calls <span class="pl-k">if</span> TypedCodeUtils<span class="pl-k">.</span><span class="pl-c1">canreflect</span>(c))</pre></div>
+</article></div>

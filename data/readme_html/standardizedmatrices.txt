@@ -1,0 +1,27 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-standardizedmatrices" class="anchor" aria-hidden="true" href="#standardizedmatrices"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>StandardizedMatrices</h1>
+<p><a href="https://travis-ci.org/joshday/StandardizedMatrices.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/9724beca383a8f4ac2d3c3d1adbdcc088bf99a9f/68747470733a2f2f7472617669732d63692e6f72672f6a6f73686461792f5374616e64617264697a65644d617472696365732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/joshday/StandardizedMatrices.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/joshday/standardizedmatrices-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/0b8991aa12bd83ca3ae883ad8e27403579ae5f4f/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f786d6f75616f613778616c366e3467713f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/xmouaoa7xal6n4gq?svg=true" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/joshday/StandardizedMatrices.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/0f26f1befc36dffe4d64a6d8cb4646ee25969ce1/68747470733a2f2f636f6465636f762e696f2f67682f6a6f73686461792f5374616e64617264697a65644d617472696365732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/joshday/StandardizedMatrices.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>Statisticians often work with standardized matrices.  If <code>x</code> is a data matrix with observations in rows, we want to work with <code>z = StatsBase.zscore(x, 1)</code>.  This package defines a <code>StandardizedMatrix</code> type that treats a matrix as standardized without copying or changing data in place.</p>
+<h1><a id="user-content-a-motivating-example" class="anchor" aria-hidden="true" href="#a-motivating-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>A Motivating Example</h1>
+<p>Suppose our original matrix is sparse and we want to perform matrix-vector multiplication with a standardized version.  Typically, standardizing a sparse matrix destroys the sparsity.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StatsBase, BenchmarkTools, StandardizedMatrices, SparseArrays, Statistics
+
+<span class="pl-c"><span class="pl-c">#</span> generate some data</span>
+n, p <span class="pl-k">=</span> <span class="pl-c1">100_000</span>, <span class="pl-c1">1000</span>
+x <span class="pl-k">=</span> <span class="pl-c1">sprandn</span>(n, p, <span class="pl-c1">.01</span>)
+β <span class="pl-k">=</span> <span class="pl-c1">randn</span>(p)
+
+xdense <span class="pl-k">=</span> <span class="pl-c1">zscore</span>(x, <span class="pl-c1">1</span>)		<span class="pl-c"><span class="pl-c">#</span> this destroys the sparsity</span>
+z <span class="pl-k">=</span> <span class="pl-c1">StandardizedMatrix</span>(x)	<span class="pl-c"><span class="pl-c">#</span> this acts as standardized, but keeps sparse benefits</span>
+
+b1 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> xdense <span class="pl-k">*</span> β
+b2 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> z <span class="pl-k">*</span> β
+<span class="pl-c1">ratio</span>(<span class="pl-c1">median</span>(b1), <span class="pl-c1">median</span>(b2))  <span class="pl-c"><span class="pl-c">#</span> StandardizedMatrix is roughly 13 times faster</span></pre></div>
+<h1><a id="user-content-methods-implemented" class="anchor" aria-hidden="true" href="#methods-implemented"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Methods implemented:</h1>
+<ul>
+<li><code>*()</code></li>
+<li><code>mul!(Y, A::StandardizedMatrix, B)</code></li>
+<li><code>mul!(Y, A::Adjoint{&lt;:StandardizedMatrix}, B)</code></li>
+</ul>
+</article></div>

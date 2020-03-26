@@ -1,0 +1,82 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-lifetable" class="anchor" aria-hidden="true" href="#lifetable"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>LifeTable</h1>
+<p><a href="https://travis-ci.org/klpn/LifeTable.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6e3a2593a51ed4fe7d614e4720638e049af5ea9c/68747470733a2f2f7472617669732d63692e6f72672f6b6c706e2f4c6966655461626c652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/klpn/LifeTable.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>The <code>LifeTable</code> module contains the function <code>periodlifetable</code>, which can be used to calculate life tables in accordance with the methods used by <a href="http://www.mortality.org/" rel="nofollow">Human Mortality Database</a> (in particular, see the <a href="http://www.mortality.org/Public/Docs/MethodsProtocol.pdf" rel="nofollow">Methods Protocol</a> 38--39). The function is called like <code>periodlifetable(inframe, sex, openend, intype)</code>, where <code>inframe</code> is a <a href="https://github.com/JuliaStats/DataFrames.jl">DataFrame</a>, <code>sex</code> may be given as <code>1</code> or <code>2</code> for males or females (the calculation of average numbers lived for those dying as infants differs between the sexes), and <code>intype</code> can be <code>"count"</code> (the default) or <code>"rate"</code>.</p>
+<p>The first column in <code>inframe</code> is assumed to contain the start of the included age intervals. If <code>openend=true</code> (default), the last row is assumed to include data for an open interval at the end of life; if <code>openend=false</code> it is assumed to include a closed interval of the same size as the second last row. If <code>intype="count"</code>, the second column is assumed to be a vector of age-specific population at risk, and the third column is assumed to be a vector of age-specific death counts. If <code>intype="rate"</code>, the second column is assumed to contain age-specific death rates.</p>
+<p>The function returns a new DataFrame with the life table.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>age</td>
+<td>Start of age interval.</td>
+</tr>
+<tr>
+<td>m</td>
+<td>Age-specific death rates.</td>
+</tr>
+<tr>
+<td>a</td>
+<td>Expected numbers of years lived at a given age for someone dying at that age.</td>
+</tr>
+<tr>
+<td>q</td>
+<td>Age-specific death probabilities.</td>
+</tr>
+<tr>
+<td>p</td>
+<td>Age-specific survival probabilities.</td>
+</tr>
+<tr>
+<td>l</td>
+<td>Probability of survival to a given age.</td>
+</tr>
+<tr>
+<td>d</td>
+<td>Distribution of deaths by age.</td>
+</tr>
+<tr>
+<td>ld</td>
+<td>Number of years lived at a given age.</td>
+</tr>
+<tr>
+<td>t</td>
+<td>Remaining number of years to live at a given age.</td>
+</tr>
+<tr>
+<td>e</td>
+<td>Life expectancy at a given age.</td>
+</tr>
+</tbody>
+</table>
+<p>The function <code>causelife(lifetable, causefreq)</code> takes a lifetable returned by <code>periodlifetable</code> and a vector of the same length as the number of rows in the life table, with the proportion of deaths at a given age caused by a specific disease (or another cause). It returns a DataFrame with the following columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>age</td>
+<td>Start of age interval (same as the input life table).</td>
+</tr>
+<tr>
+<td>m</td>
+<td>Age-specific death rates normalized to the frequency of the cause of death (the next column).</td>
+</tr>
+<tr>
+<td>f</td>
+<td>The proportion of the population surviving to a given age that will die of the specific cause.</td>
+</tr>
+</tbody>
+</table>
+<p>The DataFrame returned by <code>causelife</code> can be used as input to <code>periodlifetable</code> (with <code>intype="rate"</code>) to compute a new lifetable for the subpopulation dying of a specific cause.</p>
+<p>The function <code>mortsurvfit(lifetable, numbdeaths, func, functype)</code> fits the <code>m</code> column (if <code>functype="rate"</code>) or the <code>l</code> column (if <code>functype="surv"</code>) against the <code>age</code> column in a DataFrame returned by <code>periodlifetable</code> with a Gompertz function (if <code>func="gompertz"</code>) or a two-parameter Weibull function (if <code>func="weibull"</code>). See e.g. <a href="http://www.ncbi.nlm.nih.gov/pubmed/8377524" rel="nofollow">Juckett and Rosenberg (1993)</a> for a discussion of these different functions and their applications to human mortality and survival data. The columns are fitted using <a href="https://github.com/JuliaOpt/LsqFit.jl">LsqFit</a>, and the data points are weighted by the square root of the age-specific number of deaths (given in <code>numbdeaths</code>). All input columns are assumed to be DataArrays, and are converted to ordinary arrays in order to work with LsqFit. <code>mortsurvfit</code> returns a dictionary with the <code>func</code> and <code>functype</code> parameters and the <code>LsqFitResult</code> returned by the curve fitting.</p>
+<p><code>mortsurvparamsfit(msfits)</code> takes a list of dictionaries returned by <code>mortsurvfit</code> and performs linear regression (using <a href="https://github.com/JuliaStats/GLM.jl">GLM</a>) on transformations of the coefficients in the list. This can be used to determine intersections between mortality or survival curves. A dictionary containing (1) a DataFrame with the original parameters and transformations and (2) the results from the regression is returned.</p>
+</article></div>

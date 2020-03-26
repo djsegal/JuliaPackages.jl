@@ -1,0 +1,70 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-instantiatefromurl" class="anchor" aria-hidden="true" href="#instantiatefromurl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>InstantiateFromURL</h1>
+<p><a href="https://travis-ci.com/QuantEcon/InstantiateFromURL.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/7f5c11cae89d2f22c7c6aad03068c9d67b86ca9f/68747470733a2f2f7472617669732d63692e636f6d2f5175616e7445636f6e2f496e7374616e746961746546726f6d55524c2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/QuantEcon/InstantiateFromURL.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>A way to bind dependency information to Julia assets without the need to pass around TOML files.</p>
+<p>The use case is that your notebooks would have something like the following in their first cell:</p>
+<pre><code>using InstantiateFromURL
+github_project("QuantEcon/QuantEconLecturePackages")
+</code></pre>
+<p>Based on <a href="https://github.com/vchuravy">Valentin Churavy</a>'s idea in <a href="https://github.com/JuliaLang/IJulia.jl/issues/673#issuecomment-425306944">https://github.com/JuliaLang/IJulia.jl/issues/673#issuecomment-425306944</a></p>
+<h2><a id="user-content-overviewmethod-signature" class="anchor" aria-hidden="true" href="#overviewmethod-signature"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview/Method Signature</h2>
+<p>[<strong>Note</strong>] To account for changes in <code>IJulia</code> (where notebooks will now look recursively up the tree for TOML, and use either what they find or the default <code>v1.x</code> environment), we've introduced the new function/entrypoint below. The functions we had previously provided are still around, in the subsequent <strong>deprecated</strong> section.</p>
+<p>The signature is:</p>
+<pre><code>function github_project(reponame; # e.g., "QuantEcon/quantecon-notebooks-jl"
+    path = "", # relative path within the repo (root by default)
+    version = "master",
+    force = false,
+    instantiate = false)
+</code></pre>
+<p>Where:</p>
+<ul>
+<li>
+<p><code>reponame</code> and <code>path</code> identify the TOML on the internet. Reponame is something like <code>"QuantEcon/QuantEconLecturePackages"</code> The path refers to the path to the TOML within the source repo, and is <code>""</code> by default (i.e., referring to top-level.)</p>
+</li>
+<li>
+<p><code>version</code> refers to a specific version of the TOML, corresponding to a <strong>github tag</strong> of the <code>reponame</code> repo.</p>
+</li>
+<li>
+<p><code>force</code> decides whether or not we're comfortable using whatever project-specific IJulia finds (if there is any.) Essentially, <strong>the <code>force</code> parameter decides whether to use a soft or hard match.</strong></p>
+</li>
+<li>
+<p><code>instantiate</code> decides whether or not to instantiate the project upon activation.</p>
+</li>
+</ul>
+<p>The logic here is:</p>
+<ul>
+<li>
+<p>If a <strong>local project</strong> is activated (i.e., if there is TOML up the source tree), use that unless <code>force = true</code>, and print intelligent information about it (e.g., if we asked for version <code>v0.2.1</code>, and version <code>v0.2.0</code> is found, it will still use <code>v0.2.0</code>, and alert you to the difference.)</p>
+</li>
+<li>
+<p>...But, if <code>force = true</code>, then regardless of what is activated, the precise set of <code>Project.toml, Manifest.toml</code> will be pulled down to the notebook's directory from the specified internet location.</p>
+</li>
+</ul>
+<h2><a id="user-content-utilities" class="anchor" aria-hidden="true" href="#utilities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Utilities</h2>
+<p>We also defined:</p>
+<ul>
+<li><code>packages_to_default_environment()</code>, which will take the current environment's packages, and <code>Pkg.add()</code> them to your <code>v1.x</code> environment. Useful for "seeding" or setting up new Julia installs, or making sure that deps for one project are available for other projects, etc.</li>
+</ul>
+<h2><a id="user-content-deprecated-methods" class="anchor" aria-hidden="true" href="#deprecated-methods"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Deprecated Methods</h2>
+<p>For <code>activate_github</code>, the signature is:</p>
+<pre><code>function activate_github(reponame; # like "QuantEcon/QuantEconLecturePackages"
+                        tag = nothing, # could be "master" or a git tag
+                        sha = nothing, # could point to a specific commit
+                        force = false, # will overwrite the local version of this TOML if true
+                        add_default_environment = false) # will add these projects to the default (e.g., v1.1) TOML if true
+</code></pre>
+<p>Example calls include:</p>
+<ul>
+<li><code>activate_github("QuantEcon/QuantEconLecturePackages")</code></li>
+<li><code>activate_github("QuantEcon/QuantEconLecturePackages", tag = "master")</code></li>
+<li><code>activate_github("QuantEcon/QuantEconLecturePackages", tag = "v0.9.5")</code></li>
+<li><code>activate_github("QuantEcon/QuantEconLecturePackages", sha = "0c2985")</code></li>
+</ul>
+<p>For <code>activate_github_path</code>, the signature is:</p>
+<pre><code>function activate_github_path(reponame; # something like "QuantEcon/SimpleDifferentialOperators.jl"
+                                path = "", # like "docs/examples", or where in the (master) source tree the TOML is
+                                tag = "master",
+                                force = false,
+                                activate = true) # decide whether to `activate; instantiate; precompile` or not
+</code></pre>
+<p><strong>Note:</strong> Because switching project files currently leads to repeat precompilations in Julia, <code>activate</code> will only bind if the current Project.toml (i.e., <code>Base.active_project()</code>) is in a different location than the pwd (i.e., <code>joinpath(pwd(), "Project.toml")</code>.)</p>
+</article></div>

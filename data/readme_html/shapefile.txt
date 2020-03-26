@@ -1,0 +1,45 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-shapefile" class="anchor" aria-hidden="true" href="#shapefile"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Shapefile</h1>
+<p><a href="https://travis-ci.org/JuliaGeo/Shapefile.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4f27072588912258914a7e4fcb654cbc2613dff8/68747470733a2f2f7472617669732d63692e6f72672f4a756c696147656f2f536861706566696c652e6a6c2e737667" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaGeo/Shapefile.jl.svg" style="max-width:100%;"></a></p>
+<p>This library supports reading ESRI Shapefiles in pure Julia.</p>
+<h2><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Quick Start</h2>
+<p>Basic example of reading a shapefile from test cases:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Shapefile
+
+path <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(<span class="pl-c1">dirname</span>(<span class="pl-c1">pathof</span>(Shapefile)),<span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>test<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>shapelib_testcases<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>test.shp<span class="pl-pds">"</span></span>)
+table <span class="pl-k">=</span> Shapefile<span class="pl-k">.</span><span class="pl-c1">Table</span>(path)
+
+<span class="pl-c"><span class="pl-c">#</span> if you only want the geometries and not the metadata in the DBF file</span>
+geoms <span class="pl-k">=</span> Shapefile<span class="pl-k">.</span><span class="pl-c1">shapes</span>(table)
+
+<span class="pl-c"><span class="pl-c">#</span> whole columns can be retrieved by their name</span>
+table<span class="pl-k">.</span>Descriptio  <span class="pl-c"><span class="pl-c">#</span> =&gt; Union{String, Missing}["Square with triangle missing", "Smaller triangle", missing]</span>
+
+<span class="pl-c"><span class="pl-c">#</span> example function that iterates over the rows and gathers shapes that meet specific criteria</span>
+<span class="pl-k">function</span> <span class="pl-en">selectshapes</span>(table)
+    geoms <span class="pl-k">=</span> <span class="pl-c1">empty</span>(Shapefile<span class="pl-k">.</span><span class="pl-c1">shapes</span>(table))
+    <span class="pl-k">for</span> row <span class="pl-k">in</span> table
+        <span class="pl-k">if</span> <span class="pl-k">!</span><span class="pl-c1">ismissing</span>(row<span class="pl-k">.</span>TestDouble) <span class="pl-k">&amp;&amp;</span> row<span class="pl-k">.</span>TestDouble <span class="pl-k">&lt;</span> <span class="pl-c1">2000.0</span>
+            <span class="pl-c1">push!</span>(geoms, Shapefile<span class="pl-k">.</span><span class="pl-c1">shape</span>(row))
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> geoms
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> the metadata can be converted to other Tables such as DataFrame</span>
+<span class="pl-k">using</span> DataFrames
+df <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>(table)</pre></div>
+<p>Shapefiles can contain multiple parts for each shape entity.
+Use <code>GeoInterface.coordinates</code> to fully decompose the shape data into parts.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Example of converting the 1st shape of the file into parts (array of coordinates)</span>
+julia<span class="pl-k">&gt;</span> GeoInterface<span class="pl-k">.</span><span class="pl-c1">coordinates</span>(Shapefile<span class="pl-k">.</span><span class="pl-c1">shape</span>(<span class="pl-c1">first</span>(table)))
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Array{Array{Array{Float64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>},<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ Array{Array{Float64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}[Array{Float64,<span class="pl-c1">1</span>}[[<span class="pl-c1">20.0</span>, <span class="pl-c1">20.0</span>], <span class="pl-k">...</span>]]
+ Array{Array{Float64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}[Array{Float64,<span class="pl-c1">1</span>}[[<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>], <span class="pl-k">...</span>]]</pre></div>
+<h2><a id="user-content-alternative-packages" class="anchor" aria-hidden="true" href="#alternative-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Alternative packages</h2>
+<p>If you want another lightweight pure Julia package for reading feature files, consider
+also <a href="https://github.com/JuliaGeo/GeoJSON.jl">GeoJSON.jl</a>.</p>
+<p>For much more fully featured support for reading and writing geospatial data, at the
+cost of a larger binary dependency, look at <a href="https://github.com/JuliaGeo/GDAL.jl">GDAL.jl</a>
+or <a href="https://github.com/yeesian/ArchGDAL.jl/">ArchGDAL.jl</a> packages.
+The latter builds a higher level API on top of GDAL.jl.</p>
+</article></div>

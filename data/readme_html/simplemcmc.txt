@@ -1,0 +1,305 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-simplemcmcjl" class="anchor" aria-hidden="true" href="#simplemcmcjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SimpleMCMC.jl</h1>
+<p>Small framework for MCMC sampling and maximization on user-defined models</p>
+<p>Implements :</p>
+<ul>
+<li>a DSL for specifying models</li>
+<li>an automatic derivation of models (using reverse accumulation) which can be called independently to produce a stand-alone function</li>
+<li>a set of sampling methods : Randow Walk Metropolis, Hamiltonian Monte-Carlo and NUTS Hamiltonian Monte-Carlo (the last two using automatic derivation)</li>
+<li>a set of solving methods : Nelder-Mead and accelerated gradient descent (this last one using automatic derivation)</li>
+</ul>
+<p>In a nutshell this allows quickly specifying a model and launch MCMC sampling and/or optimizing, letting the library take care of gradient code generation :</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Y is a vector of N outcomes</span>
+<span class="pl-c"><span class="pl-c">#</span> X is a N x M matrix of predictors</span>
+
+<span class="pl-c"><span class="pl-c">#</span> the model</span>
+model <span class="pl-k">=</span> <span class="pl-k">quote</span>
+	resid <span class="pl-k">=</span> Y <span class="pl-k">-</span> X <span class="pl-k">*</span> coefs    <span class="pl-c"><span class="pl-c">#</span> linear model to explain Y (vectorwith predictors X</span>
+	resid <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1.0</span>)   <span class="pl-c"><span class="pl-c">#</span> Normal prior, zero mean and unit standard deviation on residuals</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">simpleAGD</span>(model, coefs<span class="pl-k">=</span><span class="pl-c1">zeros</span>(M))           <span class="pl-c"><span class="pl-c">#</span> find MLE by accelerated gradient descent</span>
+
+<span class="pl-c1">simpleRMW</span>(model, steps<span class="pl-k">=</span><span class="pl-c1">10000</span>, coefs<span class="pl-k">=</span><span class="pl-c1">zeros</span>(M))  <span class="pl-c"><span class="pl-c">#</span> Random Walk Metropolis</span>
+</pre></div>
+<h2><a id="user-content-the-model-dsl" class="anchor" aria-hidden="true" href="#the-model-dsl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The model DSL</h2>
+<p>It simply is a Julia Expression enclosed <code>:(...)</code> or <code>quote .. end</code> that follows the language syntax except for the <code>~</code> operator used here to associate a variable with a distribution (same as the BUGS/JAGS/STAN syntax). The model expression may completely omit <code>~</code> operator in which case the last evaluated statement will be considered the variable to be sampled or optimized.</p>
+<p>Valid model expressions :</p>
+<div class="highlight highlight-source-julia"><pre>model <span class="pl-k">=</span> <span class="pl-k">quote</span>
+	a <span class="pl-k">=</span> b<span class="pl-k">+</span><span class="pl-c1">6</span>
+	x <span class="pl-k">=</span> <span class="pl-c1">exp</span>(<span class="pl-k">-</span><span class="pl-c1">dot</span>(k, z))
+
+	x <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(a, <span class="pl-c1">2</span>)
+<span class="pl-k">end</span>
+
+model2 <span class="pl-k">=</span> :(y <span class="pl-k">=</span> A <span class="pl-k">*</span> z ; <span class="pl-c1">dot</span>(y,y))</pre></div>
+<h3><a id="user-content-variables" class="anchor" aria-hidden="true" href="#variables"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Variables</h3>
+<p>Model variables fall in three categories :</p>
+<ul>
+<li>Model parameters : these are inferred by the method calls (function generation, sampling, solving) to be the keyword arguments remaining after taking away those that have a specific meaning to the method ( steps / burnin / precision, etc). <em>Note that the use of keyword arguments to pass model parameters names prohibits parameter names in the model such as 'steps' / 'burnin', etc.</em></li>
+<li>Variables defined within the model : such as <code>a</code>, <code>x</code>, <code>y</code> in the examples above</li>
+<li>And the variables that are neither model parameters or defined variables : these are considered as external variables and will be regarded as constants for model evaluation and differentiation. The model function produced will look for them in the Main module (they have to be top level variables to be visible from the point of view of the SimpleMCMC module).</li>
+</ul>
+<p><em>The generated function will create many temporary variables with two of them having a fixed denomination (<code>__beta</code> for the argument of the model function, and <code>__acc</code> for the log-likelihood accumulator). If you use those names in your model definition the results might become unpredictable.</em></p>
+<h3><a id="user-content-distributions" class="anchor" aria-hidden="true" href="#distributions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Distributions</h3>
+<p>Statements with the operator <code>~</code> declare how to build the model likelihood, e.g. <code>x ~ Normal(a, 2)</code> says that x should have a Normal distribution.</p>
+<p>Currently, the available distributions are :</p>
+<table>
+<thead>
+<tr>
+<th>Distribution</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Normal(mu, sigma)</code></td>
+<td>sigma &gt; 0</td>
+</tr>
+<tr>
+<td><code>Uniform(min, max)</code></td>
+<td>min &lt; max</td>
+</tr>
+<tr>
+<td><code>Weibull(shape, scale)</code></td>
+<td>shape and scale &gt; 0</td>
+</tr>
+<tr>
+<td><code>Beta(a, b)</code></td>
+<td>a and b &gt; 0</td>
+</tr>
+<tr>
+<td><code>TDist(df)</code></td>
+<td>df &gt; 0</td>
+</tr>
+<tr>
+<td><code>Exponential(scale)</code></td>
+<td>scale &gt; 0</td>
+</tr>
+<tr>
+<td><code>Gamma(shape, scale)</code></td>
+<td>shape and scale &gt; 0</td>
+</tr>
+<tr>
+<td><code>Cauchy(mu, scale)</code></td>
+<td>scale &gt; 0</td>
+</tr>
+<tr>
+<td><code>logNormal(logmu, logscale)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>Bernoulli(prob)</code></td>
+<td>0 &lt;= prob &lt;= 1, sampled var is an integer and cannot depend on model parameters</td>
+</tr>
+<tr>
+<td><code>Binomial(size, prob)</code></td>
+<td>0 &lt;= prob &lt;= 1, sampled var is an integer and cannot depend on model parameters</td>
+</tr>
+<tr>
+<td><code>Poisson(lambda)</code></td>
+<td>sampled var is an integer and cannot depend on model parameter</td>
+</tr>
+</tbody>
+</table>
+<p>All follow the "Distributions" package conventions for naming and arguments.</p>
+<h3><a id="user-content-allowed-functions-in-a-model-expression" class="anchor" aria-hidden="true" href="#allowed-functions-in-a-model-expression"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Allowed functions in a model expression</h3>
+<p>Besides the usual Julia meaning of <code>~</code> that becomes unavailable within a model definition (since it now links a variable with a distribution), only a small subset of functions can be used if the gradient calculations steps are generated (even if no gradient is required there are still limitations). Notably, if statements, for/while loops, comprehensions, are not currently possible (you will have to use matrix/vector algebra to replace for loops, or max/min/abs functions to replace if-then-else ).</p>
+<p>Supported functions are :</p>
+<table>
+<thead>
+<tr>
+<th>operator</th>
+<th>arguments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>+</code></td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>-</code> (unary)</td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>-</code> (binary)</td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>sum()</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>dot(,)</code></td>
+<td>with operands scalar or vector  (not matrix)</td>
+</tr>
+<tr>
+<td><code>log()</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>exp()</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>sin()</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>cos()</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>abs()</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>*</code></td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>.*</code></td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>^</code></td>
+<td>with operands scalar only</td>
+</tr>
+<tr>
+<td><code>.^</code></td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>with operands scalar, vector or matrix, with at least one operand scalar</td>
+</tr>
+<tr>
+<td><code>./</code></td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>max(,)</code> (binary only)</td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>min(,)</code> (binary only)</td>
+<td>with operands scalar, vector or matrix (of compatible size)</td>
+</tr>
+<tr>
+<td><code>transpose()</code> or <code>'</code></td>
+<td>with operand scalar, vector or matrix</td>
+</tr>
+<tr>
+<td><code>+=</code>, <code>-=</code> and <code>*=</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h2><a id="user-content-the-model-function" class="anchor" aria-hidden="true" href="#the-model-function"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The model function</h2>
+<p>Calling the solving and MCMC sampling tools will generate the model function transparently, so you normally do not need to go through this step. However, if you do need to get the model function directly, with or without gradient code, you can call the <code>generateModelFunction</code> method directly :</p>
+<p><code>mf, nparams, map, init = generateModelFunction(model, gradient=false, debug=false, x=., y=., etc.)</code></p>
+<p>or alternatively :</p>
+<p><code>mf, nparams, map, init = generateModelFunction(model, gradient=false, debug=false; init...)</code></p>
+<ul>
+<li><code>model</code> is the model expression,</li>
+<li><code>gradient</code> specifies if the gradient code is to be calculated or not</li>
+<li><code>debug</code> = true, dumps the function code without generating anything, useful for debugging</li>
+<li>other arguments are assumed to be model parameters. They can be passed separately or in a Dict (<code>init</code>)</li>
+</ul>
+<p>Returned values are :</p>
+<ul>
+<li><code>mf</code> : the model function returning a single scalar (<code>gradient=false</code>), or a scalar + vector for the gradient (<code>gradient=true</code>). This function requires the model parameters values to be passed in a single vector.</li>
+<li><code>nparams</code> : the length of the parameter vector</li>
+<li><code>map</code> : a mapping structure specifying how to go from the parameter vector to the parameters as indicated in the function call</li>
+<li><code>init</code> : inital values in vector form</li>
+</ul>
+<p>example :</p>
+<div class="highlight highlight-source-julia"><pre>A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>,<span class="pl-c1">10</span>) <span class="pl-c"><span class="pl-c">#</span> external variable</span>
+model <span class="pl-k">=</span> :( y<span class="pl-k">=</span>A<span class="pl-k">*</span>x; <span class="pl-c1">dot</span>(y,y)) <span class="pl-c"><span class="pl-c">#</span> model</span>
+
+<span class="pl-c"><span class="pl-c">#</span> generate function, with gradient, x being the model parameter (a vector of length 10) with initial values = zero</span>
+testf, n, map, init <span class="pl-k">=</span> <span class="pl-c1">generateModelFunction</span>(model, gradient<span class="pl-k">=</span><span class="pl-c1">true</span>, x<span class="pl-k">=</span><span class="pl-c1">zeros</span>(<span class="pl-c1">10</span>))
+<span class="pl-c1">testf</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">10</span>)) <span class="pl-c"><span class="pl-c">#</span> value and gradient for a random value of x</span>
+
+<span class="pl-c"><span class="pl-c">#</span> or just check out the generated code</span>
+<span class="pl-c1">generateModelFunction</span>(model, gradient<span class="pl-k">=</span><span class="pl-c1">true</span>, debug<span class="pl-k">=</span><span class="pl-c1">true</span>, x<span class="pl-k">=</span><span class="pl-c1">zeros</span>(<span class="pl-c1">10</span>))</pre></div>
+<h2><a id="user-content-solving-tools" class="anchor" aria-hidden="true" href="#solving-tools"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Solving tools</h2>
+<p>Two solving algorithms are implemented. Note that they do not play well with functions close to the limit of their support (such as models with distributions Uniform, Gamma, ..) especially if the optimum is close to the support frontier.
+Additionally, the accelerated gradient descent supposedly needs a convex function (concave in fact since we are maximizing the model) and may not behave properly if you do not have this property around the initial values and the optimum.</p>
+<p><code>simpleNM(model, maxiter=100, precision=1e-3; init...)</code> for Nelder-Mead optimization
+and
+<code>simpleAGD(model, maxiter=100, precision=1e-5; init...)</code> for Accelerated Gradient Descent</p>
+<h2><a id="user-content-mcmc-sampling-tools" class="anchor" aria-hidden="true" href="#mcmc-sampling-tools"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>MCMC sampling tools</h2>
+<p>Three sampling methods are provided by the SimpleMCMC package : plain Random Walk Metropolis (with an automated scaling), Standard and NUTS variant Hamiltonian Monte-Carlo :</p>
+<ul>
+<li><code>simpleRWM(model, steps=1000, burnin=100; init...)</code> for Random Walk Metropolis (isteps is the number of samples, burnin the number of initial samples to ignore in the result)</li>
+<li><code>simpleHMC(model, steps=1000, burnin=100, isteps=2, stepsize=1e-3; init...)</code> for Hamiltonian Monte-Carlo (isteps is the number of inner steps, stepssize their scale).</li>
+<li><code>simpleNUTS(model, steps=1000, burnin=100; init...)</code> for NUTS type Hamiltonian Monte-Carlo.</li>
+</ul>
+<p>Each function prints out basic info at the end of the run such as the running time, the min and max of effective sample size accross parameters and a few other stats. The details are contained in the returned structure.</p>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<h3><a id="user-content-linear-regression" class="anchor" aria-hidden="true" href="#linear-regression"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Linear regression</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Generate values</span>
+<span class="pl-c1">srand</span>(<span class="pl-c1">1</span>)
+n <span class="pl-k">=</span> <span class="pl-c1">1000</span> <span class="pl-c"><span class="pl-c">#</span> number of observations</span>
+nbeta <span class="pl-k">=</span> <span class="pl-c1">10</span> <span class="pl-c"><span class="pl-c">#</span> number of predictors, including intercept</span>
+X <span class="pl-k">=</span> [<span class="pl-c1">ones</span>(n) <span class="pl-c1">randn</span>((n, nbeta<span class="pl-k">-</span><span class="pl-c1">1</span>))]
+beta0 <span class="pl-k">=</span> <span class="pl-c1">randn</span>((nbeta,))
+Y <span class="pl-k">=</span> X <span class="pl-k">*</span> beta0 <span class="pl-k">+</span> <span class="pl-c1">randn</span>((n,))
+
+<span class="pl-c"><span class="pl-c">#</span> define model</span>
+model <span class="pl-k">=</span> <span class="pl-k">quote</span>
+	vars <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1.0</span>)  <span class="pl-c"><span class="pl-c">#</span> Normal prior, zero mean and unit standard deviation for predictors</span>
+	resid <span class="pl-k">=</span> Y <span class="pl-k">-</span> X <span class="pl-k">*</span> vars
+	resid <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1.0</span>)  <span class="pl-c"><span class="pl-c">#</span> Normal prior, zero mean and unit standard deviation for residuals</span>
+<span class="pl-k">end</span>
+
+
+res <span class="pl-k">=</span> <span class="pl-c1">simpleRWM</span>(model, steps<span class="pl-k">=</span><span class="pl-c1">10000</span>, vars<span class="pl-k">=</span><span class="pl-c1">zeros</span>(nbeta)) <span class="pl-c"><span class="pl-c">#</span> random walk metropolis (10000 steps, 100 burnin)</span>
+
+res <span class="pl-k">=</span> <span class="pl-c1">simpleHMC</span>(model, <span class="pl-c1">1000</span>, <span class="pl-c1">100</span>, <span class="pl-c1">5</span>, <span class="pl-c1">1e-1</span>, vars<span class="pl-k">=</span><span class="pl-c1">zeros</span>(nbeta)) <span class="pl-c"><span class="pl-c">#</span> HMC (with 5 inner steps of size 0.1)</span>
+
+res <span class="pl-k">=</span> <span class="pl-c1">simpleNUTS</span>(model, <span class="pl-c1">1000</span>, vars<span class="pl-k">=</span><span class="pl-c1">zeros</span>(nbeta)) <span class="pl-c"><span class="pl-c">#</span> or a NUTS flavoured HMC</span></pre></div>
+<hr>
+<h2><a id="user-content-issues" class="anchor" aria-hidden="true" href="#issues"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Issues</h2>
+<ul>
+<li>May be some bugs left in the NUTS implementation as it sometimes seem to go into a huge amount of doubling steps and converges toward tiny epsilons</li>
+<li>The automated derivation will not look into refs, if somehow a ref depends directly or indirectly on a model parameter (for example  <code>x = Y[ round(sigma)]</code> ), the gradient will be false.</li>
+<li>Setting a subset of values in a vector or array may cause a false gradient</li>
+<li>simpleNM could handle better support exit</li>
+<li>Code of simpleAGD needs cleaning up</li>
+</ul>
+<hr>
+<h2><a id="user-content-possible-future-work" class="anchor" aria-hidden="true" href="#possible-future-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>(Possible) future work</h2>
+<ul>
+<li>Enable other functions for automated derivation : vcat, hcat, one, zero, comprehensions ...  ?</li>
+<li>Add for loops and ifs ?</li>
+<li>Add truncation, censoring</li>
+<li>Compare timings with other sampling tools (JAGS, STAN)</li>
+<li><em>ideas ?</em></li>
+</ul>
+<hr>
+<h2><a id="user-content-history" class="anchor" aria-hidden="true" href="#history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>History</h2>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>june 14th</td>
+<td>removed model parameters definition from model DSL, they are now within the methods arguments, thanks to keyword args</td>
+</tr>
+</tbody>
+</table>
+<pre><code>  | optimized generated function, for a x2-x3 speedup
+  | added solving functions (for maximization to be consistent with log-likelihood functions) using Nelder-Mead and Accelerated Gradient Methods
+  | changed derivation rules format (in diff.jl) allowing different formulas depending on parameter type
+</code></pre>
+<p>april 11th   | added major missing distributions (Gamma, TDist, Exponential, Cauchy, logNormal, Poisson, Binomial and Beta)
+| added some functions that can be derived (min, max, abs, transpose, +=, *=)
+| simplified unit testing of derivation and distributions that will make future improvements much easier to test</p>
+<hr>
+</article></div>

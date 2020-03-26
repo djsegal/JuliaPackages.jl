@@ -1,0 +1,140 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p><a href="https://travis-ci.org/FluxML/FluxJS.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/0f39a0a09eecdaa73957cb269d8bec46cc72ea3d/68747470733a2f2f7472617669732d63692e6f72672f466c75784d4c2f466c75784a532e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/FluxML/FluxJS.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<h1><a id="user-content-fluxjs" class="anchor" aria-hidden="true" href="#fluxjs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Flux.JS</h1>
+<p>Run <a href="https://fluxml.github.io/" rel="nofollow">Flux</a> models in the browser, via
+<a href="https://js.tensorflow.org" rel="nofollow">tensorflow.js</a>.</p>
+<p>Note that if you get errors running this package, you may need to run <code>Pkg.checkout("ASTInterpreter2")</code>.</p>
+<h2><a id="user-content-js-output" class="anchor" aria-hidden="true" href="#js-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>JS Output</h2>
+<p>You can see what Flux.JS sees with <code>@code_js</code>, which works like <code>@code_typed</code> or
+<code>@code_native</code>. Flux.JS simply accepts a function of arrays along with example
+inputs, and generates JavaScript code for you. Here's the simplest possible
+example:</p>
+<div class="highlight highlight-source-js"><pre>julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-en">rand</span>(<span class="pl-c1">10</span>)
+<span class="pl-c1">10</span><span class="pl-k">-</span>element <span class="pl-c1">Array</span>{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.299338</span>
+ ⋮
+ <span class="pl-c1">0.267917</span>
+
+julia<span class="pl-k">&gt;</span> @code_js <span class="pl-en">identity</span>(x)
+<span class="pl-k">let</span> model <span class="pl-k">=</span> (<span class="pl-k">function</span> () {
+  <span class="pl-k">let</span> math <span class="pl-k">=</span> tf;
+  <span class="pl-k">function</span> <span class="pl-en">model</span>(<span class="pl-smi">kinkajou</span>) {
+    <span class="pl-k">return</span> kinkajou;
+  };
+  <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> [];
+  <span class="pl-k">return</span> model;
+})();
+<span class="pl-smi">flux</span>.<span class="pl-en">fetchWeights</span>(<span class="pl-s"><span class="pl-pds">"</span>model.bson<span class="pl-pds">"</span></span>).<span class="pl-c1">then</span>((<span class="pl-k">function</span> (<span class="pl-smi">ws</span>) {
+  <span class="pl-k">return</span> <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> ws;
+}));</pre></div>
+<p>You can see that there's some setup code as Flux.JS expects to load some weights
+for a model. But the core of it is this function, which is exactly like the
+<code>identity</code> function in Julia.</p>
+<div class="highlight highlight-source-js"><pre><span class="pl-k">function</span> <span class="pl-en">model</span>(<span class="pl-smi">kinkajou</span>) {
+  <span class="pl-k">return</span> kinkajou;
+};</pre></div>
+<p>Let's try something more interesting; <code>f</code> takes two arguments and multiplies
+them.</p>
+<div class="highlight highlight-source-js"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(<span class="pl-c1">W</span>,x) <span class="pl-k">=</span> <span class="pl-c1">W</span><span class="pl-k">*</span>x
+
+julia<span class="pl-k">&gt;</span> @code_js <span class="pl-en">f</span>(<span class="pl-en">rand</span>(<span class="pl-c1">5</span>,<span class="pl-c1">10</span>),<span class="pl-en">rand</span>(<span class="pl-c1">10</span>))
+<span class="pl-k">let</span> model <span class="pl-k">=</span> (<span class="pl-k">function</span> () {
+  <span class="pl-k">let</span> math <span class="pl-k">=</span> tf;
+  <span class="pl-k">function</span> <span class="pl-en">model</span>(<span class="pl-smi">bear</span>, <span class="pl-smi">giraffe</span>) {
+    <span class="pl-k">return</span> <span class="pl-smi">math</span>.<span class="pl-en">matrixTimesVector</span>(bear, giraffe);
+  };
+  <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> [];
+  <span class="pl-k">return</span> model;
+})();
+<span class="pl-smi">flux</span>.<span class="pl-en">fetchWeights</span>(<span class="pl-s"><span class="pl-pds">"</span>model.bson<span class="pl-pds">"</span></span>).<span class="pl-c1">then</span>((<span class="pl-k">function</span> (<span class="pl-smi">ws</span>) {
+  <span class="pl-k">return</span> <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> ws;
+}));</pre></div>
+<p>Because Flux models are just Julia functions, we can use the same macro with
+them too. You'll now notice that the weights are being used.</p>
+<div class="highlight highlight-source-js"><pre>julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-en">Chain</span>(<span class="pl-en">Dense</span>(<span class="pl-c1">10</span>,<span class="pl-c1">5</span>,relu),<span class="pl-en">Dense</span>(<span class="pl-c1">5</span>,<span class="pl-c1">2</span>),softmax)
+
+julia<span class="pl-k">&gt;</span> @code_js <span class="pl-en">m</span>(x)
+<span class="pl-k">let</span> model <span class="pl-k">=</span> (<span class="pl-k">function</span> () {
+  <span class="pl-k">let</span> math <span class="pl-k">=</span> tf;
+  <span class="pl-k">function</span> <span class="pl-en">badger</span>(<span class="pl-smi">eland</span>) {
+    <span class="pl-k">return</span> <span class="pl-smi">math</span>.<span class="pl-c1">add</span>(<span class="pl-smi">math</span>.<span class="pl-en">matrixTimesVector</span>(<span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">0</span>], eland), <span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">1</span>]);
+  };
+  <span class="pl-k">function</span> <span class="pl-en">chimpanzee</span>(<span class="pl-smi">mongoose</span>) {
+    <span class="pl-k">return</span> <span class="pl-smi">math</span>.<span class="pl-en">relu</span>(<span class="pl-smi">math</span>.<span class="pl-c1">add</span>(<span class="pl-smi">math</span>.<span class="pl-en">matrixTimesVector</span>(<span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">2</span>], mongoose), <span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">3</span>]));
+  };
+  <span class="pl-k">function</span> <span class="pl-en">model</span>(<span class="pl-smi">shark</span>) {
+    <span class="pl-k">return</span> <span class="pl-smi">math</span>.<span class="pl-en">softmax</span>(<span class="pl-en">badger</span>(<span class="pl-en">chimpanzee</span>(shark)));
+  };
+  <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> [];
+  <span class="pl-k">return</span> model;
+})();
+<span class="pl-smi">flux</span>.<span class="pl-en">fetchWeights</span>(<span class="pl-s"><span class="pl-pds">"</span>model.bson<span class="pl-pds">"</span></span>).<span class="pl-c1">then</span>((<span class="pl-k">function</span> (<span class="pl-smi">ws</span>) {
+  <span class="pl-k">return</span> <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> ws;
+}));</pre></div>
+<p>There is also early support for RNNs (we compile stateful models directly, no
+unrolling).</p>
+<div class="highlight highlight-source-js"><pre>julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-en">Chain</span>(<span class="pl-en">RNN</span>(<span class="pl-c1">10</span>,<span class="pl-c1">5</span>))
+
+julia<span class="pl-k">&gt;</span> @code_js <span class="pl-en">m</span>(x)
+<span class="pl-k">let</span> model <span class="pl-k">=</span> (<span class="pl-k">function</span> () {
+  <span class="pl-k">let</span> math <span class="pl-k">=</span> tf;
+  <span class="pl-k">let</span> init <span class="pl-k">=</span> [<span class="pl-c1">0.017732</span>, <span class="pl-c1">0.00991122</span>, <span class="pl-k">-</span><span class="pl-c1">0.00712077</span>, <span class="pl-k">-</span><span class="pl-c1">0.00161244</span>, <span class="pl-k">-</span><span class="pl-c1">0.00232475</span>];
+  <span class="pl-k">let</span> states <span class="pl-k">=</span> <span class="pl-smi">init</span>.<span class="pl-c1">slice</span>();
+  <span class="pl-k">function</span> <span class="pl-en">nightingale</span>(<span class="pl-smi">seal</span>, <span class="pl-smi">mongoose</span>) {
+    <span class="pl-k">return</span> [seal, mongoose];
+  };
+  <span class="pl-k">function</span> <span class="pl-en">cat</span>(<span class="pl-smi">horse</span>) {
+    <span class="pl-k">let</span> weasel <span class="pl-k">=</span> <span class="pl-smi">math</span>.<span class="pl-en">tanh</span>(<span class="pl-smi">math</span>.<span class="pl-c1">add</span>(<span class="pl-smi">math</span>.<span class="pl-c1">add</span>(<span class="pl-smi">math</span>.<span class="pl-en">matrixTimesVector</span>(<span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">0</span>], horse), <span class="pl-smi">math</span>.<span class="pl-en">matrixTimesVector</span>(<span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">1</span>], states[<span class="pl-c1">0</span>])), <span class="pl-smi">model</span>.<span class="pl-smi">weights</span>[<span class="pl-c1">2</span>]));
+    <span class="pl-k">let</span> coati <span class="pl-k">=</span> <span class="pl-en">nightingale</span>(weasel, weasel);
+    states[<span class="pl-c1">0</span>] <span class="pl-k">=</span> coati[<span class="pl-c1">1</span>];
+    <span class="pl-k">return</span> coati[<span class="pl-c1">2</span>];
+  };
+  <span class="pl-k">function</span> <span class="pl-en">model</span>(<span class="pl-smi">fish</span>) {
+    <span class="pl-k">return</span> <span class="pl-en">cat</span>(fish);
+  };
+  <span class="pl-smi">model</span>.<span class="pl-smi">reset</span> <span class="pl-k">=</span> (<span class="pl-k">function</span> () {
+    states <span class="pl-k">=</span> <span class="pl-smi">init</span>.<span class="pl-c1">slice</span>();
+    <span class="pl-k">return</span>;
+  });
+  <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> [];
+  <span class="pl-k">return</span> model;
+})();
+<span class="pl-smi">flux</span>.<span class="pl-en">fetchWeights</span>(<span class="pl-s"><span class="pl-pds">"</span>model.bson<span class="pl-pds">"</span></span>).<span class="pl-c1">then</span>((<span class="pl-k">function</span> (<span class="pl-smi">ws</span>) {
+  <span class="pl-k">return</span> <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> ws;
+}));</pre></div>
+<p>In general, the more useful entry point to the package is <code>FluxJS.compile</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> FluxJS<span class="pl-k">.</span><span class="pl-c1">compile</span>(<span class="pl-s"><span class="pl-pds">"</span>mnist<span class="pl-pds">"</span></span>, m, <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>))</pre></div>
+<p>This will produce two files in the current directory: (1) <code>mnist.js</code>, which
+contains the same JavaScript code as above; (2) <code>mnist.bson</code>, which contains the
+model weights in a JS-loadable format.</p>
+<h2><a id="user-content-browser-setup" class="anchor" aria-hidden="true" href="#browser-setup"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Browser Setup</h2>
+<p>Firstly, you'll need the following scripts in your <code>&lt;head&gt;</code>. The <code>flux.js</code>
+script can be found <a href="lib/flux.js">here</a>.</p>
+<div class="highlight highlight-text-html-basic"><pre>&lt;<span class="pl-ent">head</span>&gt;
+  &lt;<span class="pl-ent">script</span> <span class="pl-e">src</span>=<span class="pl-s"><span class="pl-pds">"</span>https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.9.0<span class="pl-pds">"</span></span>&gt;&lt;/<span class="pl-ent">script</span>&gt;
+  &lt;<span class="pl-ent">script</span> <span class="pl-e">src</span>=<span class="pl-s"><span class="pl-pds">"</span>https://unpkg.com/bson/browser_build/bson.js<span class="pl-pds">"</span></span>&gt;&lt;/<span class="pl-ent">script</span>&gt;
+  &lt;<span class="pl-ent">script</span> <span class="pl-e">src</span>=<span class="pl-s"><span class="pl-pds">"</span>flux.js<span class="pl-pds">"</span></span>&gt;&lt;/<span class="pl-ent">script</span>&gt; <span class="pl-c"><span class="pl-c">&lt;!--</span> Or embed the script directly <span class="pl-c">--&gt;</span></span>
+&lt;/<span class="pl-ent">head</span>&gt;</pre></div>
+<p>From here, you can either link the generated code as another script, or embed it
+directly. In real applications you'll most likely want to wait on the
+<code>fetchWeights</code> promise, to avoid trying to use the model before it's ready.</p>
+<div class="highlight highlight-text-html-basic"><pre>&lt;<span class="pl-ent">script</span>&gt;<span class="pl-s1"></span>
+<span class="pl-s1"><span class="pl-k">let</span> model <span class="pl-k">=</span> (<span class="pl-k">function</span> () {</span>
+<span class="pl-s1">  <span class="pl-k">let</span> math <span class="pl-k">=</span> tf;</span>
+<span class="pl-s1">  <span class="pl-k">function</span> <span class="pl-en">model</span>(<span class="pl-smi">kinkajou</span>) {</span>
+<span class="pl-s1">    <span class="pl-k">return</span> kinkajou;</span>
+<span class="pl-s1">  };</span>
+<span class="pl-s1">  <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> [];</span>
+<span class="pl-s1">  <span class="pl-k">return</span> model;</span>
+<span class="pl-s1">})();</span>
+<span class="pl-s1"><span class="pl-smi">flux</span>.<span class="pl-en">fetchWeights</span>(<span class="pl-s"><span class="pl-pds">"</span>model.bson<span class="pl-pds">"</span></span>).<span class="pl-c1">then</span>((<span class="pl-k">function</span> (<span class="pl-smi">ws</span>) {</span>
+<span class="pl-s1">  <span class="pl-k">return</span> <span class="pl-smi">model</span>.<span class="pl-smi">weights</span> <span class="pl-k">=</span> ws;</span>
+<span class="pl-s1">}));</span>
+<span class="pl-s1"></span>&lt;/<span class="pl-ent">script</span>&gt;</pre></div>
+<p>In the page, you can run the model from the dev tools.</p>
+<div class="highlight highlight-source-js"><pre><span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-smi">tf</span>.<span class="pl-en">tensor</span>([<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">6</span>,<span class="pl-c1">7</span>,<span class="pl-c1">8</span>,<span class="pl-c1">9</span>,<span class="pl-c1">10</span>])
+  Tensor {isDisposed<span class="pl-k">:</span> <span class="pl-c1">false</span>, size<span class="pl-k">:</span> <span class="pl-c1">10</span>, shape<span class="pl-k">:</span> <span class="pl-c1">Array</span>(<span class="pl-c1">1</span>), dtype<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>float32<span class="pl-pds">"</span></span>, strides<span class="pl-k">:</span> <span class="pl-c1">Array</span>(<span class="pl-c1">0</span>), …}
+<span class="pl-k">&gt;</span> <span class="pl-k">await</span> <span class="pl-en">model</span>(x).<span class="pl-c1">data</span>()
+  <span class="pl-c1">Float32Array</span>(<span class="pl-c1">25</span>) [<span class="pl-c1">0.0262143611907959</span>, <span class="pl-k">-</span><span class="pl-c1">0.04852187633514404</span>, …]</pre></div>
+<p>See the <a href="https://js.tensorflow.org/api/latest/index.html" rel="nofollow">tensorflow.js docs</a> for
+more information on how to work with its tensor objects.</p>
+</article></div>

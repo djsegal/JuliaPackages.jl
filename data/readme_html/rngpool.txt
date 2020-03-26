@@ -1,0 +1,151 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-rngpooljl" class="anchor" aria-hidden="true" href="#rngpooljl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>RNGPool.jl</h1>
+<p><a href="https://travis-ci.org/awllee/RNGPool.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/7945d6577adb11fa8487133729ba1dfc9c277501/68747470733a2f2f7472617669732d63692e6f72672f61776c6c65652f524e47506f6f6c2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/awllee/RNGPool.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/awllee/rngpool-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/fe34d16d9806559e0be54b17bf2d94baebd3f6ff/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6c697035717677343864776a6c6c61753f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/lip5qvw48dwjllau?svg=true" style="max-width:100%;"></a>
+<a href="https://coveralls.io/github/awllee/RNGPool.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/b6977fef1730da36cb88acaf2be35758c6389933/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f61776c6c65652f524e47506f6f6c2e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/github/awllee/RNGPool.jl/badge.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/awllee/RNGPool.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/d3aa19592b774cf1962aef2e9df45ec5cc7380e0/687474703a2f2f636f6465636f762e696f2f6769746875622f61776c6c65652f524e47506f6f6c2e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/awllee/RNGPool.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>This package provides a simple interface for thread-specific random number generators (RNGs).</p>
+<p>Currently, Threefry4x RNGs are used, as implemented in <a href="https://github.com/sunoru/RandomNumbers.jl">RandomNumbers.jl</a>.</p>
+<p>At runtime, a Vector of <code>Threads.nthreads()</code> RNGs is initialized when the package is loaded.</p>
+<p>Calling <code>getRNG()</code> will return the RNG associated to the thread on which it is called.</p>
+<p>Calling <code>setRNGs(v::Int64)</code> sets the RNGs so that output is reproducible.</p>
+<p>Example usage:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> RNGPool
+
+<span class="pl-c"><span class="pl-c">#</span> on return, each element of out is the average of many Uniform(0,1) pseudo-random variates</span>
+<span class="pl-k">function</span> <span class="pl-en">foo!</span>(out<span class="pl-k">::</span><span class="pl-c1">Vector{Float64}</span>, N<span class="pl-k">::</span><span class="pl-c1">Int64</span>)
+  nt <span class="pl-k">=</span> Threads<span class="pl-k">.</span><span class="pl-c1">nthreads</span>()
+  M<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">div</span>(N, nt)
+  Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nt
+    rng<span class="pl-k">::</span><span class="pl-c1">RNG</span> <span class="pl-k">=</span> <span class="pl-c1">getRNG</span>()
+    v<span class="pl-k">::</span><span class="pl-c1">Float64</span> <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>M
+      v <span class="pl-k">+=</span> <span class="pl-c1">rand</span>(rng)
+    <span class="pl-k">end</span>
+    out[i] <span class="pl-k">=</span> v <span class="pl-k">/</span> M
+  <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+nt <span class="pl-k">=</span> Threads<span class="pl-k">.</span><span class="pl-c1">nthreads</span>()
+out <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Float64}</span>(undef, nt)
+
+<span class="pl-c1">setRNGs</span>(<span class="pl-c1">1</span>)
+
+N0 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">25</span>
+<span class="pl-c1">foo!</span>(out, N0)</pre></div>
+<p>Big Crush Output with 16 threads:</p>
+<pre><code>$ julia -O3 test/bigCrush.jl
+Testing circular RNG with 16 threads
+20297.402768 seconds (3.13 M allocations: 169.970 MiB, 0.00% gc time)
+
+Big Crush p-values:
+
+0.35024617233125155
+0.8835532763583632
+0.6636497877293779
+0.018903942941190053
+0.5169888091502591
+0.48459348174551337
+0.7209339139632519
+0.4953826520232639
+0.9024402475518911
+0.5
+0.8651926099525509
+0.9561154784011432
+0.8376321650399638
+0.6202341415528604
+1.799269319133724e-5
+0.8859876568914304
+0.22492814670245764
+0.3927173570756824
+0.4520844575203478
+0.8986304417260517
+0.038014481966689814
+(0.21568858056919513, 0.7389715767238474, 0.9076375138182249, 0.5966883110300443)
+(0.2431181574370577, 0.4871669809334896, 0.3231521924042511, 0.9215267021031692)
+(0.9712727839965605, 0.33191575846120747, 0.8321392860558294, 0.576450918419529)
+(0.8079223429884855, 0.29902676017610325, 0.274672277693068, 0.44596300957381135)
+0.6406462673625273
+0.5723208292533664
+0.8517476719247175
+0.6738959447126625
+0.3204715210910115
+0.033925233014120204
+0.8307482626649948
+0.5202223295545486
+0.0730899510030465
+0.9884621513805903
+0.5504918111758579
+0.07592255377356572
+0.8106929224255082
+0.9299569648871202
+0.7816015502299919
+0.6981399845286156
+0.11180741408148176
+0.5692101750490258
+0.6676474222753446
+0.8746415962396613
+(0.5115042482198283, 0.4466981107162864)
+(0.8441064470045998, 0.450098214225219)
+(0.5011236928371351, 0.846882944835641)
+(0.6052083611219846, 0.11989197241692676)
+0.8706050732302925
+0.24992576811155562
+0.7599705315327361
+0.6666798516789317
+0.5865513095444427
+0.18220660197484762
+0.5861954650088912
+0.5164889795925813
+0.06519595125937305
+0.8299875918826629
+0.5325072810883595
+0.36774868494116086
+0.7265016150707939
+0.7021869190099859
+0.5366819723353544
+0.8444332494141247
+0.882916216172351
+0.49723779059378237
+0.2548676909227585
+0.2604060378981502
+0.6764645024999533
+0.9948541696689198
+0.5924658062980863
+0.42134891840784894
+(0.3413158471198531, 0.34416968317789554, 0.2394729304126597, 0.6245575765098257, 0.09818457402629566)
+(0.6650635533444043, 0.24782138623974148, 0.743574533545167, 0.27541332372772076, 0.6128708321231922)
+(0.9821876686695014, 0.0849037720959841, 0.33329997993956706, 0.2298794954495592, 0.5169204798676033)
+(0.5885470974265907, 0.9040681527000856, 0.3897441111991409, 0.22866923396646388, 0.9013466337980678)
+(0.21546156684571005, 0.2389096235593432, 0.5139772080346743, 0.6849063061748559, 0.704148823149277)
+(0.8876023613895775, 0.5401482944911973, 0.07260663105257459, 0.697180881377814, 0.04297879789302261)
+(0.2735042082218486, 0.9303041521766279)
+(0.8966399623254027, 0.39194501288887884)
+0.1560730722289243
+0.22665875528141483
+0.9668336806166385
+0.6597833962007846
+(0.12961526864821815, 0.5)
+(0.4598726205050785, 0.6878130593504515)
+0.9881687651315975
+0.36703506587905493
+0.24463319618891602
+0.7648482035840278
+0.37514384022957814
+0.4620117955709462
+0.4624403232337113
+0.19667608525470504
+0.6965966537122446
+0.33501810021141654
+0.4305745819908624
+0.3792369085087328
+0.2140086341676749
+(0.9753379212091818, 0.1648700050329902)
+(0.3586029601856259, 0.36252843463374806)
+0.6775217740167053
+0.467673260137216
+0.925942247194567
+0.4705768063135961
+
+Smallest p-value = 1.799269319133724e-5
+</code></pre>
+</article></div>

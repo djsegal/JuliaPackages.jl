@@ -1,0 +1,210 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-cpu-what-can-you-do" class="anchor" aria-hidden="true" href="#cpu-what-can-you-do"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CPU, what can you do?</h1>
+<p><em>CpuId</em> is a package for the Julia programming language that enables you to
+query the availability of specific CPU features with low run-time cost
+using the assembly instruction <code>cpuid</code>.</p>
+<p><em>Status: considered a pre-beta version, ready for you to try out.</em></p>
+<p>Works on Julia 0.7 or newer, on Linux, Mac and Windows with Intel CPUs;
+AMD CPUs partially supported respectively support is in preparation.</p>
+<h2><a id="user-content-motivation" class="anchor" aria-hidden="true" href="#motivation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Motivation</h2>
+<p>Besides the obvious reason to gather information for diagnostics, the CPU
+provides valuable information when aiming at increasing the efficiency of code.
+Such use-cases could be to tailor the size of working sets of data according to
+the available cache sizes, to detect when the code is executed in a virtual
+machine (hypervisor), or to determine the size of the largest SIMD registers
+available to choose the best algorithm for the current hardware.</p>
+<p>This information is obtained by directly querying the CPU through the <code>cpuid</code>
+assembly instruction which operates only using CPU registers, and provides
+a portable way to adapt code to specific hardware.</p>
+<p>Same information may of course be collected from various sources, from Julia
+itself or from the operating system, e.g. on Linux from <code>/proc/cpuinfo</code>.  See
+below for a few <a href="#alternatives">alternatives</a>.  However, the <code>cpuid</code> instruction
+is portable in the sense that it doesn't rely on other external dependencies.</p>
+<p>The full documentation is found in Intel's 4670 page combined <a href="http://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-manual-325462.html" rel="nofollow">Architectures
+Software Devleoper Manual</a>.
+A more practical and concise overview of the <code>cpuid</code> instruction is found at
+<a href="http://www.sandpile.org/x86/cpuid.htm" rel="nofollow">sandpile.org</a>.</p>
+<h2><a id="user-content-installation-and-usage" class="anchor" aria-hidden="true" href="#installation-and-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation and Usage</h2>
+<p><em>CpuId</em> is a registered Julia package; use the package manager to install:</p>
+<pre><code>Julia&gt; Pkg.add("CpuId")
+</code></pre>
+<p>Or, if you're keen to get some intermediate updates, clone from GitHub
+<a href="https://github.com/m-j-w/CpuId.jl/tree/master">master branch</a>:</p>
+<pre><code>Julia&gt; Pkg.clone("https://github.com/m-j-w/CpuId.jl")
+</code></pre>
+<p>See the diagnostic summary on your CPU by typing</p>
+<pre><code>julia&gt; using CpuId
+julia&gt; cpuinfo()
+
+   Cpu Property         Value
+  ╾───────────────────╌───────────────────────────────────────────────────────────╼
+   Brand                Intel(R) Xeon(R) CPU E3-1225 v5 @ 3.30GHz
+   Vendor               :Intel
+   Architecture         :Skylake
+   Model                Family: 6, Model: 94, Stepping: 3, Type: 0
+   Cores                4 physical cores, 4 logical cores (on executing CPU)
+                        No Hyperthreading detected
+   Clock Frequencies    3300 / 3700 MHz (base/max), 100 MHz bus
+   Data Cache           Level 1:3 : (32, 256, 8192) kbytes
+                        64 byte cache line size
+   Address Size         48 bits virtual, 39 bits physical
+   SIMD                 256 bit = 32 byte max. SIMD vector size
+   Time Stamp Counter   TSC is accessible via `rdtsc`
+                        TSC runs at constant rate (invariant from clock frequency)
+   Perf. Monitoring     Performance Monitoring Counters (PMC) revision 4
+                        Available hardware counters per logical core:
+                        3 fixed-function counters of 48 bit width
+                        8 general-purpose counters of 48 bit width
+   Hypervisor           No
+</code></pre>
+<p>Or get a list of the feature flags of your CPU with</p>
+<pre><code>julia&gt; cpufeaturetable()
+
+   Cpu Feature   Description
+  ╾────────────╌───────────────────────────────────────────────────────────────╼
+   3DNowP        3D Now PREFETCH and PREFETCHW instructions
+   ACPI          Thermal monitor and software controlled clock facilities (MSR)
+   ADX           Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
+   AES           AES encryption instruction set
+   AHF64         LAHF and SAHF in PM64
+   APIC          APIC on-chip (Advanced Programmable Interrupt Controller)
+   AVX           256bit Advanced Vector Extensions, AVX
+   AVX2          SIMD 256bit Advanced Vector Extensions 2
+   BMI1          Bit Manipulation Instruction Set 1
+   BMI2          Bit Manipulation Instruction Set 2
+   CLFLUSH       CLFLUSHOPT Instructions
+   CLFSH         CLFLUSH instruction (SSE2)
+   CMOV          Conditional move CMOV and FCMOV instructions
+   CX16          CMPXCHG16B instruction
+   CX8           CMPXCHG8 instruction (64bit compare and exchange)
+   ...
+</code></pre>
+<h2><a id="user-content-features" class="anchor" aria-hidden="true" href="#features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Features</h2>
+<p>This release covers a selection of fundamental and higher level functionality:</p>
+<ul>
+<li><code>cpuinfo()</code> generates the summary shown above (markdown string).</li>
+<li><code>cpubrand()</code>, <code>cpumodel()</code>, <code>cpuvendor()</code> allow the identification of the
+CPU.</li>
+<li><code>cpuarchitecture()</code> tries to infer the microarchitecture, currently only of
+Intel CPUs.</li>
+<li><code>cpucores()</code> and <code>cputhreads()</code> to determine the number of physical and
+logical cores on the currently executing CPU, which typically share L3
+caches and main memory bandwidth.  If the result of both functions is
+equal, then the CPU does <em>not</em> use of hyperthreading.</li>
+<li><code>address_size()</code> and <code>physical_address_size()</code> return the number of bits used
+in pointers.  Useful when stealing a few bits from a pointer.</li>
+<li><code>cachelinesize()</code> gives the size in bytes of one cache line, which is
+typically 64 bytes.</li>
+<li><code>cachesize()</code> returns a tuple with the sizes of the data caches in bytes.</li>
+<li><code>cpu_base_frequency()</code>, <code>cpu_max_frequency()</code>, <code>cpu_bus_frequency()</code> give -
+if supported by the CPU, the base, maximum and bus clock frequencies.
+Use <code>has_cpu_frequencies()</code> to check whether this property is supported.</li>
+<li><code>hypervised()</code> returns true when the CPU indicates that a hypervisor is
+running the operating system, aka a virtual machine.  In that case,
+<code>hvvendor()</code> may be invoked to get the, well, hypervisor vendor, and
+<code>hvversion()</code> returns a dictionary of additional version tags.
+<code>hvinfo()</code> generates a markdown summary of same dictionary.</li>
+<li><code>simdbits()</code> and <code>simdbytes()</code> return the size of the largest SIMD register
+available on the executing CPU.</li>
+<li><code>perf_revision()</code> to query the revision number of hardware performance
+monitoring counters, along with <code>perf_fix_counters()</code>, <code>perf_gen_counters()</code>,
+<code>perf_fix_bits()</code>, <code>perf_gen_bits()</code> to determine the number and bit width
+of available fixed-function and general purpose counters per logical core.</li>
+<li><code>cpucycle()</code> and <code>cpucycle_id()</code> let you directly get the CPU's time stamp
+counter, which is increased for every CPU clock cycle. This is a method to
+perform low overhead micro-benchmarking; though, technically, this uses the
+<code>rdtsc</code> and <code>rdtscp</code> instructions rather than <code>cpuid</code>.</li>
+<li><code>cpufeature(::Symbol)</code> permits asking for the availability of a specific
+feature, and <code>cpufeaturetable()</code> gives a complete overview of all detected
+features with a brief explanation, as shown above.</li>
+</ul>
+<h2><a id="user-content-background" class="anchor" aria-hidden="true" href="#background"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Background</h2>
+<p>The <code>cpuid</code> instruction is a generic way provided by the CPU vendor to obtain
+basic hardware information.  It provides data in form of boolean bit fields,
+integer fields and strings, all packed in the returned CPU registers EAX, EBX,
+ECX and EDX. Which information is returned is determined by the so called leaf,
+which is defined by setting the input register EAX to a specific 32 bit integer
+value before executing the instruction.  The extent and kind of information
+obtainable via this instruction has changed quite a lot over the past decade and
+still evolves with every CPU generation.  Thus, not all information is available
+on every CPU model, and certainly everything is vendor dependent.</p>
+<p>This Julia package also provides the <code>cpucycle()</code> function which allows getting
+the current time stamp counter (TSC) by emitting a <code>rdtsc</code> instruction.
+Similarly to <code>cpuid</code>, it only requires CPU registers and is usable in user-land
+code and facilitates an alternative approach to micro-benchmarking.</p>
+<h2><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Limitations</h2>
+<p>The behaviour on non-Intel CPUs is currently unknown; though technically a crash
+of Julia could be expected, theoretically, a rather large list of CPUs support
+the <code>cpuid</code> instruction. Tip: Just try it and report back.</p>
+<p>There are plenty of different CPUs, and in particular the <code>cpuid</code> instruction
+has numerous corner cases, which this package does not address, yet.</p>
+<p>Moreover, the <code>cpuid</code> instruction can only provide information for the executing
+physical CPU, called a package.  To obtain information on all packages, and all
+physical and logical cores, the executing program must be pinned sequentially to
+each and every core, and gather its properties. This is how <code>libuv</code>, <code>hwloc</code> or
+the operating system obtain that kind information.  However, this would require
+additional external or operating system dependent code which is not the scope of
+this package.</p>
+<h4><a id="user-content-specific-limitations" class="anchor" aria-hidden="true" href="#specific-limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Specific limitations</h4>
+<ul>
+<li>
+<p>Why aren't all infos available that are seen e.g. in <code>/proc/cpuinfo</code>?
+Many of those features, flags and properties reside in the so called machine
+specific registers (MSR), which are only accessible to privileged programs
+running in the so called <em>ring 0</em>, such as the Linux kernel itself. Thus,
+short answer: You're not allowed to.</p>
+</li>
+<li>
+<p>The results obtained by <code>CpuId</code> functions are inconsistent with my hardware!
+Try other programs whether they give the same information or differ. If they
+differ, then you found a bug.  See below for some
+<a href="#alternatives">alternatives</a>, in particular the Linux command line tool
+<em>cpuid</em>.</p>
+</li>
+<li>
+<p>When running a hypervisor (virtual machine) the presented information is wrong!
+Hypervisor vendors are free to provide the <code>cpuid</code> information
+by intercepting calls to that instruction.  Not all vendors comply, and some
+even permit the user to change what is reported.  Thus, expect some
+surprises when a hypervisor is detected.</p>
+</li>
+<li>
+<p>My hypervisor is not detected!
+Either you're not really running a hypervisor, e.g. <em>Bash on Windows</em> is
+<em>not</em> a virtual machine, or there is a feature missing. Raise an issue on
+GitHub.</p>
+</li>
+<li>
+<p><code>cpucycles()</code> invokes <code>rdtsc</code>; that is not <code>cpuid</code>!
+True. However, both are valuable when diagnosing performance issues
+and trying to perform micro benchmarks on specific hardware.</p>
+</li>
+</ul>
+<h2><a id="user-content-alternatives" class="anchor" aria-hidden="true" href="#alternatives"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Alternatives</h2>
+<p>On Linux, most of the information may be obtained by reading from the <code>/proc</code>
+tree, in particular <code>/proc/cpuinfo</code>, which eventually also invokes the <code>cpuid</code>
+instruction.  Type <code>man 4 cpuid</code> to get a brief description of this kernel
+driver.</p>
+<p>On many Linux distributions, there is also the command line tool <a href="http://www.etallen.com/cpuid.html" rel="nofollow">cpuid</a>, which essentially does exactly the same.  On
+Ubuntu, you would install it using <code>sudo apt install cpuid</code>, then use it to show
+a summary by simply typing <code>cpuid</code>.</p>
+<p>Then, of course, there are a few functions in Julia Base. These are
+<code>Base.Sys.cpu_info()</code>, and <code>Base.Sys.cpu_summary()</code>, as well as the global
+variables <code>Base.Sys.CPU_CORES</code>, and <code>Base.Sys.cpu_name</code>.  These are mostly
+provided by wrapping <em>libuv</em>.  In particular <code>CPU_CORES</code> is the reason for this
+module: It's intrinsically unclear whether that number includes hyperthreading
+cores, or whether it is referring to real physical cores of the current machine.</p>
+<p>The Julia package <a href="https://github.com/JuliaParallel/Hwloc.jl">Hwloc.jl</a> provides
+similar and more information primarily directed towards the topology of your
+CPUs, viz.  number of CPU packages, physical &amp; logical cores and associated
+caches, along with a number of features to deal with thread affinity. However,
+it also pulls in additional external binary dependencies in that it relies on
+<a href="https://www.open-mpi.org/projects/hwloc/" rel="nofollow">hwloc</a>, which also implies quite some
+computational overhead. Whether this is an issue in the first place depends much
+on your use-case.</p>
+<h2><a id="user-content-terms-of-usage" class="anchor" aria-hidden="true" href="#terms-of-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Terms of usage</h2>
+<p>This Julia package <em>CpuId</em> is published as open source and licensed under the
+<a href="./LICENSE.md">MIT "Expat" License</a>.</p>
+<p><strong>Contributions welcome!</strong></p>
+<p>You're welcome to report successful usage or any issues via GitHub, and to open
+pull requests to extend the current functionality.</p>
+</article></div>

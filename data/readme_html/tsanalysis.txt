@@ -1,0 +1,379 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-tsanalysisjl" class="anchor" aria-hidden="true" href="#tsanalysisjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TSAnalysis.jl</h1>
+<p><code>TSAnalysis</code> includes basic tools for time series analysis, compatible with incomplete data.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> Pkg;
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>TSAnalysis<span class="pl-pds">"</span></span>)</pre></div>
+<h2><a id="user-content-preface" class="anchor" aria-hidden="true" href="#preface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Preface</h2>
+<p>The Kalman filter and smoother included in this package use symmetric matrices (via <code>LinearAlgebra</code>). This is particularly beneficial for the stability and speed of estimation algorithms (e.g., the EM algorithm in Shumway and Stoffer, 1982), and to handle high-dimensional forecasting problems.</p>
+<p>For the examples below, I used economic data from FRED (<a href="https://fred.stlouisfed.org/" rel="nofollow">https://fred.stlouisfed.org/</a>) downloaded via the <code>FredData</code> package. The dependencies for the examples can be installed via:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> Pkg;
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>FredData<span class="pl-pds">"</span></span>);
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>Optim<span class="pl-pds">"</span></span>);
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>Plots<span class="pl-pds">"</span></span>);
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>Measures<span class="pl-pds">"</span></span>);</pre></div>
+<p>Make sure that your FRED API is accessible to <code>FredData</code> (as in <a href="https://github.com/micahjsmith/FredData.jl">https://github.com/micahjsmith/FredData.jl</a>).</p>
+<p>To run the examples below, execute first the following block of code:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Dates, DataFrames, LinearAlgebra, FredData, Optim, Plots, Measures;
+<span class="pl-k">using</span> TSAnalysis;
+
+<span class="pl-c"><span class="pl-c">#</span> Plots backend</span>
+<span class="pl-c1">plotlyjs</span>();
+
+<span class="pl-c"><span class="pl-c">#</span> Initialise FredData</span>
+f <span class="pl-k">=</span> <span class="pl-c1">Fred</span>();
+
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    download_fred_vintage(tickers::Array{String,1}, transformations::Array{String,1})</span>
+<span class="pl-s"></span>
+<span class="pl-s">Download multivariate data from FRED2.</span>
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-k">function</span> <span class="pl-en">download_fred_vintage</span>(tickers<span class="pl-k">::</span><span class="pl-c1">Array{String,1}</span>, transformations<span class="pl-k">::</span><span class="pl-c1">Array{String,1}</span>)
+
+    <span class="pl-c"><span class="pl-c">#</span> Initialise output</span>
+    output_data <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>();
+
+    <span class="pl-c"><span class="pl-c">#</span> Loop over tickers</span>
+    <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(tickers)
+
+        <span class="pl-c"><span class="pl-c">#</span> Download from FRED2</span>
+        fred_data <span class="pl-k">=</span> <span class="pl-c1">get_data</span>(f, tickers[i], observation_start<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>1984-01-01<span class="pl-pds">"</span></span>, units<span class="pl-k">=</span>transformations[i])<span class="pl-k">.</span>data[:, [<span class="pl-c1">:date</span>, <span class="pl-c1">:value</span>]];
+        <span class="pl-c1">rename!</span>(fred_data, <span class="pl-c1">Symbol</span>.([<span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>, tickers[i]]));
+
+        <span class="pl-c"><span class="pl-c">#</span> Store current vintage</span>
+        <span class="pl-k">if</span> i <span class="pl-k">==</span> <span class="pl-c1">1</span>
+            output_data <span class="pl-k">=</span> <span class="pl-c1">copy</span>(fred_data);
+        <span class="pl-k">else</span>
+            output_data <span class="pl-k">=</span> <span class="pl-c1">join</span>(output_data, fred_data, on<span class="pl-k">=</span><span class="pl-c1">:date</span>, kind <span class="pl-k">=</span> <span class="pl-c1">:outer</span>);
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Return output</span>
+    <span class="pl-k">return</span> output_data;
+<span class="pl-k">end</span></pre></div>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<ul>
+<li><a href="#arima-models">ARIMA models</a></li>
+<li><a href="#varima-models">VARIMA models</a></li>
+<li><a href="#kalman-filter-and-smoother">Kalman filter and smoother</a></li>
+<li><a href="#estimation-of-state-space-models">Estimation of state-space models</a></li>
+<li><a href="#subsampling">Bootstrap and jackknife subsampling</a></li>
+</ul>
+<h3><a id="user-content-arima-models" class="anchor" aria-hidden="true" href="#arima-models"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ARIMA models</h3>
+<h4><a id="user-content-data" class="anchor" aria-hidden="true" href="#data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Data</h4>
+<p>Use the following lines of code to download the data for the examples on the ARIMA models:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Download data of interest</span>
+Y_df <span class="pl-k">=</span> <span class="pl-c1">download_fred_vintage</span>([<span class="pl-s"><span class="pl-pds">"</span>INDPRO<span class="pl-pds">"</span></span>], [<span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>]);
+
+<span class="pl-c"><span class="pl-c">#</span> Convert to JArray{Float64}</span>
+Y <span class="pl-k">=</span> Y_df[:,<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">|&gt;</span> JArray{Float64};
+Y <span class="pl-k">=</span> <span class="pl-c1">permutedims</span>(Y);</pre></div>
+<h4><a id="user-content-estimation" class="anchor" aria-hidden="true" href="#estimation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Estimation</h4>
+<p>Suppose that we want to estimate an ARIMA(1,1,1) model for the Industrial Production Index. <code>TSAnalysis</code> provides a simple interface for that:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Estimation settings for an ARIMA(1,1,1)</span>
+d <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+p <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+q <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+arima_settings <span class="pl-k">=</span> <span class="pl-c1">ARIMASettings</span>(Y, d, p, q);
+
+<span class="pl-c"><span class="pl-c">#</span> Estimation</span>
+arima_out <span class="pl-k">=</span> <span class="pl-c1">arima</span>(arima_settings, <span class="pl-c1">NelderMead</span>(), Optim<span class="pl-k">.</span><span class="pl-c1">Options</span>(iterations<span class="pl-k">=</span><span class="pl-c1">10000</span>, f_tol<span class="pl-k">=</span><span class="pl-c1">1e-2</span>, x_tol<span class="pl-k">=</span><span class="pl-c1">1e-2</span>, g_tol<span class="pl-k">=</span><span class="pl-c1">1e-2</span>, show_trace<span class="pl-k">=</span><span class="pl-c1">true</span>, show_every<span class="pl-k">=</span><span class="pl-c1">500</span>));</pre></div>
+<p>Please note that in the estimation process of the underlying ARMA(p,q), the model is constrained to be causal and invertible in the past by default, for all candidate parameters. This behaviour can be controlled via the <code>tightness</code> keyword argument of the <code>arima</code> function.</p>
+<h4><a id="user-content-forecast" class="anchor" aria-hidden="true" href="#forecast"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Forecast</h4>
+<p>The standard forecast function generates prediction for the data in levels. In the example above, this implies that the standard forecast would be referring to industrial production in log-levels:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> 12-step ahead forecast</span>
+max_hz <span class="pl-k">=</span> <span class="pl-c1">12</span>;
+fc <span class="pl-k">=</span> <span class="pl-c1">forecast</span>(arima_out, max_hz, arima_settings);</pre></div>
+<p>This can be easily plotted via</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Extend date vector</span>
+date_ext <span class="pl-k">=</span> Y_df[<span class="pl-k">!</span>,<span class="pl-c1">:date</span>] <span class="pl-k">|&gt;</span> Array{Date,<span class="pl-c1">1</span>};
+
+<span class="pl-k">for</span> hz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>max_hz
+    last_month <span class="pl-k">=</span> <span class="pl-c1">month</span>(date_ext[<span class="pl-c1">end</span>]);
+    last_year <span class="pl-k">=</span> <span class="pl-c1">year</span>(date_ext[<span class="pl-c1">end</span>]);
+
+    <span class="pl-k">if</span> last_month <span class="pl-k">==</span> <span class="pl-c1">12</span>
+        last_month <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+        last_year <span class="pl-k">+=</span> <span class="pl-c1">1</span>;
+    <span class="pl-k">else</span>
+        last_month <span class="pl-k">+=</span> <span class="pl-c1">1</span>;
+    <span class="pl-k">end</span>
+
+    <span class="pl-c1">push!</span>(date_ext, <span class="pl-c1">Date</span>(<span class="pl-s"><span class="pl-pds">"</span>01/<span class="pl-v">$(last_month)</span>/<span class="pl-v">$(last_year)</span><span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>dd/mm/yyyy<span class="pl-pds">"</span></span>))
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Generate plot</span>
+p_arima <span class="pl-k">=</span> <span class="pl-c1">plot</span>(date_ext, [Y[<span class="pl-c1">1</span>,:]; <span class="pl-c1">NaN</span><span class="pl-k">*</span><span class="pl-c1">ones</span>(max_hz)], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Data<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">200</span><span class="pl-k">/</span><span class="pl-c1">255</span>),
+               xtickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), ytickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>),
+               title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>INDPRO<span class="pl-pds">"</span></span>, titlefont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">10</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), framestyle<span class="pl-k">=</span><span class="pl-c1">:box</span>,
+               legend<span class="pl-k">=</span><span class="pl-c1">:right</span>, size<span class="pl-k">=</span>(<span class="pl-c1">800</span>,<span class="pl-c1">250</span>), dpi<span class="pl-k">=</span><span class="pl-c1">300</span>, margin <span class="pl-k">=</span> <span class="pl-c1">5</span>mm);
+
+<span class="pl-c1">plot!</span>(date_ext, [<span class="pl-c1">NaN</span><span class="pl-k">*</span><span class="pl-c1">ones</span>(<span class="pl-c1">length</span>(date_ext)<span class="pl-k">-</span><span class="pl-c1">size</span>(fc,<span class="pl-c1">2</span>)); fc[<span class="pl-c1">1</span>,:]], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Forecast<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">200</span><span class="pl-k">/</span><span class="pl-c1">255</span>), line<span class="pl-k">=</span><span class="pl-c1">:dot</span>)</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="./img/arima.svg"><img src="./img/arima.svg" style="max-width:100%;"></a></p>
+<h3><a id="user-content-varima-models" class="anchor" aria-hidden="true" href="#varima-models"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>VARIMA models</h3>
+<h4><a id="user-content-data-1" class="anchor" aria-hidden="true" href="#data-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Data</h4>
+<p>Use the following lines of code to download the data for the examples on the VARIMA models:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Tickers for data of interest</span>
+tickers <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>INDPRO<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>PAYEMS<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>CPIAUCSL<span class="pl-pds">"</span></span>];
+
+<span class="pl-c"><span class="pl-c">#</span> Transformations for data of interest</span>
+transformations <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>];
+
+<span class="pl-c"><span class="pl-c">#</span> Download data of interest</span>
+Y_df <span class="pl-k">=</span> <span class="pl-c1">download_fred_vintage</span>(tickers, transformations);
+
+<span class="pl-c"><span class="pl-c">#</span> Convert to JArray{Float64}</span>
+Y <span class="pl-k">=</span> Y_df[:,<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">|&gt;</span> JArray{Float64};
+Y <span class="pl-k">=</span> <span class="pl-c1">permutedims</span>(Y);</pre></div>
+<h4><a id="user-content-estimation-1" class="anchor" aria-hidden="true" href="#estimation-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Estimation</h4>
+<p>Suppose that we want to estimate a VARIMA(1,1,1) model. This can be done using:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Estimation settings for a VARIMA(1,1,1)</span>
+d <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+p <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+q <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+varima_settings <span class="pl-k">=</span> <span class="pl-c1">VARIMASettings</span>(Y, d, p, q);
+
+<span class="pl-c"><span class="pl-c">#</span> Estimation</span>
+varima_out <span class="pl-k">=</span> <span class="pl-c1">varima</span>(varima_settings, <span class="pl-c1">NelderMead</span>(), Optim<span class="pl-k">.</span><span class="pl-c1">Options</span>(iterations<span class="pl-k">=</span><span class="pl-c1">20000</span>, f_tol<span class="pl-k">=</span><span class="pl-c1">1e-2</span>, x_tol<span class="pl-k">=</span><span class="pl-c1">1e-2</span>, g_tol<span class="pl-k">=</span><span class="pl-c1">1e-2</span>, show_trace<span class="pl-k">=</span><span class="pl-c1">true</span>, show_every<span class="pl-k">=</span><span class="pl-c1">500</span>));</pre></div>
+<p>Please note that in the estimation process of the underlying VARMA(p,q), the model is constrained to be causal and invertible in the past by default, for all candidate parameters. This behaviour can be controlled via the <code>tightness</code> keyword argument of the <code>varima</code> function.</p>
+<h4><a id="user-content-forecast-1" class="anchor" aria-hidden="true" href="#forecast-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Forecast</h4>
+<p>The standard forecast function generates prediction for the data in levels. In the example above, this implies that the standard forecast would be referring to data in log-levels:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> 12-step ahead forecast</span>
+max_hz <span class="pl-k">=</span> <span class="pl-c1">12</span>;
+fc <span class="pl-k">=</span> <span class="pl-c1">forecast</span>(varima_out, max_hz, varima_settings);</pre></div>
+<p>This can be easily plotted via</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Extend date vector</span>
+date_ext <span class="pl-k">=</span> Y_df[<span class="pl-k">!</span>,<span class="pl-c1">:date</span>] <span class="pl-k">|&gt;</span> Array{Date,<span class="pl-c1">1</span>};
+
+<span class="pl-k">for</span> hz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>max_hz
+    last_month <span class="pl-k">=</span> <span class="pl-c1">month</span>(date_ext[<span class="pl-c1">end</span>]);
+    last_year <span class="pl-k">=</span> <span class="pl-c1">year</span>(date_ext[<span class="pl-c1">end</span>]);
+
+    <span class="pl-k">if</span> last_month <span class="pl-k">==</span> <span class="pl-c1">12</span>
+        last_month <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+        last_year <span class="pl-k">+=</span> <span class="pl-c1">1</span>;
+    <span class="pl-k">else</span>
+        last_month <span class="pl-k">+=</span> <span class="pl-c1">1</span>;
+    <span class="pl-k">end</span>
+
+    <span class="pl-c1">push!</span>(date_ext, <span class="pl-c1">Date</span>(<span class="pl-s"><span class="pl-pds">"</span>01/<span class="pl-v">$(last_month)</span>/<span class="pl-v">$(last_year)</span><span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>dd/mm/yyyy<span class="pl-pds">"</span></span>))
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Generate plot</span>
+figure <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{Any,1}</span>(undef, varima_settings<span class="pl-k">.</span>n)
+
+<span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>varima_settings<span class="pl-k">.</span>n
+    figure[i] <span class="pl-k">=</span> <span class="pl-c1">plot</span>(date_ext, [Y[i,:]; <span class="pl-c1">NaN</span><span class="pl-k">*</span><span class="pl-c1">ones</span>(max_hz)], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Data<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">200</span><span class="pl-k">/</span><span class="pl-c1">255</span>),
+                     xtickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), ytickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>),
+                     title<span class="pl-k">=</span>tickers[i], titlefont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">10</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), framestyle<span class="pl-k">=</span><span class="pl-c1">:box</span>,
+                     legend<span class="pl-k">=</span><span class="pl-c1">:right</span>, size<span class="pl-k">=</span>(<span class="pl-c1">800</span>,<span class="pl-c1">250</span>), dpi<span class="pl-k">=</span><span class="pl-c1">300</span>, margin <span class="pl-k">=</span> <span class="pl-c1">5</span>mm);
+
+    <span class="pl-c1">plot!</span>(date_ext, [<span class="pl-c1">NaN</span><span class="pl-k">*</span><span class="pl-c1">ones</span>(<span class="pl-c1">length</span>(date_ext)<span class="pl-k">-</span><span class="pl-c1">size</span>(fc,<span class="pl-c1">2</span>)); fc[i,:]], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Forecast<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">200</span><span class="pl-k">/</span><span class="pl-c1">255</span>), line<span class="pl-k">=</span><span class="pl-c1">:dot</span>);
+<span class="pl-k">end</span></pre></div>
+<p>Industrial production (log-levels)</p>
+<div class="highlight highlight-source-julia"><pre>figure[<span class="pl-c1">1</span>]</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="./img/varima_p1.svg"><img src="./img/varima_p1.svg" style="max-width:100%;"></a></p>
+<p>Non-farm payrolls (log-levels)</p>
+<div class="highlight highlight-source-julia"><pre>figure[<span class="pl-c1">2</span>]</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="./img/varima_p2.svg"><img src="./img/varima_p2.svg" style="max-width:100%;"></a></p>
+<p>Headline CPI (log-levels)</p>
+<div class="highlight highlight-source-julia"><pre>figure[<span class="pl-c1">3</span>]</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="./img/varima_p3.svg"><img src="./img/varima_p3.svg" style="max-width:100%;"></a></p>
+<h3><a id="user-content-kalman-filter-and-smoother" class="anchor" aria-hidden="true" href="#kalman-filter-and-smoother"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Kalman filter and smoother</h3>
+<h4><a id="user-content-data-2" class="anchor" aria-hidden="true" href="#data-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Data</h4>
+<p>The following examples show how to perform a standard univariate state-space decomposition (local linear trend + seasonal + noise decomposition) using the implementations of the Kalman filter and smoother in <code>TSAnalysis</code>. These examples use non-seasonally adjusted (NSA) data that can be downloaded via:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Download data of interest</span>
+Y_df <span class="pl-k">=</span> <span class="pl-c1">download_fred_vintage</span>([<span class="pl-s"><span class="pl-pds">"</span>IPGMFN<span class="pl-pds">"</span></span>], [<span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>]);
+
+<span class="pl-c"><span class="pl-c">#</span> Convert to JArray{Float64}</span>
+Y <span class="pl-k">=</span> Y_df[:,<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">|&gt;</span> JArray{Float64};
+Y <span class="pl-k">=</span> <span class="pl-c1">permutedims</span>(Y);</pre></div>
+<h4><a id="user-content-kalman-filter" class="anchor" aria-hidden="true" href="#kalman-filter"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Kalman filter</h4>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Initialise the Kalman filter and smoother status</span>
+kstatus <span class="pl-k">=</span> <span class="pl-c1">KalmanStatus</span>();
+
+<span class="pl-c"><span class="pl-c">#</span> Specify the state-space structure</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Observation equation</span>
+B <span class="pl-k">=</span> <span class="pl-c1">hcat</span>([<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>], [[<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>] <span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">6</span>]<span class="pl-k">.</span><span class="pl-k">..</span>);
+R <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">1</span>,<span class="pl-c1">1</span>)<span class="pl-k">*</span><span class="pl-c1">0.01</span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Transition equation</span>
+C <span class="pl-k">=</span> <span class="pl-c1">cat</span>(dims<span class="pl-k">=</span>[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], [<span class="pl-c1">1.0</span> <span class="pl-c1">1.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span>], [[<span class="pl-c1">cos</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span><span class="pl-c1">12</span>) <span class="pl-c1">sin</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span><span class="pl-c1">12</span>); <span class="pl-k">-</span><span class="pl-c1">sin</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span><span class="pl-c1">12</span>) <span class="pl-c1">cos</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span><span class="pl-c1">12</span>)] <span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">6</span>]<span class="pl-k">.</span><span class="pl-k">..</span>);
+V <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">cat</span>(dims<span class="pl-k">=</span>[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], [<span class="pl-c1">1e-4</span> <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">1e-4</span>], <span class="pl-c1">1e-4</span><span class="pl-k">*</span><span class="pl-c1">Matrix</span>(I,<span class="pl-c1">12</span>,<span class="pl-c1">12</span>)));
+
+<span class="pl-c"><span class="pl-c">#</span> Initial conditions</span>
+X0 <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">14</span>);
+P0 <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">cat</span>(dims<span class="pl-k">=</span>[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], <span class="pl-c1">1e3</span><span class="pl-k">*</span><span class="pl-c1">Matrix</span>(I,<span class="pl-c1">2</span>,<span class="pl-c1">2</span>), <span class="pl-c1">1e3</span><span class="pl-k">*</span><span class="pl-c1">Matrix</span>(I,<span class="pl-c1">12</span>,<span class="pl-c1">12</span>)));
+
+<span class="pl-c"><span class="pl-c">#</span> Settings</span>
+ksettings <span class="pl-k">=</span> <span class="pl-c1">ImmutableKalmanSettings</span>(Y, B, R, C, V, X0, P0);
+
+<span class="pl-c"><span class="pl-c">#</span> Filter for t = 1, ..., T (the output is dynamically stored into kstatus)</span>
+<span class="pl-k">for</span> t<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">2</span>)
+    <span class="pl-c1">kfilter!</span>(ksettings, kstatus);
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Filtered trend</span>
+trend_llts <span class="pl-k">=</span> <span class="pl-c1">hcat</span>(kstatus<span class="pl-k">.</span>history_X_post<span class="pl-k">...</span>)[<span class="pl-c1">1</span>,:];</pre></div>
+<h4><a id="user-content-kalman-filter-out-of-sample-forecast" class="anchor" aria-hidden="true" href="#kalman-filter-out-of-sample-forecast"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Kalman filter (out-of-sample forecast)</h4>
+<p><code>TSAnalysis</code> allows to compute <em>h</em>-step ahead forecasts for the latent states without resetting the Kalman filter. This is particularly efficient for applications wherein the number of observed time periods is particularly large, or for heavy out-of-sample exercises.</p>
+<p>An easy way to compute the 12-step ahead prediction is to edit the block</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Filter for t = 1, ..., T (the output is dynamically stored into kstatus)</span>
+<span class="pl-k">for</span> t<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">1</span>)
+    <span class="pl-c1">kfilter!</span>(ksettings, kstatus);
+<span class="pl-k">end</span></pre></div>
+<p>into</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Initialise forecast history</span>
+forecast_history <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{Array{Float64,1},1}</span>();
+
+<span class="pl-c"><span class="pl-c">#</span> 12-step ahead forecast</span>
+max_hz <span class="pl-k">=</span> <span class="pl-c1">12</span>;
+
+<span class="pl-c"><span class="pl-c">#</span> Filter for t = 1, ..., T (the output is dynamically stored into kstatus)</span>
+<span class="pl-k">for</span> t<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">1</span>)
+    <span class="pl-c1">kfilter!</span>(ksettings, kstatus);
+
+    <span class="pl-c"><span class="pl-c">#</span> Multiplying for B gives the out-of-sample forecast of the data</span>
+    <span class="pl-c1">push!</span>(forecast_history, (B<span class="pl-k">*</span><span class="pl-c1">hcat</span>(<span class="pl-c1">kforecast</span>(ksettings, kstatus<span class="pl-k">.</span>X_post, max_hz)<span class="pl-k">...</span>))[:]);
+<span class="pl-k">end</span></pre></div>
+<h4><a id="user-content-kalman-smoother" class="anchor" aria-hidden="true" href="#kalman-smoother"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Kalman smoother</h4>
+<p>At any point in time, the Kalman smoother can be executed via</p>
+<div class="highlight highlight-source-julia"><pre>history_Xs, history_Ps, X0s, P0s <span class="pl-k">=</span> <span class="pl-c1">ksmoother</span>(ksettings, kstatus);</pre></div>
+<h3><a id="user-content-estimation-of-state-space-models" class="anchor" aria-hidden="true" href="#estimation-of-state-space-models"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Estimation of state-space models</h3>
+<p>State-space models without a high-level interface can be estimated using <code>TSAnalysis</code> and <code>Optim</code> jointly.</p>
+<p>The state-space model described in the previous section can be estimated following the steps below.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">llt_seasonal_noise</span>(θ_bound, Y, s)
+
+    <span class="pl-c"><span class="pl-c">#</span> Initialise the Kalman filter and smoother status</span>
+    kstatus <span class="pl-k">=</span> <span class="pl-c1">KalmanStatus</span>();
+
+    <span class="pl-c"><span class="pl-c">#</span> Specify the state-space structure</span>
+
+    s_half <span class="pl-k">=</span> <span class="pl-c1">Int64</span>(s<span class="pl-k">/</span><span class="pl-c1">2</span>);
+
+    <span class="pl-c"><span class="pl-c">#</span> Observation equation</span>
+    B <span class="pl-k">=</span> <span class="pl-c1">hcat</span>([<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>], [[<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>] <span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>s_half]<span class="pl-k">.</span><span class="pl-k">..</span>);
+    R <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">1</span>,<span class="pl-c1">1</span>)<span class="pl-k">*</span>θ_bound[<span class="pl-c1">1</span>]);
+
+    <span class="pl-c"><span class="pl-c">#</span> Transition equation</span>
+    C <span class="pl-k">=</span> <span class="pl-c1">cat</span>(dims<span class="pl-k">=</span>[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], [<span class="pl-c1">1.0</span> <span class="pl-c1">1.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span>], [[<span class="pl-c1">cos</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span>s) <span class="pl-c1">sin</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span>s); <span class="pl-k">-</span><span class="pl-c1">sin</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span>s) <span class="pl-c1">cos</span>(<span class="pl-c1">2</span><span class="pl-k">*</span>pi<span class="pl-k">*</span>j<span class="pl-k">/</span>s)] <span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>s_half]<span class="pl-k">.</span><span class="pl-k">..</span>);
+    V <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">cat</span>(dims<span class="pl-k">=</span>[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], [θ_bound[<span class="pl-c1">2</span>] <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> θ_bound[<span class="pl-c1">3</span>]], θ_bound[<span class="pl-c1">4</span>]<span class="pl-k">*</span><span class="pl-c1">Matrix</span>(I,s,s)));
+
+    <span class="pl-c"><span class="pl-c">#</span> Initial conditions</span>
+    X0 <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">2</span><span class="pl-k">+</span>s);
+    P0 <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">cat</span>(dims<span class="pl-k">=</span>[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], <span class="pl-c1">1e3</span><span class="pl-k">*</span><span class="pl-c1">Matrix</span>(I,<span class="pl-c1">2</span><span class="pl-k">+</span>s,<span class="pl-c1">2</span><span class="pl-k">+</span>s)));
+
+    <span class="pl-c"><span class="pl-c">#</span> Settings</span>
+    ksettings <span class="pl-k">=</span> <span class="pl-c1">ImmutableKalmanSettings</span>(Y, B, R, C, V, X0, P0);
+
+    <span class="pl-c"><span class="pl-c">#</span> Filter for t = 1, ..., T (the output is dynamically stored into kstatus)</span>
+    <span class="pl-k">for</span> t<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">2</span>)
+        <span class="pl-c1">kfilter!</span>(ksettings, kstatus);
+    <span class="pl-k">end</span>
+
+    <span class="pl-k">return</span> ksettings, kstatus;
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">fmin</span>(θ_unbound, Y; s<span class="pl-k">::</span><span class="pl-c1">Int64</span><span class="pl-k">=</span><span class="pl-c1">12</span>)
+
+    <span class="pl-c"><span class="pl-c">#</span> Apply bounds</span>
+    θ_bound <span class="pl-k">=</span> <span class="pl-c1">copy</span>(θ_unbound);
+    <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(θ_bound)
+        θ_bound[i] <span class="pl-k">=</span> TSAnalysis<span class="pl-k">.</span><span class="pl-c1">get_bounded_log</span>(θ_bound[i], <span class="pl-c1">1e-8</span>);
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Compute loglikelihood</span>
+    ksettings, kstatus <span class="pl-k">=</span> <span class="pl-c1">llt_seasonal_noise</span>(θ_bound, Y, s)
+
+    <span class="pl-c"><span class="pl-c">#</span> Return -loglikelihood</span>
+    <span class="pl-k">return</span> <span class="pl-k">-</span>kstatus<span class="pl-k">.</span>loglik;
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Starting point</span>
+θ_starting <span class="pl-k">=</span> <span class="pl-c1">1e-8</span><span class="pl-k">*</span><span class="pl-c1">ones</span>(<span class="pl-c1">4</span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Estimate the model</span>
+res <span class="pl-k">=</span> Optim<span class="pl-k">.</span><span class="pl-c1">optimize</span>(θ_unbound<span class="pl-k">-&gt;</span><span class="pl-c1">fmin</span>(θ_unbound, Y, s<span class="pl-k">=</span><span class="pl-c1">12</span>), θ_starting, <span class="pl-c1">NelderMead</span>(),
+                     Optim<span class="pl-k">.</span><span class="pl-c1">Options</span>(iterations<span class="pl-k">=</span><span class="pl-c1">10000</span>, f_tol<span class="pl-k">=</span><span class="pl-c1">1e-4</span>, x_tol<span class="pl-k">=</span><span class="pl-c1">1e-4</span>, show_trace<span class="pl-k">=</span><span class="pl-c1">true</span>, show_every<span class="pl-k">=</span><span class="pl-c1">500</span>));
+
+<span class="pl-c"><span class="pl-c">#</span> Apply bounds</span>
+θ_bound <span class="pl-k">=</span> <span class="pl-c1">copy</span>(res<span class="pl-k">.</span>minimizer);
+<span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(θ_bound)
+    θ_bound[i] <span class="pl-k">=</span> TSAnalysis<span class="pl-k">.</span><span class="pl-c1">get_bounded_log</span>(θ_bound[i], <span class="pl-c1">1e-8</span>);
+<span class="pl-k">end</span></pre></div>
+<p>More options for the optimisation can be found at <a href="https://github.com/JuliaNLSolvers/Optim.jl">https://github.com/JuliaNLSolvers/Optim.jl</a>.</p>
+<p>The results of the estimation can be visualised using <code>Plots</code>.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Kalman smoother estimates</span>
+ksettings, kstatus <span class="pl-k">=</span> <span class="pl-c1">llt_seasonal_noise</span>(θ_bound, Y, <span class="pl-c1">12</span>);
+history_Xs, history_Ps, X0s, P0s <span class="pl-k">=</span> <span class="pl-c1">ksmoother</span>(ksettings, kstatus);
+
+<span class="pl-c"><span class="pl-c">#</span> Data vs trend</span>
+p_trend <span class="pl-k">=</span> <span class="pl-c1">plot</span>(Y_df[<span class="pl-k">!</span>,<span class="pl-c1">:date</span>], <span class="pl-c1">permutedims</span>(Y), label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Data<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">185</span><span class="pl-k">/</span><span class="pl-c1">255</span>,<span class="pl-c1">185</span><span class="pl-k">/</span><span class="pl-c1">255</span>,<span class="pl-c1">185</span><span class="pl-k">/</span><span class="pl-c1">255</span>),
+               xtickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), ytickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>),
+               title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>IPGMFN<span class="pl-pds">"</span></span>, titlefont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">10</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), framestyle<span class="pl-k">=</span><span class="pl-c1">:box</span>,
+               legend<span class="pl-k">=</span><span class="pl-c1">:right</span>, size<span class="pl-k">=</span>(<span class="pl-c1">800</span>,<span class="pl-c1">250</span>), dpi<span class="pl-k">=</span><span class="pl-c1">300</span>, margin <span class="pl-k">=</span> <span class="pl-c1">5</span>mm);
+
+<span class="pl-c1">plot!</span>(Y_df[<span class="pl-k">!</span>,<span class="pl-c1">:date</span>], <span class="pl-c1">hcat</span>(history_Xs<span class="pl-k">...</span>)[<span class="pl-c1">1</span>,:], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Trend<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">200</span><span class="pl-k">/</span><span class="pl-c1">255</span>))</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="./img/ks_trend.svg"><img src="./img/ks_trend.svg" style="max-width:100%;"></a></p>
+<p>and</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Slope (of the trend)</span>
+p_slope <span class="pl-k">=</span> <span class="pl-c1">plot</span>(Y_df[<span class="pl-k">!</span>,<span class="pl-c1">:date</span>], <span class="pl-c1">hcat</span>(history_Xs<span class="pl-k">...</span>)[<span class="pl-c1">2</span>,:], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Slope<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">200</span><span class="pl-k">/</span><span class="pl-c1">255</span>),
+               xtickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), ytickfont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">8</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>),
+               titlefont<span class="pl-k">=</span><span class="pl-c1">font</span>(<span class="pl-c1">10</span>, <span class="pl-s"><span class="pl-pds">"</span>Helvetica Neue<span class="pl-pds">"</span></span>), framestyle<span class="pl-k">=</span><span class="pl-c1">:box</span>,
+               legend<span class="pl-k">=</span><span class="pl-c1">:right</span>, size<span class="pl-k">=</span>(<span class="pl-c1">800</span>,<span class="pl-c1">250</span>), dpi<span class="pl-k">=</span><span class="pl-c1">300</span>, margin <span class="pl-k">=</span> <span class="pl-c1">5</span>mm)</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="./img/ks_slope_trend.svg"><img src="./img/ks_slope_trend.svg" style="max-width:100%;"></a></p>
+<h3><a id="user-content-bootstrap-and-jackknife-subsampling" class="anchor" aria-hidden="true" href="#bootstrap-and-jackknife-subsampling"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Bootstrap and jackknife subsampling</h3>
+<p><code>TSAnalysis</code> provides support for the bootstrap and jackknife subsampling methods introduced in Kunsch (1989), Liu and Singh (1992), Pellegrino (2020), Politis and Romano (1994):</p>
+<ul>
+<li>Artificial delete-<em>d</em> jackknife</li>
+<li>Block bootstrap</li>
+<li>Block jackknife</li>
+<li>Stationary bootstrap</li>
+</ul>
+<h4><a id="user-content-data-3" class="anchor" aria-hidden="true" href="#data-3"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Data</h4>
+<p>Use the following lines of code to download the data for the examples below:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Tickers for data of interest</span>
+tickers <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>INDPRO<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>PAYEMS<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>CPIAUCSL<span class="pl-pds">"</span></span>];
+
+<span class="pl-c"><span class="pl-c">#</span> Transformations for data of interest</span>
+transformations <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>];
+
+<span class="pl-c"><span class="pl-c">#</span> Download data of interest</span>
+Y_df <span class="pl-k">=</span> <span class="pl-c1">download_fred_vintage</span>(tickers, transformations);
+
+<span class="pl-c"><span class="pl-c">#</span> Convert to JArray{Float64}</span>
+Y <span class="pl-k">=</span> Y_df[:,<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">|&gt;</span> JArray{Float64};
+Y <span class="pl-k">=</span> <span class="pl-c1">100</span><span class="pl-k">*</span><span class="pl-c1">permutedims</span>(<span class="pl-c1">diff</span>(Y, dims<span class="pl-k">=</span><span class="pl-c1">1</span>));</pre></div>
+<h4><a id="user-content-subsampling" class="anchor" aria-hidden="true" href="#subsampling"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Subsampling</h4>
+<h5><a id="user-content-artificial-delete-d-jackknife" class="anchor" aria-hidden="true" href="#artificial-delete-d-jackknife"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Artificial delete-<em>d</em> jackknife</h5>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Optimal d. See Pellegrino (2020) for more details.</span>
+d_hat <span class="pl-k">=</span> <span class="pl-c1">optimal_d</span>(<span class="pl-c1">size</span>(Y)<span class="pl-k">...</span>);
+
+<span class="pl-c"><span class="pl-c">#</span> 100 artificial jackknife samples</span>
+output_ajk <span class="pl-k">=</span> <span class="pl-c1">artificial_jackknife</span>(Y, d_hat<span class="pl-k">/</span><span class="pl-c1">prod</span>(<span class="pl-c1">size</span>(Y)), <span class="pl-c1">100</span>);</pre></div>
+<h5><a id="user-content-block-bootstrap" class="anchor" aria-hidden="true" href="#block-bootstrap"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Block bootstrap</h5>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Block size</span>
+block_size <span class="pl-k">=</span> <span class="pl-c1">10</span>;
+
+<span class="pl-c"><span class="pl-c">#</span> 100 block bootstrap samples</span>
+output_bb <span class="pl-k">=</span> <span class="pl-c1">moving_block_bootstrap</span>(Y, block_size<span class="pl-k">/</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">2</span>), <span class="pl-c1">100</span>);</pre></div>
+<h5><a id="user-content-block-jackknife" class="anchor" aria-hidden="true" href="#block-jackknife"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Block jackknife</h5>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Block size</span>
+block_size <span class="pl-k">=</span> <span class="pl-c1">10</span>;
+
+<span class="pl-c"><span class="pl-c">#</span> Block jackknife samples (full collection)</span>
+output_bjk <span class="pl-k">=</span> <span class="pl-c1">block_jackknife</span>(Y, block_size<span class="pl-k">/</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">2</span>));</pre></div>
+<h5><a id="user-content-stationary-bootstrap" class="anchor" aria-hidden="true" href="#stationary-bootstrap"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Stationary bootstrap</h5>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Average block size</span>
+avg_block_size <span class="pl-k">=</span> <span class="pl-c1">10</span>;
+
+<span class="pl-c"><span class="pl-c">#</span> 100 stationary bootstrap samples</span>
+output_sb <span class="pl-k">=</span> <span class="pl-c1">stationary_block_bootstrap</span>(Y, avg_block_size<span class="pl-k">/</span><span class="pl-c1">size</span>(Y,<span class="pl-c1">2</span>), <span class="pl-c1">100</span>);</pre></div>
+<h2><a id="user-content-bibliography" class="anchor" aria-hidden="true" href="#bibliography"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Bibliography</h2>
+<ul>
+<li>Kunsch, H. R. (1989). The jackknife and the bootstrap for general stationary observations. The annals of Statistics, 1217-1241.</li>
+<li>Liu, R. Y., &amp; Singh, K. (1992). Moving blocks jackknife and bootstrap capture weak dependence. Exploring the limits of bootstrap, 225, 248.</li>
+<li>Pellegrino, F. (2020). Selecting time-series hyperparameters with the artificial jackknife. arXiv preprint arXiv:2002.04697.</li>
+<li>Politis, D. N., &amp; Romano, J. P. (1994). The stationary bootstrap. Journal of the American Statistical association, 89(428), 1303-1313.</li>
+<li>Shumway, R. H., &amp; Stoffer, D. S. (1982). An approach to time series smoothing and forecasting using the EM algorithm. Journal of time series analysis, 3(4), 253-264.</li>
+</ul>
+</article></div>

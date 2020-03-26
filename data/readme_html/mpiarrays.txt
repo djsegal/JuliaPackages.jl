@@ -1,0 +1,114 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-mpiarrays" class="anchor" aria-hidden="true" href="#mpiarrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>MPIArrays</h1>
+<p>This package provides distributed arrays based on MPI one-sided communication primitives.
+It is currently a proof-of-concept, only the functionality described in this readme is implemented
+so far.</p>
+<p>The following simple example shows how to multiply a matrix and a vector:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> MPI, MPIArrays
+
+MPI<span class="pl-k">.</span><span class="pl-c1">Init</span>()
+rank <span class="pl-k">=</span> MPI<span class="pl-k">.</span><span class="pl-c1">Comm_rank</span>(MPI<span class="pl-k">.</span>COMM_WORLD)
+N <span class="pl-k">=</span> <span class="pl-c1">30</span> <span class="pl-c"><span class="pl-c">#</span> size of the matrix</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Create an uninitialized matrix and vector</span>
+x <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Float64}</span>(N)
+A <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Float64}</span>(N,N)
+
+<span class="pl-c"><span class="pl-c">#</span> Set random values</span>
+<span class="pl-c1">forlocalpart!</span>(rand!,x)
+<span class="pl-c1">forlocalpart!</span>(rand!,A)
+
+<span class="pl-c"><span class="pl-c">#</span> Make sure every process finished initializing the coefficients</span>
+<span class="pl-c1">sync</span>(A, x)
+
+b <span class="pl-k">=</span> A<span class="pl-k">*</span>x
+
+<span class="pl-c"><span class="pl-c">#</span> This will print on the first process, using slow element-by-element communication, but that's OK to print to screen</span>
+rank <span class="pl-k">==</span> <span class="pl-c1">0</span> <span class="pl-k">&amp;&amp;</span> <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Matvec result: <span class="pl-v">$b</span><span class="pl-pds">"</span></span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Clean up</span>
+<span class="pl-c1">free</span>(A)
+<span class="pl-c1">free</span>(x)
+MPI<span class="pl-k">.</span><span class="pl-c1">Finalize</span>()</pre></div>
+<h2><a id="user-content-construction" class="anchor" aria-hidden="true" href="#construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Construction</h2>
+<p>The constructors always create uninitialized arrays. In the most basic form, only the array size is needed as argument:</p>
+<div class="highlight highlight-source-julia"><pre>x <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Int}</span>(<span class="pl-c1">5</span>,<span class="pl-c1">5</span>)</pre></div>
+<p>This will distribute the first array dimension evenly over the number of processes in the <code>MPI.COMM_WORLD</code> communicator.</p>
+<p>It is also possible to specify the number of partitions in each direction, e.g. to
+create a 20 × 20 matrix with 2 partitions in each direction:</p>
+<div class="highlight highlight-source-julia"><pre>x <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Int}</span>(MPI<span class="pl-k">.</span>COMM_WORLD, (<span class="pl-c1">2</span>,<span class="pl-c1">2</span>), <span class="pl-c1">20</span>,<span class="pl-c1">20</span>)</pre></div>
+<p>The above constructors automatically distribute the total number of elements in each direction in a uniform way. It is also possible to manually specify the number of elements in each partition in each direction:</p>
+<div class="highlight highlight-source-julia"><pre>x <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Int}</span>(MPI<span class="pl-k">.</span>COMM_WORLD, [<span class="pl-c1">7</span>,<span class="pl-c1">3</span>], [<span class="pl-c1">10</span>])</pre></div>
+<p>This will create a 10 × 10 distributed array, with 7 rows on the first processor and 3 on the second.</p>
+<p>Finally, a distributed array can be constructed from predefined local parts:</p>
+<div class="highlight highlight-source-julia"><pre>x <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Int}</span>([<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>], <span class="pl-c1">4</span>)</pre></div>
+<p>This will produce a distributed array with 4 partitions, each containing <code>[1,2,3]</code></p>
+<h2><a id="user-content-manipulation" class="anchor" aria-hidden="true" href="#manipulation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Manipulation</h2>
+<p>The array interface is implemented, including normal indexing operations. Note that these lock and unlock the MPI window on each call, and are therefore expensive. The advantage of having these operations defined is mainly for convenient access to utility functions such as I/O.</p>
+<p>Other supported operations from Base are <code>LinearAlgebra.A_mul_B!</code> for Matrix-vector product and <code>Base.filter</code> and <code>Base.filter!</code></p>
+<h3><a id="user-content-utility-operations" class="anchor" aria-hidden="true" href="#utility-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Utility operations</h3>
+<p>A tuple containing the locally-owned index range can be obtained using <code>localindices</code>, with the rank as an optional argument to get the range on a rank other than the current rank. Calling <code>free</code> on an array will destroy the underlying MPI Window. This must be done manually, since there is no guarantee that garbage-collection will happen at the same time on all processes, so it is dangerous to place the collective call to destroy the window in a finalizer. To make all processes wait, call <code>sync</code> with one or more MPIArrays as argument. Currently this just calls <code>MPI.Barrier</code> on the array communicator.</p>
+<h3><a id="user-content-accessing-local-data" class="anchor" aria-hidden="true" href="#accessing-local-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Accessing local data</h3>
+<p>Local data can be accessed using the <code>forlocalpart</code> function, which executes the function in the first argument on the local data of the array in the second argument, so it is compatible with the <code>do</code>-block syntax:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Fill the local part with random numbers</span>
+<span class="pl-c1">forlocalpart!</span>(rand!, A)
+
+<span class="pl-c"><span class="pl-c">#</span> Sum up the local part</span>
+localsum <span class="pl-k">=</span> <span class="pl-c1">forlocalpart</span>(A) <span class="pl-k">do</span> lp
+  result <span class="pl-k">=</span> <span class="pl-c1">zero</span>(<span class="pl-c1">eltype</span>(lp))
+  <span class="pl-k">for</span> x <span class="pl-k">in</span> lp
+    result <span class="pl-k">+=</span> x
+  <span class="pl-k">end</span>
+  <span class="pl-k">return</span> result
+<span class="pl-k">end</span></pre></div>
+<h3><a id="user-content-redistributing-data" class="anchor" aria-hidden="true" href="#redistributing-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Redistributing data</h3>
+<p>Data can be redistributed among processes as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Initial tiled distribution over 4 processes:</span>
+A <span class="pl-k">=</span> <span class="pl-c1">MPIArray</span><span class="pl-c1">{Int}</span>(comm, (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>), N, N)
+<span class="pl-c"><span class="pl-c">#</span> Non-uniform redistribution, with one column on the first processor and the rest on the last:</span>
+<span class="pl-c1">redistribute!</span>(A, [N], [<span class="pl-c1">1</span>,<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,N<span class="pl-k">-</span><span class="pl-c1">1</span>])
+<span class="pl-c"><span class="pl-c">#</span> Restore equal distribution over the columns:</span>
+<span class="pl-c1">redistribute!</span>(A)</pre></div>
+<p>See also <code>examples/redist.jl</code>.</p>
+<h2><a id="user-content-blocks" class="anchor" aria-hidden="true" href="#blocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Blocks</h2>
+<p>The <code>Block</code> type helps in accessing off-processor data, since individual element access is too expensive. Blocks are created using the indexing operators using range arguments, e.g.:</p>
+<div class="highlight highlight-source-julia"><pre>Ablock <span class="pl-k">=</span> A[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">6</span>]</pre></div>
+<p>The block will not yet contain data, it just refers to the global index range <code>(1:3, 2:6)</code> and keeps track of the processes involved. To actually read the data, also allocating an array for the storage:</p>
+<div class="highlight highlight-source-julia"><pre>Amat <span class="pl-k">=</span> <span class="pl-c1">getblock</span>(Ablock)</pre></div>
+<p>It's also possible to just allocate the matrix and fill it in a separate step:</p>
+<div class="highlight highlight-source-julia"><pre>Amat <span class="pl-k">=</span> <span class="pl-c1">allocate</span>(Ablock)
+<span class="pl-c1">getblock!</span>(Amat, Ablock)</pre></div>
+<p>After modifying entries in an array associated with a block, the data can be sent back to the other processes:</p>
+<div class="highlight highlight-source-julia"><pre>Amat <span class="pl-k">=</span> <span class="pl-c1">allocate</span>(Ablock)
+<span class="pl-c1">rand!</span>(Amat)
+<span class="pl-c1">putblock!</span>(Amat, Ablock)</pre></div>
+<h3><a id="user-content-global-indexing-on-a-block" class="anchor" aria-hidden="true" href="#global-indexing-on-a-block"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Global indexing on a block</h3>
+<p>Since a <code>Block</code> just refers to a regular Julia array, the indexing is local to the block. To index an array linked to a <code>Block</code> using the global indices of the underlying <code>MPIArray</code>, create a <code>GlobalBlock</code> like this:</p>
+<div class="highlight highlight-source-julia"><pre>gb <span class="pl-k">=</span> <span class="pl-c1">GlobalBlock</span>(Amat, Ablock)</pre></div>
+<h3><a id="user-content-ghost-nodes" class="anchor" aria-hidden="true" href="#ghost-nodes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Ghost nodes</h3>
+<p>A <code>GhostedBlock</code> allows periodic reading of off-processor data in arbitrary locations in the array. The <code>push!</code> method adds new indices, while <code>sort!</code> ensures that fetching the data (using <code>sync</code>) happens in the minimal number of MPI calls. The <code>getglobal</code> function gets an array value that is either part of the local data or a ghost, using its global array indices.</p>
+<div class="highlight highlight-source-julia"><pre>ghosted <span class="pl-k">=</span> <span class="pl-c1">GhostedBlock</span>(A)
+<span class="pl-c1">push!</span>(ghosted, <span class="pl-c1">1</span>,<span class="pl-c1">1</span>)
+<span class="pl-c1">push!</span>(ghosted, <span class="pl-c1">3</span>,<span class="pl-c1">2</span>)
+<span class="pl-c1">sort!</span>(ghosted)
+<span class="pl-c"><span class="pl-c">#</span> Fetch off-processor data:</span>
+<span class="pl-c1">sync</span>(ghosted)
+<span class="pl-c"><span class="pl-c">#</span> Show all ghosts:</span>
+<span class="pl-c1">@show</span> ghosted
+<span class="pl-c"><span class="pl-c">#</span> Get an entry using its global indices, if part of the local data or ghosts:</span>
+<span class="pl-c1">@show</span> <span class="pl-c1">getglobal</span>(ghosted, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>)</pre></div>
+<h2><a id="user-content-benchmark" class="anchor" aria-hidden="true" href="#benchmark"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Benchmark</h2>
+<p>As a simple test, the timings of a matrix-vector product were recorded for a range of processes and BLAS threads, and compared to the <code>Base.Array</code> and <a href="https://github.com/JuliaParallel/DistributedArrays.jl">DistributedArrays.jl</a> performance. We also compared the effect of distributing either the rows or the columns. The code for the tests is in <code>tests/matmul_*.jl</code>. The results below are for a square matrix of size <code>N=15000</code>, using up to 8 machines with 2 Intel E5-2698 v4 CPUs, i.e. 32 cores per machine and using TCP over 10 Gbit ethernet between machines. Using <code>OPENBLAS_NUM_THREADS=1</code> and one MPI process per machine this yields the following timings:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="benchmarks/singlethread.svg"><img src="benchmarks/singlethread.svg" alt="Single-threaded" title="One thread per process" style="max-width:100%;"></a></p>
+<p>The timings using one MPI process per machine and <code>OPENBLAS_NUM_THREADS=32</code> are:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="benchmarks/multithread.svg"><img src="benchmarks/multithread.svg" alt="Multi-threaded" title="32 threads per process" style="max-width:100%;"></a></p>
+<p>For the single-threaded case, we also compare with the C++ library <a href="https://github.com/elemental/Elemental">Elemental</a>, using their unmodified <a href="https://github.com/elemental/Elemental/blob/master/examples/blas_like/Gemv.cpp">Gemv example</a> with matrix size parameter 15000 and the same OpenBLAS as Julia.</p>
+<p>Some observations:</p>
+<ol>
+<li>Using a single process, both <code>DArray</code> and <code>MPIArray</code> perform at the same level as <code>Base.Array</code>, indicating that the overhead of the parallel structures that ultimately wrap a per-process array is negligible. This is reassuring, since just using parallel structures won't slow down the serial case and the code can be the same in all cases.</li>
+<li>Without threading, the scaling breaks down even before multiple machines come into play. At 256 processes, there is even a severe breakdown of the performance. This may be because each process attempts to communicate with each off-machine process over TCP, rather than pooling the communications between machines. <code>DArray</code> seems to tolerate this better than MPI.</li>
+<li>Using hybrid parallelism, where threads are used to communicate within each machine and MPI or Julia's native parallelism between machines is much faster. For MPI, the scaling is almost ideal with the number of machines, but for <code>DArray</code> the results are more erratic.</li>
+<li>It is better to distribute the matrix columns, at least for this dense matrix matrix-vector product.</li>
+<li>The <code>Base.Array</code> product with <code>OPENBLAS_NUM_THREADS=32</code> completes in about 40 ms, while the MPI version on 32 cores on the same machine completes in 18 ms. This suggests there is room for improvement in the threading implementation. On the other hand, the 32 MPI processes are no faster than 16 MPI processes on the same machine, indicating a possible memory bottleneck for this problem.</li>
+<li>Even though the Julia implementation is quite simple, it compares favorably with a mature C++ library, with an apparent better scaling starting at 32 and 64 processes, but Elemental taking over again at 128 and 256 processes. We did not investigate the cause of this and it may be possible to get better performance by tweaking Elemental settings.</li>
+</ol>
+</article></div>

@@ -1,0 +1,75 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-flatten" class="anchor" aria-hidden="true" href="#flatten"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Flatten</h1>
+<p><a href="https://rafaqz.github.io/Flatten.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/f7b92a177c912c1cc007fc9b40f17ff3ee3bb414/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://rafaqz.github.io/Flatten.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/3e353c26ddfe819150acbc732248f4f2a37f5175/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a>
+<a href="https://travis-ci.org/rafaqz/Flatten.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/a78471bb364f558e8282c76813a85713ce70a54d/68747470733a2f2f7472617669732d63692e6f72672f72616661717a2f466c617474656e2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/rafaqz/Flatten.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/rafaqz/Flatten.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/91723e2990b1a2371282836c332c154900ae2b01/687474703a2f2f636f6465636f762e696f2f6769746875622f72616661717a2f466c617474656e2e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/rafaqz/Flatten.jl/coverage.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://coveralls.io/github/rafaqz/Flatten.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/1f67660de47b467db987f25caca24f0f9cad4896/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f72616661717a2f466c617474656e2e6a6c2f62616467652e7376673f6272616e63683d6d617374657226736572766963653d676974687562" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/rafaqz/Flatten.jl/badge.svg?branch=master&amp;service=github" style="max-width:100%;"></a></p>
+<p>Flatten.jl converts data from arbitrary nested structs to tuples, using
+<code>flatten()</code>, <code>reconstruct()</code>, <code>update!()</code> and <code>modify()</code> functions. This
+facilitates building modular, composable structs while allowing access to
+solvers and optimisers that require flat lists of parameters. Importantly it's
+type-stable and <em>very</em> fast. It is not intended for use with arrays, as we do
+not know their length at compile time.</p>
+<p>Flatten is also flexible. The types to return and ignore can be specified, and
+individual fields can be ignored using field-level traits like <code>flattenable</code>
+from FieldMetadata.jl. Method overrides can also be defined for custom types.</p>
+<h2><a id="user-content-type-queries" class="anchor" aria-hidden="true" href="#type-queries"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Type queries</h2>
+<p>Flatten allows a kind of querying to extract some types and ignore others,
+here using <code>flatten</code>:</p>
+<pre lang="jldoctest"><code>julia&gt; using Flatten
+
+julia&gt; struct Foo{A,B,C}
+           a::A
+           b::B
+           c::C
+       end
+
+julia&gt; struct Bar{X}
+           x::X
+       end
+
+julia&gt; obj = Foo(1, :two, Foo(Bar(3), 4.0, 5.0f0));
+
+julia&gt; use = Union{Int, Float32}; # Return Int and Float32 fields
+
+julia&gt; ignore = Bar;  # Dont return Bar or iterate over Bar fields
+
+julia&gt; flatten(obj, use, ignore) # Flatten all Int and Float32 except fields of Bar
+(1, 5.0f0)
+</code></pre>
+<p>The default type used is <code>Real</code>. These rules also apply in <code>reconstruct</code>,
+<code>update!</code> and <code>modify</code>.</p>
+<h2><a id="user-content-field-removal" class="anchor" aria-hidden="true" href="#field-removal"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Field removal</h2>
+<p>There are often cases where you want to ignore certain fields that have the same
+type as the fields you want to extract. Flatten.jl also
+<a href="https://github.com/rafaqz/FieldMetadata.jl">FieldMetadata.jl</a> to provide
+<code>@flattenable</code> macro and methods, allowing you to choose fields to include and
+remove from flattening. The default is <code>true</code> for all fields.</p>
+<pre lang="jldoctest"><code>using Flatten
+import Flatten: flattenable
+
+@flattenable struct Bar{X,Y}
+    x::X | true
+    y::Y | false
+end
+
+flatten(Bar(1, 2))
+
+# output
+(1,)
+</code></pre>
+<p>Custom <code>@metadata</code> methods from FieldMetadata can be used, if they return a Bool.
+You can also use custom functions that follow the following form, returning a boolean:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(<span class="pl-k">::</span><span class="pl-c1">Type</span>, <span class="pl-k">::</span><span class="pl-c1">Type{Var{:fieldname}}</span>) <span class="pl-k">=</span> <span class="pl-c1">false</span></pre></div>
+<h1><a id="user-content-metatdata-flattening" class="anchor" aria-hidden="true" href="#metatdata-flattening"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Metatdata flattening</h1>
+<p>Flatten also provides <code>metaflatten()</code> to flatten any FieldMetadata.jl
+metadata for the same fields <code>flatten()</code> returns. This can be useful for attaching
+information like descriptions or prior probability distributions to each field.
+Regular field data can also be collected with convenience versions of metaflatten:
+<code>fieldnameflatten</code>, <code>parentflatten</code>, <code>fieldtypeflatten</code> and <code>parenttypeflatten</code>
+functions provide lists of fieldnames and types that may be useful for building
+parameter display tables.</p>
+<p>This package was started by Robin Deits (@rdeits), and its early development
+owes much to discussions and ideas from Jan Weidner (@jw3126) and Robin Deits.
+"""</p>
+</article></div>

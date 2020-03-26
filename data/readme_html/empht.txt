@@ -1,0 +1,55 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-emphtjl" class="anchor" aria-hidden="true" href="#emphtjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>EMpht.jl</h1>
+<p>A Julia port of the EMpht.c program, used for fitting Phase-Type distributions via an EM algorithm.</p>
+<p>The original C — which is available on <a href="https://web.archive.org/web/20180617130551/http://home.math.au.dk/asmus/pspapers.html" rel="nofollow">Søren Asmussen's website</a> — is well documented and has a decent performance for phase-type distributions with a small or moderate number of phases. However it is quite slow for when the number of phases is large (&gt;= 20), and the UX is very old-school Unix.</p>
+<p>This port is much simpler and faster. See the examples given below and the test cases.</p>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<p>To fit a phase-type distribution to some data:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Distributions
+<span class="pl-k">using</span> EMpht
+
+data <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">Exponential</span>(<span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">10</span>), <span class="pl-c1">1_000</span>)  <span class="pl-c"><span class="pl-c">#</span> Generate some data to fit </span>
+sample <span class="pl-k">=</span> EMpht<span class="pl-k">.</span><span class="pl-c1">Sample</span>(obs<span class="pl-k">=</span>data)        <span class="pl-c"><span class="pl-c">#</span> Create an EMpht Sample object with this data</span>
+ph <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sample, p<span class="pl-k">=</span><span class="pl-c1">5</span>)                <span class="pl-c"><span class="pl-c">#</span> Fit the data using p=5 phases</span>
+
+xGrid <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">8</span>, length<span class="pl-k">=</span><span class="pl-c1">1_00</span>)       <span class="pl-c"><span class="pl-c">#</span> Create a grid to evaluate the density function over</span>
+fitPDFs <span class="pl-k">=</span> <span class="pl-c1">pdf</span>.(ph, xGrid)              <span class="pl-c"><span class="pl-c">#</span> The probability density function of the fitted phase-type</span></pre></div>
+<p>The default structure of the phase-type is "Coxian" (see below for details).
+For large values of <code>p</code> the "CanonicalForm1" is recommended.
+To impose no structure on the phase-type, use "General", though the results degrade quickly with <code>p &gt; 5</code> or so.
+Another available option is "GeneralisedCoxian".</p>
+<div class="highlight highlight-source-julia"><pre>phGen <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sample, p<span class="pl-k">=</span><span class="pl-c1">20</span>, ph_structure<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>General<span class="pl-pds">"</span></span>)
+phCox <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sample, p<span class="pl-k">=</span><span class="pl-c1">20</span>, ph_structure<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Coxian<span class="pl-pds">"</span></span>)
+phCF1 <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sample, p<span class="pl-k">=</span><span class="pl-c1">50</span>, ph_structure<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>CanonicalForm1<span class="pl-pds">"</span></span>)</pre></div>
+<p>If the data is not fully observed, i.e. the data is binned (interval-censored), then the Sample object is updated like so:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> The intervals</span>
+int <span class="pl-k">=</span> [<span class="pl-c1">1.5</span> <span class="pl-c1">2.0</span>; <span class="pl-c1">2.0</span> <span class="pl-c1">2.5</span>; <span class="pl-c1">2.5</span> <span class="pl-c1">3.0</span>; <span class="pl-c1">3.0</span> <span class="pl-c1">3.5</span>; <span class="pl-c1">3.5</span> <span class="pl-c1">4.0</span>; <span class="pl-c1">4.0</span> <span class="pl-c1">4.5</span>; <span class="pl-c1">4.5</span> <span class="pl-c1">5.0</span>; <span class="pl-c1">5.0</span> <span class="pl-c1">5.5</span>;
+        <span class="pl-c1">5.5</span> <span class="pl-c1">6.0</span>; <span class="pl-c1">6.0</span> <span class="pl-c1">6.5</span>; <span class="pl-c1">6.5</span> <span class="pl-c1">7.0</span>; <span class="pl-c1">7.0</span> <span class="pl-c1">7.5</span>]
+<span class="pl-c"><span class="pl-c">#</span> The number of observations falling into each interval</span>
+intweight <span class="pl-k">=</span> [<span class="pl-c1">4.0</span>, <span class="pl-c1">34.0</span>, <span class="pl-c1">107.0</span>, <span class="pl-c1">170.0</span>, <span class="pl-c1">202.0</span>, <span class="pl-c1">222.0</span>, <span class="pl-c1">140.0</span>, <span class="pl-c1">77.0</span>, <span class="pl-c1">24.0</span>, <span class="pl-c1">14.0</span>,
+        <span class="pl-c1">4.0</span>, <span class="pl-c1">2.0</span>]
+ <span class="pl-c"><span class="pl-c">#</span> Create an EMpht Sample object with this data</span>
+sInt <span class="pl-k">=</span> EMpht<span class="pl-k">.</span><span class="pl-c1">Sample</span>(int<span class="pl-k">=</span>int, intweight<span class="pl-k">=</span>intweight)
+
+<span class="pl-c"><span class="pl-c">#</span> Fitting the interval-censored data</span>
+phCF1 <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sInt, p<span class="pl-k">=</span><span class="pl-c1">100</span>, ph_structure<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>CanonicalForm1<span class="pl-pds">"</span></span>)
+xGrid <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">8</span>, length<span class="pl-k">=</span><span class="pl-c1">1_000</span>)
+fitPDFs <span class="pl-k">=</span> <span class="pl-c1">pdf</span>.(phCF1, xGrid)</pre></div>
+<p>To choose the algorithm used to fit the data (see papers below for details):</p>
+<div class="highlight highlight-source-julia"><pre>phunif <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sample, p<span class="pl-k">=</span><span class="pl-c1">5</span>, method<span class="pl-k">=</span><span class="pl-c1">:unif</span>)  <span class="pl-c"><span class="pl-c">#</span> Fit using the uniformization technique (default)</span>
+phode <span class="pl-k">=</span> <span class="pl-c1">empht</span>(sample, p<span class="pl-k">=</span><span class="pl-c1">5</span>, method<span class="pl-k">=</span><span class="pl-c1">:ode</span>)    <span class="pl-c"><span class="pl-c">#</span> Fit using the more traditional ODE solving technique</span></pre></div>
+<p>EMpht.jl can read all necessary information from a JSON file (the number of phases to fit, the special structure of the phase-type, the sample to fit). For example, if you download the Coxian100.json file inside the test directory, the following will launch a fit based on those parameters:</p>
+<div class="highlight highlight-source-julia"><pre>ph100 <span class="pl-k">=</span> <span class="pl-c1">empht</span>(<span class="pl-s"><span class="pl-pds">"</span>Coxian100.json<span class="pl-pds">"</span></span>)</pre></div>
+<h2><a id="user-content-resources" class="anchor" aria-hidden="true" href="#resources"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Resources</h2>
+<p>The relevant papers for the algorithms are:</p>
+<ul>
+<li>S. Asmussen, O. Nerman &amp; M. Olsson, <em>Fitting phase-type distribution via the EM algorithm</em>, Scandinavian Journal of Statistics 23, 419-441 (1996),</li>
+<li>M. Olsson, <em>Estimation of phase-type distributions from censored data</em>, Scandinavian Journal of Statistics 23, 443-460 (1996).</li>
+<li>H. Okamura, T. Dohi, K.S. Trivedi, <em>A refined EM algorithm for PH distributions</em>, Performance Evaluation 68, 938-954 (2011)</li>
+<li>H. Okamura, T. Dohi, K.S. Trivedi, <em>Improvement of expectation-maximization algorithm for phase-type distributions with grouped and truncated data</em>, Appl. Stochastic Models Bus. Ind. 29, 141-156 (2013)</li>
+</ul>
+<p>Some case studies using this package are:</p>
+<ul>
+<li>S. Asmussen, P.J. Laub, H. Yang, <em>Phase-type models in life insurance: fitting and valuation of equity-linked benefits</em>, Risks 7(1), 17 pages (2019)</li>
+<li>A. Vuorinen, <em>The blockchain propagation process: a machine learning and matrix analytic approach</em>, University of Melbourne Masters Thesis (2019), see <a href="https://bitcoin.aapelivuorinen.com/" rel="nofollow">website</a> or <a href="https://bitcoin.aapelivuorinen.com/thesis.pdf" rel="nofollow">thesis</a>.</li>
+</ul>
+</article></div>

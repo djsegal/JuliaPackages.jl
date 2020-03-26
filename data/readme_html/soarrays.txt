@@ -1,0 +1,55 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-structsofarrays" class="anchor" aria-hidden="true" href="#structsofarrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>StructsOfArrays</h1>
+<p><a href="https://travis-ci.org/simonster/StructsOfArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/12461d07514ad9983ae7a1c6e70c227a87453a5d/68747470733a2f2f7472617669732d63692e6f72672f73696d6f6e737465722f537472756374734f664172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/simonster/StructsOfArrays.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/simonster/StructsOfArrays.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/181acbfba8f22e2fd9ce80660e631a3154f58b83/687474703a2f2f636f6465636f762e696f2f6769746875622f73696d6f6e737465722f537472756374734f664172726179732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/simonster/StructsOfArrays.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>A traditional Julia array of immutable objects is an array of structures. Fields
+of a given object are stored adjacent in memory. However, this often inhibits
+SIMD optimizations. StructsOfArrays implements the classic structure of arrays
+optimization. The contents of a given field for all objects is stored linearly
+in memory, and different fields are stored in different arrays. This permits
+SIMD optimizations in more cases and can also save a bit of memory if the object
+contains padding. It is especially useful for arrays of complex numbers.</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>You can construct a StructOfArrays directly:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StructsOfArrays
+A <span class="pl-k">=</span> <span class="pl-c1">StructOfArrays</span>(Complex128, <span class="pl-c1">10</span>, <span class="pl-c1">10</span>)</pre></div>
+<p>or by converting an AbstractArray:</p>
+<div class="highlight highlight-source-julia"><pre>A <span class="pl-k">=</span> <span class="pl-c1">convert</span>(StructOfArrays, <span class="pl-c1">complex</span>(<span class="pl-c1">randn</span>(<span class="pl-c1">10</span>), <span class="pl-c1">randn</span>(<span class="pl-c1">10</span>)))</pre></div>
+<p>Beyond that, there's not much to say. Assignment and indexing works as with
+other AbstractArray types. Indexing a <code>StructOfArrays{T}</code> yields an object of
+type <code>T</code>, and you can assign objects of type <code>T</code> to a given index. The "magic"
+is in the optimizations that the alternative memory layout allows LLVM to
+perform.</p>
+<p>While you can create a StructOfArrays of non-<code>isbits</code> immutables, this is
+probably slower than an ordinary array, since a new object must be heap
+allocated every time the StructOfArrays is indexed. In practice, StructsOfArrays
+works best with <code>isbits</code> immutables such as <code>Complex{T}</code>.</p>
+<h2><a id="user-content-benchmark" class="anchor" aria-hidden="true" href="#benchmark"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Benchmark</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StructsOfArrays
+regular <span class="pl-k">=</span> <span class="pl-c1">complex</span>(<span class="pl-c1">randn</span>(<span class="pl-c1">1000000</span>), <span class="pl-c1">randn</span>(<span class="pl-c1">1000000</span>))
+soa <span class="pl-k">=</span> <span class="pl-c1">convert</span>(StructOfArrays, regular)
+
+<span class="pl-k">function</span> <span class="pl-en">f</span>(x, a)
+    s <span class="pl-k">=</span> <span class="pl-c1">zero</span>(<span class="pl-c1">eltype</span>(x))
+    <span class="pl-c1">@simd</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(x)
+        <span class="pl-c1">@inbounds</span> s <span class="pl-k">+=</span> x[i] <span class="pl-k">*</span> a
+    <span class="pl-k">end</span>
+    s
+<span class="pl-k">end</span>
+
+<span class="pl-k">using</span> Benchmarks
+<span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(regular, <span class="pl-c1">0.5</span><span class="pl-k">+</span><span class="pl-c1">0.5im</span>)
+<span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(soa, <span class="pl-c1">0.5</span><span class="pl-k">+</span><span class="pl-c1">0.5im</span>)</pre></div>
+<p>The time for <code>f(regular, 0.5+0.5im)</code> is:</p>
+<pre><code>Average elapsed time: 1.244 ms
+  95% CI for average: [1.183 ms, 1.305 ms]
+Minimum elapsed time: 1.177 ms
+</code></pre>
+<p>and for <code>f(soa, 0.5+0.5im)</code>:</p>
+<pre><code>Average elapsed time: 832.198 μs
+  95% CI for average: [726.349 μs, 938.048 μs]
+Minimum elapsed time: 713.730 μs
+</code></pre>
+<p>In this case, StructsOfArrays are about 1.5x faster than ordinary arrays.
+Inspection of generated code demonstrates that <code>f(soa, a)</code> uses SIMD
+instructions, while <code>f(regular, a)</code> does not.</p>
+</article></div>

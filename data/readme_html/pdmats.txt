@@ -1,0 +1,252 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-pdmatsjl" class="anchor" aria-hidden="true" href="#pdmatsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>PDMats.jl</h1>
+<p>Uniform interface for positive definite matrices of various structures.</p>
+<p><a href="https://travis-ci.org/JuliaStats/PDMats.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3c956fd13f7a641e469e438579514f1436ceb9df/68747470733a2f2f7472617669732d63692e6f72672f4a756c696153746174732f50444d6174732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaStats/PDMats.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://coveralls.io/r/JuliaStats/PDMats.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/24e5072fda42c0a0e6caa1cfdde59888626b35c5/68747470733a2f2f696d672e736869656c64732e696f2f636f766572616c6c732f4a756c696153746174732f50444d6174732e6a6c2e737667" alt="Coverage Status" data-canonical-src="https://img.shields.io/coveralls/JuliaStats/PDMats.jl.svg" style="max-width:100%;"></a>
+<a href="http://pkg.julialang.org/?pkg=PDMats&amp;ver=0.6" rel="nofollow"><img src="https://camo.githubusercontent.com/50d5d60eec1cfac143407ca917b422488137d525/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f50444d6174735f302e362e737667" alt="PDMats" data-canonical-src="http://pkg.julialang.org/badges/PDMats_0.6.svg" style="max-width:100%;"></a>
+<a href="http://pkg.julialang.org/?pkg=PDMats&amp;ver=0.7" rel="nofollow"><img src="https://camo.githubusercontent.com/547150aef9c55580e5e1252a07c3494d6b99e7d3/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f50444d6174735f302e372e737667" alt="PDMats" data-canonical-src="http://pkg.julialang.org/badges/PDMats_0.7.svg" style="max-width:100%;"></a></p>
+<hr>
+<p>Positive definite matrices are widely used in machine learning and probabilistic modeling, especially in applications related to graph analysis and Gaussian models. It is not uncommon that positive definite matrices used in practice have special structures (e.g. diagonal), which can be exploited to accelerate computation.</p>
+<p><em>PDMats.jl</em> supports efficient computation on positive definite matrices of various structures. In particular, it provides uniform interfaces to use positive definite matrices of various structures for writing generic algorithms, while ensuring that the most efficient implementation is used in actual computation.</p>
+<hr>
+<h2><a id="user-content-positive-definite-matrix-types" class="anchor" aria-hidden="true" href="#positive-definite-matrix-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Positive definite matrix types</h2>
+<p>This package defines an abstract type <code>AbstractPDMat{T&lt;:Real}</code> as the base type for positive definite matrices with different internal representations.</p>
+<p>Elemenent types are in princple all Real types, but in practice this is limited by the support for floating point types in Base.LinAlg.Cholesky.</p>
+<ul>
+<li><code>Float64</code>     Fully supported from Julia 0.3.</li>
+<li><code>Float32</code>     Fully supported from Julia 0.4.2. Full, diagonal and scale matrix types are supported in Julia 0.3 or higher.</li>
+<li><code>Float16</code>     Promoted to <code>Float32</code> for full, diagonal and scale matrix. Currently unsupported for sparse matrix.</li>
+<li><code>BigFloat</code>    Supported in Julia 0.4 for full, diagonal and scale matrix. Currently unsupported for sparse matrix.</li>
+</ul>
+<ul>
+<li><code>PDMat</code>: full covariance matrix, defined as</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> PDMat{T<span class="pl-k">&lt;:</span><span class="pl-c1">Real</span>,S<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractMatrix</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractPDMat{T}</span>
+    dim<span class="pl-k">::</span><span class="pl-c1">Int</span>                    <span class="pl-c"><span class="pl-c">#</span> matrix dimension</span>
+    mat<span class="pl-k">::</span><span class="pl-c1">S</span>                      <span class="pl-c"><span class="pl-c">#</span> input matrix</span>
+    chol<span class="pl-k">::</span><span class="pl-c1">Cholesky{T,S}</span>         <span class="pl-c"><span class="pl-c">#</span> Cholesky factorization of mat</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Constructors</span>
+
+<span class="pl-c1">PDMat</span>(mat, chol)    <span class="pl-c"><span class="pl-c">#</span> with both the input matrix and a Cholesky factorization</span>
+
+<span class="pl-c1">PDMat</span>(mat)          <span class="pl-c"><span class="pl-c">#</span> with the input matrix, of type Matrix or Symmetric</span>
+                    <span class="pl-c"><span class="pl-c">#</span> Remarks: the Cholesky factorization will be computed</span>
+                    <span class="pl-c"><span class="pl-c">#</span> upon construction.</span>
+
+<span class="pl-c1">PDMat</span>(chol)         <span class="pl-c"><span class="pl-c">#</span> with the Cholesky factorization</span>
+                    <span class="pl-c"><span class="pl-c">#</span> Remarks: the full matrix will be computed upon</span>
+                    <span class="pl-c"><span class="pl-c">#</span> construction.</span></pre></div>
+<ul>
+<li><code>PDiagMat</code>: diagonal matrix, defined as</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> PDiagMat{T<span class="pl-k">&lt;:</span><span class="pl-c1">Real</span>,V<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractVector</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractPDMat{T}</span>
+    dim<span class="pl-k">::</span><span class="pl-c1">Int</span>                    <span class="pl-c"><span class="pl-c">#</span> matrix dimension</span>
+    diag<span class="pl-k">::</span><span class="pl-c1">V</span>                     <span class="pl-c"><span class="pl-c">#</span> the vector of diagonal elements</span>
+    inv_diag<span class="pl-k">::</span><span class="pl-c1">V</span>                 <span class="pl-c"><span class="pl-c">#</span> the element-wise inverse of diag</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Constructors</span>
+
+<span class="pl-c1">PDiagMat</span>(v,inv_v)   <span class="pl-c"><span class="pl-c">#</span> with the vector of diagonal elements and its inverse</span>
+<span class="pl-c1">PDiagMat</span>(v)         <span class="pl-c"><span class="pl-c">#</span> with the vector of diagonal elements</span>
+                    <span class="pl-c"><span class="pl-c">#</span> inv_diag will be computed upon construction</span></pre></div>
+<ul>
+<li><code>ScalMat</code>: uniform scaling matrix, as <code>v * eye(d)</code>, defined as</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> ScalMat{T<span class="pl-k">&lt;:</span><span class="pl-c1">Real</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractPDMat{T}</span>
+    dim<span class="pl-k">::</span><span class="pl-c1">Int</span>         <span class="pl-c"><span class="pl-c">#</span> matrix dimension</span>
+    value<span class="pl-k">::</span><span class="pl-c1">T</span>         <span class="pl-c"><span class="pl-c">#</span> diagonal value (shared by all diagonal elements)</span>
+    inv_value<span class="pl-k">::</span><span class="pl-c1">T</span>     <span class="pl-c"><span class="pl-c">#</span> inv(value)</span>
+<span class="pl-k">end</span>
+
+
+<span class="pl-c"><span class="pl-c">#</span> Constructors</span>
+
+<span class="pl-c1">ScalMat</span>(d, v, inv_v) <span class="pl-c"><span class="pl-c">#</span> with dimension d, diagonal value v and its inverse inv_v</span>
+<span class="pl-c1">ScalMat</span>(d, v)        <span class="pl-c"><span class="pl-c">#</span> with dimension d and diagonal value v</span></pre></div>
+<ul>
+<li><code>PDSparseMat</code>: sparse covariance matrix, defined as</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> PDSparseMat{T<span class="pl-k">&lt;:</span><span class="pl-c1">Real</span>,S<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractSparseMatrix</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractPDMat{T}</span>
+    dim<span class="pl-k">::</span><span class="pl-c1">Int</span>                       <span class="pl-c"><span class="pl-c">#</span> matrix dimension</span>
+    mat<span class="pl-k">::</span><span class="pl-c1">SparseMatrixCSC</span>           <span class="pl-c"><span class="pl-c">#</span> input matrix</span>
+    chol<span class="pl-k">::</span><span class="pl-c1">CholTypeSparse</span>           <span class="pl-c"><span class="pl-c">#</span> Cholesky factorization of mat</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Constructors</span>
+
+<span class="pl-c1">PDSparseMat</span>(mat, chol)    <span class="pl-c"><span class="pl-c">#</span> with both the input matrix and a Cholesky factorization</span>
+
+<span class="pl-c1">PDSparseMat</span>(mat)          <span class="pl-c"><span class="pl-c">#</span> with the sparse input matrix, of type SparseMatrixCSC</span>
+                          <span class="pl-c"><span class="pl-c">#</span> Remarks: the Cholesky factorization will be computed</span>
+                          <span class="pl-c"><span class="pl-c">#</span> upon construction.</span>
+
+<span class="pl-c1">PDSparseMat</span>(chol)         <span class="pl-c"><span class="pl-c">#</span> with the Cholesky factorization</span>
+                          <span class="pl-c"><span class="pl-c">#</span> Remarks: the sparse matrix 'mat' will be computed upon</span>
+                          <span class="pl-c"><span class="pl-c">#</span> construction.</span></pre></div>
+<h2><a id="user-content-common-interface" class="anchor" aria-hidden="true" href="#common-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Common interface</h2>
+<p>All subtypes of <code>AbstractPDMat</code> share the same API, <em>i.e.</em> with the same set of methods to operate on their instances. These methods are introduced below, where <code>a</code> is an instance of a subtype of <code>AbstractPDMat</code> to represent a positive definite matrix, <code>x</code> be a column vector or a matrix with <code>size(x,1) == dim(a)</code>, and <code>c</code> be a positive real value.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">dim</span>(a)      <span class="pl-c"><span class="pl-c">#</span> return the dimension of `a`.</span>
+            <span class="pl-c"><span class="pl-c">#</span> Let `a` represent a d x d matrix, then `dim(a)` returns d.</span>
+
+<span class="pl-c1">size</span>(a)     <span class="pl-c"><span class="pl-c">#</span> return the size tuple of `a`, i.e. `(dim(a), dim(a))`.</span>
+
+<span class="pl-c1">size</span>(a, i)  <span class="pl-c"><span class="pl-c">#</span> return the i-th dimension of `a`.</span>
+
+<span class="pl-c1">ndims</span>(a)    <span class="pl-c"><span class="pl-c">#</span> the number of dimensions, which is always 2.</span>
+
+<span class="pl-c1">eltype</span>(a)   <span class="pl-c"><span class="pl-c">#</span> the element type</span>
+
+<span class="pl-c1">Matrix</span>(a)   <span class="pl-c"><span class="pl-c">#</span> return a copy of the matrix in full form.</span>
+
+<span class="pl-c1">diag</span>(a)     <span class="pl-c"><span class="pl-c">#</span> return a vector of diagonal elements.</span>
+
+<span class="pl-c1">inv</span>(a)      <span class="pl-c"><span class="pl-c">#</span> inverse of `a`, of a proper subtype of `AbstractPDMat`.</span>
+            <span class="pl-c"><span class="pl-c">#</span> Note: when `a` is an instance of either `PDMat`, `PDiagMat`,</span>
+            <span class="pl-c"><span class="pl-c">#</span> and `ScalMat`, `inv(a)` is of the same type of `a`.</span>
+            <span class="pl-c"><span class="pl-c">#</span> This needs not be required for customized subtypes -- the</span>
+            <span class="pl-c"><span class="pl-c">#</span> inverse does not always has the same pattern as `a`.</span>
+
+<span class="pl-c1">eigmax</span>(a)   <span class="pl-c"><span class="pl-c">#</span> maximum eigenvalue of `a`.</span>
+
+<span class="pl-c1">eigmin</span>(a)   <span class="pl-c"><span class="pl-c">#</span> minimum eigenvalue of `a`.</span>
+
+<span class="pl-c1">logdet</span>(a)   <span class="pl-c"><span class="pl-c">#</span> log-determinant of `a`, computed in a numerically stable way.</span>
+
+a <span class="pl-k">*</span> x       <span class="pl-c"><span class="pl-c">#</span> multiple `a` with `x` (forward transform)</span>
+
+a <span class="pl-k">\</span> x       <span class="pl-c"><span class="pl-c">#</span> multiply `inv(a)` with `x` (backward transform).</span>
+            <span class="pl-c"><span class="pl-c">#</span> The internal implementation may not explicitly instantiate</span>
+            <span class="pl-c"><span class="pl-c">#</span> the inverse of `a`.</span>
+
+a <span class="pl-k">*</span> c       <span class="pl-c"><span class="pl-c">#</span> scale `a` by a positive scale `c`.</span>
+            <span class="pl-c"><span class="pl-c">#</span> The result is in general of the same type of `a`.</span>
+
+c <span class="pl-k">*</span> a       <span class="pl-c"><span class="pl-c">#</span> equivalent to a * c.</span>
+
+a <span class="pl-k">+</span> b       <span class="pl-c"><span class="pl-c">#</span> add two positive definite matrices</span>
+
+<span class="pl-c1">pdadd</span>(a, b, c)      <span class="pl-c"><span class="pl-c">#</span> add `a` with `b * c`, where both `a` and `b` are</span>
+                    <span class="pl-c"><span class="pl-c">#</span> instances of `AbstractPDMat`.</span>
+
+<span class="pl-c1">pdadd</span>(m, a)         <span class="pl-c"><span class="pl-c">#</span> add `a` to a dense matrix `m` of the same size.</span>
+
+<span class="pl-c1">pdadd</span>(m, a, c)      <span class="pl-c"><span class="pl-c">#</span> add `a * c` to a dense matrix `m` of the same size.</span>
+
+<span class="pl-c1">pdadd!</span>(m, a)        <span class="pl-c"><span class="pl-c">#</span> add `a` to a dense matrix `m` of the same size inplace.</span>
+
+<span class="pl-c1">pdadd!</span>(m, a, c)     <span class="pl-c"><span class="pl-c">#</span> add `a * c` to a dense matrix `m` of the same size,</span>
+                    <span class="pl-c"><span class="pl-c">#</span> inplace.</span>
+
+<span class="pl-c1">pdadd!</span>(r, m, a)     <span class="pl-c"><span class="pl-c">#</span> add `a` to a dense matrix `m` of the same size, and write</span>
+                    <span class="pl-c"><span class="pl-c">#</span> the result to `r`.</span>
+
+<span class="pl-c1">pdadd!</span>(r, m, a, c)  <span class="pl-c"><span class="pl-c">#</span> add `a * c` to a dense matrix `m` of the same size, and</span>
+                    <span class="pl-c"><span class="pl-c">#</span> write the result to `r`.</span>
+
+<span class="pl-c1">quad</span>(a, x)          <span class="pl-c"><span class="pl-c">#</span> compute x' * a * x when `x` is a vector.</span>
+                    <span class="pl-c"><span class="pl-c">#</span> perform such computation in a column-wise fashion, when</span>
+                    <span class="pl-c"><span class="pl-c">#</span> `x` is a matrix, and return a vector of length `n`,</span>
+                    <span class="pl-c"><span class="pl-c">#</span> where `n` is the number of columns in `x`.</span>
+
+<span class="pl-c1">quad!</span>(r, a, x)      <span class="pl-c"><span class="pl-c">#</span> compute x' * a * x in a column-wise fashion, and write</span>
+                    <span class="pl-c"><span class="pl-c">#</span> the results to `r`.</span>
+
+<span class="pl-c1">invquad</span>(a, x)       <span class="pl-c"><span class="pl-c">#</span> compute x' * inv(a) * x when `x` is a vector.</span>
+                    <span class="pl-c"><span class="pl-c">#</span> perform such computation in a column-wise fashion, when</span>
+                    <span class="pl-c"><span class="pl-c">#</span> `x` is a matrix, and return a vector of length `n`.</span>
+
+<span class="pl-c1">invquad!</span>(r, a, x)   <span class="pl-c"><span class="pl-c">#</span> compute x' * inv(a) * x in a column-wise fashion, and</span>
+                    <span class="pl-c"><span class="pl-c">#</span> write the results to `r`.</span>
+
+<span class="pl-c1">X_A_Xt</span>(a, x)        <span class="pl-c"><span class="pl-c">#</span> compute `x * a * x'` for a matrix `x`.</span>
+
+<span class="pl-c1">Xt_A_X</span>(a, x)        <span class="pl-c"><span class="pl-c">#</span> compute `x' * a * x` for a matrix `x`.</span>
+
+<span class="pl-c1">X_invA_Xt</span>(a, x)     <span class="pl-c"><span class="pl-c">#</span> compute `x * inv(a) * x'` for a matrix `x`.</span>
+
+<span class="pl-c1">Xt_invA_X</span>(a, x)     <span class="pl-c"><span class="pl-c">#</span> compute `x' * inv(a) * x` for a matrix `x`.</span>
+
+<span class="pl-c1">whiten</span>(a, x)        <span class="pl-c"><span class="pl-c">#</span> whitening transform. `x` can be a vector or a matrix.</span>
+                    <span class="pl-c"><span class="pl-c">#</span></span>
+                    <span class="pl-c"><span class="pl-c">#</span> Note: If the covariance of `x` is `a`, then the</span>
+                    <span class="pl-c"><span class="pl-c">#</span> covariance of the transformed result is an identity</span>
+                    <span class="pl-c"><span class="pl-c">#</span> matrix.</span>
+
+<span class="pl-c1">whiten!</span>(a, x)       <span class="pl-c"><span class="pl-c">#</span> whitening transform inplace, directly updating `x`.</span>
+
+<span class="pl-c1">whiten!</span>(r, a, x)    <span class="pl-c"><span class="pl-c">#</span> write the transformed result to `r`.</span>
+
+<span class="pl-c1">unwhiten</span>(a, x)      <span class="pl-c"><span class="pl-c">#</span> inverse of whitening transform. `x` can be a vector or</span>
+                    <span class="pl-c"><span class="pl-c">#</span> a matrix.</span>
+                    <span class="pl-c"><span class="pl-c">#</span></span>
+                    <span class="pl-c"><span class="pl-c">#</span> Note: If the covariance of `x` is an identity matrix,</span>
+                    <span class="pl-c"><span class="pl-c">#</span> then the covariance of the transformed result is `a`.</span>
+                    <span class="pl-c"><span class="pl-c">#</span> Note: the un-whitening transform is useful for</span>
+                    <span class="pl-c"><span class="pl-c">#</span> generating Gaussian samples.</span>
+
+<span class="pl-c1">unwhiten!</span>(a, x)     <span class="pl-c"><span class="pl-c">#</span> un-whitening transform inplace, updating `x`.</span>
+
+<span class="pl-c1">unwhiten!</span>(r, a, x)  <span class="pl-c"><span class="pl-c">#</span> write the transformed result to `r`.</span>
+
+<span class="pl-c1">test_pdmat</span>(a, amat)     <span class="pl-c"><span class="pl-c">#</span> test the correctness of implementation, given an</span>
+                        <span class="pl-c"><span class="pl-c">#</span> instance of some sub-type of `AbstractPDMat`, and</span>
+                        <span class="pl-c"><span class="pl-c">#</span> a corresponding full matrix.</span>
+                        <span class="pl-c"><span class="pl-c">#</span></span>
+                        <span class="pl-c"><span class="pl-c">#</span> Note: this function is provided for the developers</span>
+                        <span class="pl-c"><span class="pl-c">#</span> who want to define their own customized sub types.</span></pre></div>
+<h2><a id="user-content-define-customized-subtypes" class="anchor" aria-hidden="true" href="#define-customized-subtypes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Define Customized Subtypes</h2>
+<p>In some situation, it is useful to define a customized subtype of <code>AbstractPDMat</code> to capture positive definite matrices with special structures. For this purpose, one has to define a subset of methods (as listed below), and other methods will be automatically provided.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Let `M` be the name of the subtype, then the following methods need</span>
+<span class="pl-c"><span class="pl-c">#</span> to be implemented for `M`:</span>
+
+<span class="pl-c1">dim</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)       <span class="pl-c"><span class="pl-c">#</span> return the dimension of `a`</span>
+
+<span class="pl-c1">Matrix</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)    <span class="pl-c"><span class="pl-c">#</span> return a copy of the matrix in full form, of type</span>
+                <span class="pl-c"><span class="pl-c">#</span> `Matrix{eltype(M)}`.</span>
+
+<span class="pl-c1">diag</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)      <span class="pl-c"><span class="pl-c">#</span> return the vector of diagonal elements, of type</span>
+                <span class="pl-c"><span class="pl-c">#</span> `Vector{eltype(M)}`.</span>
+
+<span class="pl-c1">pdadd!</span>(m, a, c)     <span class="pl-c"><span class="pl-c">#</span> add `a * c` to a dense matrix `m` of the same size</span>
+                    <span class="pl-c"><span class="pl-c">#</span> inplace.</span>
+
+<span class="pl-k">*</span> (a<span class="pl-k">::</span><span class="pl-c1">M</span>, c<span class="pl-k">::</span><span class="pl-c1">Real</span>)        <span class="pl-c"><span class="pl-c">#</span> return a scaled version of `a`.</span>
+
+<span class="pl-k">*</span> (a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseVecOrMat</span>)  <span class="pl-c"><span class="pl-c">#</span> transform `x`, i.e. compute `a * x`.</span>
+
+<span class="pl-k">\</span> (a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseVecOrMat</span>)  <span class="pl-c"><span class="pl-c">#</span> inverse transform `x`, i.e. compute `inv(a) * x`.</span>
+
+<span class="pl-c1">inv</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)       <span class="pl-c"><span class="pl-c">#</span> compute the inverse of `a`.</span>
+
+<span class="pl-c1">logdet</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)    <span class="pl-c"><span class="pl-c">#</span> compute the log-determinant of `a`.</span>
+
+<span class="pl-c1">eigmax</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)    <span class="pl-c"><span class="pl-c">#</span> compute the maximum eigenvalue of `a`.</span>
+
+<span class="pl-c1">eigmin</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>)    <span class="pl-c"><span class="pl-c">#</span> compute the minimum eigenvalue of `a`.</span>
+
+<span class="pl-c1">whiten!</span>(r<span class="pl-k">::</span><span class="pl-c1">DenseVecOrMat</span>, a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseVecOrMat</span>)  <span class="pl-c"><span class="pl-c">#</span> whitening transform,</span>
+                                                   <span class="pl-c"><span class="pl-c">#</span> write result to `r`.</span>
+
+<span class="pl-c1">unwhiten!</span>(r<span class="pl-k">::</span><span class="pl-c1">DenseVecOrMat</span>, a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseVecOrMat</span>)  <span class="pl-c"><span class="pl-c">#</span> un-whitening transform,</span>
+                                                     <span class="pl-c"><span class="pl-c">#</span> write result to `r`.</span>
+
+<span class="pl-c1">quad</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseVector</span>)      <span class="pl-c"><span class="pl-c">#</span> compute `x' * a * x`</span>
+
+<span class="pl-c1">quad!</span>(r<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>, a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseMatrix</span>)   <span class="pl-c"><span class="pl-c">#</span> compute `x' * a * x` in</span>
+                                                <span class="pl-c"><span class="pl-c">#</span> a column-wise manner</span>
+
+<span class="pl-c1">invquad</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseVector</span>)   <span class="pl-c"><span class="pl-c">#</span> compute `x' * inv(a) * x`</span>
+
+<span class="pl-c1">invquad!</span>(r<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>, a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseMatrix</span>) <span class="pl-c"><span class="pl-c">#</span> compute `x' * inv(a) * x`</span>
+                                                 <span class="pl-c"><span class="pl-c">#</span> in a column-wise manner</span>
+
+<span class="pl-c1">X_A_Xt</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseMatrix</span>)        <span class="pl-c"><span class="pl-c">#</span> compute `x * a * x'`</span>
+
+<span class="pl-c1">Xt_A_X</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseMatrix</span>)        <span class="pl-c"><span class="pl-c">#</span> compute `x' * a * x`</span>
+
+<span class="pl-c1">X_invA_Xt</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseMatrix</span>)     <span class="pl-c"><span class="pl-c">#</span> compute `x * inv(a) * x'`</span>
+
+<span class="pl-c1">Xt_invA_X</span>(a<span class="pl-k">::</span><span class="pl-c1">M</span>, x<span class="pl-k">::</span><span class="pl-c1">DenseMatrix</span>)     <span class="pl-c"><span class="pl-c">#</span> compute `x' * inv(a) * x`</span></pre></div>
+</article></div>

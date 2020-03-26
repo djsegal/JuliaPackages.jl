@@ -1,0 +1,65 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-hnswjl" class="anchor" aria-hidden="true" href="#hnswjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>HNSW.jl</h1>
+<p>Approximate Nearest Neighbor Searches using the
+"Hierarchical Navigable Small World" (<strong>HNSW</strong>) algorithm
+as described in <a href="https://arxiv.org/abs/1603.09320" rel="nofollow">https://arxiv.org/abs/1603.09320</a> .</p>
+<h3><a id="user-content-highlights" class="anchor" aria-hidden="true" href="#highlights"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Highlights</h3>
+<ul>
+<li>Written in Julia - no non-julian dependencies</li>
+<li>Supports incremental index creation</li>
+<li>Works with arbitrary distance functions</li>
+<li>Is data-agnostic - can work with data of arbitrary types given a corresponding
+distance function</li>
+</ul>
+<h3><a id="user-content-creating-an-index" class="anchor" aria-hidden="true" href="#creating-an-index"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Creating an Index</h3>
+<p>An Index in this library is a struct of type <code>HierarchicalNSW</code> which can be constructed using:</p>
+<pre><code>hnsw = HierarchicalNSW(data; metric, M, efConstruction)
+</code></pre>
+<ul>
+<li><code>data</code>: This is an <code>AbstractVector</code> of the data points to be used.</li>
+<li><code>metric = Euclidean()</code>: The metric to use for distance calculation. Any metric defined in <code>Distances.jl</code> should work as well as any type for which <code>evaluate(::CustomMetric, x,y)</code> is implemented.</li>
+<li><code>M = 10</code>: The maximum number of links per node on a level &gt;1. Note that value highly influences recall depending on data.</li>
+<li><code>M0 = 2M</code>: The maximum number of links on the bottom layer (=1). Defaults to <code>M0 = 2M</code>.</li>
+<li><code>efConstruction = 100</code>: Maximum length of dynamic link lists during index creation. Low values may reduce recall but large values increase runtime of index creation.</li>
+<li><code>ef = 10</code>: Maximum length of dynamic link lists during search. May be changed afterwards using <code>set_ef!(hnsw, value)</code></li>
+<li><code>m_L = 1/log(M)</code>: Prefactor for random level generation.</li>
+<li><code>max_elements = length(data)</code>: May be set to a larger value in case one wants to add elements to the structure after initial creation.</li>
+</ul>
+<p>Once the <code>HierarchicalNSW</code> struct is initialized the search graph can be built by calling</p>
+<pre><code>add_to_graph!(hnsw [, indices])
+</code></pre>
+<p>which iteratively inserts all points from <code>data</code> into the graph.
+Optionally one may provide <code>indices</code> a subset of all the indices
+in <code>data</code> to partially to construct the graph.</p>
+<h3><a id="user-content-searching" class="anchor" aria-hidden="true" href="#searching"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Searching</h3>
+<p>Given an initialized <code>HierarchicalNSW</code> one can search for approximate nearest
+neighbors using</p>
+<pre><code>idxs, dists = knn_search(hnsw, query, k)
+</code></pre>
+<p>where <code>query</code> may either be a single point of type <code>eltype(data)</code>
+or a vector of such points.</p>
+<h2><a id="user-content-a-simple-example" class="anchor" aria-hidden="true" href="#a-simple-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>A simple example:</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> HNSW
+
+dim <span class="pl-k">=</span> <span class="pl-c1">10</span>
+num_elements <span class="pl-k">=</span> <span class="pl-c1">10000</span>
+data <span class="pl-k">=</span> [<span class="pl-c1">rand</span>(dim) <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>num_elements]
+
+<span class="pl-c"><span class="pl-c">#</span>Intialize HNSW struct</span>
+hnsw <span class="pl-k">=</span> <span class="pl-c1">HierarchicalNSW</span>(data; efConstruction<span class="pl-k">=</span><span class="pl-c1">100</span>, M<span class="pl-k">=</span><span class="pl-c1">16</span>, ef<span class="pl-k">=</span><span class="pl-c1">50</span>)
+
+<span class="pl-c"><span class="pl-c">#</span>Add all data points into the graph</span>
+<span class="pl-c"><span class="pl-c">#</span>Optionally pass a subset of the indices in data to partially construct the graph</span>
+<span class="pl-c1">add_to_graph!</span>(hnsw)
+
+
+queries <span class="pl-k">=</span> [<span class="pl-c1">rand</span>(dim) <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>]
+
+k <span class="pl-k">=</span> <span class="pl-c1">10</span>
+<span class="pl-c"><span class="pl-c">#</span> Find k (approximate) nearest neighbors for each of the queries</span>
+idxs, dists <span class="pl-k">=</span> <span class="pl-c1">knn_search</span>(hnsw, queries, k)</pre></div>
+<h2><a id="user-content-multi-threading" class="anchor" aria-hidden="true" href="#multi-threading"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Multi-Threading</h2>
+<p>A multi-threaded version of this algorithm is available.
+To use it, checkout the branch <code>multi-threaded</code> and start the indexing with:</p>
+<div class="highlight highlight-source-julia"><pre> <span class="pl-c1">add_to_graph!</span>(hnsw; multithreading<span class="pl-k">=</span><span class="pl-c1">true</span>)</pre></div>
+<p>For multi-threaded searches add <code>multithreading=true</code> as a keyword argument to <code>knn_search</code>.</p>
+</article></div>

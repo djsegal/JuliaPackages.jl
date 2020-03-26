@@ -1,0 +1,78 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p><a href="https://travis-ci.com/aicenter/GenerativeModels.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3731c5b7f1e3782a7f3327bfeab396336c9e4f2d/68747470733a2f2f7472617669732d63692e636f6d2f616963656e7465722f47656e657261746976654d6f64656c732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/aicenter/GenerativeModels.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/aicenter/GenerativeModels.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/7f14e5f9a895cbaa7172802d7ca30b1c6454629b/68747470733a2f2f636f6465636f762e696f2f67682f616963656e7465722f47656e657261746976654d6f64656c732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/aicenter/GenerativeModels.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<h1><a id="user-content-generativemodelsjl" class="anchor" aria-hidden="true" href="#generativemodelsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>GenerativeModels.jl</h1>
+<p>This library contains a collection of generative models for anomaly detection.
+It uses trainable
+<a href="https://github.com/aicenter/ConditionalDists.jl"><code>ConditionalDists.jl</code></a> that
+can be used in conjuction with <a href="https://github.com/FluxML/Flux.jl"><code>Flux.jl</code></a>
+models.  Probability measures such as KL divergence are defined in
+<a href="https://github.com/aicenter/IPMeasures.jl"><code>IPMeasures.jl</code></a> This package aims
+to make experimenting with new models as easy as possible.</p>
+<p>As an example, check out how to build a conventional variational autoencoder
+with a diagonal variance on the latent dimension and a scalar variance on the
+reconstruction:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> GenerativeModels
+<span class="pl-k">using</span> Flux
+
+xlen  <span class="pl-k">=</span> <span class="pl-c1">5</span>
+zlen  <span class="pl-k">=</span> <span class="pl-c1">2</span>
+dtype <span class="pl-k">=</span> Float32
+
+μ <span class="pl-k">=</span> <span class="pl-c1">NoGradArray</span>(<span class="pl-c1">zeros</span>(dtype, zlen))  <span class="pl-c"><span class="pl-c">#</span> NoGradArray is filtered when calling `Flux.params`</span>
+σ <span class="pl-k">=</span> <span class="pl-c1">NoGradArray</span>(<span class="pl-c1">ones</span>(dtype, zlen))
+prior <span class="pl-k">=</span> <span class="pl-c1">Gaussian</span>(μ, σ)
+
+encoder <span class="pl-k">=</span> <span class="pl-c1">Dense</span>(xlen, zlen<span class="pl-k">*</span><span class="pl-c1">2</span>)  <span class="pl-c"><span class="pl-c">#</span> encoder returns mean and diagonal variance</span>
+encoder_dist <span class="pl-k">=</span> <span class="pl-c1">CMeanVarGaussian</span><span class="pl-c1">{DiagVar}</span>(encoder)
+
+decoder <span class="pl-k">=</span> <span class="pl-c1">Dense</span>(zlen, xlen<span class="pl-k">+</span><span class="pl-c1">1</span>)  <span class="pl-c"><span class="pl-c">#</span> decoder returns mean and scalar variance</span>
+decoder_dist <span class="pl-k">=</span> <span class="pl-c1">CMeanVarGaussian</span><span class="pl-c1">{ScalarVar}</span>(decoder)
+
+vae <span class="pl-k">=</span> <span class="pl-c1">VAE</span>(prior, encoder_dist, decoder_dist)
+<span class="pl-c1">length</span>(<span class="pl-c1">params</span>(vae)) <span class="pl-k">==</span> <span class="pl-c1">4</span>  <span class="pl-c"><span class="pl-c">#</span> we only get trainable params from the two Dense layers</span></pre></div>
+<p>Now you have a model that you can call <code>params(vae)</code> on and use Flux as you are
+used to. You can also easily sample from it once you are done training:</p>
+<div class="highlight highlight-source-julia"><pre>z <span class="pl-k">=</span> <span class="pl-c1">rand</span>(vae<span class="pl-k">.</span>prior, <span class="pl-c1">10</span>)   <span class="pl-c"><span class="pl-c">#</span> sample 10 times from the prior</span>
+μ <span class="pl-k">=</span> <span class="pl-c1">mean</span>(vae<span class="pl-k">.</span>decoder, z)  <span class="pl-c"><span class="pl-c">#</span> get decoder means</span>
+x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(vae<span class="pl-k">.</span>decoder, z)  <span class="pl-c"><span class="pl-c">#</span> get decoder samples</span></pre></div>
+<p>But say, you want to learn the variance of your prior during training... Easy!
+Just turn the prior variance into a normal <code>Array</code>:</p>
+<div class="highlight highlight-source-julia"><pre>trainable_prior <span class="pl-k">=</span> <span class="pl-c1">Gaussian</span>(<span class="pl-c1">NoGradArray</span>(<span class="pl-c1">zeros</span>(zlen)), <span class="pl-c1">ones</span>(zlen))
+
+vae <span class="pl-k">=</span> <span class="pl-c1">VAE</span>(trainable_prior, encoder_dist, decoder_dist)
+<span class="pl-c1">length</span>(<span class="pl-c1">params</span>(vae)) <span class="pl-k">==</span> <span class="pl-c1">5</span>  <span class="pl-c"><span class="pl-c">#</span> prior variance is now included in trainable params</span></pre></div>
+<p>Done!</p>
+<h2><a id="user-content-development" class="anchor" aria-hidden="true" href="#development"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Development</h2>
+<p>To start julia with the exact package versions that are specified in the
+dependencies run <code>julia --project</code> from the root of this repo.</p>
+<p>Where possible, custom checkpointing/other convenience functions should be using
+<a href="https://juliadynamics.github.io/DrWatson.jl/stable/" rel="nofollow"><code>DrWatson.jl</code></a>
+functionality such as <code>tagsave</code> to ensure reproducability of simulations.</p>
+<h3><a id="user-content-structure" class="anchor" aria-hidden="true" href="#structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Structure</h3>
+<pre><code>|-src
+|  |- models
+|  |- anomaly_scores
+|  |- utils
+|-test
+</code></pre>
+<p>The models themselves are defined in <code>src/models</code>. Each file contains a
+specific model that inherits from <code>AbstractGM</code> and has three fields:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Model{P<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractPDF</span>,E<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractCPDF</span>,D<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractCPDF</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractGM</span>
+    prior<span class="pl-k">::</span><span class="pl-c1">P</span>
+    encoder<span class="pl-k">::</span><span class="pl-c1">E</span>
+    decoder<span class="pl-k">::</span><span class="pl-c1">D</span>
+<span class="pl-k">end</span></pre></div>
+<p>and implements e.g. custom loss functions.</p>
+<h3><a id="user-content-model--distribution-interface" class="anchor" aria-hidden="true" href="#model--distribution-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Model / distribution interface</h3>
+<p>The distributions used for prior, encoder, and decoder all implement a common
+interface that includes the functions <code>mean</code>, <code>variance</code>, <code>mean_var</code>, <code>rand</code>,
+<code>loglikelihood</code>, <code>kl_divergence</code> (see <a href="https://github.com/aicenter/ConditionalDists.jl">ConditionalDists.jl</a>).
+This interface makes it possible that functions such as the ELBO or the anomaly
+scores can be generalized. E.g. the ELBO code looks like this:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">elbo</span>(m<span class="pl-k">::</span><span class="pl-c1">AbstractVAE</span>, x<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>; β<span class="pl-k">=</span><span class="pl-c1">1</span>)
+    z <span class="pl-k">=</span> <span class="pl-c1">rand</span>(m<span class="pl-k">.</span>encoder, x)
+    llh <span class="pl-k">=</span> <span class="pl-c1">mean</span>(<span class="pl-c1">loglikelihood</span>(m<span class="pl-k">.</span>decoder, x, z))
+    kl  <span class="pl-k">=</span> <span class="pl-c1">mean</span>(<span class="pl-c1">kl_divergence</span>(m<span class="pl-k">.</span>encoder, m<span class="pl-k">.</span>prior, x))
+    llh <span class="pl-k">-</span> β<span class="pl-k">*</span>kl
+<span class="pl-k">end</span></pre></div>
+</article></div>

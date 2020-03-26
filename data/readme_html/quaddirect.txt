@@ -1,0 +1,82 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-quaddirect" class="anchor" aria-hidden="true" href="#quaddirect"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>QuadDIRECT</h1>
+<p><a href="https://travis-ci.org/timholy/QuadDIRECT.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/fff2ef5da2b2f1488314409804bba8d54877f6e6/68747470733a2f2f7472617669732d63692e6f72672f74696d686f6c792f517561644449524543542e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/timholy/QuadDIRECT.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="http://codecov.io/github/timholy/QuadDIRECT.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/7eb700c981131ca2a11dc7e4ea19cbd46953ba96/687474703a2f2f636f6465636f762e696f2f6769746875622f74696d686f6c792f517561644449524543542e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/timholy/QuadDIRECT.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>QuadDIRECT is an algorithm for global optimization without requiring derivatives. It was inspired by <a href="https://www.tol-project.org/export/3756/tolp/OfficialTolArchiveNetwork/NonLinGloOpt/doc/DIRECT_Lipschitzian%20optimization%20without%20the%20lipschitz%20constant.pdf" rel="nofollow">DIRECT</a> and <a href="http://www.mat.univie.ac.at/~Neum/ms/mcs.pdf" rel="nofollow">MCS</a>:</p>
+<p>DIRECT: Jones, Donald R., Cary D. Perttunen, and Bruce E. Stuckman. "Lipschitzian optimization without the Lipschitz constant." Journal of Optimization Theory and Applications 79.1 (1993): 157-181.</p>
+<p>MCS: Huyer, Waltraud, and Arnold Neumaier. "Global optimization by multilevel coordinate search." Journal of Global Optimization 14.4 (1999): 331-355.</p>
+<p>There is no formal published description (yet), but it expands upon DIRECT by:</p>
+<ul>
+<li>allowing boxes to be of different sizes, and supporting boxes that extend to infinity</li>
+<li>not assuming that the coordinates form a metric space: each dimension is treated independently of the others</li>
+<li>it splits boxes at points suspected of being minima as judged by a
+local one-dimensional quadratic model of the function</li>
+<li>once enough boxes have been created, it attempts "local search," building a dense quadratic model and
+performing a quasi-Newton optimization.</li>
+</ul>
+<p>Unlike MCS,</p>
+<ul>
+<li>the geometry is more similar to DIRECT, in that each box is affiliated with a different function evaluation point</li>
+<li>it uses the "Pareto front" concept of DIRECT, rather than a heuristic splitting scheme based on levels</li>
+<li>the local search is not disconnected from the box-splitting: the function evaluations used in local search
+get entered into the tree structure, providing the opportunity to re-use those function evaluations for further improvements</li>
+</ul>
+<p>As a simple demonstration, consider the "6-hump camel function":</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">camel</span>(x)
+            <span class="pl-c"><span class="pl-c">#</span> 6-hump camel function. Typically evaluated over [-3,3] × [-2,2].</span>
+            x1, x2 <span class="pl-k">=</span> x[<span class="pl-c1">1</span>], x[<span class="pl-c1">2</span>]
+            x1s <span class="pl-k">=</span> x1<span class="pl-k">*</span>x1
+            x2s <span class="pl-k">=</span> x2<span class="pl-k">*</span>x2
+            <span class="pl-k">return</span> (<span class="pl-c1">4</span> <span class="pl-k">-</span> <span class="pl-c1">2.1</span><span class="pl-k">*</span>x1s <span class="pl-k">+</span> x1s<span class="pl-k">*</span>x1s<span class="pl-k">/</span><span class="pl-c1">3</span>)<span class="pl-k">*</span>x1s <span class="pl-k">+</span> x1<span class="pl-k">*</span>x2 <span class="pl-k">+</span> (<span class="pl-k">-</span><span class="pl-c1">4</span> <span class="pl-k">+</span> <span class="pl-c1">4</span><span class="pl-k">*</span>x2s)<span class="pl-k">*</span>x2s
+        <span class="pl-k">end</span></pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="images/camel.png"><img src="images/camel.png" alt="camel function" style="max-width:100%;"></a></p>
+<p>Here the value scale was cut off at 5 so that the structure of the minima can be seen.
+You can explore this function with</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> QuadDIRECT
+
+julia<span class="pl-k">&gt;</span> lower, upper <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">3</span>,<span class="pl-k">-</span><span class="pl-c1">2</span>], [<span class="pl-c1">3</span>,<span class="pl-c1">2</span>]   <span class="pl-c"><span class="pl-c">#</span> domain over which we allow solutions</span>
+([<span class="pl-k">-</span><span class="pl-c1">3</span>, <span class="pl-k">-</span><span class="pl-c1">2</span>], [<span class="pl-c1">3</span>, <span class="pl-c1">2</span>])
+
+julia<span class="pl-k">&gt;</span> splits <span class="pl-k">=</span> ([<span class="pl-k">-</span><span class="pl-c1">2</span>, <span class="pl-c1">0</span>, <span class="pl-c1">2</span>], [<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">0</span>, <span class="pl-c1">1</span>])   <span class="pl-c"><span class="pl-c">#</span> initial locations to evaluate function</span>
+([<span class="pl-k">-</span><span class="pl-c1">2</span>, <span class="pl-c1">0</span>, <span class="pl-c1">2</span>], [<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">0</span>, <span class="pl-c1">1</span>])
+
+julia<span class="pl-k">&gt;</span> root, x0 <span class="pl-k">=</span> <span class="pl-c1">analyze</span>(camel, splits, lower, upper)
+(BoxRoot@[<span class="pl-c1">NaN</span>, <span class="pl-c1">NaN</span>], [<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>])</pre></div>
+<p>This creates a tree structure (currently) with a few hundred boxes, each corresponding to a single function evaluation:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="images/quaddirect_camel.png"><img src="images/quaddirect_camel.png" alt="boxes" style="max-width:100%;"></a></p>
+<p>You can see that it has concentrated its function evaluations near the local minima,
+and that all of the minima were explored.
+This plot was generated by utilities in <code>QuadDIRECT/src/plotting.jl</code>, which have to be
+loaded separatedly from the <code>QuadDIRECT</code> module.</p>
+<p>You can inspect the minimum like this:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> box <span class="pl-k">=</span> <span class="pl-c1">minimum</span>(root)
+Box<span class="pl-k">-</span><span class="pl-c1">1.0316284406055976</span>@[<span class="pl-c1">0.0898781</span>, <span class="pl-k">-</span><span class="pl-c1">0.71269</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">value</span>(box)
+<span class="pl-k">-</span><span class="pl-c1">1.0316284406055976</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">position</span>(box, x0)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+<span class="pl-c1">0.0898781</span>
+<span class="pl-k">-</span><span class="pl-c1">0.71269</span></pre></div>
+<p>These match the known global optima to reasonably high precision.</p>
+<p>There's also a convenience function <code>minimize</code> which just returns the location and value of the
+minimum.</p>
+<p>For more examples, see the <code>demo</code> directory.</p>
+<h3><a id="user-content-usage-guidance-benchmarking-and-convergence" class="anchor" aria-hidden="true" href="#usage-guidance-benchmarking-and-convergence"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage guidance, benchmarking, and convergence</h3>
+<p>In global optimization, "convergence" is a tricky subject: if the function might be non-convex,
+there is no principled way to say you're done---that your best minimum so far is the
+best minimum there is---without some additional information about the function. QuadDIRECT
+terminates if no further improvements have been made after <code>ndims</code> iterations. If you're
+benchmarking QuadDIRECT, here are a few tips:</p>
+<ul>
+<li>if you know the value of the global minimum, you can use it to specify a termination
+criterion, e.g., within 1% relative or 0.01 absolute value of the global minimum. See
+the <code>fvalue</code> option for <code>analyze</code>.</li>
+<li>You can count function evaluations by wrapping your function with <code>fc = CountedFunction(f)</code>
+and then use <code>numevals(fc)</code> to see how many evaluations were used. This is slightly more
+accurate than <code>length(leaves(root))</code> because there are a few cases where the function value
+is not stored in the tree structure.</li>
+<li>Use <code>LoggedFunction</code> to keep a record of every function value computed. The latter is
+particularly useful if you want to ask how many evaluations were required to reach a value of particular quality.</li>
+</ul>
+</article></div>

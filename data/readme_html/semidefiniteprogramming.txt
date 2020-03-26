@@ -1,0 +1,80 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-semidefinite-programming" class="anchor" aria-hidden="true" href="#semidefinite-programming"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Semidefinite Programming</h1>
+<p>This package provides a Julia interface for low-level modeling of semidefinite programming problems and for solving semidefinite programs with solvers such as SDPA and CSDP.</p>
+<p>Maintenance status: Currently no new futures are being developed for this package. Bugs will be fixed and this package will be kept up to date with new Julia releases.</p>
+<h1><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Introduction</h1>
+<p>Consider a semidefinite program of the form</p>
+<pre><code>max tr(C X) subject to X is positive semidefinite
+                       tr(A_i X) = b_i for i = 1, ...,m
+</code></pre>
+<p>Here <code>C</code>, <code>X</code>, and <code>A_1</code>, <code>...</code>, <code>A_m</code> are symmetric block matrices (all assumed to have identical size and block structure), and <code>b_1</code>, <code>...</code>, <code>b_m</code> are scalars.</p>
+<p>This problem can be modeled by constructing a sparse semidefinite program with</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> SemidefiniteProgramming
+sdp <span class="pl-k">=</span> <span class="pl-c1">SparseSDP</span>(maximize<span class="pl-k">=</span><span class="pl-c1">true</span>) </pre></div>
+<p>and then setting the nonzero scalars and the nonzero entries of the matrices. The most basic way to do this is as follows: For the scalars <code>b_i</code> use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">setrhs!</span>(sdp, i, value)</pre></div>
+<p>For the entries of the objective matrix <code>C</code> use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">setobj!</span>(sdp, blockindex, rowindex, columnindex, value)</pre></div>
+<p>For the constraint matrices <code>A_i</code> use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">setcon!</span>(sdp, i, blockindex, rowindex, columnindex, value)</pre></div>
+<p>Then we solve the program with</p>
+<div class="highlight highlight-source-julia"><pre>sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(sdp, solver)</pre></div>
+<p>and print the (primal) objective value:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">println</span>(<span class="pl-c1">obj</span>(sol))</pre></div>
+<p>Notice that the number of constraints, the number of blocks, and the blocksizes do not need to be specified; they will be determined automatically based on the entries you have set. Of course all the matrices involded are assumed to have identical block structure. The indices of the contraints, blocks, and matrices do not need be integers; you can use any Julia object here. When storing a SparseSDP in for instance the SDPA-sparse format the indices will be converted to integers automatically.</p>
+<h1><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example</h1>
+<p>Consider the program above with <code>b1 = 10</code>, <code>b2 = 20</code>,</p>
+<pre><code>C = [1 0 0 0;
+     0 2 0 0;
+     0 0 3 0;
+     0 0 0 4],
+</code></pre>
+<pre><code>A1 = [1 0 0 0;
+      0 1 0 0;
+      0 0 0 0;
+      0 0 0 0],
+</code></pre>
+<p>and</p>
+<pre><code>A2 = [0 0 0 0;
+      0 1 0 0;
+      0 0 5 2;
+      0 0 2 6]
+</code></pre>
+<p>To solve this we use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> SemidefiniteProgramming
+
+sdp <span class="pl-k">=</span> <span class="pl-c1">SparseSDP</span>(maximize<span class="pl-k">=</span><span class="pl-c1">true</span>)
+
+<span class="pl-c1">setobj!</span>(sdp, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">setobj!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2.0</span>)
+<span class="pl-c1">setobj!</span>(sdp, <span class="pl-c1">3</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">3.0</span>)
+<span class="pl-c1">setobj!</span>(sdp, <span class="pl-c1">3</span>, <span class="pl-c1">2</span>, <span class="pl-c1">2</span>, <span class="pl-c1">4.0</span>)
+
+<span class="pl-c1">setrhs!</span>(sdp, <span class="pl-c1">1</span>, <span class="pl-c1">10.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1.0</span>)
+
+<span class="pl-c1">setrhs!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">20.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">2</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">5.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">2.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">2</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2.0</span>)
+<span class="pl-c1">setcon!</span>(sdp, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">2</span>, <span class="pl-c1">2</span>, <span class="pl-c1">6.0</span>)
+
+<span class="pl-c1">println</span>(<span class="pl-c1">obj</span>(<span class="pl-c1">solve</span>(sdp, <span class="pl-c1">CSDP</span>())))</pre></div>
+<h1><a id="user-content-solvers" class="anchor" aria-hidden="true" href="#solvers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Solvers</h1>
+<p>To use a solver construct an immutable solver object with <code>CSDP()</code>, <code>SDPA()</code>, etc, and supply it as the second argument to the <code>solve</code> function. The solver objects support the optional named arguments</p>
+<ul>
+<li><code>verbose</code> (print solver output to stdout)</li>
+<li><code>executable</code> (path to the solver executable)</li>
+</ul>
+<h2><a id="user-content-csdp" class="anchor" aria-hidden="true" href="#csdp"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CSDP</h2>
+<p>To use the CSDP solver you need to install <a href="https://projects.coin-or.org/Csdp" rel="nofollow">CSDP</a> and make sure that the CSDP binary is in your path. On Debian/Ubuntu you can do this by installing the <code>coinor-csdp</code> package. On Fedora it is the <code>csdp</code> package.</p>
+<h2><a id="user-content-sdpa" class="anchor" aria-hidden="true" href="#sdpa"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SDPA</h2>
+<p>To use one of the SDPA solvers install <a href="http://sdpa.sourceforge.net/" rel="nofollow">SDPA</a> and make sure the executable is in your path. On Debian/Ubuntu you can do this by installing the package <code>sdpa</code> (this package only contains the standard SDPA solver). Use SDPA for the standard SDPA solver and SDPAQD or SDPAGMP for the high precision solvers.</p>
+<h1><a id="user-content-sparsesdpsolution-objects" class="anchor" aria-hidden="true" href="#sparsesdpsolution-objects"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SparseSDPSolution objects</h1>
+<p>Having solved a semidefinite program with</p>
+<div class="highlight highlight-source-julia"><pre>sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(sdp, <span class="pl-c1">CSDP</span>())</pre></div>
+<p>you can extract the primal and dual objective values with <code>obj(sol)</code> and <code>dualobj(sol)</code>. To extract the values of the optimal primal variables (the matrix <code>X</code> in the notation above) use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">primalmatrix</span>(sol)[blockindex][rowindex, columnindex]</pre></div>
+<p>Variable extraction is currently only supported with the CSDP solver.</p>
+</article></div>

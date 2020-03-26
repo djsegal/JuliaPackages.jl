@@ -1,0 +1,64 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-dicomjl" class="anchor" aria-hidden="true" href="#dicomjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DICOM.jl</h1>
+<p>Julia interface for parsing/writing DICOM files</p>
+<p><a href="https://travis-ci.org/JuliaIO/DICOM.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c81798e37e678fc248e054037c096fad7b95249b/68747470733a2f2f7472617669732d63692e6f72672f4a756c6961494f2f4449434f4d2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaIO/DICOM.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaIO/DICOM.jl/branch/master" rel="nofollow"><img src="https://camo.githubusercontent.com/dcba3b6e084339183807edd7bacb570f3f67f14c/68747470733a2f2f636f6465636f762e696f2f67682f4a756c6961494f2f4449434f4d2e6a6c2f6272616e63682f6d61737465722f6772617068732f62616467652e7376673f" alt="Code Coverage" data-canonical-src="https://codecov.io/gh/JuliaIO/DICOM.jl/branch/master/graphs/badge.svg?" style="max-width:100%;"></a></p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p><strong>Installation</strong></p>
+<p>To install the package:</p>
+<pre><code>julia&gt; using Pkg
+julia&gt; Pkg.add("DICOM")
+</code></pre>
+<p>Load the package by</p>
+<pre><code>julia&gt; using DICOM
+</code></pre>
+<p><strong>Reading Data</strong></p>
+<p>Read a DICOM file by</p>
+<pre><code>julia&gt; dcm_data = dcm_parse("path/to/dicom/file")
+</code></pre>
+<p>The data in <code>dcm_data</code> is structured as a dictionary, and individual DICOM elements can be accessed by their hex tag.
+For example, the hex tag of "Pixel Data" is <code>7FE0,0010</code>, and it can be accessed in Julia by <code>dcm_data[(0x7FE0,0x0010)]</code> or by <code>dcm_data[tag"Pixel Data"]</code>.</p>
+<p><strong>Writing Data</strong></p>
+<p>Data can be written to a DICOM file by</p>
+<pre><code>julia&gt; dcm_write("path/to/output/file", dcm_data)
+</code></pre>
+<p><strong>Additional Notes</strong></p>
+<p>DICOM files should begin with a 128-bytes (which are ignored) followed by the string <code>DICM</code>.
+If this preamble is missing, then the file can be parsed by <code>dcm_parse(path/to/file, preamble = false)</code>.</p>
+<p>DICOM files use either explicit or implicit value representation (VR). For implicit files, <code>DICOM.jl</code> will use a lookup table to guess the VR from the DICOM element's hex tag. For explicit files, <code>DICOM.jl</code> will read the VRs from the file.</p>
+<ul>
+<li>
+<p>An auxiliary user-defined dictionary can be supplied to override the default lookup table
+For example, the "Instance Number" - tag <code>(0x0020,0x0013)</code> - is an integer (default VR = "IS"). We can read this as a float by setting the VR to "DS" by:</p>
+<pre><code>my_vrs = Dict( (0x0020,0x0013) =&gt; "DS" )
+dcm_data = dcm_parse("path/to/dicom/file", aux_vr = my_vrs)
+</code></pre>
+<p>Now <code>dcm_data[(0x0020,0x0013)]</code> will return a float instead of an integer.</p>
+</li>
+<li>
+<p>It is possible to skip an element by setting its VR to <code>""</code>.
+For example, we can skip reading the Instance Number by</p>
+<pre><code>my_vrs = Dict( (0x0020,0x0013) =&gt; "" )
+dcm_data = dcm_parse("path/to/dicom/file", aux_vr = my_vr)
+</code></pre>
+<p>and now <code>dcm_data[(0x0020,0x0013)]</code> will return an error because the key <code>(0x0020,0x0013)</code> doesn't exist - it was skipped during reading.</p>
+</li>
+<li>
+<p>The user-supplied VR can contain a master VR with the tag <code>(0x0000,0x0000)</code> which will be used whenever <code>DICOM.jl</code> is unable to guess the VR on its own. This is convenient for reading older dicom files and skipping retired elements - i.e. where the VR lookup fails - by:</p>
+<pre><code>my_vrs = Dict( (0x0000,0x0000) =&gt; "" )
+dcm_data = dcm_parse("path/to/dicom/file", aux_vr = my_vrs)
+</code></pre>
+</li>
+<li>
+<p>A user-supplied VR can also be supplied during writing, e.g.:</p>
+<pre><code>julia&gt; dcm_write("path/to/output/file", dcm_data, aux_vr = user_defined_vr)
+</code></pre>
+<p>where <code>user_defined_vr</code> is a dictionary which maps the hex tag to the VR.</p>
+</li>
+<li>
+<p>A dictionary of VRs can be obtained by passing <code>return_vr = true</code> as an argument to <code>dcm_parse()</code>, e.g.:</p>
+<pre><code>julia&gt; (dcm_data, dcm_vr) = dcm_parse("path/to/dicom/file", return_vr = true)
+</code></pre>
+<p>and <code>dcm_vr</code> will contain a dictionary of VRs for the elements in <code>dcm_data</code></p>
+</li>
+</ul>
+</article></div>

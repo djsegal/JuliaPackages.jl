@@ -1,0 +1,39 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p><a href="https://travis-ci.org/evetion/LASindex.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c80013d482e456c313657351e4d838039346d850/68747470733a2f2f7472617669732d63692e6f72672f65766574696f6e2f4c4153696e6465782e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/evetion/LASindex.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/evetion/lasindex-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/5c77dd19730c6eb7ab1ceda2e25bc516c41f03e2/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6c6c6f706475786d7666366f626775343f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/llopduxmvf6obgu4?svg=true" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/evetion/LASindex.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3e9fdaa4ac34b7ecdddf65038c346749fefd697c/68747470733a2f2f636f6465636f762e696f2f67682f65766574696f6e2f4c4153696e6465782e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/evetion/LASindex.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<h1><a id="user-content-lasindexjl" class="anchor" aria-hidden="true" href="#lasindexjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>LASindex.jl</h1>
+<p>Pure Julia reader of lasindex .lax files.
+Translates the .lax file to a quadtree from the RegionTrees package and provides a bounding box intersect method to retrieve a vector of ranges.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> LASindex
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> FileIO
+
+julia<span class="pl-k">&gt;</span> laxfile <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(<span class="pl-s"><span class="pl-pds">"</span>sample<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Palm Beach Post Hurricane.lax<span class="pl-pds">"</span></span>);
+julia<span class="pl-k">&gt;</span> qt <span class="pl-k">=</span> <span class="pl-c1">load</span>(laxfile)
+INFO<span class="pl-k">:</span> Processed Palm Beach Post Hurricane<span class="pl-k">.</span>lax with <span class="pl-c1">1924631</span> points.
+Cell<span class="pl-k">:</span> RegionTrees<span class="pl-k">.</span><span class="pl-c1">HyperRectangle</span><span class="pl-c1">{2,Float64}</span>([<span class="pl-c1">955000.0</span>, <span class="pl-c1">885000.0</span>], [<span class="pl-c1">32000.0</span>, <span class="pl-c1">32000.0</span>])
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> StaticArrays
+julia<span class="pl-k">&gt;</span> bbox <span class="pl-k">=</span> <span class="pl-c1">SVector</span>(<span class="pl-c1">955000.0</span>, <span class="pl-c1">985002.0</span>, <span class="pl-c1">885000.0</span>, <span class="pl-c1">988800.0</span>);
+julia<span class="pl-k">&gt;</span> r <span class="pl-k">=</span> LASindex<span class="pl-k">.</span><span class="pl-c1">intersect</span>(qt, bbox)
+<span class="pl-c1">1</span><span class="pl-k">-</span>element Array{UnitRange{Integer},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1924631</span>
+</pre></div>
+<p>The resulting ranges can be used in combination with LasIO or LazIO to stream a small subset of a (larger than memory) dataset.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LasIO
+header, points <span class="pl-k">=</span> <span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>Palm Beach Post Hurricane.las<span class="pl-pds">"</span></span>, mmap<span class="pl-k">=</span><span class="pl-c1">true</span>)
+
+intersected_points <span class="pl-k">=</span> points[LASindex<span class="pl-k">.</span><span class="pl-c1">intersect</span>(qt, bbox)]</pre></div>
+<p>Note that all points inside the bounding box are given, but not all points given are inside the bounding box. In other words, because of how <code>lasindex</code> groups ranges together, some ranges will include points outside the bounding box.</p>
+<h3><a id="user-content-background" class="anchor" aria-hidden="true" href="#background"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Background</h3>
+<p>LAX files are quadtree indexes used by the LASTools suite [1] if present. You can generate them with <code>lasindex -i *.laz</code>[2]. There's a good introduction to lasindex here [3].</p>
+<ul>
+<li>[1] <a href="https://rapidlasso.com/lastools/" rel="nofollow">https://rapidlasso.com/lastools/</a></li>
+<li>[2] <a href="https://github.com/LAStools/LAStools/blob/master/bin/lasindex_README.txt">https://github.com/LAStools/LAStools/blob/master/bin/lasindex_README.txt</a></li>
+<li>[3] <a href="https://www.youtube.com/watch?v=FMcBywhPgdg" rel="nofollow">https://www.youtube.com/watch?v=FMcBywhPgdg</a></li>
+</ul>
+<h3><a id="user-content-future" class="anchor" aria-hidden="true" href="#future"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Future</h3>
+<p>I'd rather use Cxx to call the lasindex c++ code directly,
+but at the moment the Cxx package is harder to install on Windows
+than compiling the lastools shared library itself.</p>
+<p>An example how to interface with lastools directly is provided in example/cxx.jl</p>
+</article></div>

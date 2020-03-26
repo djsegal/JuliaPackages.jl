@@ -1,0 +1,58 @@
+<div id="readme" class="rst" data-path="README.rst"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-errorlinenumber-package" class="anchor" aria-hidden="true" href="#errorlinenumber-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ErrorLineNumber package</h1>
+<p>The purpose of this package to address one or more unfixed bugs
+in Julia 0.4 that cause the run-time error system to report the
+location of the error at the
+wrong source-file line number in some cases.  Suppose a source
+file has a function <code>reduceMatrix</code> that generates an <code>BoundsError</code>
+due to an array subscript out of range.  Suppose you suspect that Julia
+displays the wrong line number for the error.  This
+package instruments a source file with a second scheme for
+tracking line numbers.  To use it, first install the package via:</p>
+<pre>Pkg.clone("https://github.com/StephenVavasis/ErrorLineNumber.jl")
+</pre>
+<p>and then declare:</p>
+<pre>using ErrorLineNumber.@errorlinenumber
+</pre>
+<p>somewhere
+at the beginning of your source file.
+Next replace your <code>function</code> declaration, e.g.,:</p>
+<pre>function reduceMatrix(a::Array{Float64,2}, i::Int)
+. . .
+end
+</pre>
+<p>by:</p>
+<pre>@errorlinenumber function reduceMatrix(a::Array{Float64,2}, i::Int)
+. . .
+end
+</pre>
+<p>and re-run the code. The macro will cause the line with the error
+message to be displayed, encased with rows of exclamation points, before
+the Julia backtrace error message.</p>
+<p>The additional statements for instrumentation
+degrade performance, so once the debugging is
+finished, the macro call <code>@errorlinenumber</code> should be removed.</p>
+<p>Here is an example of an actual printout (not included in the test cases)
+showing that the (correct) line number (359) reported by this macro differs
+from the erroneous line number (236) reported by the backtrace system:</p>
+<pre>julia&gt; Meshgen.testcase1()
+    !!!!!!!!!!!!!!!!!
+ERROR LINE number = geometryPreprocess.359
+    !!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!
+ERROR LINE number = testcase1.1169
+    !!!!!!!!!!!!!!!!!
+ERROR: BoundsError: attempt to access 0-element Array{Meshgen.PCAGarcaux,1}
+  at index [3]
+ [inlined code] from c:\Users\vavasis\Documents\Projects\qmg21\src_jl\meshgen\..
+/geo/geo_pcag.jl:239
+ in geometryPreprocess at no file:236
+ [inlined code] from c:\Users\vavasis\Documents\Projects\qmg21\src_jl\meshgen\me
+shgen.jl:1169
+ in testcase1 at no file:1168
+</pre>
+<p>Note that if function <code>f1</code> invokes <code>f2</code>, which generates
+the run-time error, and both are instrumented by this
+macro, then both functions print the line number of the error (in the case
+of <code>f1</code>, it is the location of the call to <code>f2</code>).</p>
+
+</article></div>

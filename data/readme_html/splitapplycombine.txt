@@ -1,0 +1,338 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-split-apply-combine" class="anchor" aria-hidden="true" href="#split-apply-combine"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Split, apply, combine</h1>
+<p><em>Strategies for nested data in Julia</em></p>
+<p><a href="https://travis-ci.org/JuliaData/SplitApplyCombine.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/804c2135b4584089a32a41a219545953c7a312b3/68747470733a2f2f7472617669732d63692e6f72672f4a756c6961446174612f53706c69744170706c79436f6d62696e652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaData/SplitApplyCombine.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/JuliaData/SplitApplyCombine.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/ef25311700a5eb8daa48169388eb943247caa7e3/687474703a2f2f636f6465636f762e696f2f6769746875622f4a756c6961446174612f53706c69744170706c79436f6d62696e652e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/JuliaData/SplitApplyCombine.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p><em>SplitApplyCombine.jl</em> provides high-level, generic tools for manipulating data -
+particularly focussing on data in nested containers. An emphasis is placed on ensuring
+split-apply-combine strategies are easy to apply, and work reliably for arbitrary iterables
+and in an optimized way with the data structures included in Julia's standard library.</p>
+<p>The tools come in the form of high-level functions that operate on iterable or indexable
+containers in an intuitive and simple way, extending Julia's in-built <code>map</code>, <code>reduce</code> and
+<code>filter</code> commands to a wider range of operations. Just like these <code>Base</code> functions, the
+functions here like <code>invert</code>, <code>group</code> and <code>innerjoin</code> are able to be overloaded and
+optimized by users and the maintainers of other packages for their own, custom data
+containers.</p>
+<p>One side goal is to provide sufficient functionality to satisfy the need to manipulate
+"relational" data (meaning tables and dataframes) with basic in-built Julia data containers
+like <code>Vector</code>s of <code>NamedTuple</code>s and higher-level functions in a "standard" Julia style.
+Pay particular to the <code>invert</code> family of functions, which effectively allows you to switch
+between a "struct-of-arrays" and an "array-of-structs" interpretation of your data. I am
+exploring the idea of using arrays of named tuples for a fast table package in another
+package under development called
+<a href="https://github.com/andyferris/MinimumViableTables.jl">MinimumViableTables</a>), which adds
+acceleration indexes but otherwise attempts to use a generic "native Julia" interface.</p>
+<h2><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Quick start</h2>
+<p>You can install the package by typing
+<code>Pkg.clone("https://github.com/JuliaData/SplitApplyCombine.jl")</code> at the REPL.</p>
+<p>Below are some simple examples of how a select subset of the tools can be used to split,
+manipulate, and combine data. A complete API reference is included at the end of this
+README.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SplitApplyCombine
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">only</span>([<span class="pl-c1">3</span>]) <span class="pl-c"><span class="pl-c">#</span> return the one-and-only element of the input (included in Julia 1.4)</span>
+<span class="pl-c1">3</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">splitdims</span>([<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span>; <span class="pl-c1">4</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span>]) <span class="pl-c"><span class="pl-c">#</span> create nested arrays</span>
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Array{Int64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>, <span class="pl-c1">4</span>]
+ [<span class="pl-c1">2</span>, <span class="pl-c1">5</span>]
+ [<span class="pl-c1">3</span>, <span class="pl-c1">6</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">combinedims</span>([[<span class="pl-c1">1</span>, <span class="pl-c1">4</span>], [<span class="pl-c1">2</span>, <span class="pl-c1">5</span>], [<span class="pl-c1">3</span>, <span class="pl-c1">6</span>]]) <span class="pl-c"><span class="pl-c">#</span> flatten nested arrays</span>
+<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">3</span> Array{Int64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>
+ <span class="pl-c1">4</span>  <span class="pl-c1">5</span>  <span class="pl-c1">6</span>
+
+ julia<span class="pl-k">&gt;</span> <span class="pl-c1">invert</span>([[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>],[<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">6</span>]]) <span class="pl-c"><span class="pl-c">#</span> invert the order of nesting</span>
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Array{Int64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>, <span class="pl-c1">4</span>]
+ [<span class="pl-c1">2</span>, <span class="pl-c1">5</span>]
+ [<span class="pl-c1">3</span>, <span class="pl-c1">6</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">group</span>(iseven, [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>, <span class="pl-c1">7</span>, <span class="pl-c1">8</span>, <span class="pl-c1">9</span>, <span class="pl-c1">10</span>]) <span class="pl-c"><span class="pl-c">#</span> split elements into groups</span>
+<span class="pl-c1">2</span><span class="pl-k">-</span>element HashDictionary{Bool,Array{Int64,<span class="pl-c1">1</span>}}
+ <span class="pl-c1">false</span> │ [<span class="pl-c1">1</span>, <span class="pl-c1">3</span>, <span class="pl-c1">5</span>, <span class="pl-c1">7</span>, <span class="pl-c1">9</span>]
+  <span class="pl-c1">true</span> │ [<span class="pl-c1">2</span>, <span class="pl-c1">4</span>, <span class="pl-c1">6</span>, <span class="pl-c1">8</span>, <span class="pl-c1">10</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">groupreduce</span>(iseven, <span class="pl-k">+</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>) <span class="pl-c"><span class="pl-c">#</span> like above, but performing reduction</span>
+<span class="pl-c1">2</span><span class="pl-k">-</span>element HashDictionary{Bool,Int64}
+ <span class="pl-c1">false</span> │ <span class="pl-c1">25</span>
+  <span class="pl-c1">true</span> │ <span class="pl-c1">30</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">innerjoin</span>(iseven, iseven, tuple, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>], [<span class="pl-c1">0</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>]) <span class="pl-c"><span class="pl-c">#</span> combine two datasets - related to SQL `inner join`</span>
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Tuple{Int64,Int64},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ (<span class="pl-c1">1</span>, <span class="pl-c1">1</span>)
+ (<span class="pl-c1">2</span>, <span class="pl-c1">0</span>)
+ (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>)
+ (<span class="pl-c1">3</span>, <span class="pl-c1">1</span>)
+ (<span class="pl-c1">4</span>, <span class="pl-c1">0</span>)
+ (<span class="pl-c1">4</span>, <span class="pl-c1">2</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">leftgroupjoin</span>(iseven, iseven, tuple, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>], [<span class="pl-c1">0</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>]) <span class="pl-c"><span class="pl-c">#</span> efficient groupings from two datasets</span>
+Dict{Bool,Array{Tuple{Int64,Int64},<span class="pl-c1">1</span>}} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+  <span class="pl-c1">false</span> <span class="pl-k">=&gt;</span> Tuple{Int64,Int64}[(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>), (<span class="pl-c1">3</span>, <span class="pl-c1">1</span>)]
+  <span class="pl-c1">true</span>  <span class="pl-k">=&gt;</span> Tuple{Int64,Int64}[(<span class="pl-c1">2</span>, <span class="pl-c1">0</span>), (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>), (<span class="pl-c1">4</span>, <span class="pl-c1">0</span>), (<span class="pl-c1">4</span>, <span class="pl-c1">2</span>)]</pre></div>
+<h2><a id="user-content-tabular-data" class="anchor" aria-hidden="true" href="#tabular-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tabular data</h2>
+<p>The primary interface for manipulating tabular data is the <em>relational algebra</em>. A
+<em>relation</em> is typically defined as an (unordered) collection of (unique) (named) tuples.
+If relations are collections of rows, and tables are to be viewed as relations, then I
+suggest that tables should be viewed as collections of rows (and in particular they should
+iterate rows and return an entire row from <code>getindex</code>, if defined).</p>
+<p>While simple, this already allows quite a bit of relational algebra to occur. One can then
+<code>filter</code> rows of a table, <code>map</code> rows of a table (to project, rename or create columns), and
+use <code>zip</code> and <code>product</code> iterables for more complex operations. The goal below will be to
+discuss functions which work well for general iterables <em>and</em> will be useful for a table
+that iterates rows. As a prototype to keep in mind for this work, I consider an
+<code>AbstractVector{&lt;:NamedTuple}</code> to be a good model of (strongly-typed) a table/dataframe.
+Specialized packages may provide convenient macro-based DSLs, a greater range of functions,
+and implementations that focus on things such as out-of-core or distributed computing, more
+flexible acceleration indexing, etc. Here I'm only considering the basic, bare-bones API
+that may be extended and built upon by other packages.</p>
+<h2><a id="user-content-notes" class="anchor" aria-hidden="true" href="#notes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Notes</h2>
+<p>This package recently switched from using the dictionaries in <code>Base</code> to those in the
+[<em>Dictionaries.jl</em>][<a href="https://github.com/andyferris/Dictionaries.jl">https://github.com/andyferris/Dictionaries.jl</a>] package, particularly
+for the <code>group</code> family of functions.</p>
+<h1><a id="user-content-api-reference" class="anchor" aria-hidden="true" href="#api-reference"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>API reference</h1>
+<p>The package currently implements and exports <code>only</code>, <code>splitdims</code>, <code>splitdimsview</code>,
+<code>combinedims</code>, <code>combinedimsview</code>, <code>mapmany</code>, <code>flatten</code>, <code>group</code>, <code>groupinds</code>, <code>groupview</code>,
+<code>groupreduce</code>, <code>innerjoin</code> and <code>leftgroupjoin</code>, as well as the <code>@_</code> macro. Expect this list
+to grow.</p>
+<h2><a id="user-content-generic-operations-on-collections" class="anchor" aria-hidden="true" href="#generic-operations-on-collections"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Generic operations on collections</h2>
+<h3><a id="user-content-onlyiter" class="anchor" aria-hidden="true" href="#onlyiter"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>only(iter)</code></h3>
+<p>Returns the single, one-and-only element of the collection <code>iter</code>. If it contains zero
+elements or more than one element, an error is thrown.</p>
+<h4><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">only</span>([<span class="pl-c1">3</span>])
+<span class="pl-c1">3</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">only</span>([])
+ERROR<span class="pl-k">:</span> ArgumentError<span class="pl-k">:</span> Collection must have exactly one element (input was empty)
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] <span class="pl-c1">only</span>(<span class="pl-k">::</span><span class="pl-c1">Array{Any,1}</span>) at <span class="pl-k">/</span>home<span class="pl-k">/</span>ferris<span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>v0<span class="pl-c1">.7</span><span class="pl-k">/</span>SAC<span class="pl-k">/</span>src<span class="pl-k">/</span>only<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">4</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">single</span>([<span class="pl-c1">3</span>, <span class="pl-c1">10</span>])
+ERROR<span class="pl-k">:</span> ArgumentError<span class="pl-k">:</span> Collection must have exactly one element (input contained more than one element)
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] <span class="pl-c1">only</span>(<span class="pl-k">::</span><span class="pl-c1">Array{Int64,1}</span>) at <span class="pl-k">/</span>home<span class="pl-k">/</span>ferris<span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>v0<span class="pl-c1">.7</span><span class="pl-k">/</span>SAC<span class="pl-k">/</span>src<span class="pl-k">/</span>only<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">10</span></pre></div>
+<h3><a id="user-content-splitdimsarray-dims" class="anchor" aria-hidden="true" href="#splitdimsarray-dims"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>splitdims(array, [dims])</code></h3>
+<p>Split a multidimensional array into nested arrays of arrays, splitting the specified
+dimensions <code>dims</code> to the "outer" array, leaving the remaining dimension in the "inner"
+array. By default, the last dimension is split into the outer array.</p>
+<h4><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">splitdims</span>([<span class="pl-c1">1</span> <span class="pl-c1">2</span>; <span class="pl-c1">3</span> <span class="pl-c1">4</span>])
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Array{Int64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>, <span class="pl-c1">3</span>]
+ [<span class="pl-c1">2</span>, <span class="pl-c1">4</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">splitdims</span>([<span class="pl-c1">1</span> <span class="pl-c1">2</span>; <span class="pl-c1">3</span> <span class="pl-c1">4</span>], <span class="pl-c1">1</span>)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Array{Int64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]
+ [<span class="pl-c1">3</span>, <span class="pl-c1">4</span>]</pre></div>
+<h3><a id="user-content-splitdimsviewarray-dims" class="anchor" aria-hidden="true" href="#splitdimsviewarray-dims"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>splitdimsview(array, [dims])</code></h3>
+<p>Like <code>splitdimsview(array, dims)</code> except creating a lazy view of the nested struture.</p>
+<h3><a id="user-content-combinedimsarray" class="anchor" aria-hidden="true" href="#combinedimsarray"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>combinedims(array)</code></h3>
+<p>The inverse operation of <code>splitdims</code> - this will take a nested array of arrays, where
+each sub-array has the same dimensions, and combine them into a single, flattened array.</p>
+<h4><a id="user-content-example-1" class="anchor" aria-hidden="true" href="#example-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">combinedims</span>([[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>], [<span class="pl-c1">3</span>, <span class="pl-c1">4</span>]])
+<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">2</span> Array{Int64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">3</span>
+ <span class="pl-c1">2</span>  <span class="pl-c1">4</span></pre></div>
+<h3><a id="user-content-combinedimsviewarray" class="anchor" aria-hidden="true" href="#combinedimsviewarray"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>combinedimsview(array)</code></h3>
+<p>Like <code>combinedims(array)</code> except creating a lazy view of the flattened struture.</p>
+<h3><a id="user-content-inverta" class="anchor" aria-hidden="true" href="#inverta"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>invert(a)</code></h3>
+<p>Take a nested container <code>a</code> and return a container where the nesting is reversed, such that
+<code>invert(a)[i][j] === a[j][i]</code>.</p>
+<p>Currently implemented for combinations of <code>AbstractArray</code>, <code>Tuple</code> and <code>NamedTuple</code>. It is
+planned to add <code>AbstractDict</code> in the future.</p>
+<h4><a id="user-content-examples-1" class="anchor" aria-hidden="true" href="#examples-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">invert</span>([[<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>],[<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">6</span>]]) <span class="pl-c"><span class="pl-c">#</span> invert the order of nesting</span>
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Array{Int64,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>, <span class="pl-c1">4</span>]
+ [<span class="pl-c1">2</span>, <span class="pl-c1">5</span>]
+ [<span class="pl-c1">3</span>, <span class="pl-c1">6</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">invert</span>((a <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>], b <span class="pl-k">=</span> [<span class="pl-c1">2.0</span>, <span class="pl-c1">4.0</span>, <span class="pl-c1">6.0</span>])) <span class="pl-c"><span class="pl-c">#</span> Works between different data types</span>
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{NamedTuple{(<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>),Tuple{Int64,Float64}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ (a <span class="pl-k">=</span> <span class="pl-c1">1</span>, b <span class="pl-k">=</span> <span class="pl-c1">2.0</span>)
+ (a <span class="pl-k">=</span> <span class="pl-c1">2</span>, b <span class="pl-k">=</span> <span class="pl-c1">4.0</span>)
+ (a <span class="pl-k">=</span> <span class="pl-c1">3</span>, b <span class="pl-k">=</span> <span class="pl-c1">6.0</span>)</pre></div>
+<h3><a id="user-content-invertout-a" class="anchor" aria-hidden="true" href="#invertout-a"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>invert!(out, a)</code></h3>
+<p>A mutating version of <code>invert</code>, which stores the result in <code>out</code>.</p>
+<h3><a id="user-content-mapviewf-iter" class="anchor" aria-hidden="true" href="#mapviewf-iter"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>mapview(f, iter)</code></h3>
+<p>Like <code>map</code>, but presents a view of the data contained in <code>iter</code>. The result may be wrapped in an
+lazily-computed output container (generally attempting to preserve arrays as <code>AbstractArray</code>, and
+so-on).</p>
+<p>For immutable collections (like <code>Tuple</code> and <code>NamedTuple</code>), the operation may be performed eagerly.</p>
+<h4><a id="user-content-example-2" class="anchor" aria-hidden="true" href="#example-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> a <span class="pl-k">=</span> [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>];
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">mapview</span>(iseven, a)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element MappedArray{Bool,<span class="pl-c1">1</span>,<span class="pl-c1">typeof</span>(iseven),Array{Int64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">false</span>
+  <span class="pl-c1">true</span>
+ <span class="pl-c1">false</span>
+
+julia<span class="pl-k">&gt;</span> a[<span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">2</span>;
+
+julia<span class="pl-k">&gt;</span> b
+<span class="pl-c1">3</span><span class="pl-k">-</span>element MappedArray{Bool,<span class="pl-c1">1</span>,<span class="pl-c1">typeof</span>(iseven),Array{Int64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+  <span class="pl-c1">true</span>
+  <span class="pl-c1">true</span>
+ <span class="pl-c1">false</span></pre></div>
+<h3><a id="user-content-mapmanyf-iters" class="anchor" aria-hidden="true" href="#mapmanyf-iters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>mapmany(f, iters...)</code></h3>
+<p>Like <code>map</code>, but <code>f(x...)</code> for each <code>x ∈ zip(iters...)</code> may return an arbitrary number of
+values to insert into the output.</p>
+<h4><a id="user-content-example-3" class="anchor" aria-hidden="true" href="#example-3"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">mapmany</span>(x <span class="pl-k">-&gt;</span> <span class="pl-c1">1</span><span class="pl-k">:</span>x, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>])
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">2</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">2</span>
+ <span class="pl-c1">3</span></pre></div>
+<p>(Note that, semantically, <code>filter</code> could be thought of as a special case of <code>mapmany</code>.)</p>
+<h3><a id="user-content-flattena" class="anchor" aria-hidden="true" href="#flattena"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>flatten(a)</code></h3>
+<p>Takes a collection of collections <code>a</code> and returns a collection containing all the elements
+of the subcollecitons of <code>a</code>. Equivalent to <code>mapmany(identity, a)</code>.</p>
+<h4><a id="user-content-example-4" class="anchor" aria-hidden="true" href="#example-4"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">flatten</span>([<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>])
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">2</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">2</span>
+ <span class="pl-c1">3</span></pre></div>
+<h3><a id="user-content-productf-a-b" class="anchor" aria-hidden="true" href="#productf-a-b"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>product(f, a, b)</code></h3>
+<p>Takes the Cartesian outer product of two containers and evaluates <code>f</code> on all pairings of
+elements.</p>
+<p>For example, if <code>a</code> and <code>b</code> are vectors, this returns a matrix <code>out</code> such that
+<code>out[i,j] = f(a[i], b[j])</code> for <code>i in keys(a)</code> and <code>j in keys(b)</code>.</p>
+<p>Note this interface differs slightly from <code>Iterators.product</code> where <code>f = tuple</code> is assumed.</p>
+<h4><a id="user-content-example-5" class="anchor" aria-hidden="true" href="#example-5"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">product</span>(<span class="pl-k">+</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>])
+<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">3</span> Array{Int64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">5</span></pre></div>
+<h3><a id="user-content-productviewf-a-b" class="anchor" aria-hidden="true" href="#productviewf-a-b"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>productview(f, a, b)</code></h3>
+<p>Like <code>product</code>, but return a view of the Cartesian product of <code>a</code> and <code>b</code> where the output elements are <code>f</code>
+evaluated with the corresponding of <code>a</code> and <code>b</code>.</p>
+<h4><a id="user-content-example-6" class="anchor" aria-hidden="true" href="#example-6"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">productview</span>(<span class="pl-k">+</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>], [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>])
+<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">3</span> ProductArray{Int64,<span class="pl-c1">2</span>,<span class="pl-c1">typeof</span>(<span class="pl-k">+</span>),Array{Int64,<span class="pl-c1">1</span>},Array{Int64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">5</span></pre></div>
+<h2><a id="user-content-grouping" class="anchor" aria-hidden="true" href="#grouping"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Grouping</h2>
+<p>These operations help you split the elements of a collection according to an arbitrary
+function which maps each element to a group key.</p>
+<h3><a id="user-content-groupby--identity-f--identity-iter" class="anchor" aria-hidden="true" href="#groupby--identity-f--identity-iter"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>group([by = identity], [f = identity], iter)</code></h3>
+<p>Group the elements <code>x</code> of the iterable <code>iter</code> into groups labeled by <code>by(x)</code>, transforming
+each element . The default implementation creates a <code>Dictionaries.HashDictionary</code> of
+<code>Vector</code>s, but of course a table/dataframe package might extend this to return a suitable
+(nested) structure of tables/dataframes.</p>
+<p>Also a <code>group(by, f, iters...)</code> method exists for the case where multiple iterables of the
+same length are provided.</p>
+<h4><a id="user-content-examples-2" class="anchor" aria-hidden="true" href="#examples-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">group</span>(iseven, [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>, <span class="pl-c1">7</span>, <span class="pl-c1">8</span>, <span class="pl-c1">9</span>, <span class="pl-c1">10</span>])
+<span class="pl-c1">2</span><span class="pl-k">-</span>element HashDictionary{Bool,Array{Int64,<span class="pl-c1">1</span>}}
+ <span class="pl-c1">false</span> │ [<span class="pl-c1">1</span>, <span class="pl-c1">3</span>, <span class="pl-c1">5</span>, <span class="pl-c1">7</span>, <span class="pl-c1">9</span>]
+  <span class="pl-c1">true</span> │ [<span class="pl-c1">2</span>, <span class="pl-c1">4</span>, <span class="pl-c1">6</span>, <span class="pl-c1">8</span>, <span class="pl-c1">10</span>]
+
+julia<span class="pl-k">&gt;</span> names <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Andrew Smith<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>John Smith<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Alice Baker<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Robert Baker<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>Jane Smith<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Jason Bourne<span class="pl-pds">"</span></span>]
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{String,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-s"><span class="pl-pds">"</span>Andrew Smith<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>John Smith<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>Alice Baker<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>Robert Baker<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>Jane Smith<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>Jason Bourne<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">group</span>(last, first, <span class="pl-c1">split</span>.(names))
+<span class="pl-c1">3</span><span class="pl-k">-</span>element HashDictionary{SubString{String},Array{SubString{String},<span class="pl-c1">1</span>}}
+ <span class="pl-s"><span class="pl-pds">"</span>Bourne<span class="pl-pds">"</span></span> │ SubString{String}[<span class="pl-s"><span class="pl-pds">"</span>Jason<span class="pl-pds">"</span></span>]
+  <span class="pl-s"><span class="pl-pds">"</span>Baker<span class="pl-pds">"</span></span> │ SubString{String}[<span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Robert<span class="pl-pds">"</span></span>]
+  <span class="pl-s"><span class="pl-pds">"</span>Smith<span class="pl-pds">"</span></span> │ SubString{String}[<span class="pl-s"><span class="pl-pds">"</span>Andrew<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>John<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Jane<span class="pl-pds">"</span></span>]</pre></div>
+<h3><a id="user-content-groupfindby-container" class="anchor" aria-hidden="true" href="#groupfindby-container"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>groupfind(by, container)</code></h3>
+<p>For <em>indexable</em> collections <code>container</code>, returns the indices/keys associated with each group.</p>
+<p><strong>NOTE: Recently renamed from <code>groupinds</code>.</strong></p>
+<h4><a id="user-content-example-7" class="anchor" aria-hidden="true" href="#example-7"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">groupfind</span>(iseven, [<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">2</span>,<span class="pl-c1">6</span>,<span class="pl-c1">5</span>,<span class="pl-c1">8</span>])
+<span class="pl-c1">2</span><span class="pl-k">-</span>element HashDictionary{Bool,Array{Int64,<span class="pl-c1">1</span>}}
+ <span class="pl-c1">false</span> │ [<span class="pl-c1">1</span>, <span class="pl-c1">5</span>]
+  <span class="pl-c1">true</span> │ [<span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">6</span>]
+</pre></div>
+<h3><a id="user-content-groupviewby-iter" class="anchor" aria-hidden="true" href="#groupviewby-iter"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>groupview(by, iter)</code></h3>
+<p>Similar to <code>group(by, iter)</code> but the grouped elements are a view of the original collection.
+Uses <code>groupinds</code> to construct the appropriate container.</p>
+<h4><a id="user-content-example-8" class="anchor" aria-hidden="true" href="#example-8"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> v <span class="pl-k">=</span> [<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">2</span>,<span class="pl-c1">6</span>,<span class="pl-c1">5</span>,<span class="pl-c1">8</span>]
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">3</span>
+ <span class="pl-c1">4</span>
+ <span class="pl-c1">2</span>
+ <span class="pl-c1">6</span>
+ <span class="pl-c1">5</span>
+ <span class="pl-c1">8</span>
+
+julia<span class="pl-k">&gt;</span> groups <span class="pl-k">=</span> <span class="pl-c1">groupview</span>(iseven, v)
+SAC<span class="pl-k">.</span>Groups{Bool,Any,Array{Int64,<span class="pl-c1">1</span>},Dict{Bool,Array{Int64,<span class="pl-c1">1</span>}}} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+  <span class="pl-c1">false</span> <span class="pl-k">=&gt;</span> [<span class="pl-c1">3</span>, <span class="pl-c1">5</span>]
+  <span class="pl-c1">true</span>  <span class="pl-k">=&gt;</span> [<span class="pl-c1">4</span>, <span class="pl-c1">2</span>, <span class="pl-c1">6</span>, <span class="pl-c1">8</span>]
+
+julia<span class="pl-k">&gt;</span> groups[<span class="pl-c1">false</span>][:] <span class="pl-k">=</span> <span class="pl-c1">99</span>
+<span class="pl-c1">99</span>
+
+julia<span class="pl-k">&gt;</span> v
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">99</span>
+  <span class="pl-c1">4</span>
+  <span class="pl-c1">2</span>
+  <span class="pl-c1">6</span>
+ <span class="pl-c1">99</span>
+  <span class="pl-c1">8</span></pre></div>
+<h3><a id="user-content-groupreduceby-f--identity-op-iter-init" class="anchor" aria-hidden="true" href="#groupreduceby-f--identity-op-iter-init"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>groupreduce(by, [f = identity], op, iter...; [init])</code></h3>
+<p>Applies a <code>mapreduce</code>-like operation on the groupings labeled by passing the elements of
+<code>iter</code> through <code>by</code>. Mostly equivalent to <code>map(g -&gt; reduce(op, g; init=init), group(by, f, iter))</code>,
+but designed to be more efficient. If multiple collections (of the same length) are
+provided, the transformations <code>by</code> and <code>f</code> occur elementwise.</p>
+<p>We also export <code>groupcount</code>, <code>groupsum</code> and <code>groupprod</code> as special cases of the above, to determine
+the number of elements per group, their sum, and their product, respectively.</p>
+<h4><a id="user-content-examples-3" class="anchor" aria-hidden="true" href="#examples-3"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">groupreduce</span>(iseven, <span class="pl-k">+</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)
+HashDictionary{Bool,Int64} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+  <span class="pl-c1">false</span> │ <span class="pl-c1">25</span>
+  <span class="pl-c1">true</span>  │ <span class="pl-c1">30</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">groupcount</span>(iseven, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)
+HashDictionary{Bool,Int64} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+  <span class="pl-c1">false</span> │ <span class="pl-c1">5</span>
+  <span class="pl-c1">true</span>  │ <span class="pl-c1">5</span></pre></div>
+<h2><a id="user-content-joining" class="anchor" aria-hidden="true" href="#joining"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Joining</h2>
+<h3><a id="user-content-innerjoinlkey--identity-rkey--identity-f--tuple-comparison--isequal-left-right" class="anchor" aria-hidden="true" href="#innerjoinlkey--identity-rkey--identity-f--tuple-comparison--isequal-left-right"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>innerjoin([lkey = identity], [rkey = identity], [f = tuple], [comparison = isequal], left, right)</code></h3>
+<p>Performs a relational-style join operation between iterables <code>left</code> and <code>right</code>, returning
+a collection of elements <code>f(l, r)</code> for which <code>comparison(lkey(l), rkey(r))</code> is <code>true</code> where
+<code>l ∈ left</code>, <code>r ∈ right.</code></p>
+<h4><a id="user-content-example-9" class="anchor" aria-hidden="true" href="#example-9"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">innerjoin</span>(iseven, iseven, tuple, <span class="pl-k">==</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>], [<span class="pl-c1">0</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>])
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Tuple{Int64,Int64},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ (<span class="pl-c1">1</span>, <span class="pl-c1">1</span>)
+ (<span class="pl-c1">2</span>, <span class="pl-c1">0</span>)
+ (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>)
+ (<span class="pl-c1">3</span>, <span class="pl-c1">1</span>)
+ (<span class="pl-c1">4</span>, <span class="pl-c1">0</span>)
+ (<span class="pl-c1">4</span>, <span class="pl-c1">2</span>)</pre></div>
+<h3><a id="user-content-leftgroupjoinlkey--identity-rkey--identity-f--tuple-comparison--isequal-left-right" class="anchor" aria-hidden="true" href="#leftgroupjoinlkey--identity-rkey--identity-f--tuple-comparison--isequal-left-right"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>leftgroupjoin([lkey = identity], [rkey = identity], [f = tuple], [comparison = isequal], left, right)</code></h3>
+<p>Creates a collection if groups labelled by <code>lkey(l)</code> where each group contains elements
+<code>f(l, r)</code> which satisfy <code>comparison(lkey(l), rkey(r))</code>. If there rae no matches, the group
+is still created (with an empty collection).</p>
+<p>This operation shares similarities with an SQL left outer join, but is more similar to
+LINQ's <code>GroupJoin</code>.</p>
+<h4><a id="user-content-example-10" class="anchor" aria-hidden="true" href="#example-10"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example:</h4>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">leftgroupjoin</span>(iseven, iseven, tuple, <span class="pl-k">==</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>], [<span class="pl-c1">0</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>])
+HashDictionary{Bool,Array{Tuple{Int64,Int64},<span class="pl-c1">1</span>}} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+  <span class="pl-c1">false</span> │ Tuple{Int64,Int64}[(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>), (<span class="pl-c1">3</span>, <span class="pl-c1">1</span>)]
+  <span class="pl-c1">true</span>  │ Tuple{Int64,Int64}[(<span class="pl-c1">2</span>, <span class="pl-c1">0</span>), (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>), (<span class="pl-c1">4</span>, <span class="pl-c1">0</span>), (<span class="pl-c1">4</span>, <span class="pl-c1">2</span>)]</pre></div>
+</article></div>

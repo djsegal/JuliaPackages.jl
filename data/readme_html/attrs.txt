@@ -1,0 +1,87 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-attrs" class="anchor" aria-hidden="true" href="#attrs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Attrs</h1>
+<p><a href="https://travis-ci.org/simonfxr/Attrs.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/804bee48de827ce2c76a66f11bc5dd2a92fbeca8/68747470733a2f2f7472617669732d63692e6f72672f73696d6f6e6678722f41747472732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/simonfxr/Attrs.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/simonfxr/attrs-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/5694ba4fb18a8a29df49e69cb3e4692628aa3a43/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f303265673063746566797670756665393f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/02eg0ctefyvpufe9?svg=true" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/simonfxr/Attrs.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/76ff6e238061c8d0ba49c7122031550337716cb8/687474703a2f2f636f6465636f762e696f2f6769746875622f73696d6f6e6678722f41747472732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/simonfxr/Attrs.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>Give Attribtures the treatment they deserve: use dynamic dispatch to implement
+an extensible mechanism for user provided attributes.</p>
+<h2><a id="user-content-background" class="anchor" aria-hidden="true" href="#background"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Background</h2>
+<p>Julia 0.7+ makes it possible to overload property access via <code>Base.getproperty</code>
+and <code>Base.setproperty!</code>, and uses <code>Symbols</code> to name a property. This makes it
+easier to use in dynamic scenarios (e.g. Python interoperability), but has one
+huge drawback: all the coded related to properties for a single type has to be
+in one single place and can thus not be extended. This is not the Julian way of
+using dynamic dispatch to get the usual extensibility along multiple dimensions
+we know and love!</p>
+<h2><a id="user-content-performance-basegetproperty-and-inlining" class="anchor" aria-hidden="true" href="#performance-basegetproperty-and-inlining"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Performance: <code>Base.getproperty</code> and Inlining</h2>
+<p>There is another problem with getproperty/setproperty this package tries to adress: performance. Consider this code:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Foo
+    x<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">compute_y</span>(a<span class="pl-k">::</span><span class="pl-c1">Foo</span>)
+    <span class="pl-k">return</span> a<span class="pl-k">.</span>x <span class="pl-k">*</span> <span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">1</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@inline</span> <span class="pl-k">function</span> Base<span class="pl-k">.</span><span class="pl-en">getproperty</span>(a<span class="pl-k">::</span><span class="pl-c1">Foo</span>, f<span class="pl-k">::</span><span class="pl-c1">Symbol</span>)
+    (f <span class="pl-k">===</span> <span class="pl-c1">:x</span>) <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">getfield</span>(a, <span class="pl-c1">:x</span>)
+    (f <span class="pl-k">===</span> <span class="pl-c1">:y</span>) <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">compute_y</span>(a)
+    <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>type <span class="pl-v">$(<span class="pl-c1">typeof</span>(a))</span> has no field <span class="pl-v">$f</span><span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">Foo</span>) <span class="pl-k">=</span> a<span class="pl-k">.</span>y
+
+<span class="pl-c1">code_native</span>(f, (Foo,))
+<span class="pl-c"><span class="pl-c">#</span> Output:</span>
+<span class="pl-c"><span class="pl-c">#</span>  .text</span>
+<span class="pl-c"><span class="pl-c">#</span>  [...]</span>
+<span class="pl-c"><span class="pl-c">#</span>  pushq    %rax</span>
+<span class="pl-c"><span class="pl-c">#</span>  movabsq  $julia_getproperty_36741, %rax</span>
+<span class="pl-c"><span class="pl-c">#</span>  movabsq  $116219542556536, %rsi  # imm = 0x69B3788CCF78</span>
+<span class="pl-c"><span class="pl-c">#</span>  callq    *%rax</span>
+<span class="pl-c"><span class="pl-c">#</span>  [...]</span>
+<span class="pl-c"><span class="pl-c">#</span>  leaq     1(%rax,%rax), %rax</span>
+<span class="pl-c"><span class="pl-c">#</span>  popq     %rcx</span>
+<span class="pl-c"><span class="pl-c">#</span>  retq</span>
+<span class="pl-c"><span class="pl-c">#</span>  nop </span></pre></div>
+<p>Why is <code>getproperty</code> not inlined? The problem is getproperty calling <code>compute_y</code>
+which itself calls <code>getproperty</code> (after lowering <code>a.x</code>). So the compiler
+rightfully refuses to do recursive inlining (there are ways around it, e.g.
+partial inlining, but lets appreciate what we have!). One fix is to replace
+<code>a.x</code> with <code>getfield(a, :x)</code> to break the cycle in the call graph.</p>
+<p>This package provides a similar solution via the <code>@literalattrs</code> macro. This
+macro replaces the property access with <code>literal_getattr</code> and
+<code>literal_setattr!</code>, to avoid the cyclic call graph.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Attrs
+
+<span class="pl-c1">@defattrs</span> Foo
+
+<span class="pl-c1">@literalattrs</span> <span class="pl-k">function</span> <span class="pl-en">compute_y</span>(a<span class="pl-k">::</span><span class="pl-c1">Foo</span>)
+    <span class="pl-k">return</span> a<span class="pl-k">.</span>x <span class="pl-k">*</span> <span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">1</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@inline</span> Attrs<span class="pl-k">.</span><span class="pl-en">getattr</span>(a<span class="pl-k">::</span><span class="pl-c1">Foo</span>, <span class="pl-k">::</span><span class="pl-c1">Attr{:y}</span>) <span class="pl-k">=</span> <span class="pl-c1">compute_y</span>(a)
+
+<span class="pl-c1">code_native</span>(f, (Foo, ))
+<span class="pl-c"><span class="pl-c">#</span> Output:</span>
+<span class="pl-c"><span class="pl-c">#</span>    .text</span>
+<span class="pl-c"><span class="pl-c">#</span>    movq    (%rdi), %rax</span>
+<span class="pl-c"><span class="pl-c">#</span>    leaq    1(%rax,%rax), %rax</span>
+<span class="pl-c"><span class="pl-c">#</span>    retq</span>
+<span class="pl-c"><span class="pl-c">#</span>    nopl    (%rax)</span></pre></div>
+<p>Now <code>compute_y(a)</code> has been inlined!</p>
+<h2><a id="user-content-how-to-use" class="anchor" aria-hidden="true" href="#how-to-use"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>How to use</h2>
+<p>First define your type as usual:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> MyType
+   [<span class="pl-k">...</span>]
+<span class="pl-k">end</span></pre></div>
+<p>Make your type opt in to the <code>Attrs</code> package (after <code>using Attrs</code>):</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@defattrs</span> MyType
+<span class="pl-c1">@defattrs</span> MyOtherType{X, Y} <span class="pl-k">where</span> {X<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractFloat</span>, Y<span class="pl-k">&lt;:</span><span class="pl-c1">Integer</span>}</pre></div>
+<p>Define your attributes, make sure all <code>gettatr</code>/<code>settattr!</code> methods of your type
+use the <code>@literalattrs</code> macro to make inlining possible.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@inline</span> <span class="pl-c1">@literalattrs</span> Attrs<span class="pl-k">.</span><span class="pl-en">getattr</span>(x<span class="pl-k">::</span><span class="pl-c1">MyType</span>, <span class="pl-k">::</span><span class="pl-c1">Attr{:foo}</span>) <span class="pl-k">=</span> [<span class="pl-k">...</span>]
+
+<span class="pl-c1">@inline</span> <span class="pl-c1">@literalattrs</span> Attrs<span class="pl-k">.</span><span class="pl-en">setattr!</span>(x<span class="pl-k">::</span><span class="pl-c1">MyType</span>, <span class="pl-k">::</span><span class="pl-c1">Attr{:foo}</span>, y) <span class="pl-k">=</span> [<span class="pl-k">...</span>]</pre></div>
+<p>Now just use your type as usual: <code>f(x::MyType) = x.y</code> no <code>@literalattrs</code> is
+necessary at this point!</p>
+</article></div>

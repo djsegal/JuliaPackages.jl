@@ -1,0 +1,129 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview</h1>
+<p>The Options package provides macros that allow the simulation of optional
+keyword arguments for Julia functions. Some of this functionality was
+superseded by language support for keyword arguments (<a href="https://github.com/JuliaLang/julia/issues/485">see
+#485</a>). However, the Options
+package will likely remain relevant for cases where you need to pass optional
+arguments to nested functions without the parent functions needing to be aware
+of those arguments.</p>
+<h1><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h1>
+<p>Install via the Julia package manager, <code>Pkg.add("Options")</code>.</p>
+<h1><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Basic usage</h1>
+<p>You gain access to <code>Options</code> via</p>
+<pre><code>require("Options")
+using OptionsMod
+</code></pre>
+<p>The <code>@defaults</code> macro is for writing functions that take optional parameters.
+The typical syntax of such functions is:</p>
+<pre><code>  function myfunc(requiredarg1, requiredarg2, ..., opts::Options)
+      @defaults opts a=11 b=2a+1 c=a*b d=100
+      # The function body. Use a, b, c, and d just as you would
+      # any other variable. For example,
+      k = a + b
+      # You can pass opts down to subfunctions, which might supply
+      # additional defaults for other variables aa, bb, etc.
+      y = subfun(k, opts)
+      # Terminate your function with check_used, then return values
+      @check_used opts
+      return y
+  end
+</code></pre>
+<p>Note the function calls <code>@check_used</code> at the end; this will be discussed below.</p>
+<p>It is possible to have more than one <code>Options</code> parameter to a function, for
+example:</p>
+<pre><code>  function twinopts(x, plotopts::Options, calcopts::Options)
+      @defaults plotopts linewidth=1
+      @defaults calcopts n_iter=100
+      # Do stuff
+      @check_used plotopts
+      @check_used calcopts
+  end
+</code></pre>
+<p>Within a given scope, you should have only one call to <code>@defaults</code> per options
+variable.</p>
+<p>The <code>@options</code> macro is typically the easiest way to <em>set</em> the value of optional
+parameters for a function that has been written to use them:</p>
+<pre><code> opts = @options a=5 b=7
+</code></pre>
+<p>For a function that uses optional parameters <code>a</code> and <code>b</code>, this will override the
+default settings for these parameters. You would likely call that function in
+the following way:</p>
+<pre><code> myfunc(requiredarg1, requiredarg2, ..., opts)
+</code></pre>
+<h1><a id="user-content-argument-checking" class="anchor" aria-hidden="true" href="#argument-checking"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Argument checking</h1>
+<p>For functions that take many optional arguments, one fairly common problem is
+that the relevant options may change over time, but users may not notice the
+change and continue providing parameters that are no longer used by the
+function. A similar scenario arises when users simply misspell an optional
+parameter. In such cases the user may be quite confused about why changing the
+value of those parameters has no impact on the output of the function.</p>
+<p>For this reason, the default expected behavior is for functions to check that
+all optional parameters have been used by the function. This is achieved with
+the <code>@check_used</code> macro. The test is performed at the end of the function body,
+so that subfunctions which handle parameters not used by the parent function may
+be "credited" for their usage. Each sub-function should also call <code>@check_used</code>,
+for example:</p>
+<pre><code>  function complexfun(x, opts::Options)
+      @defaults opts parent=3 both=7
+      println(parent)
+      println(both)
+      subfun1(x, opts)
+      subfun2(x, opts)
+      @check_used opts
+  end
+  
+  function subfun1(x, opts::Options)
+      @defaults opts sub1="sub1 default" both=0
+      println(sub1)
+      println(both)
+      @check_used opts
+  end
+  
+  function subfun2(x, opts::Options)
+      @defaults opts sub2="sub2 default" both=22
+      println(sub2)
+      println(both)
+      @check_used opts
+  end
+</code></pre>
+<p>Typically, unused parameters will result in an error. The user can control the
+behavior this way:</p>
+<pre><code> # throw an error if a or b is not used (the default)
+ opts = @options CheckError a=5 b=2
+ # issue a warning if a or b is not used
+ opts = @options CheckWarn a=5 b=2
+ # don't check whether a and b are used
+ opts = @options CheckNone a=5 b=2
+</code></pre>
+<h2><a id="user-content-additional-functionality" class="anchor" aria-hidden="true" href="#additional-functionality"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Additional functionality</h2>
+<p>As an alternative to the macro syntax, you can also say:</p>
+<pre><code> opts = Options(CheckWarn, :a, 5, :b, 2)
+</code></pre>
+<p>The check flag is optional.</p>
+<p>The <code>@set_options</code> macro lets you add new parameters to an existing options
+structure.  For example:</p>
+<pre><code>  @set_options opts d=99
+</code></pre>
+<p>would add <code>d</code> to the set of parameters in <code>opts</code>, or re-set its value if it was
+already supplied.</p>
+<h3><a id="user-content-implementation-details" class="anchor" aria-hidden="true" href="#implementation-details"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Implementation details</h3>
+<p>The fields of the <code>Options</code> type are</p>
+<ul>
+<li><code>key2index</code>: a <code>Dict</code> that looks up an integer index, given the symbol for a
+variable (e.g., <code>key2index[:a]</code> for the variable <code>a</code>)</li>
+<li><code>vals</code>: <code>vals[key2index[:a]]</code> is the value to be assigned to the variable <code>a</code></li>
+<li><code>used</code>: A vector of booleans, one per variable, with <code>used[key2index[:a]]</code>
+representing whether the value for variable <code>a</code> has been accessed by the
+<code>@defaults</code> macro</li>
+<li><code>check_lock</code>: A vector of booleans, one per variable. This is a "lock" that
+prevents sub-functions from complaining that they did not access variables that
+were intended for the parent function. <code>@defaults</code> sets the lock to true for any
+options variables that have already been defined; new variables added through
+<code>@set_options</code> will start with their <code>check_lock</code> set to <code>false</code>, to be handled
+by a subfunction.</li>
+</ul>
+<h2><a id="user-content-credits" class="anchor" aria-hidden="true" href="#credits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Credits</h2>
+<p>The primary authors are Harlan Harris, Tim Holy, and Carlo Baldassi, with
+contributions from Stefan Karpinski, Patrick O'Leary, John Myles White, and Jeff
+Bezanson.</p>
+</article></div>

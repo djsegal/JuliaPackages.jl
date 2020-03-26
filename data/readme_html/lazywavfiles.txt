@@ -1,0 +1,50 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p><a href="https://travis-ci.org/baggepinnen/LazyWAVFiles.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/b39834a0ed7012c8a5d2735ee80b995944c47377/68747470733a2f2f7472617669732d63692e6f72672f626167676570696e6e656e2f4c617a7957415646696c65732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/baggepinnen/LazyWAVFiles.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/baggepinnen/LazyWAVFiles.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4661d706a973d175f0b7773744b32bb3ace94561/68747470733a2f2f636f6465636f762e696f2f67682f626167676570696e6e656e2f4c617a7957415646696c65732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/baggepinnen/LazyWAVFiles.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<h1><a id="user-content-lazywavfiles" class="anchor" aria-hidden="true" href="#lazywavfiles"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>LazyWAVFiles</h1>
+<p>This package let's you treat a wav-file on disk as an <code>AbstractArray</code>. Access to the data is lazy, i.e., nothing (but size) is read from the file until the array is indexed into. You can also specify a folder containing many wav-files and treat them all as a single large array! This lets you work using files that are too large to fit in memory. Some examples</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LazyWAVFiles, WAV
+
+<span class="pl-c"><span class="pl-c">#</span> Create some files to work with</span>
+d   <span class="pl-k">=</span> <span class="pl-c1">mktempdir</span>()
+a,b <span class="pl-k">=</span> <span class="pl-c1">randn</span>(Float32,<span class="pl-c1">10</span>), <span class="pl-c1">randn</span>(Float32,<span class="pl-c1">10</span>)
+WAV<span class="pl-k">.</span><span class="pl-c1">wavwrite</span>(a, <span class="pl-c1">joinpath</span>(d,<span class="pl-s"><span class="pl-pds">"</span>f1.wav<span class="pl-pds">"</span></span>), Fs<span class="pl-k">=</span><span class="pl-c1">8000</span>)
+WAV<span class="pl-k">.</span><span class="pl-c1">wavwrite</span>(b, <span class="pl-c1">joinpath</span>(d,<span class="pl-s"><span class="pl-pds">"</span>f2.wav<span class="pl-pds">"</span></span>), Fs<span class="pl-k">=</span><span class="pl-c1">8000</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Indexing into the array loads data from disk</span>
+f1 <span class="pl-k">=</span> <span class="pl-c1">LazyWAVFile</span>(<span class="pl-c1">joinpath</span>(d,<span class="pl-s"><span class="pl-pds">"</span>f1.wav<span class="pl-pds">"</span></span>)) <span class="pl-c"><span class="pl-c">#</span> This command only reads the size of the file.</span>
+f1[<span class="pl-c1">1</span>]   <span class="pl-k">==</span> a[<span class="pl-c1">1</span>]
+f1[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>] <span class="pl-k">==</span> a[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>]
+f1<span class="pl-k">.</span>fs   <span class="pl-k">==</span> <span class="pl-c1">8000</span>
+<span class="pl-c1">size</span>(f1)
+
+<span class="pl-c"><span class="pl-c">#</span> We can create an array from all files in a folder</span>
+df <span class="pl-k">=</span> <span class="pl-c1">DistributedWAVFile</span>(d)       <span class="pl-c"><span class="pl-c">#</span> This reads the size from all files.</span>
+df[<span class="pl-c1">1</span>]    <span class="pl-k">==</span> a[<span class="pl-c1">1</span>]                 <span class="pl-c"><span class="pl-c">#</span> Indexing works the same</span>
+df[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">12</span>] <span class="pl-k">==</span> [a; b[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>]]          <span class="pl-c"><span class="pl-c">#</span> We can even index over both arrays</span>
+df[:]    <span class="pl-k">==</span> [a;b]                <span class="pl-c"><span class="pl-c">#</span> Or load all files as one long vector</span>
+df<span class="pl-k">.</span>fs    <span class="pl-k">==</span> <span class="pl-c1">8000</span>
+
+<span class="pl-c1">size</span>(df) <span class="pl-c"><span class="pl-c">#</span> Other array functions are defined as well</span>
+<span class="pl-c1">length</span>(df)
+
+<span class="pl-c"><span class="pl-c">#</span> To work using chunks of the entire distributed array, we can use Iterators.partition</span>
+julia<span class="pl-k">&gt;</span> Iterators<span class="pl-k">.</span><span class="pl-c1">partition</span>(df, <span class="pl-c1">2</span>) <span class="pl-k">|&gt;</span> collect
+<span class="pl-c1">10</span><span class="pl-k">-</span>element Array{Array{Float32,<span class="pl-c1">1</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ [<span class="pl-c1">0.44920132</span>, <span class="pl-k">-</span><span class="pl-c1">1.1176418</span>]
+ [<span class="pl-k">-</span><span class="pl-c1">2.0420709</span>, <span class="pl-c1">0.11797007</span>]
+ [<span class="pl-c1">1.4723421</span>, <span class="pl-k">-</span><span class="pl-c1">0.32837275</span>]
+ [<span class="pl-c1">2.3656073</span>, <span class="pl-c1">0.4933495</span>]   
+ [<span class="pl-k">-</span><span class="pl-c1">1.0910473</span>, <span class="pl-k">-</span><span class="pl-c1">0.18483315</span>]
+ [<span class="pl-k">-</span><span class="pl-c1">0.5574947</span>, <span class="pl-k">-</span><span class="pl-c1">0.46916208</span>]
+ [<span class="pl-c1">0.27721304</span>, <span class="pl-k">-</span><span class="pl-c1">0.39077175</span>]
+ [<span class="pl-k">-</span><span class="pl-c1">0.05172622</span>, <span class="pl-k">-</span><span class="pl-c1">0.715703</span>]
+ [<span class="pl-c1">0.5821298</span>, <span class="pl-c1">1.6757511</span>]   
+ [<span class="pl-c1">1.0726295</span>, <span class="pl-c1">0.23483518</span>]</pre></div>
+<h3><a id="user-content-notes" class="anchor" aria-hidden="true" href="#notes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Notes</h3>
+<ul>
+<li>Creating a distributed file based on a folder with a really large number of files can take a while due to the size of each audio clip being read from each file. The size information is required in order to have the files appear as one large array. As an example:</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> df <span class="pl-k">=</span> <span class="pl-c1">DistributedWAVFile</span>(<span class="pl-s"><span class="pl-pds">"</span>folder_with_21551_files/<span class="pl-pds">"</span></span>)
+ <span class="pl-c1">25.518655</span> seconds (<span class="pl-c1">2.47</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">144.085</span> MiB, <span class="pl-c1">0.18</span><span class="pl-k">%</span> gc time)
+ DistributedWAVFile{Float32, <span class="pl-c1">1</span>} with <span class="pl-c1">21551</span> files, <span class="pl-c1">657735677</span> total datapoints and samplerate <span class="pl-c1">44100.0</span></pre></div>
+</article></div>

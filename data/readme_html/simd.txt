@@ -1,0 +1,127 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-simd" class="anchor" aria-hidden="true" href="#simd"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SIMD</h1>
+<p>Explicit SIMD vectorization in Julia</p>
+<p><a href="https://travis-ci.org/eschnett/SIMD.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/fb978761cfc9dd7f1239e7ad7007c1c738d00342/68747470733a2f2f7472617669732d63692e6f72672f657363686e6574742f53494d442e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/eschnett/SIMD.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/eschnett/simd-jl/branch/master" rel="nofollow"><img src="https://camo.githubusercontent.com/2d9ddac8032cfaf6b1f4f2dc7cfd59305f04967a/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f7877616133686d35776b6971726335342f6272616e63682f6d61737465723f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/xwaa3hm5wkiqrc54/branch/master?svg=true" style="max-width:100%;"></a>
+<a href="https://codecov.io/github/eschnett/SIMD.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/24e659988acc4705b62cb7de5b6d0cb6acbc8665/68747470733a2f2f636f6465636f762e696f2f6769746875622f657363686e6574742f53494d442e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="https://codecov.io/github/eschnett/SIMD.jl/coverage.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://doi.org/10.5281/zenodo.3355421" rel="nofollow"><img src="https://camo.githubusercontent.com/58041c3edd76fcd0b7a81baab1afd347b63bab33/68747470733a2f2f7a656e6f646f2e6f72672f62616467652f444f492f31302e353238312f7a656e6f646f2e333335353432312e737667" alt="DOI" data-canonical-src="https://zenodo.org/badge/DOI/10.5281/zenodo.3355421.svg" style="max-width:100%;"></a></p>
+<h2><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview</h2>
+<p>This package allows programmers to explicitly SIMD-vectorize their
+Julia code. Ideally, the compiler (Julia and LLVM) would be able to do
+this automatically, especially for straightforwardly written code. In
+practice, this does not always work (for a variety of reasons), and
+the programmer is often left with uncertainty as to whether the code
+was actually vectorized. It is usually necessary to look at the
+generated machine code to determine whether the compiler actually
+vectorized the code.</p>
+<p>By exposing SIMD vector types and corresponding operations, the programmer can explicitly vectorize their code. While this does not guarantee that the generated machine code is efficient, it relieves the compiler from determining whether it is legal to vectorize the code, deciding whether it is beneficial to do so, and rearranging the code to synthesize vector instructions.</p>
+<p>Here is a simple example for a manually vectorized code that adds two arrays:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> SIMD
+<span class="pl-k">function</span> <span class="pl-en">vadd!</span>(xs<span class="pl-k">::</span><span class="pl-c1">Vector{T}</span>, ys<span class="pl-k">::</span><span class="pl-c1">Vector{T}</span>, <span class="pl-k">::</span><span class="pl-c1">Type{Vec{N,T}}</span>) <span class="pl-k">where</span> {N, T}
+    <span class="pl-c1">@assert</span> <span class="pl-c1">length</span>(ys) <span class="pl-k">==</span> <span class="pl-c1">length</span>(xs)
+    <span class="pl-c1">@assert</span> <span class="pl-c1">length</span>(xs) <span class="pl-k">%</span> N <span class="pl-k">==</span> <span class="pl-c1">0</span>
+    lane <span class="pl-k">=</span> <span class="pl-c1">VecRange</span><span class="pl-c1">{N}</span>(<span class="pl-c1">0</span>)
+    <span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>N<span class="pl-k">:</span><span class="pl-c1">length</span>(xs)
+        xs[lane <span class="pl-k">+</span> i] <span class="pl-k">+=</span> ys[lane <span class="pl-k">+</span> i]
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p>To simplify this example code, the vector type that should be used (<code>Vec{N,T}</code>) is passed in explicitly as additional type argument. This routine is e.g. called as <code>vadd!(xs, ys, Vec{8,Float64})</code>.</p>
+<h2><a id="user-content-simd-vector-operations" class="anchor" aria-hidden="true" href="#simd-vector-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SIMD vector operations</h2>
+<p>SIMD vectors are similar to small fixed-size arrays of "simple" types. These element types are supported:</p>
+<p><code>Bool Int{8,16,32,64,128} UInt{8,16,32,64,128} Float{16,32,64}</code></p>
+<p>The SIMD package provides the usual arithmetic and logical operations for SIMD vectors:</p>
+<p><code>+ - * / % ^ ! ~ &amp; | $ &lt;&lt; &gt;&gt; &gt;&gt;&gt; == != &lt; &lt;= &gt; &gt;=</code></p>
+<p><code>abs cbrt ceil copysign cos div exp exp10 exp2 flipsign floor fma inv isfinite isinf isnan issubnormal log log10 log2 muladd rem round sign signbit sin sqrt trunc vifelse</code></p>
+<p>(Currently missing: <code>count_ones count_zeros exponent ldexp leading_ones leading_zeros significand trailing_ones trailing_zeros</code>, many trigonometric functions)</p>
+<p>(Also currently missing: Type conversions, reinterpretation that changes the vector size)</p>
+<p>These operators and functions are always applied element-wise, i.e. they are applied to each element in parallel, yielding again a SIMD vector as result. This means that e.g. multiplying two vectors yields a vector, and comparing two vectors yields a vector of booleans. This behaviour might seem strange and slightly unusual, but corresponds to the machine instructions provided by the hardware. It is also what is usually needed to vectorize loops.</p>
+<p>The SIMD package also provides conversion operators from scalars and tuples to SIMD vectors and from SIMD vectors to tuples. Additionally, there are <code>getindex</code> and <code>setindex</code> functions to access individual vector elements.  SIMD vectors are immutable (like tuples), and <code>setindex</code> (note there is no exclamation mark at the end of the name) thus returns the modified vector.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Create a vector where all elements are Float64(1):</span>
+xs <span class="pl-k">=</span> <span class="pl-c1">Vec</span><span class="pl-c1">{4,Float64}</span>(<span class="pl-c1">1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Create a vector from a tuple, and convert it back to a tuple:</span>
+ys <span class="pl-k">=</span> <span class="pl-c1">Vec</span><span class="pl-c1">{4,Float32}</span>((<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>))
+ys1 <span class="pl-k">=</span> <span class="pl-c1">NTuple</span><span class="pl-c1">{4,Float32}</span>(ys)
+y2 <span class="pl-k">=</span> ys[<span class="pl-c1">2</span>]   <span class="pl-c"><span class="pl-c">#</span> getindex</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Update one element of a vector:</span>
+ys <span class="pl-k">=</span> <span class="pl-c1">setindex</span>(ys, <span class="pl-c1">5</span>, <span class="pl-c1">3</span>)   <span class="pl-c"><span class="pl-c">#</span> cannot use ys[3] = 5</span></pre></div>
+<h2><a id="user-content-reduction-operations" class="anchor" aria-hidden="true" href="#reduction-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Reduction operations</h2>
+<p>Reduction operations reduce a SIMD vector to a scalar. The following reduction operations are provided:</p>
+<p><code>all any maximum minimum sum prod</code></p>
+<p>Example:</p>
+<div class="highlight highlight-source-julia"><pre>v <span class="pl-k">=</span> <span class="pl-c1">Vec</span><span class="pl-c1">{4,Float64}</span>((<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>))
+<span class="pl-c1">sum</span>(v)
+<span class="pl-c1">10.0</span></pre></div>
+<h2><a id="user-content-accessing-arrays" class="anchor" aria-hidden="true" href="#accessing-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Accessing arrays</h2>
+<p>When using explicit SIMD vectorization, it is convenient to allocate arrays still as arrays of scalars, not as arrays of vectors. The <code>vload</code> and <code>vstore</code> functions allow reading vectors from and writing vectors into arrays, accessing several contiguous array elements.</p>
+<div class="highlight highlight-source-julia"><pre>arr <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">100</span>)
+<span class="pl-k">...</span>
+xs <span class="pl-k">=</span> <span class="pl-c1">vload</span>(Vec{<span class="pl-c1">4</span>,Float64}, arr, i)
+<span class="pl-k">...</span>
+<span class="pl-c1">vstore</span>(xs, arr, i)</pre></div>
+<p>The <code>vload</code> call reads a vector of size 4 from the array, i.e. it reads <code>arr[i:i+3]</code>. Similarly, the <code>vstore</code> call writes the vector <code>xs</code> to the four array elements <code>arr[i:i+3]</code>.</p>
+<p>When the values to be read are stored in non-contiguous locations, the <code>vgather</code> function can be used to load them into a vector (so-called gather operation).</p>
+<div class="highlight highlight-source-julia"><pre>idx <span class="pl-k">=</span> <span class="pl-c1">Vec</span>((<span class="pl-c1">1</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>, <span class="pl-c1">9</span>))
+<span class="pl-c1">vgather</span>(arr, idx)</pre></div>
+<p>Likewise, storing to non-contiguous locations (scatter) can be done by the <code>vscatter</code> function.</p>
+<div class="highlight highlight-source-julia"><pre>arr <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">10</span>)
+v <span class="pl-k">=</span> <span class="pl-c1">Vec</span>((<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>, <span class="pl-c1">4.0</span>))
+idx <span class="pl-k">=</span> <span class="pl-c1">Vec</span>((<span class="pl-c1">1</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">7</span>))
+<span class="pl-c1">vscatter</span>(v, arr, idx)</pre></div>
+<p>Above <code>vload</code>, <code>vstore</code>, <code>vgather</code> and <code>vscatter</code> can be written using the indexing notation:</p>
+<div class="highlight highlight-source-julia"><pre>i <span class="pl-k">=</span> <span class="pl-c1">1</span>
+lane <span class="pl-k">=</span> <span class="pl-c1">VecRange</span><span class="pl-c1">{4}</span>(<span class="pl-c1">0</span>)
+v <span class="pl-k">=</span> arr[lane <span class="pl-k">+</span> i]             <span class="pl-c"><span class="pl-c">#</span> vload</span>
+arr[lane <span class="pl-k">+</span> i] <span class="pl-k">=</span> v             <span class="pl-c"><span class="pl-c">#</span> vstore</span>
+idx <span class="pl-k">=</span> <span class="pl-c1">Vec</span>((<span class="pl-c1">1</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">7</span>))
+v <span class="pl-k">=</span> arr[idx]                  <span class="pl-c"><span class="pl-c">#</span> vgather</span>
+arr[idx] <span class="pl-k">=</span> v                  <span class="pl-c"><span class="pl-c">#</span> vscatter</span></pre></div>
+<h2><a id="user-content-vector-shuffles" class="anchor" aria-hidden="true" href="#vector-shuffles"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Vector shuffles</h2>
+<p>Vector shuffle is available through the <code>shufflevector</code> function.</p>
+<p>Example:</p>
+<div class="highlight highlight-source-julia"><pre>a <span class="pl-k">=</span> <span class="pl-c1">Vec</span><span class="pl-c1">{4, Int32}</span>((<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>))
+b <span class="pl-k">=</span> <span class="pl-c1">Vec</span><span class="pl-c1">{4, Int32}</span>((<span class="pl-c1">5</span>,<span class="pl-c1">6</span>,<span class="pl-c1">7</span>,<span class="pl-c1">8</span>))
+mask <span class="pl-k">=</span> (<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5</span>)
+<span class="pl-c1">shufflevector</span>(a, b, <span class="pl-c1">Val</span>(mask))
+<span class="pl-k">&lt;</span><span class="pl-c1">4</span> x Int32<span class="pl-k">&gt;</span>[<span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>]</pre></div>
+<p>The mask specifies vector elements counted across <code>a</code> and <code>b</code>,
+starting at 0 to follow the LLVM convention. If you don't care about
+some of the values in the result vector, you can use the symbol
+<code>:undef</code>. <code>a</code> and <code>b</code> must be of the same SIMD vector type. The
+result will be a SIMD vector with the same element type as <code>a</code> and <code>b</code>
+and the same length as the mask. The function must be specialized on
+the value of the mask, therefore the <code>Val()</code> construction in the call.</p>
+<p>There is also a one operand version of the function:</p>
+<div class="highlight highlight-source-julia"><pre>a <span class="pl-k">=</span> <span class="pl-c1">Vec</span><span class="pl-c1">{4, Int32}</span>((<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>))
+mask <span class="pl-k">=</span> (<span class="pl-c1">0</span>,<span class="pl-c1">3</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>)
+<span class="pl-c1">shufflevector</span>(a, <span class="pl-c1">Val</span>(mask))
+<span class="pl-k">&lt;</span><span class="pl-c1">4</span> x Int32<span class="pl-k">&gt;</span>[<span class="pl-c1">1</span>, <span class="pl-c1">4</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>]</pre></div>
+<h2><a id="user-content-representing-simd-vector-types-in-julia" class="anchor" aria-hidden="true" href="#representing-simd-vector-types-in-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Representing SIMD vector types in Julia</h2>
+<p>In LLVM, SIMD vectors are represented via a special vector type. LLVM supports vectors of all "primitive" types, i.e. integers (including booleans), floating-point numbers, and pointers. LLVM directly provides arithmetic and logic operations (add, subtract, bit shift, select, etc.) for vector types. For example, adding two numbers is represented in LLVM as</p>
+<div class="highlight highlight-source-llvm"><pre><span class="pl-c1">%res</span> = <span class="pl-k">fadd</span> &lt;<span class="pl-k">double</span>&gt; <span class="pl-c1">%arg1</span>, <span class="pl-c1">%arg2</span></pre></div>
+<p>and adding two vectors looks like</p>
+<div class="highlight highlight-source-llvm"><pre><span class="pl-c1">%res</span> = <span class="pl-k">fadd</span> &lt;<span class="pl-c1">4</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%arg1</span>, <span class="pl-c1">%arg2</span></pre></div>
+<p>Thus, implementing SIMD operations in Julia is in principle a straightforward application of <code>llvmcall</code>. In principle, this should work:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-k">+</span>(x<span class="pl-k">::</span><span class="pl-c1">Float64x4</span>, y<span class="pl-k">::</span><span class="pl-c1">Float64x4</span>)
+    <span class="pl-c1">llvmcall</span>(<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        %res = fadd &lt;4 x double&gt; %0, %1</span>
+<span class="pl-s">        ret &lt;4 x double&gt; %res</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>, Float64x4, Tuple{Float64x4, Float64x4}, x, y)
+<span class="pl-k">end</span></pre></div>
+<p>The Julia representation of the datatype <code>Float64x4</code> is slightly
+complex: It is an <code>NTuple{N,T}</code>, where the element type <code>T</code> is
+specially marked by being wrapped in the type <code>Base.VecElement</code>:
+<code>NTuple{4, Base.VecElement{Float64}}</code>. Julia implements a special rule
+that translates tuples with element type <code>Base.VecElement</code> into LLVM
+vectors. Other tuples are translated into LLVM arrays if all tuple
+elements have the same type, otherwise into LLVM structures.</p>
+<p>This representation has two drawbacks. First, it is rather tedious.
+Second, while we want to define arithmetic operations for SIMD
+vectors, we do not want to define arithmetic for Julia's tuple types
+-- if we defined additional methods for generic tuples, who knows what
+code would break as a result.</p>
+<p>We thus define our own SIMD vector type <code>Vec{N,T}</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Vec{N,T}
+    elts<span class="pl-k">::</span><span class="pl-c1">NTuple{N,VecElement{T}}</span>
+<span class="pl-k">end</span></pre></div>
+</article></div>

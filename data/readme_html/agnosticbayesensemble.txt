@@ -1,0 +1,189 @@
+<div id="readme" class="md" data-path="readme.md"><article class="markdown-body entry-content" itemprop="text"><p><strong>AgnosticBayesEnsemble</strong></p>
+<p><a href="https://travis-ci.com/hondoRandale/AgnosticBayesEnsemble.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3cedde600906f99d1280256894f0c21ab1527b87/68747470733a2f2f7472617669732d63692e636f6d2f686f6e646f52616e64616c652f41676e6f737469634261796573456e73656d626c652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Travis" data-canonical-src="https://travis-ci.com/hondoRandale/AgnosticBayesEnsemble.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/hondoRandale/AgnosticBayesEnsemble.jl/branch/master/graphs/badge.svg?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/5b7d10c0397ca03126a6b3e40cddf976e55e85c2/68747470733a2f2f636f6465636f762e696f2f67682f686f6e646f52616e64616c652f41676e6f737469634261796573456e73656d626c652e6a6c2f6272616e63682f6d61737465722f6772617068732f62616467652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="https://codecov.io/gh/hondoRandale/AgnosticBayesEnsemble.jl/branch/master/graphs/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<p>​           <strong>Auticon Berlin, Machine Learning Group</strong></p>
+<p><a target="_blank" rel="noopener noreferrer" href="./Auticon_Grafik.PNG"><img src="./Auticon_Grafik.PNG" alt="Auticon_Grafik" style="max-width:100%;"></a></p>
+<p><strong><em>Overview</em></strong></p>
+<p>I have to thank my employer Auticon Berlin for letting me develop this package in my working time. Agnostic Bayes Ensemble is thought to be basis technology, that will be refined over time, furthermore it forms one pillar of a upcoming machine learning framework, which is supposed to consist of three broad branches:</p>
+<ul>
+<li>
+<p>cleaning and transformation of datasets.</p>
+</li>
+<li>
+<p>ensemble algorithms.</p>
+</li>
+<li>
+<p>general applicable meta parameter learning.</p>
+</li>
+</ul>
+<p>There are minimal requirements regarding the installation and usage of this package. Right now, the only prerequisite is running on a machine with Julia 1.X installed. However in the upcoming releases GPU support in form of CUDA will be integrated, from there on out, CUDA-DEV-Kit will become a prerequisite.</p>
+<p>This package has been developed to facilitate increased predictive performance, by combining raw base models in an agnostic fashion, i.e. the methods don’t use any assumption regarding the used raw models. Furthermore, we specifically implemented ensemble algorithms that can deal with arbitrary loss function and with regression and classification problems, this holds true for all, except for the dirichletPosterior estimation algorithm, which is limited to classification problems.</p>
+<p>The algorithms bootstrapPosteriorEstimation, bootstrapPosteriorCorEstimation, dirichletPosteriorEstimation, TDistPosteriorEstimation infer an actual posterior distribution.</p>
+<p>The algorithms  δOptimizationMSE ,   δOptimizationHinge ,  δOptimizationHingeRegularized,  δOptimizationMSERegularized do not, these algorithms are inferring mixing coefficients not required to be true probability distributuions .</p>
+<p><strong>Hint</strong>: In most cases it is advisable to <em>deactivate</em> Hyperthreading for best performance.
+However, in some rare cases – depending on the (hardware) platform the package runs on- you
+will get the best performance with Hyperthreading enabled, to be sure, it is best practice to
+measure the performance with and without Hyperthreading.</p>
+<p><strong><em>low level Interface</em></strong></p>
+<p>The Interface was designed to be easy to use, therefore all parameters needed by the algorithms in the package are either y_1, y_2, y_3, …, y_k the predictions per raw model along with the label vector T,
+Or alternatively e_1, e_2, e_3, …, e_k the error between predicted and real labels and ground truth T.
+Some of the methods need additional (prior-) parameters, however this simple basic structure is consistent along all implemented ensemble methods in this package.</p>
+<hr>
+<p><strong><em>Examples</em></strong></p>
+<p>"""
+Basic usage Examples.</p>
+<h1><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h1>
+<pre lang="jldoctest"><code>
+using AgnosticBayesEnsemble
+using DataFrames
+using Random
+using Statistics
+using StaticArrays
+using Optim
+using MultivariateStats
+
+
+
+#== create artificial predictions and ground truth ==#
+function distortBinaryPrediction( y::BitArray{1}, distortionFactor::Float64 )
+    res          = deepcopy( y );   
+    indices      = rand( 1:1:size( y, 1 ), round( Int64, distortionFactor * size( y, 1 ) ) );
+    res[indices] = .!y[indices];
+    return res;
+end  
+
+n    = 100000;
+y    = Bool.( rand( 0:1,n ) );
+yH1  = distortBinaryPrediction( y, 0.20 );
+yH2  = distortBinaryPrediction( y, 0.21 );
+yH3  = distortBinaryPrediction( y, 0.22 );
+yH4  = distortBinaryPrediction( y, 0.23 );
+yH5  = distortBinaryPrediction( y, 0.24 );
+yH6  = distortBinaryPrediction( y, 0.24 );
+yH7  = distortBinaryPrediction( y, 0.26 );
+yH8  = distortBinaryPrediction( y, 0.27 );
+yH9  = distortBinaryPrediction( y, 0.28 );
+yH10 = distortBinaryPrediction( y, 0.29 );
+yH11 = distortBinaryPrediction( y, 0.30 );
+yH12 = distortBinaryPrediction( y, 0.33 );
+yH13 = distortBinaryPrediction( y, 0.34 );
+yH14 = distortBinaryPrediction( y, 0.35 );
+yH15 = distortBinaryPrediction( y, 0.36 );
+yH16 = distortBinaryPrediction( y, 0.37 );
+
+#== split generated prediction set into disjoint sets eval and train==#
+limit           = round( Int64, 0.7 * size( y, 1 ) );
+predictions     = DataFrame( h1=yH1, h2=yH2, h3=yH3, h4=yH4, h5=yH5, h6=yH6, h7=yH7, h8=yH8, h9=yH9, h10=yH10, h11=yH11, h12=yH12, h13=yH13, h14=yH14, h15=yH15, h16=yH16 );
+predTraining    = predictions[1:limit,:];
+predEval        = predictions[limit+1:end,:];
+predMatTraining = convert( Matrix{Float64}, predTraining );
+predMatEval     = convert( Matrix{Float64}, predEval );
+errMatTraining  = ( repeat( Float64.( y[1:limit] ),outer = [1,size(predictions,2)] ) .- predMatTraining ).^2;
+errMatTraining  = convert( Matrix{Float64}, errMatTraining );
+sampleSize      = 32
+nrRuns          = 100000
+α_              = 1.0
+
+#== use bootstrap correlation algorithm to estimate the model posterior  distribution ==#
+pBCE = bootstrapPosteriorCorEstimation( convert( Matrix{Float64},predictions ), Float64.( y ), sampleSize, nrRuns );
+
+#== use bootstrap algorithm to estimate the model posterior distribution ==#
+pBE  = bootstrapPosteriorEstimation( Matrix( errMatTraining ), sampleSize, nrRuns ); 
+
+#== use Dirichletian algorithm to estimate the model posterior distribution ==#
+pDI = dirichletPosteriorEstimation( errMatTraining, nrRuns, α_ );
+
+#== use T-Distribution algorithm to estimate the model posterior distribution ==#
+pTD = TDistPosteriorEstimation( errMatTraining, nrRuns );
+
+sum( pBCE ) + sum( pBE ) + sum( pDI ) + sum( pTD ) ≈ 4.0
+# output
+true
+</code></pre>
+<p>"""</p>
+<p><strong>supported problems per algorithm</strong></p>
+<table>
+<thead>
+<tr>
+<th align="center">algorithm</th>
+<th align="center">univariate Classification</th>
+<th align="center">multivariate Classification</th>
+<th align="center">univariate Regression</th>
+<th align="center">multivariate Classification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">bootstrap</td>
+<td align="center">yes</td>
+<td align="center">yes</td>
+<td align="center">yes</td>
+<td align="center">yes</td>
+</tr>
+<tr>
+<td align="center">bootstrap cor.</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+</tr>
+<tr>
+<td align="center">dirichletian</td>
+<td align="center">yes, only {0,1}-loss</td>
+<td align="center">yes, only {0,1}-loss</td>
+<td align="center">no</td>
+<td align="center">no</td>
+</tr>
+<tr>
+<td align="center">t-distribution</td>
+<td align="center">yes</td>
+<td align="center">yes</td>
+<td align="center">yes</td>
+<td align="center">yes</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em><strong>supported problems per fine tuning algorithms</strong></em></p>
+<table>
+<thead>
+<tr>
+<th align="center">algorithm</th>
+<th align="center">univariate Classification</th>
+<th align="center">multivariate Classification</th>
+<th align="center">univariate Regression</th>
+<th align="center">multivariate Classification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">δOptimizationMSE</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+</tr>
+<tr>
+<td align="center">δOptimizationHinge</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+<td align="center">no</td>
+<td align="center">no</td>
+</tr>
+<tr>
+<td align="center">δOptimizationHingeRegularized</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+<td align="center">no</td>
+<td align="center">no</td>
+</tr>
+<tr>
+<td align="center">δOptimizationMSERegularized</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+<td align="center">yes</td>
+<td align="center">no</td>
+</tr>
+</tbody>
+</table>
+</article></div>

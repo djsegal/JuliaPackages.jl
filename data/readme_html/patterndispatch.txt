@@ -1,0 +1,203 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-patterndispatchjl-v02" class="anchor" aria-hidden="true" href="#patterndispatchjl-v02"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>PatternDispatch.jl v0.2</h1>
+<p>Toivo Henningsson</p>
+<p>This package is an attempt to provide method dispatch based on pattern matching for <a href="julialang.org">Julia</a>.
+Bug reports and feature suggestions are welcome at
+<a href="https://github.com/toivoh/PatternDispatch.jl/issues">https://github.com/toivoh/PatternDispatch.jl/issues</a>.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<p>In Julia, install the <code>PatternDispatch</code> package:</p>
+<pre><code>Pkg.add("PatternDispatch")
+</code></pre>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<p>Pattern methods are defined using the <code>@pattern</code> macro. The method with the most specific pattern that matches the given arguments is invoked,
+with matching values assigned to the corresponding variables.
+The pattern method that is invoked is guaranted to be no less specific than
+any other pattern method that matches.
+Beyond that, no guarantees are made whatsoever about which method is invoked,
+i.e. in the face of ambiguity, any of the most specific methods may be picked
+at any given invocation.</p>
+<p>Method signatures in pattern methods may contain variable names and/or
+type assertions, just like regular method signatures.
+(Varargs, e.g. <code>f(x,ys...)</code> are not implemented yet.)
+A number of additional constructs are also allowed.
+Signatures can contain a mixture of variables and literals, e.g.</p>
+<pre><code>using PatternDispatch
+
+@pattern f(x) =  x
+@pattern f(2) = 42
+
+println([f(x) for x=1:4])
+</code></pre>
+<p>prints</p>
+<pre><code>[1, 42, 3, 4]
+</code></pre>
+<p>Using <code>show_dispatch(f)</code> to inspect the generated dispatch code gives</p>
+<pre><code>const f = (args...)-&gt;dispatch(args...)
+
+# ---- Pattern methods: ----
+# f(x,)
+function match1(x)	#  test_examples.jl, line 6:
+    x
+end
+
+# f(2,)
+function match2()	#  test_examples.jl, line 7:
+    42
+end
+
+# ---- Dispatch methods: ----
+function dispatch(x_1::Any)
+    match1(x_1)
+end
+
+function dispatch(x_1::Int64)
+    if is(x_1, 2)
+        match2()
+    else
+        match1(x_1)
+    end
+end
+</code></pre>
+<p>A type tuple is allowed as a second argument to <code>show_dispatch</code> to restrict
+the set of dispatch methods printed,
+e.g. <code>show_dispatch(f, (Int,))</code> prints only the second method, since the first
+one can never be triggered with an argument of type <code>Int</code>.</p>
+<p>Signatures can also contain patterns of tuples and vectors:</p>
+<pre><code>@pattern f2((x,y::Int)) = x*y
+@pattern f2([x,y::Int]) = x/y
+@pattern f2(x)          = nothing
+
+==&gt; f2((2,5)) = 10
+    f2((4,3)) = 12
+    f2([4,3]) = 1.3333333333333333
+    f2((4,'a')) = f2([4,'a']) = f2(1) = f2("hello") = f2((1,)) = f2((1,2,3)) = nothing
+</code></pre>
+<p>A vector pattern will match any <code>Vector</code>. To restrict to a given
+element type, use e.g.</p>
+<pre><code>@pattern f([x,y]::Vector{Int}) = ...
+</code></pre>
+<p>The pattern <code>p~q</code> matches a value if and only if
+it matches both patterns <code>p</code> and <code>q</code>.
+This can be used e.g. to get at the actual vector that matched a vector pattern:</p>
+<pre><code>@pattern f3(v~[x::Int, y::Int]) = [v,x*y]
+
+==&gt; f3([3,2])    = [[3, 2], 6]
+    f3(Any[3,2]) = [Any[3, 2], 6]
+    f3([3,2.0])  = nothing
+</code></pre>
+<p>Symbols in signatures are replaced by pattern variables by default
+(symbols in the position of function names and at the right hand side of <code>::</code>
+are not). To use the <em>value</em> of a variabe at the point of method definition,
+it can be interpolated into the method signature:</p>
+<pre><code>@pattern f4($nothing) = 1
+@pattern f4(x)        = 2
+
+==&gt; f4(nothing) = 1
+    f4(1) = f4(:x) = f4("hello") = 2
+</code></pre>
+<p>A warning is printed if a new definition makes dispatch ambiguous:</p>
+<pre><code>@pattern ambiguous((x,y),z) = 2
+@pattern ambiguous(x,(1,z)) = 3
+</code></pre>
+<p>prints</p>
+<pre><code>Warning: New @pattern method ambiguous(x_A, (1, z_A))
+         is ambiguous with   ambiguous((x_B, y_B), z_B).
+         Make sure ambiguous(x_A~(x_B, y_B), z_B~(1, z_A)) is defined first.
+</code></pre>
+<h2><a id="user-content-features" class="anchor" aria-hidden="true" href="#features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Features</h2>
+<ul>
+<li>Pattern signatures can contain
+<ul>
+<li>variables, literals, and type annotations</li>
+<li>unifications and tuples of patterns</li>
+</ul>
+</li>
+<li>Dispatch on most specific pattern</li>
+<li>Generates dispatch code to find the most specific match for given arguments,
+in the form of nested <code>if</code> statements</li>
+<li>Leverages Julia's multiple dispatch to perform the initial steps of
+dispatch</li>
+<li>Warning when addition of a pattern method causes dispatch ambiguity</li>
+<li>Function to print generated dispatch code for a pattern function</li>
+</ul>
+<h2><a id="user-content-aim" class="anchor" aria-hidden="true" href="#aim"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Aim</h2>
+<ul>
+<li>Provide a powerful and intuitive dispatch mechanism based on pattern
+matching</li>
+<li>Support a superset of Julia's multiple dispatch</li>
+<li>Generate fast matching code for a given collection of pattern method
+signatures</li>
+<li>Allow Julia's optimizations such as type inference to work with pattern
+dispatch</li>
+</ul>
+<h2><a id="user-content-plannedpossible-features" class="anchor" aria-hidden="true" href="#plannedpossible-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Planned/Possible Features</h2>
+<ul>
+<li>Patterns for arrays and dicts</li>
+<li>varargs, e.g. <code>(x,ys...)</code>, <code>[x,ys...]</code> etc.</li>
+<li>Support for non-tree patterns, where the same variable occurs in several positions</li>
+<li>User definable pattern matching on user defined types</li>
+<li>Greater expressiveness: more kinds of patterns...</li>
+</ul>
+<h2><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Limitations</h2>
+<ul>
+<li>Not yet terribly tested</li>
+<li>No support for type parameters a la f{T}(...)</li>
+</ul>
+<h1><a id="user-content-working-principles" class="anchor" aria-hidden="true" href="#working-principles"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Working Principles</h1>
+<p>Semantics:</p>
+<ul>
+<li>Pattern matching is conceptually performed on the arguments
+tuple of a function call, e.g. <code>(1,2,3)</code> in the call <code>f(1,2,3)</code>.</li>
+<li>Equality of values is defined in terms of <code>is</code>,
+e.g. <code>@pattern f(3) = 5</code> matches on <code>f(x)</code> only if <code>is(x,3)</code>.</li>
+</ul>
+<p>Background:</p>
+<ul>
+<li>To be able to match a single pattern against a value,
+the pattern has to provide
+<ul>
+<li>a <em>predicate</em> to check whether a given value matches,</li>
+<li>a set of <em>pattern variable</em> symbols,</li>
+<li>a <em>mapping</em> of input values to pattern variable values, valid for matching patterns.</li>
+</ul>
+</li>
+<li>To do most-specific pattern dispatch, patterns must also support
+<ul>
+<li>a <em>partial order</em> <code>p &gt;= q</code>,
+read as "p is less specific or equal to q", or
+"x matches q ==&gt; x matches p, for any value x"</li>
+<li>an <em>intersection</em> operation <code>p &amp; q</code>;
+the pattern <code>p &amp; q</code> will match those values that match both <code>p</code> and <code>q</code>.</li>
+</ul>
+</li>
+</ul>
+<p>Implementation aspects:</p>
+<ul>
+<li>Patterns are represented by
+the operations needed to evaluate the matching predicate
+and the mapping, in the form of a
+<a href="http://en.wikipedia.org/wiki/Directed_acyclic_graph" rel="nofollow">DAG</a>.
+<ul>
+<li>Each <em>node</em> is either
+<ul>
+<li>an <em>operation</em>, such as to evaluate <code>isa(x,Int)</code> or <code>x[3]</code>,
+where <code>x</code> is the result value of another node, or</li>
+<li>a <em>source</em>, such as a literal value or the pattern's input value.</li>
+</ul>
+</li>
+<li>Two nodes are equal iff they represent the same (sub-)DAG.</li>
+</ul>
+</li>
+<li>A pattern is composed of
+<ul>
+<li>a set of <em>guard predicates</em> (boolean-valued nodes),
+such that the pattern matches iff all predicates evaluate to true,</li>
+<li>a set of <em>bindings</em> from symbols to nodes, to produce the mapping.</li>
+</ul>
+</li>
+<li>Two patterns are equal iff their guard sets are equal.</li>
+<li>Pattern intersection <code>p &amp; q</code> forms the union of the guards sets
+of <code>p</code> and <code>q</code>. The result is simplified, e.g.
+<code>x::Number &amp; ::Int</code> reduces to <code>x::Int</code>.</li>
+<li><code>p &gt;= q</code> is evaluated as <code>(p &amp; q) == q</code>.</li>
+</ul>
+</article></div>

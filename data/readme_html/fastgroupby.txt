@@ -1,0 +1,128 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-fastgroupby" class="anchor" aria-hidden="true" href="#fastgroupby"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>FastGroupBy</h1>
+<p>Faster algorithms for doing vector group-by. This package currently support faster group-bys where the group-by vector is of type <code>CategoricalVector</code> or <code>Vector{T}</code> for <code>T&lt;:Union{Integer, Bool, String}</code>.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<pre lang="{.julia}"><code>
+# install
+Pkg.add("FastGroupBy")
+# install latest version
+Pkg.clone("https://github.com/xiaodaigh/FastGroupBy.jl.git")
+</code></pre>
+<h1><a id="user-content-fastby-and-fastby" class="anchor" aria-hidden="true" href="#fastby-and-fastby"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>fastby</code> and <code>fastby!</code></h1>
+<p>The <code>fastby</code> and <code>fastby!</code> functions allow the user to perform arbitrary computation on a vector (<code>valvec</code>) grouped by another vector (<code>byvec</code>). Their output format is a <code>Tuple</code> where the first element are the distinct groups and the second are the results of applying the function, <code>fn</code> on the <code>valvec</code> grouped-by <code>by</code>, see below for explanation of <code>fn</code>, <code>byvec</code>, and <code>valvec</code>.</p>
+<p>The difference between <code>fastby</code> and <code>fastby!</code> is that <code>fastby!</code> may change the input vectors <code>byvec</code> and <code>valvec</code> whereas <code>fastby</code> won't.</p>
+<p>Both functions have the same three main arguments, but we shall illustrate using <code>fastby</code> only</p>
+<pre lang="{.julia}"><code>
+fastby(fn, byvec, valvec)
+</code></pre>
+<ul>
+<li><code>fn</code> is a function <code>fn</code> to be applied to each by-group of <code>valvec</code></li>
+<li><code>byvec</code> is the vector to group-by</li>
+<li><code>valvec</code> is the vector that <code>fn</code> is applied to</li>
+</ul>
+<p>For example <code>fastby(sum, byvec, valvec)</code> is equivalent to <code>StatsBase</code>'s <code>countmap(byvec, weights(valvec))</code>. Consider the below</p>
+<pre lang="{.julia}"><code>using FastGroupBy
+
+byvec  = [88, 888, 8, 88, 888, 88]
+valvec = [1 , 2  , 3, 4 , 5  , 6]
+</code></pre>
+<pre><code>6-element Array{Int64,1}:
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+</code></pre>
+<p>to compute the sum value of <code>valvec</code> in each group of <code>byvec</code> we do</p>
+<pre lang="{.julia}"><code>grpsum = fastby(sum, byvec, valvec)
+expected_result = Dict(88 =&gt; 11, 8 =&gt; 3, 888 =&gt; 7)
+Dict(zip(grpsum...)) == expected_result # true
+</code></pre>
+<pre><code>true
+</code></pre>
+<h2><a id="user-content-fastby-with-an-arbitrary-fn" class="anchor" aria-hidden="true" href="#fastby-with-an-arbitrary-fn"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>fastby!</code> with an arbitrary <code>fn</code></h2>
+<p>You can also compute arbitrary functions for each by-group e.g. <code>mean</code></p>
+<pre lang="{.julia}"><code>using Statistics: mean
+@time a = fastby(mean, byvec, valvec)
+</code></pre>
+<pre><code>0.000657 seconds (24 allocations: 1.502 MiB)
+([8, 88, 888], [3.0, 3.6666666666666665, 3.5])
+</code></pre>
+<p>This generalizes to arbitrary user-defined functions e.g. the below computes the <code>sizeof</code> each element within each by group</p>
+<pre lang="{.julia}"><code>byvec  = [88   , 888  , 8  , 88  , 888 , 88]
+valvec = ["abc", "def", "g", "hi", "jk", "lmop"]
+@time a = fastby(yy -&gt; sizeof.(yy), byvec, valvec);
+</code></pre>
+<pre><code>0.290550 seconds (280.04 k allocations: 14.957 MiB)
+</code></pre>
+<p>Julia's do-notation can be used</p>
+<pre lang="{.julia}"><code>@time a = fastby(byvec, valvec) do grouped_y
+    # you can perform complex calculations here knowing that grouped_y is y grouped by x
+    grouped_y[end] * grouped_y[1]
+end;
+</code></pre>
+<pre><code>0.172302 seconds (194.41 k allocations: 10.657 MiB)
+</code></pre>
+<p>The <code>fastby</code> is fast if group by a vector of <code>Bool</code>'s as well</p>
+<pre lang="{.julia}"><code>using Random
+Random.seed!(1)
+x = rand(Bool, 100_000_000);
+y = rand(100_000_000);
+
+@time fastby(sum, x, y)
+</code></pre>
+<pre><code>3.132733 seconds (37 allocations: 774.866 MiB, 6.21% gc time)
+(Bool[1, 0], [2.499741155973099e7, 2.5003502408479996e7])
+</code></pre>
+<p>The <code>fastby</code> works on <code>String</code> type as well but is still slower than <code>countmap</code> and uses MUCH more RAM and therefore is <strong>NOT recommended (at this stage)</strong>.</p>
+<pre lang="{.julia}"><code>using Random
+const M=10_000_000; const K=100;
+Random.seed!(1)
+svec1 = rand([string(rand(Char.(32:126), rand(1:8))...) for k in 1:M÷K], M);
+y = repeat([1], inner=length(svec1));
+@time a = fastby!(sum, svec1, y);
+</code></pre>
+<pre><code>4.704647 seconds (491.16 k allocations: 912.926 MiB, 24.89% gc time)
+</code></pre>
+<pre lang="{.julia}"><code>
+a_dict = Dict(zip(a...))
+
+using StatsBase
+@time b = countmap(svec1, alg = :dict);
+</code></pre>
+<pre><code>1.523348 seconds (48 allocations: 5.670 MiB)
+</code></pre>
+<pre lang="{.julia}"><code>a_dict == b #true
+</code></pre>
+<pre><code>true
+</code></pre>
+<h2><a id="user-content-fastby-on-dataframes" class="anchor" aria-hidden="true" href="#fastby-on-dataframes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>fastby</code> on <code>DataFrames</code></h2>
+<p>One can also apply <code>fastby</code> on <code>DataFrame</code> by supplying the DataFrame as the second argument and its columns using <code>Symbol</code> in the third and fourth argument, being <code>bycol</code> and <code>valcol</code> respectively. For example</p>
+<pre lang="{.julia}"><code>using DataFrames
+
+df1 = DataFrame(grps = rand(1:100, 1_000_000), val = rand(1_000_000))
+# compute the difference between the number rows in that group and the mean of `val` in that group
+res = fastby(val_grouped -&gt; length(val_grouped) - mean(val_grouped), df1, :grps, :val)
+</code></pre>
+<pre><code>100×2 DataFrame
+│ Row │ grps  │ V1      │
+│     │ Int64 │ Float64 │
+├─────┼───────┼─────────┤
+│ 1   │ 1     │ 10062.5 │
+│ 2   │ 2     │ 9956.5  │
+│ 3   │ 3     │ 10026.5 │
+│ 4   │ 4     │ 9953.5  │
+│ 5   │ 5     │ 9855.5  │
+│ 6   │ 6     │ 10019.5 │
+│ 7   │ 7     │ 10065.5 │
+⋮
+│ 93  │ 93    │ 9968.5  │
+│ 94  │ 94    │ 10096.5 │
+│ 95  │ 95    │ 10008.5 │
+│ 96  │ 96    │ 10037.5 │
+│ 97  │ 97    │ 9885.5  │
+│ 98  │ 98    │ 10019.5 │
+│ 99  │ 99    │ 9937.5  │
+│ 100 │ 100   │ 10058.5 │
+</code></pre>
+</article></div>

@@ -1,0 +1,152 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-the-8-bit-stupid-cipher" class="anchor" aria-hidden="true" href="#the-8-bit-stupid-cipher"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The 8 Bit "Stupid" Cipher</h1>
+<p>An informal analysis of an 8 bit version of <a href="http://news.quelsolaar.com/#comments101" rel="nofollow">this
+cipher</a>, as discussed on
+<a href="https://news.ycombinator.com/item?id=6616438" rel="nofollow">HN</a>.</p>
+<p>The cipher implementation can be seen in <a href="src/Cipher.jl">Cipher.jl</a>.</p>
+<h2><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Introduction</h2>
+<p><strong>Motivation</strong> - it seems that the only way to learn about
+implementing ciphers is to break them.  At the same time, the ciphers
+that I know are ridiculously hard to break.  So breaking a "known bad"
+design might be a good first step.</p>
+<p><strong>Structure</strong> - this page contains only a basic summary of the code
+and results.  There are links to source files, which may contain more
+information in the comments.</p>
+<p><strong>Language</strong> - <a href="http://julialang.org/" rel="nofollow">Julia</a> combines the speed of C
+(or close) with the flexibility of Python and has ambitions to replace
+statistical analysis packages like R.</p>
+<p><strong>Why 8 bit?</strong> - other stream ciphers work with 8 bit characters, so I
+can re-use any tools I develop.  In some ways it may also simplify
+analysis (less state for a given key size, but for a given sized
+state, less information is exposed when a character is encrypted).</p>
+<h2><a id="user-content-non-uniform-bytes-and-bits" class="anchor" aria-hidden="true" href="#non-uniform-bytes-and-bits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Non-Uniform Bytes And Bits</h2>
+<p>All results below are for a plaintext size of 659408 bytes (the size
+of the <a href="little-brother.txt">Little Brother</a> text).  The tests used
+Pearson's Chi-Squared test to assess whether bytes and bits were
+uniformly distributed (bytes from 0 to 255; bits individually over 0
+and 1).</p>
+<p>Ciphertext is significantly different from random bytes when the
+plaintext is constant (0x00, 0x55 or 0xff) for key lengths of 3 and 8
+bytes.  The least significant bits are particularly unreliable.  16
+byte keys give better output, but some keys are still problematic.</p>
+<p>When encrypting random data the output does appear to be (consistent
+with the hypothesis that it is) random, at all key sizes.</p>
+<p>When encrypting text the data for 8 and 16 byte keys also appeared to
+be random.</p>
+<p>The analysis can be seen in <a href="src/Statistics.jl">Statistics.jl</a>.</p>
+<h2><a id="user-content-correlated-bits" class="anchor" aria-hidden="true" href="#correlated-bits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Correlated Bits</h2>
+<p>The small state and xor-logic of the PRNG suggests that ciphertext for
+constant plaintext will vary less than expected.  This can be measured
+as the mean number of bits common to successive ciphertext characters.
+A random stream will give 4 bits.</p>
+<p>For 3 byte keys, all constant plaintexts give anomalous values.</p>
+<p>For <a href="little-brother.txt">Little Brother</a> plaintext, 3 and 8 byte keys
+give anomalous values.</p>
+<p>The analysis can be seen in <a href="src/Statistics.jl">Statistics.jl</a>.</p>
+<h2><a id="user-content-plaintext-injection-attack" class="anchor" aria-hidden="true" href="#plaintext-injection-attack"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Plaintext Injection Attack</h2>
+<p>In some cases, injecting a pre-calculated fragment in the plaintext
+can force the internal state of the cipher to a known point (excluding
+the internal counter, which is known anyway).  Following text can then
+be decrypted directly.</p>
+<p>A practical example where this can be used is the encryption of a web
+page that displays user-supplied data (like a name or comment).</p>
+<p>The fragment is a counter (modulo 0xff) that mirrors the counter in
+the cipher state.  The probable mechanism is a combination of the
+counter plaintext canceling some (or all) counter bits and zeroing of
+state when a byte is xored with a similar value (the cipher character
+is already xored with state[A], it is then xored again with state[A]
+when mixed into the state).</p>
+<p>For 3 byte keys, a 32 byte fragment affects 4% of keys.  For 4 byte
+keys a longer fragment (150 bytes) is necessary to affect a similar
+percentage.</p>
+<p>Even when the known unique state is not achieved (including larger key
+sizes), counter fragments <em>significantly</em> reduce the cipher state.  In
+a random sample (size 100) of 8 byte keys encrypting a counter all had
+state (excluding the internal counter) that repeated over unexpectedly
+short periods.  The longest period was 26 characters and 71% achieved
+stationary state (period 1) after 1500 characters or less.</p>
+<p>The analysis can be seen in <a href="src/Prefix.jl">Prefix.jl</a>.</p>
+<h2><a id="user-content-ciphertext-collisions-1" class="anchor" aria-hidden="true" href="#ciphertext-collisions-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Ciphertext Collisions (1)</h2>
+<p>When <a href="little-brother.txt">Little Brother</a> is encrypted with 100
+distinct, random keys, of length 3 bytes, the endings of ~30% of the
+files are not unique.</p>
+<p>A practical example where this can be used is against disk encryption,
+where the same file can be identified for multiple users.</p>
+<p>The probable mechanism is that initial state is slowly eroded by
+similar-byte xor.</p>
+<p>The analysis can be seen in <a href="src/SelfEncrypt.jl">SelfEncrypt.jl</a>.</p>
+<h2><a id="user-content-distinguishing-attack" class="anchor" aria-hidden="true" href="#distinguishing-attack"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Distinguishing Attack</h2>
+<p>Ciphertext bitwise cross-correlated with a counter (modulo 0xff)
+generally shows clear structure for 3 byte keys.  Typically a peak or
+trough at ~0 offset with other features at 64 and 128 bytes offset.
+Similar structures also appear to be visible (varying by key;
+statistical significance unclear) with 8 byte keys.</p>
+<p>A practical example where this can be used is detecting the use of
+this (weak) cipher in data of unknown origin.</p>
+<p>The probable mechanism is matching the internal counter.</p>
+<p>Here is the correlation for <a href="little-brother.txt">Little Brother</a>,
+encrypted with key 0xacb89d:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="bit-correlation-3-acb89d.png"><img src="bit-correlation-3-acb89d.png" alt="counter correlation for 3 byte key" style="max-width:100%;"></a></p>
+<p>The analysis can be seen in <a href="src/BitCorrelation.jl">BitCorrelation.jl</a>.</p>
+<h2><a id="user-content-statistical-plaintext-matching" class="anchor" aria-hidden="true" href="#statistical-plaintext-matching"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Statistical Plaintext Matching</h2>
+<p>There is a small but consistent bitwise (anti-)correlation between the
+lowest two bits of plaintext and ciphertext for 8 byte keys at zero
+offset.</p>
+<p>A practical example where this can be used is when a user is suspected
+of encrypting a particular document.</p>
+<p>The probable mechanism is that these bits control permutation when key
+length is a power of 2 (the calculation is modulo key length).</p>
+<p>Here is the correlation for 5 random 8 byte keys, encrypting <a href="little-brother.txt">Little
+Brother</a>, with the zero offset points marked in a
+distinct colour.</p>
+<p><a target="_blank" rel="noopener noreferrer" href="plain-corelate-8-3.png"><img src="plain-corelate-8-3.png" alt="plaintext correlation for lowest 2 bits with 8 byte key" style="max-width:100%;"></a></p>
+<p>The analysis can be seen in <a href="src/BitCorrelation.jl">BitCorrelation.jl</a>.</p>
+<h2><a id="user-content-partial-known-plaintext-attack" class="anchor" aria-hidden="true" href="#partial-known-plaintext-attack"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Partial Known Plaintext Attack</h2>
+<p>If the initial character of the plaintext is known then the key space
+is reduced by 8 bits.</p>
+<p>A practical example where this can be used is when encrypting UTF-8
+text, which has a known header.</p>
+<p>The attack works because the ciphertext is xored with the plaintext
+and the internal state; knowing the plaintext constrains the internal
+state.</p>
+<p>The analysis for 3 byte keys can be seen in
+<a href="src/BruteForce.jl">BruteForce.jl</a>.</p>
+<h2><a id="user-content-ciphertext-collisions-2" class="anchor" aria-hidden="true" href="#ciphertext-collisions-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Ciphertext Collisions (2)</h2>
+<p>Around 1% of 3 byte keys have siblings that give matching encryption
+results.  For example, both 0x25730e and 0x92ef1c give the same
+ciphertext for 100 random 16 byte strings.</p>
+<p>This implies that the cipher is less secure than would be expected
+from the key length.</p>
+<p>I do not know the mechanism, but this may be related to the "missing
+logic" in the code used in the partial plaintext attack (the routine
+is less symmetric than expected because some combinations of pos
+values cannot occur).</p>
+<p>The analysis can be seen in <a href="src/BruteForce.jl">BruteForce.jl</a>.</p>
+<h2><a id="user-content-limited-state" class="anchor" aria-hidden="true" href="#limited-state"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Limited State</h2>
+<p>The Cipher can be viewed as a stream cipher using "xor with a PRNG"
+whose state is augmented with entropy from the plaintext.  One way to
+measure the diversity of the PRNG (and hence the security of the
+cipher) is to look for repeated internal state.</p>
+<p>In <a href="src/Statistics.jl">Statistics.jl</a> the internal state (excluding
+the counter, which is known to an extrernal attacker) is monitored
+during encryption.  If a state is detected a second time then
+encryption continues and the number of characters between the second
+and third occurence of that state is recorded.  This is repeated for
+100 random keys.</p>
+<p>A good quality PRNG would not repeat internal state until all
+available states had been exhausted (ie period = pow(2, N) where N is
+the size of the state in bits).  But a generator that incorporates
+external input might not be able to achieve that.  Birthday collisions
+might limit the period to pow(2, N/2).  For a 3 byte key that would be
+4096; for a 16 byte key ~2E19.</p>
+<p>In practice, for 3 byte keys, the state repeats every 400 characters
+or so.  This is true even for random plaintext.</p>
+<p>8 and 16 byte keys are better - in 100 tests only one 8 byte and no 16
+byte keys had repeating state over 10000 plaintext characters.</p>
+<h2><a id="user-content-copyright" class="anchor" aria-hidden="true" href="#copyright"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Copyright</h2>
+<p>Code copyright <a href="mailto:andrew@acooke.org">Andrew Cooke</a> 2013, licensed
+under the <a href="LICENSE.md">GPLv3</a>.</p>
+<p><a href="little-brother.txt">Little Brother</a> copyright <a href="mailto:doctorow@craphound.com">Cory
+Doctorow</a>, licensed under CC ANCS3 (see
+file) (it's used as example English text for analysis, but it's
+actually a great read - probably more interesting than this project).</p>
+</article></div>

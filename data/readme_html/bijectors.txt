@@ -1,0 +1,653 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-bijectorsjl" class="anchor" aria-hidden="true" href="#bijectorsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Bijectors.jl</h1>
+<p><a href="https://travis-ci.org/TuringLang/Bijectors.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4f87a0a72f61a5058cbf6423d7176bc708651aef/68747470733a2f2f7472617669732d63692e6f72672f547572696e674c616e672f42696a6563746f72732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/TuringLang/Bijectors.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://github.com/TuringLang/Bijectors.jl/actions?query=workflow%3A%22ForwardDiff+and+Tracker+tests%22"><img src="https://github.com/TuringLang/Bijectors.jl/workflows/ForwardDiff%20and%20Tracker%20tests/badge.svg?branch=master" alt="ForwardDiff and Tracker tests" style="max-width:100%;"></a></p>
+<p><a href="https://github.com/TuringLang/Bijectors.jl/actions?query=workflow%3A%22Zygote+tests%22"><img src="https://github.com/TuringLang/Bijectors.jl/workflows/Zygote%20tests/badge.svg?branch=master" alt="Zygote tests" style="max-width:100%;"></a></p>
+<p><a href="https://github.com/TuringLang/Bijectors.jl/actions?query=workflow%3A%22ReverseDiff+tests%22"><img src="https://github.com/TuringLang/Bijectors.jl/workflows/ReverseDiff%20tests/badge.svg" alt="ReverseDiff tests" style="max-width:100%;"></a></p>
+<p>This package implements a set of functions for transforming constrained random variables (e.g. simplexes, intervals) to Euclidean space. The 3 main functions implemented in this package are the <code>link</code>, <code>invlink</code> and <code>logpdf_with_trans</code> for a number of distributions. The distributions supported are:</p>
+<ol>
+<li><code>RealDistribution</code>: <code>Union{Cauchy, Gumbel, Laplace, Logistic, NoncentralT, Normal, NormalCanon, TDist}</code>,</li>
+<li><code>PositiveDistribution</code>: <code>Union{BetaPrime, Chi, Chisq, Erlang, Exponential, FDist, Frechet, Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal, NoncentralChisq, NoncentralF, Rayleigh, Weibull}</code>,</li>
+<li><code>UnitDistribution</code>: <code>Union{Beta, KSOneSided, NoncentralBeta}</code>,</li>
+<li><code>SimplexDistribution</code>: <code>Union{Dirichlet}</code>,</li>
+<li><code>PDMatDistribution</code>: <code>Union{InverseWishart, Wishart}</code>, and</li>
+<li><code>TransformDistribution</code>: <code>Union{T, Truncated{T}} where T&lt;:ContinuousUnivariateDistribution</code>.</li>
+</ol>
+<p>All exported names from the <a href="https://github.com/TuringLang/Bijectors.jl">Distributions.jl</a> package are reexported from <code>Bijectors</code>.</p>
+<p>Bijectors.jl also provides a nice interface for working with these maps: composition, inversion, etc.
+The following table lists mathematical operations for a bijector and the corresponding code in Bijectors.jl.</p>
+<table>
+<thead>
+<tr>
+<th align="center">Operation</th>
+<th align="center">Method</th>
+<th align="center">Automatic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>b ↦ b⁻¹</code></td>
+<td align="center"><code>inv(b)</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>(b₁, b₂) ↦ (b₁ ∘ b₂)</code></td>
+<td align="center"><code>b₁ ∘ b₂</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>(b₁, b₂) ↦ [b₁, b₂]</code></td>
+<td align="center"><code>stack(b₁, b₂)</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>x ↦ b(x)</code></td>
+<td align="center"><code>b(x)</code></td>
+<td align="center">×</td>
+</tr>
+<tr>
+<td align="center"><code>y ↦ b⁻¹(y)</code></td>
+<td align="center"><code>inv(b)(y)</code></td>
+<td align="center">×</td>
+</tr>
+<tr>
+<td align="center"><code>x ↦ log｜det J(b, x)｜</code></td>
+<td align="center"><code>logabsdetjac(b, x)</code></td>
+<td align="center">AD</td>
+</tr>
+<tr>
+<td align="center"><code>x ↦ b(x), log｜det J(b, x)｜</code></td>
+<td align="center"><code>forward(b, x)</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>p ↦ q := b_* p</code></td>
+<td align="center"><code>q = transformed(p, b)</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>y ∼ q</code></td>
+<td align="center"><code>y = rand(q)</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>p ↦ b</code> such that <code>support(b_* p) = ℝᵈ</code></td>
+<td align="center"><code>bijector(p)</code></td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td align="center"><code>(x ∼ p, b(x), log｜det J(b, x)｜, log q(y))</code></td>
+<td align="center"><code>forward(q)</code></td>
+<td align="center">✓</td>
+</tr>
+</tbody>
+</table>
+<p>In this table, <code>b</code> denotes a <code>Bijector</code>, <code>J(b, x)</code> denotes the jacobian of <code>b</code> evaluated at <code>x</code>, <code>b_*</code> denotes the <a href="https://www.wikiwand.com/en/Pushforward_measure" rel="nofollow">push-forward</a> of <code>p</code> by <code>b</code>, and <code>x ∼ p</code> denotes <code>x</code> sampled from the distribution with density <code>p</code>.</p>
+<p>The "Automatic" column in the table refers to whether or not you are required to implement the feature for a custom <code>Bijector</code>. "AD" refers to the fact that it can be implemented "automatically" using automatic differentiation, i.e. <code>ADBijector</code>.</p>
+<h2><a id="user-content-functions" class="anchor" aria-hidden="true" href="#functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Functions</h2>
+<ol>
+<li><code>link</code>: maps a sample of a random distribution <code>dist</code> from its support to a value in R^n. Example:</li>
+</ol>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Bijectors
+
+julia<span class="pl-k">&gt;</span> dist <span class="pl-k">=</span> <span class="pl-c1">Beta</span>(<span class="pl-c1">2</span>, <span class="pl-c1">2</span>)
+<span class="pl-c1">Beta</span><span class="pl-c1">{Float64}</span>(α<span class="pl-k">=</span><span class="pl-c1">2.0</span>, β<span class="pl-k">=</span><span class="pl-c1">2.0</span>)
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(dist)
+
+<span class="pl-c1">0.7472542331020509</span>
+
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">link</span>(dist, x)
+<span class="pl-c1">1.084021356473311</span></pre></div>
+<ol start="2">
+<li><code>invlink</code>: the inverse of the <code>link</code> function. Example:</li>
+</ol>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> z <span class="pl-k">=</span> <span class="pl-c1">invlink</span>(dist, y)
+<span class="pl-c1">0.6543406780096065</span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">==</span> z
+<span class="pl-c1">true</span></pre></div>
+<ol start="3">
+<li><code>logpdf_with_trans</code>: finds <code>log</code> of the (transformed) probability density function of a distribution <code>dist</code> at a sample <code>x</code>. Example:</li>
+</ol>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Bijectors
+
+julia<span class="pl-k">&gt;</span> dist <span class="pl-k">=</span> <span class="pl-c1">Dirichlet</span>(<span class="pl-c1">2</span>, <span class="pl-c1">3</span>)
+<span class="pl-c1">Dirichlet</span><span class="pl-c1">{Float64}</span>(alpha<span class="pl-k">=</span>[<span class="pl-c1">3.0</span>, <span class="pl-c1">3.0</span>])
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(dist)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.46094823621110165</span>
+ <span class="pl-c1">0.5390517637888984</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf_with_trans</span>(dist, x, <span class="pl-c1">false</span>) <span class="pl-c"><span class="pl-c">#</span> ignoring the transformation</span>
+<span class="pl-c1">0.6163709733893024</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf_with_trans</span>(dist, x, <span class="pl-c1">true</span>) <span class="pl-c"><span class="pl-c">#</span> considering the transformation</span>
+<span class="pl-k">-</span><span class="pl-c1">0.7760422307471244</span></pre></div>
+<h2><a id="user-content-bijector-interface" class="anchor" aria-hidden="true" href="#bijector-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>Bijector</code> interface</h2>
+<p>A <code>Bijector</code> is a differentiable bijection with a differentiable inverse. That's basically it.</p>
+<p>The primary application of <code>Bijector</code>s is the (very profitable) business of transforming (usually continuous) probability densities. If we transfrom a random variable <code>x ~ p(x)</code> to <code>y = b(x)</code> where <code>b</code> is a <code>Bijector</code>, we also get a canonical density <code>q(y) = p(b⁻¹(y)) |det J(b⁻¹, y)|</code> for <code>y</code>. Here <code>J(b⁻¹, y)</code> is the jacobian of the inverse transform evaluated at <code>y</code>. <code>q</code> is also known as the <em>push-forward</em> of <code>p</code> by <code>b</code> in measure theory.</p>
+<p>There's plenty of different reasons why one would want to do something like this. It can be because your <code>p</code> has non-zero probability (support) on a closed interval <code>[a, b]</code> and you want to use AD without having to worry about reaching the boundary. E.g. <code>Beta</code> has support <code>[0, 1]</code> so if we could transform <code>p = Beta</code> into a density <code>q</code> with support on ℝ, we could instead compute the derivative of <code>logpdf(q, y)</code> wrt. <code>y</code>, and then transform back <code>x = b⁻¹(y)</code>. This is very useful for certain inference methods, e.g. Hamiltonian Monte-Carlo, where we need to take the derivative of the logpdf-computation wrt. input.</p>
+<p>Another use-case is constructing a <em>parameterized</em> <code>Bijector</code> and consider transforming a "simple" density, e.g. <code>MvNormal</code>, to match a more complex density. One class of such bijectors is <em>Normalizing Flows (NFs)</em> which are compositions of differentiable and invertible neural networks, i.e. composition of a particular family of parameterized bijectors.[1] We'll see an example of this later on.</p>
+<h3><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Basic usage</h3>
+<p>Other than the <code>logpdf_with_trans</code> methods, the package also provides a more composable interface through the <code>Bijector</code> types. Consider for example the one from above with <code>Beta(2, 2)</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Random; Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">42</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Bijectors; <span class="pl-k">using</span> Bijectors<span class="pl-k">:</span> Logit
+
+julia<span class="pl-k">&gt;</span> dist <span class="pl-k">=</span> <span class="pl-c1">Beta</span>(<span class="pl-c1">2</span>, <span class="pl-c1">2</span>)
+<span class="pl-c1">Beta</span><span class="pl-c1">{Float64}</span>(α<span class="pl-k">=</span><span class="pl-c1">2.0</span>, β<span class="pl-k">=</span><span class="pl-c1">2.0</span>)
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(dist)
+<span class="pl-c1">0.36888689965963756</span>
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">bijector</span>(dist) <span class="pl-c"><span class="pl-c">#</span> bijection (0, 1) → ℝ</span>
+<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">b</span>(x)
+<span class="pl-k">-</span><span class="pl-c1">0.5369949942509267</span></pre></div>
+<p>In this case we see that <code>bijector(d::Distribution)</code> returns the corresponding constrained-to-unconstrained bijection for <code>Beta</code>, which indeed is a <code>Logit</code> with <code>a = 0.0</code> and <code>b = 1.0</code>. The resulting <code>Logit &lt;: Bijector</code> has a method <code>(b::Logit)(x)</code> defined, allowing us to call it just like any other function. Comparing with the above example, <code>b(x) == link(dist, x)</code>. Just to convince ourselves:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">b</span>(x) <span class="pl-k">==</span> <span class="pl-c1">link</span>(dist, x)
+<span class="pl-c1">true</span></pre></div>
+<h4><a id="user-content-inversion" class="anchor" aria-hidden="true" href="#inversion"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Inversion</h4>
+<p>What about <code>invlink</code>?</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> b⁻¹ <span class="pl-k">=</span> <span class="pl-c1">inv</span>(b)
+<span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>))
+
+julia<span class="pl-k">&gt;</span> b⁻¹(y)
+<span class="pl-c1">0.3688868996596376</span>
+
+julia<span class="pl-k">&gt;</span> b⁻¹(y) <span class="pl-k">==</span> <span class="pl-c1">invlink</span>(dist, y)
+<span class="pl-c1">true</span></pre></div>
+<p>Pretty neat, huh? <code>Inverse{Logit}</code> is also a <code>Bijector</code> where we've defined <code>(ib::Inverse{&lt;:Logit})(y)</code> as the inverse transformation of <code>(b::Logit)(x)</code>. Note that it's not always the case that <code>inv(b) isa Inverse</code>, e.g. the inverse of <code>Exp</code> is simply <code>Log</code> so <code>inv(Exp()) isa Log</code> is true.</p>
+<h4><a id="user-content-dimensionality" class="anchor" aria-hidden="true" href="#dimensionality"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Dimensionality</h4>
+<p>One more thing. See the <code>0</code> in <code>Inverse{Logit{Float64}, 0}</code>? It represents the <em>dimensionality</em> of the bijector, in the same sense as for an <code>AbstractArray</code> with the exception of <code>0</code> which means it expects 0-dim input and output, i.e. <code>&lt;:Real</code>. This can also be accessed through <code>dimension(b)</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> Bijectors<span class="pl-k">.</span><span class="pl-c1">dimension</span>(b)
+<span class="pl-c1">0</span>
+
+julia<span class="pl-k">&gt;</span> Bijectors<span class="pl-k">.</span><span class="pl-c1">dimension</span>(<span class="pl-c1">Exp</span><span class="pl-c1">{1}</span>())
+<span class="pl-c1">1</span></pre></div>
+<p>In most cases specification of the dimensionality is unnecessary as a <code>Bijector{N}</code> is usually only defined for a particular value of <code>N</code>, e.g. <code>Logit isa Bijector{0}</code> since it only makes sense to apply <code>Logit</code> to a real number (or a vector of reals if you're doing batch-computation). As a user, you'll rarely have to deal with this dimensionality specification. Unfortunately there are exceptions, e.g. <code>Exp</code> which can be applied to both real numbers and a vector of real numbers, in both cases treating it as a single input. This means that when <code>Exp</code> receives a vector input <code>x</code> as input, it's ambiguous whether or not to treat <code>x</code> as a <em>batch</em> of 0-dim inputs or as a single 1-dim input. As a result, to support batch-computation it is necessary to know the expected dimensionality of the input and output. Notice that we assume the dimensionality of the input and output to be the <em>same</em>. This is a reasonable assumption considering we're working with <em>bijections</em>.</p>
+<h4><a id="user-content-composition" class="anchor" aria-hidden="true" href="#composition"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Composition</h4>
+<p>Also, we can <em>compose</em> bijectors:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> id_y <span class="pl-k">=</span> (b <span class="pl-k">∘</span> b⁻¹)
+Composed{Tuple{Inverse{Logit{Float64},<span class="pl-c1">0</span>},Logit{Float64}},<span class="pl-c1">0</span>}((<span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)), <span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">id_y</span>(y) <span class="pl-k">≈</span> y
+<span class="pl-c1">true</span></pre></div>
+<p>And since <code>Composed isa Bijector</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> id_x <span class="pl-k">=</span> <span class="pl-c1">inv</span>(id_y)
+Composed{Tuple{Inverse{Logit{Float64},<span class="pl-c1">0</span>},Logit{Float64}},<span class="pl-c1">0</span>}((<span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)), <span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">id_x</span>(x) <span class="pl-k">≈</span> x
+<span class="pl-c1">true</span></pre></div>
+<h4><a id="user-content-logpdf-of-transformeddistribution" class="anchor" aria-hidden="true" href="#logpdf-of-transformeddistribution"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>logpdf</code> of <code>TransformedDistribution</code></h4>
+<p>This far we've seen that we can replicate the functionality provided by <code>link</code> and <code>invlink</code>. To replicate <code>logpdf_with_trans</code> we instead provide a <code>TransformedDistribution &lt;: Distribution</code> implementing the <code>Distribution</code> interface from Distributions.jl:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Bijectors<span class="pl-k">:</span> TransformedDistribution
+
+julia<span class="pl-k">&gt;</span> td <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(dist)
+<span class="pl-c1">TransformedDistribution</span><span class="pl-c1">{Beta{Float64},Logit{Float64},Univariate}</span>(
+dist<span class="pl-k">:</span> <span class="pl-c1">Beta</span><span class="pl-c1">{Float64}</span>(α<span class="pl-k">=</span><span class="pl-c1">2.0</span>, β<span class="pl-k">=</span><span class="pl-c1">2.0</span>)
+transform<span class="pl-k">:</span> <span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+)
+
+
+julia<span class="pl-k">&gt;</span> td <span class="pl-k">isa</span> UnivariateDistribution
+<span class="pl-c1">true</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf</span>(td, y)
+<span class="pl-k">-</span><span class="pl-c1">1.123311289915276</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf_with_trans</span>(dist, x, <span class="pl-c1">true</span>)
+<span class="pl-k">-</span><span class="pl-c1">1.123311289915276</span></pre></div>
+<p>When computing <code>logpdf(td, y)</code> where <code>td</code> is the <em>transformed</em> distribution corresponding to <code>Beta(2, 2)</code>, it makes more semantic sense to compute the pdf of the <em>transformed</em> variable <code>y</code> rather than using the "un-transformed" variable <code>x</code> to do so, as we do in <code>logpdf_with_trans</code>. With that being said, we can also do</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf_forward</span>(td, x)
+<span class="pl-k">-</span><span class="pl-c1">1.123311289915276</span></pre></div>
+<h4><a id="user-content-logabsdetjac-and-forward" class="anchor" aria-hidden="true" href="#logabsdetjac-and-forward"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>logabsdetjac</code> and <code>forward</code></h4>
+<p>In the computation of both <code>logpdf</code> and <code>logpdf_forward</code> we need to compute <code>log(abs(det(jacobian(inv(b), y))))</code> and <code>log(abs(det(jacobian(b, x))))</code>, respectively. This computation is available using the <code>logabsdetjac</code> method</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b⁻¹, y)
+<span class="pl-k">-</span><span class="pl-c1">1.4575353795716655</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b, x)
+<span class="pl-c1">1.4575353795716655</span></pre></div>
+<p>Notice that</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b, x) <span class="pl-k">≈</span> <span class="pl-k">-</span><span class="pl-c1">logabsdetjac</span>(b⁻¹, y)
+<span class="pl-c1">true</span></pre></div>
+<p>which is always the case for a differentiable bijection with differentiable inverse. Therefore if you want to compute <code>logabsdetjac(b⁻¹, y)</code> and we know that <code>logabsdetjac(b, b⁻¹(y))</code> is actually more efficient, we'll return <code>-logabsdetjac(b, b⁻¹(y))</code> instead. For some bijectors it might be easy to compute, say, the forward pass <code>b(x)</code>, but expensive to compute <code>b⁻¹(y)</code>. Because of this you might want to avoid doing anything "backwards", i.e. using <code>b⁻¹</code>. This is where <code>forward</code> comes to good use:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">forward</span>(b, x)
+(rv <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">0.5369949942509267</span>, logabsdetjac <span class="pl-k">=</span> <span class="pl-c1">1.4575353795716655</span>)</pre></div>
+<p>Similarily</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">forward</span>(<span class="pl-c1">inv</span>(b), y)
+(rv <span class="pl-k">=</span> <span class="pl-c1">0.3688868996596376</span>, logabsdetjac <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">1.4575353795716655</span>)</pre></div>
+<p>In fact, the purpose of <code>forward</code> is to just <em>do the right thing</em>, not necessarily "forward". In this function we'll have access to both the original value <code>x</code> and the transformed value <code>y</code>, so we can compute <code>logabsdetjac(b, x)</code> in either direction. Furthermore, in a lot of cases we can re-use a lot of the computation from <code>b(x)</code> in the computation of <code>logabsdetjac(b, x)</code>, or vice-versa. <code>forward(b, x)</code> will take advantage of such opportunities (if implemented).</p>
+<h4><a id="user-content-sampling-from-transformeddistribution" class="anchor" aria-hidden="true" href="#sampling-from-transformeddistribution"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Sampling from <code>TransformedDistribution</code></h4>
+<p>At this point we've only shown that we can replicate the existing functionality. But we said <code>TransformedDistribution isa Distribution</code>, so we also have <code>rand</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(td)              <span class="pl-c"><span class="pl-c">#</span> ∈ ℝ</span>
+<span class="pl-c1">0.999166054552483</span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">inv</span>(td<span class="pl-k">.</span>transform)(y)  <span class="pl-c"><span class="pl-c">#</span> transform back to interval [0, 1]</span>
+<span class="pl-c1">0.7308945834125756</span></pre></div>
+<p>This can be quite convenient if you have computations assuming input to be on the real line.</p>
+<h4><a id="user-content-univariate-advi-example" class="anchor" aria-hidden="true" href="#univariate-advi-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Univariate ADVI example</h4>
+<p>But the real utility of <code>TransformedDistribution</code> becomes more apparent when using <code>transformed(dist, b)</code> for any bijector <code>b</code>. To get the transformed distribution corresponding to the <code>Beta(2, 2)</code>, we called <code>transformed(dist)</code> before. This is simply an alias for <code>transformed(dist, bijector(dist))</code>. Remember <code>bijector(dist)</code> returns the constrained-to-constrained bijector for that particular <code>Distribution</code>. But we can of course construct a <code>TransformedDistribution</code> using different bijectors with the same <code>dist</code>. This is particularly useful in something called <em>Automatic Differentiation Variational Inference (ADVI)</em>.[2] An important part of ADVI is to approximate a constrained distribution, e.g. <code>Beta</code>, as follows:</p>
+<ol>
+<li>Sample <code>x</code> from a <code>Normal</code> with parameters <code>μ</code> and <code>σ</code>, i.e. <code>x ~ Normal(μ, σ)</code>.</li>
+<li>Transform <code>x</code> to <code>y</code> s.t. <code>y ∈ support(Beta)</code>, with the transform being a differentiable bijection with a differentiable inverse (a "bijector")</li>
+</ol>
+<p>This then defines a probability density with same <em>support</em> as <code>Beta</code>! Of course, it's unlikely that it will be the same density, but it's an <em>approximation</em>. Creating such a distribution becomes trivial with <code>Bijector</code> and <code>TransformedDistribution</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> dist <span class="pl-k">=</span> <span class="pl-c1">Beta</span>(<span class="pl-c1">2</span>, <span class="pl-c1">2</span>)
+<span class="pl-c1">Beta</span><span class="pl-c1">{Float64}</span>(α<span class="pl-k">=</span><span class="pl-c1">2.0</span>, β<span class="pl-k">=</span><span class="pl-c1">2.0</span>)
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">bijector</span>(dist)              <span class="pl-c"><span class="pl-c">#</span> (0, 1) → ℝ</span>
+<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+
+julia<span class="pl-k">&gt;</span> b⁻¹ <span class="pl-k">=</span> <span class="pl-c1">inv</span>(b)                    <span class="pl-c"><span class="pl-c">#</span> ℝ → (0, 1)</span>
+<span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>))
+
+julia<span class="pl-k">&gt;</span> td <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(<span class="pl-c1">Normal</span>(), b⁻¹) <span class="pl-c"><span class="pl-c">#</span> x ∼ 𝓝(0, 1) then b(x) ∈ (0, 1)</span>
+<span class="pl-c1">TransformedDistribution</span><span class="pl-c1">{Normal{Float64},Inverse{Logit{Float64},0},Univariate}</span>(
+dist<span class="pl-k">:</span> <span class="pl-c1">Normal</span><span class="pl-c1">{Float64}</span>(μ<span class="pl-k">=</span><span class="pl-c1">0.0</span>, σ<span class="pl-k">=</span><span class="pl-c1">1.0</span>)
+transform<span class="pl-k">:</span> <span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>))
+)
+
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(td)                    <span class="pl-c"><span class="pl-c">#</span> ∈ (0, 1)</span>
+<span class="pl-c1">0.538956748141868</span></pre></div>
+<p>It's worth noting that <code>support(Beta)</code> is the <em>closed</em> interval <code>[0, 1]</code>, while the constrained-to-unconstrained bijection, <code>Logit</code> in this case, is only well-defined as a map <code>(0, 1) → ℝ</code> for the <em>open</em> interval <code>(0, 1)</code>. This is of course not an implementation detail. <code>ℝ</code> is itself open, thus no continuous bijection exists from a <em>closed</em> interval to <code>ℝ</code>. But since the boundaries of a closed interval has what's known as measure zero, this doesn't end up affecting the resulting density with support on the entire real line. In practice, this means that</p>
+<div class="highlight highlight-source-julia"><pre>td <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(<span class="pl-c1">Beta</span>())
+
+<span class="pl-c1">inv</span>(td<span class="pl-k">.</span>transform)(<span class="pl-c1">rand</span>(td))</pre></div>
+<p>will never result in <code>0</code> or <code>1</code> though any sample arbitrarily close to either <code>0</code> or <code>1</code> is possible. <em>Disclaimer: numerical accuracy is limited, so you might still see <code>0</code> and <code>1</code> if you're lucky.</em></p>
+<h3><a id="user-content-multivariate-advi-example" class="anchor" aria-hidden="true" href="#multivariate-advi-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Multivariate ADVI example</h3>
+<p>We can also do <em>multivariate</em> ADVI using the <code>Stacked</code> bijector. <code>Stacked</code> gives us a way to combine univariate and/or multivariate bijectors into a singe multivariate bijector. Say you have a vector <code>x</code> of length 2 and you want to transform the first entry using <code>Exp</code> and the second entry using <code>Log</code>. <code>Stacked</code> gives you an easy and efficient way of representing such a bijector.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">42</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Bijectors<span class="pl-k">:</span> Exp, Log, SimplexBijector
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Original distributions</span>
+       dists <span class="pl-k">=</span> (
+           <span class="pl-c1">Beta</span>(),
+           <span class="pl-c1">InverseGamma</span>(),
+           <span class="pl-c1">Dirichlet</span>(<span class="pl-c1">2</span>, <span class="pl-c1">3</span>)
+       );
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Construct the corresponding ranges</span>
+       ranges <span class="pl-k">=</span> [];
+
+julia<span class="pl-k">&gt;</span> idx <span class="pl-k">=</span> <span class="pl-c1">1</span>;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(dists)
+           d <span class="pl-k">=</span> dists[i]
+           <span class="pl-c1">push!</span>(ranges, idx<span class="pl-k">:</span>idx <span class="pl-k">+</span> <span class="pl-c1">length</span>(d) <span class="pl-k">-</span> <span class="pl-c1">1</span>)
+
+           <span class="pl-k">global</span> idx
+           idx <span class="pl-k">+=</span> <span class="pl-c1">length</span>(d)
+       <span class="pl-k">end</span>;
+
+julia<span class="pl-k">&gt;</span> ranges
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Any,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>
+ <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>
+ <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">4</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Base distribution; mean-field normal</span>
+       num_params <span class="pl-k">=</span> ranges[<span class="pl-c1">end</span>][<span class="pl-c1">end</span>]
+<span class="pl-c1">4</span>
+
+julia<span class="pl-k">&gt;</span> d <span class="pl-k">=</span> <span class="pl-c1">MvNormal</span>(<span class="pl-c1">zeros</span>(num_params), <span class="pl-c1">ones</span>(num_params))
+<span class="pl-c1">DiagNormal</span>(
+dim<span class="pl-k">:</span> <span class="pl-c1">4</span>
+μ: [<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>]
+Σ: [<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span> <span class="pl-c1">0.0</span> <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span> <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">0.0</span> <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span>]
+)
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Construct the transform</span>
+       bs <span class="pl-k">=</span> <span class="pl-c1">bijector</span>.(dists)     <span class="pl-c"><span class="pl-c">#</span> constrained-to-unconstrained bijectors for dists</span>
+(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>), <span class="pl-c1">Log</span><span class="pl-c1">{0}</span>(), <span class="pl-c1">SimplexBijector</span><span class="pl-c1">{true}</span>())
+
+julia<span class="pl-k">&gt;</span> ibs <span class="pl-k">=</span> <span class="pl-c1">inv</span>.(bs)            <span class="pl-c"><span class="pl-c">#</span> invert, so we get unconstrained-to-constrained</span>
+(<span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)), <span class="pl-c1">Exp</span><span class="pl-c1">{0}</span>(), <span class="pl-c1">Inverse</span><span class="pl-c1">{SimplexBijector{true},1}</span>(<span class="pl-c1">SimplexBijector</span><span class="pl-c1">{true}</span>()))
+
+julia<span class="pl-k">&gt;</span> sb <span class="pl-k">=</span> <span class="pl-c1">Stacked</span>(ibs, ranges) <span class="pl-c"><span class="pl-c">#</span> =&gt; Stacked &lt;: Bijector</span>
+Stacked{Tuple{Inverse{Logit{Float64},<span class="pl-c1">0</span>},Exp{<span class="pl-c1">0</span>},Inverse{SimplexBijector{<span class="pl-c1">true</span>},<span class="pl-c1">1</span>}},<span class="pl-c1">3</span>}((<span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)), <span class="pl-c1">Exp</span><span class="pl-c1">{0}</span>(), <span class="pl-c1">Inverse</span><span class="pl-c1">{SimplexBijector{true},1}</span>(<span class="pl-c1">SimplexBijector</span><span class="pl-c1">{true}</span>())), (<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>, <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">4</span>))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Mean-field normal with unconstrained-to-constrained stacked bijector</span>
+       td <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(d, sb);
+
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(td)
+<span class="pl-c1">4</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.36446726136766217</span>
+ <span class="pl-c1">0.6412195576273355</span> 
+ <span class="pl-c1">0.5067884173521743</span> 
+ <span class="pl-c1">0.4932115826478257</span> 
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">0.0</span> <span class="pl-k">≤</span> y[<span class="pl-c1">1</span>] <span class="pl-k">≤</span> <span class="pl-c1">1.0</span>   <span class="pl-c"><span class="pl-c">#</span> =&gt; true</span>
+<span class="pl-c1">true</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">0.0</span> <span class="pl-k">&lt;</span> y[<span class="pl-c1">2</span>]         <span class="pl-c"><span class="pl-c">#</span> =&gt; true</span>
+<span class="pl-c1">true</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">sum</span>(y[<span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">4</span>]) <span class="pl-k">≈</span> <span class="pl-c1">1.0</span>  <span class="pl-c"><span class="pl-c">#</span> =&gt; true</span>
+<span class="pl-c1">true</span></pre></div>
+<h3><a id="user-content-normalizing-flows" class="anchor" aria-hidden="true" href="#normalizing-flows"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Normalizing flows</h3>
+<p>A very interesting application is that of <em>normalizing flows</em>.[1] Usually this is done by sampling from a multivariate normal distribution, and then transforming this to a target distribution using invertible neural networks. Currently there are two such transforms available in Bijectors.jl: <code>PlanarFlow</code> and <code>RadialFlow</code>. Let's create a flow with a single <code>PlanarLayer</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> d <span class="pl-k">=</span> <span class="pl-c1">MvNormal</span>(<span class="pl-c1">zeros</span>(<span class="pl-c1">2</span>), <span class="pl-c1">ones</span>(<span class="pl-c1">2</span>));
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">PlanarLayer</span>(<span class="pl-c1">2</span>)
+<span class="pl-c1">PlanarLayer</span><span class="pl-c1">{Array{Float64,2},Array{Float64,1}}</span>([<span class="pl-c1">1.77786</span>; <span class="pl-k">-</span><span class="pl-c1">1.1449</span>], [<span class="pl-k">-</span><span class="pl-c1">0.468606</span>; <span class="pl-c1">0.156143</span>], [<span class="pl-k">-</span><span class="pl-c1">2.64199</span>])
+
+julia<span class="pl-k">&gt;</span> flow <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(d, b)
+TransformedDistribution{MvNormal{Float64,PDMats<span class="pl-k">.</span>PDiagMat{Float64,Array{Float64,<span class="pl-c1">1</span>}},Array{Float64,<span class="pl-c1">1</span>}},PlanarLayer{Array{Float64,<span class="pl-c1">2</span>},Array{Float64,<span class="pl-c1">1</span>}},Multivariate}(
+dist<span class="pl-k">:</span> <span class="pl-c1">DiagNormal</span>(
+dim<span class="pl-k">:</span> <span class="pl-c1">2</span>
+μ: [<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>]
+Σ: [<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span>]
+)
+
+transform<span class="pl-k">:</span> <span class="pl-c1">PlanarLayer</span><span class="pl-c1">{Array{Float64,2},Array{Float64,1}}</span>([<span class="pl-c1">1.77786</span>; <span class="pl-k">-</span><span class="pl-c1">1.1449</span>], [<span class="pl-k">-</span><span class="pl-c1">0.468606</span>; <span class="pl-c1">0.156143</span>], [<span class="pl-k">-</span><span class="pl-c1">2.64199</span>])
+)
+
+
+julia<span class="pl-k">&gt;</span> flow <span class="pl-k">isa</span> MultivariateDistribution
+<span class="pl-c1">true</span></pre></div>
+<p>That's it. Now we can sample from it using <code>rand</code> and compute the <code>logpdf</code>, like any other <code>Distribution</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(flow)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1.3337915588180933</span>
+ <span class="pl-c1">1.010861989639227</span> 
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf</span>(flow, y)         <span class="pl-c"><span class="pl-c">#</span> uses inverse of `b`; not very efficient for `PlanarFlow` and not 100% accurate</span>
+<span class="pl-k">-</span><span class="pl-c1">2.8996106373788293</span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(flow<span class="pl-k">.</span>dist)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.18702790710363</span>  
+ <span class="pl-c1">0.5181487878771377</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf_forward</span>(flow, x) <span class="pl-c"><span class="pl-c">#</span> more efficent and accurate</span>
+<span class="pl-k">-</span><span class="pl-c1">1.9813114667203335</span></pre></div>
+<p>Similarily to the multivariate ADVI example, we could use <code>Stacked</code> to get a <em>bounded</em> flow:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> d <span class="pl-k">=</span> <span class="pl-c1">MvNormal</span>(<span class="pl-c1">zeros</span>(<span class="pl-c1">2</span>), <span class="pl-c1">ones</span>(<span class="pl-c1">2</span>));
+
+julia<span class="pl-k">&gt;</span> ibs <span class="pl-k">=</span> <span class="pl-c1">inv</span>.(<span class="pl-c1">bijector</span>.((<span class="pl-c1">InverseGamma</span>(<span class="pl-c1">2</span>, <span class="pl-c1">3</span>), <span class="pl-c1">Beta</span>())));
+
+julia<span class="pl-k">&gt;</span> sb <span class="pl-k">=</span> <span class="pl-c1">stack</span>(ibs<span class="pl-k">...</span>) <span class="pl-c"><span class="pl-c">#</span> == Stacked(ibs) == Stacked(ibs, [i:i for i = 1:length(ibs)]</span>
+Stacked{Tuple{Exp{<span class="pl-c1">0</span>},Inverse{Logit{Float64},<span class="pl-c1">0</span>}},<span class="pl-c1">2</span>}((<span class="pl-c1">Exp</span><span class="pl-c1">{0}</span>(), <span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>))), (<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>))
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> sb <span class="pl-k">∘</span> <span class="pl-c1">PlanarLayer</span>(<span class="pl-c1">2</span>)
+Composed{Tuple{PlanarLayer{Array{Float64,<span class="pl-c1">2</span>},Array{Float64,<span class="pl-c1">1</span>}},Stacked{Tuple{Exp{<span class="pl-c1">0</span>},Inverse{Logit{Float64},<span class="pl-c1">0</span>}},<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}((<span class="pl-c1">PlanarLayer</span><span class="pl-c1">{Array{Float64,2},Array{Float64,1}}</span>([<span class="pl-c1">1.49138</span>; <span class="pl-c1">0.367563</span>], [<span class="pl-k">-</span><span class="pl-c1">0.886205</span>; <span class="pl-c1">0.684565</span>], [<span class="pl-k">-</span><span class="pl-c1">1.59058</span>]), Stacked{Tuple{Exp{<span class="pl-c1">0</span>},Inverse{Logit{Float64},<span class="pl-c1">0</span>}},<span class="pl-c1">2</span>}((<span class="pl-c1">Exp</span><span class="pl-c1">{0}</span>(), <span class="pl-c1">Inverse</span><span class="pl-c1">{Logit{Float64},0}</span>(<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>))), (<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>))))
+
+julia<span class="pl-k">&gt;</span> td <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(d, b);
+
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(td)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">2.6493626783431035</span>
+ <span class="pl-c1">0.1833391433092443</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">&lt;</span> y[<span class="pl-c1">1</span>]
+<span class="pl-c1">true</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">≤</span> y[<span class="pl-c1">2</span>] <span class="pl-k">≤</span> <span class="pl-c1">1</span>
+<span class="pl-c1">true</span></pre></div>
+<p>Want to fit the flow?</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Tracker
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">PlanarLayer</span>(<span class="pl-c1">2</span>, param)                  <span class="pl-c"><span class="pl-c">#</span> construct parameters using `param`</span>
+<span class="pl-c1">PlanarLayer</span><span class="pl-c1">{TrackedArray{…,Array{Float64,2}},TrackedArray{…,Array{Float64,1}}}</span>([<span class="pl-k">-</span><span class="pl-c1">1.05099</span>; <span class="pl-c1">0.502079</span>] (tracked), [<span class="pl-k">-</span><span class="pl-c1">0.216248</span>; <span class="pl-k">-</span><span class="pl-c1">0.706424</span>] (tracked), [<span class="pl-k">-</span><span class="pl-c1">4.33747</span>] (tracked))
+
+julia<span class="pl-k">&gt;</span> flow <span class="pl-k">=</span> <span class="pl-c1">transformed</span>(d, b)
+TransformedDistribution{MvNormal{Float64,PDMats<span class="pl-k">.</span>PDiagMat{Float64,Array{Float64,<span class="pl-c1">1</span>}},Array{Float64,<span class="pl-c1">1</span>}},PlanarLayer{TrackedArray{…,Array{Float64,<span class="pl-c1">2</span>}},TrackedArray{…,Array{Float64,<span class="pl-c1">1</span>}}},Multivariate}(
+dist<span class="pl-k">:</span> <span class="pl-c1">DiagNormal</span>(
+dim<span class="pl-k">:</span> <span class="pl-c1">2</span>
+μ: [<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>]
+Σ: [<span class="pl-c1">1.0</span> <span class="pl-c1">0.0</span>; <span class="pl-c1">0.0</span> <span class="pl-c1">1.0</span>]
+)
+
+transform<span class="pl-k">:</span> <span class="pl-c1">PlanarLayer</span><span class="pl-c1">{TrackedArray{…,Array{Float64,2}},TrackedArray{…,Array{Float64,1}}}</span>([<span class="pl-k">-</span><span class="pl-c1">1.05099</span>; <span class="pl-c1">0.502079</span>] (tracked), [<span class="pl-k">-</span><span class="pl-c1">0.216248</span>; <span class="pl-k">-</span><span class="pl-c1">0.706424</span>] (tracked), [<span class="pl-k">-</span><span class="pl-c1">4.33747</span>] (tracked))
+)
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">rand</span>(flow)
+Tracked <span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">0.5992818950827451</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.6264187818605164</span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(flow<span class="pl-k">.</span>dist)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.37240087577993225</span>
+  <span class="pl-c1">0.36901028455183293</span>
+
+julia<span class="pl-k">&gt;</span> Tracker<span class="pl-k">.</span><span class="pl-c1">back!</span>(<span class="pl-c1">logpdf_forward</span>(flow, x), <span class="pl-c1">1.0</span>) <span class="pl-c"><span class="pl-c">#</span> backprob</span>
+
+julia<span class="pl-k">&gt;</span> Tracker<span class="pl-k">.</span><span class="pl-c1">grad</span>(b<span class="pl-k">.</span>w)
+<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">1</span> Array{Float64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.00037431072968105417</span>
+  <span class="pl-c1">0.0013039074681623036</span></pre></div>
+<p>We can easily create more complex flows by simply doing <code>PlanarFlow(10) ∘ PlanarFlow(10) ∘ RadialFlow(10)</code> and so on.</p>
+<p>In those cases, it might be useful to use Flux.jl's <code>treelike</code> to extract the parameters:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Flux
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@Flux</span><span class="pl-k">.</span>treelike Composed
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@Flux</span><span class="pl-k">.</span>treelike TransformedDistribution
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@Flux</span><span class="pl-k">.</span>treelike PlanarLayer
+
+julia<span class="pl-k">&gt;</span> Flux<span class="pl-k">.</span><span class="pl-c1">params</span>(flow)
+<span class="pl-c1">Params</span>([[<span class="pl-k">-</span><span class="pl-c1">1.05099</span>; <span class="pl-c1">0.502079</span>] (tracked), [<span class="pl-k">-</span><span class="pl-c1">0.216248</span>; <span class="pl-k">-</span><span class="pl-c1">0.706424</span>] (tracked), [<span class="pl-k">-</span><span class="pl-c1">4.33747</span>] (tracked)])</pre></div>
+<p>Though we might just do this for you in the future, so then all you'll have to do is call <code>Flux.params</code>.</p>
+<p>Another useful function is the <code>forward(d::Distribution)</code> method. It is similar to <code>forward(b::Bijector)</code> in the sense that it does a forward pass of the entire process "sample then transform" and returns all the most useful quantities in process using the most efficent computation path.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> x, y, logjac, logpdf_y <span class="pl-k">=</span> <span class="pl-c1">forward</span>(flow) <span class="pl-c"><span class="pl-c">#</span> sample + transform and returns all the useful quantities in one pass</span>
+(x <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">0.839739</span>, <span class="pl-c1">0.169613</span>], y <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">0.810354</span>, <span class="pl-c1">0.963392</span>] (tracked), logabsdetjac <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">0.0017416108706436628</span> (tracked), logpdf <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">2.203100286792651</span> (tracked))</pre></div>
+<p>This method is for example useful when computing quantities such as the <em>expected lower bound (ELBO)</em> between this transformed distribution and some other joint density. If no analytical expression is available, we have to approximate the ELBO by a Monte Carlo estimate. But one term in the ELBO is the entropy of the base density, which we <em>do</em> know analytically in this case. Using the analytical expression for the entropy and then using a monte carlo estimate for the rest of the terms in the ELBO gives an estimate with lower variance than if we used the monte carlo estimate for the entire expectation.</p>
+<h3><a id="user-content-normalizing-flows-with-bounded-support" class="anchor" aria-hidden="true" href="#normalizing-flows-with-bounded-support"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Normalizing flows with bounded support</h3>
+<h2><a id="user-content-implementing-your-own-bijector" class="anchor" aria-hidden="true" href="#implementing-your-own-bijector"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Implementing your own <code>Bijector</code></h2>
+<p>There's mainly two ways you can implement your own <code>Bijector</code>, and which way you choose mainly depends on the following question: are you bothered enough to manually implement <code>logabsdetjac</code>? If the answer is "Yup!", then you subtype from <code>Bijector</code>, if "Naaaah" then you subtype <code>ADBijector</code>.</p>
+<h3><a id="user-content-bijector" class="anchor" aria-hidden="true" href="#bijector"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>&lt;:Bijector</code></h3>
+<p>Here's a simple example taken from the source code, the <code>Identity</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> Bijectors<span class="pl-k">:</span> logabsdetjac
+
+<span class="pl-k">struct</span> Identity{N} <span class="pl-k">&lt;:</span> <span class="pl-c1">Bijector{N}</span> <span class="pl-k">end</span>
+(<span class="pl-k">::</span><span class="pl-c1">Identity</span>)(x) <span class="pl-k">=</span> x                           <span class="pl-c"><span class="pl-c">#</span> transform itself, "forward"</span>
+(<span class="pl-k">::</span><span class="pl-c1">Inverse{&lt;: Identity}</span>)(y) <span class="pl-k">=</span> y              <span class="pl-c"><span class="pl-c">#</span> inverse tramsform, "backward"</span>
+
+<span class="pl-c"><span class="pl-c">#</span> see the proper implementation for `logabsdetjac` in general</span>
+<span class="pl-en">logabsdetjac</span>(<span class="pl-k">::</span><span class="pl-c1">Identity{0}</span>, y<span class="pl-k">::</span><span class="pl-c1">Real</span>) <span class="pl-k">=</span> <span class="pl-en">zero</span>(<span class="pl-en">eltype</span>(y)) <span class="pl-c"><span class="pl-c">#</span> ∂ₓid(x) = ∂ₓ x = 1 → log(abs(1)) = log(1) = 0</span></pre></div>
+<p>A slightly more complex example is <code>Logit</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StatsFuns<span class="pl-k">:</span> logit, logistic
+
+<span class="pl-k">struct</span> Logit{T<span class="pl-k">&lt;:</span><span class="pl-c1">Real</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">Bijector{0}</span>
+    a<span class="pl-k">::</span><span class="pl-c1">T</span>
+    b<span class="pl-k">::</span><span class="pl-c1">T</span>
+<span class="pl-k">end</span>
+
+(b<span class="pl-k">::</span><span class="pl-c1">Logit</span>)(x<span class="pl-k">::</span><span class="pl-c1">Real</span>) <span class="pl-k">=</span> <span class="pl-c1">logit</span>((x <span class="pl-k">-</span> b<span class="pl-k">.</span>a) <span class="pl-k">/</span> (b<span class="pl-k">.</span>b <span class="pl-k">-</span> b<span class="pl-k">.</span>a))
+(b<span class="pl-k">::</span><span class="pl-c1">Logit</span>)(x) <span class="pl-k">=</span> <span class="pl-c1">mapvcat</span>(b, x)
+<span class="pl-c"><span class="pl-c">#</span> `orig` contains the `Bijector` which was inverted</span>
+(ib<span class="pl-k">::</span><span class="pl-c1">Inverse{&lt;:Logit}</span>)(y<span class="pl-k">::</span><span class="pl-c1">Real</span>) <span class="pl-k">=</span> (ib<span class="pl-k">.</span>orig<span class="pl-k">.</span>b <span class="pl-k">-</span> ib<span class="pl-k">.</span>orig<span class="pl-k">.</span>a) <span class="pl-k">*</span> <span class="pl-c1">logistic</span>(y) <span class="pl-k">+</span> ib<span class="pl-k">.</span>orig<span class="pl-k">.</span>a
+(ib<span class="pl-k">::</span><span class="pl-c1">Inverse{&lt;:Logit}</span>)(y) <span class="pl-k">=</span> <span class="pl-c1">mapvcat</span>(ib, y)
+
+<span class="pl-en">logabsdetjac</span>(b<span class="pl-k">::</span><span class="pl-c1">Logit</span>, x<span class="pl-k">::</span><span class="pl-c1">Real</span>) <span class="pl-k">=</span> <span class="pl-k">-</span> <span class="pl-c1">log</span>((x <span class="pl-k">-</span> b<span class="pl-k">.</span>a) <span class="pl-k">*</span> (b<span class="pl-k">.</span>b <span class="pl-k">-</span> x) <span class="pl-k">/</span> (b<span class="pl-k">.</span>b <span class="pl-k">-</span> b<span class="pl-k">.</span>a))
+<span class="pl-en">logabsdetjac</span>(b<span class="pl-k">::</span><span class="pl-c1">Logit</span>, x) <span class="pl-k">=</span> <span class="pl-c1">mapvcat</span>(logabsdetjac, x)</pre></div>
+<p>(Batch computation is not fully supported by all bijectors yet (see issue #35), but is actively worked on. In the particular case of <code>Logit</code> there's only one thing that makes sense, which is elementwise application. Therefore we've added <code>@.</code> to the implementation above, thus this works for any <code>AbstractArray{&lt;:Real}</code>.)</p>
+<p>Then</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">Logit</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">b</span>(<span class="pl-c1">0.6</span>)
+<span class="pl-c1">0.4054651081081642</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">inv</span>(b)(y)
+Tracked <span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.3078149833748082</span>
+ <span class="pl-c1">0.72380041667891</span>  
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b, <span class="pl-c1">0.6</span>)
+<span class="pl-c1">1.4271163556401458</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(<span class="pl-c1">inv</span>(b), y) <span class="pl-c"><span class="pl-c">#</span> defaults to `- logabsdetjac(b, inv(b)(x))`</span>
+Tracked <span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.546158373866469</span> 
+ <span class="pl-k">-</span><span class="pl-c1">1.6098711387913573</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">forward</span>(b, <span class="pl-c1">0.6</span>)         <span class="pl-c"><span class="pl-c">#</span> defaults to `(rv=b(x), logabsdetjac=logabsdetjac(b, x))`</span>
+(rv <span class="pl-k">=</span> <span class="pl-c1">0.4054651081081642</span>, logabsdetjac <span class="pl-k">=</span> <span class="pl-c1">1.4271163556401458</span>)</pre></div>
+<p>For further efficiency, one could manually implement <code>forward(b::Logit, x)</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> Bijectors<span class="pl-k">:</span> forward, Logit
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">forward</span>(b<span class="pl-k">::</span><span class="pl-c1">Logit{&lt;:Real}</span>, x)
+           totally_worth_saving <span class="pl-k">=</span> <span class="pl-c1">@.</span> (x <span class="pl-k">-</span> b<span class="pl-k">.</span>a) <span class="pl-k">/</span> (b<span class="pl-k">.</span>b <span class="pl-k">-</span> b<span class="pl-k">.</span>a)  <span class="pl-c"><span class="pl-c">#</span> spoiler: it's probably not</span>
+           y <span class="pl-k">=</span> <span class="pl-c1">logit</span>.(totally_worth_saving)
+           logjac <span class="pl-k">=</span> <span class="pl-c1">@.</span> <span class="pl-k">-</span> <span class="pl-c1">log</span>((b<span class="pl-k">.</span>b <span class="pl-k">-</span> x) <span class="pl-k">*</span> totally_worth_saving)
+           <span class="pl-k">return</span> (rv<span class="pl-k">=</span>y, logabsdetjac <span class="pl-k">=</span> logjac)
+       <span class="pl-k">end</span>
+forward (generic <span class="pl-k">function</span> with <span class="pl-c1">16</span> methods)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">forward</span>(b, <span class="pl-c1">0.6</span>)
+(rv <span class="pl-k">=</span> <span class="pl-c1">0.4054651081081642</span>, logabsdetjac <span class="pl-k">=</span> <span class="pl-c1">1.4271163556401458</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@which</span> <span class="pl-c1">forward</span>(b, <span class="pl-c1">0.6</span>)
+<span class="pl-c1">forward</span>(b<span class="pl-k">::</span><span class="pl-c1">Logit{#s4}</span> <span class="pl-k">where</span> <span class="pl-c"><span class="pl-c">#</span>s4&lt;:Real, x) in Main at REPL[43]:2</span></pre></div>
+<p>As you can see it's a very contrived example, but you get the idea.</p>
+<h3><a id="user-content-adbijector" class="anchor" aria-hidden="true" href="#adbijector"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>&lt;:ADBijector</code></h3>
+<p>We could also have implemented <code>Logit</code> as an <code>ADBijector</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StatsFuns<span class="pl-k">:</span> logit, logistic
+<span class="pl-k">using</span> Bijectors<span class="pl-k">:</span> ADBackend
+
+<span class="pl-k">struct</span> ADLogit{T, AD} <span class="pl-k">&lt;:</span> <span class="pl-c1">ADBijector{AD, 0}</span>
+    a<span class="pl-k">::</span><span class="pl-c1">T</span>
+    b<span class="pl-k">::</span><span class="pl-c1">T</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> ADBackend() returns ForwardDiffAD, which means we use ForwardDiff.jl for AD</span>
+<span class="pl-en">ADLogit</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">T</span>) <span class="pl-k">where</span> {T<span class="pl-k">&lt;:</span><span class="pl-c1">Real</span>} <span class="pl-k">=</span> <span class="pl-c1">ADLogit</span><span class="pl-c1">{T, ADBackend()}</span>(a, b)
+
+(b<span class="pl-k">::</span><span class="pl-c1">ADLogit</span>)(x) <span class="pl-k">=</span> <span class="pl-c1">@.</span> <span class="pl-c1">logit</span>((x <span class="pl-k">-</span> b<span class="pl-k">.</span>a) <span class="pl-k">/</span> (b<span class="pl-k">.</span>b <span class="pl-k">-</span> b<span class="pl-k">.</span>a))
+(ib<span class="pl-k">::</span><span class="pl-c1">Inverse{&lt;:ADLogit{&lt;:Real}}</span>)(y) <span class="pl-k">=</span> <span class="pl-c1">@.</span> (ib<span class="pl-k">.</span>orig<span class="pl-k">.</span>b <span class="pl-k">-</span> ib<span class="pl-k">.</span>orig<span class="pl-k">.</span>a) <span class="pl-k">*</span> <span class="pl-c1">logistic</span>(y) <span class="pl-k">+</span> ib<span class="pl-k">.</span>orig<span class="pl-k">.</span>a</pre></div>
+<p>No implementation of <code>logabsdetjac</code>, but:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> b_ad <span class="pl-k">=</span> <span class="pl-c1">ADLogit</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">ADLogit</span><span class="pl-c1">{Float64,Bijectors.ForwardDiffAD}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b_ad, <span class="pl-c1">0.6</span>)
+<span class="pl-c1">1.4271163556401458</span>
+
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">b_ad</span>(<span class="pl-c1">0.6</span>)
+<span class="pl-c1">0.4054651081081642</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">inv</span>(b_ad)(y)
+<span class="pl-c1">0.6</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(<span class="pl-c1">inv</span>(b_ad), y)
+<span class="pl-k">-</span><span class="pl-c1">1.4271163556401458</span></pre></div>
+<p>Neat! And just to verify that everything works:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">Logit</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">Logit</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b, <span class="pl-c1">0.6</span>)
+<span class="pl-c1">1.4271163556401458</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b_ad, <span class="pl-c1">0.6</span>) <span class="pl-k">≈</span> <span class="pl-c1">logabsdetjac</span>(b, <span class="pl-c1">0.6</span>)
+<span class="pl-c1">true</span></pre></div>
+<p>We can also use Tracker.jl for the AD, rather than ForwardDiff.jl:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> Bijectors<span class="pl-k">.</span><span class="pl-c1">setadbackend</span>(<span class="pl-c1">:reverse_diff</span>)
+<span class="pl-c1">:reverse_diff</span>
+
+julia<span class="pl-k">&gt;</span> b_ad <span class="pl-k">=</span> <span class="pl-c1">ADLogit</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+<span class="pl-c1">ADLogit</span><span class="pl-c1">{Float64,Bijectors.TrackerAD}</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logabsdetjac</span>(b_ad, <span class="pl-c1">0.6</span>)
+<span class="pl-c1">1.4271163556401458</span></pre></div>
+<h3><a id="user-content-reference" class="anchor" aria-hidden="true" href="#reference"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Reference</h3>
+<p>Most of the methods and types mention below will have docstrings with more elaborate explanation and examples, e.g.</p>
+<div class="highlight highlight-source-julia"><pre>help?<span class="pl-k">&gt;</span> Bijectors<span class="pl-k">.</span>Composed
+  <span class="pl-c1">Composed</span>(ts<span class="pl-k">::</span><span class="pl-c1">A</span>)
+  
+  <span class="pl-k">∘</span>(b1<span class="pl-k">::</span><span class="pl-c1">Bijector{N}</span>, b2<span class="pl-k">::</span><span class="pl-c1">Bijector{N}</span>)<span class="pl-k">::</span><span class="pl-c1">Composed{&lt;:Tuple}</span>
+  <span class="pl-c1">composel</span>(ts<span class="pl-k">::</span><span class="pl-c1">Bijector{N}</span>...)<span class="pl-k">::</span><span class="pl-c1">Composed{&lt;:Tuple}</span>
+  <span class="pl-c1">composer</span>(ts<span class="pl-k">::</span><span class="pl-c1">Bijector{N}</span>...)<span class="pl-k">::</span><span class="pl-c1">Composed{&lt;:Tuple}</span>
+
+  <span class="pl-k">where</span> A refers to either
+
+    •    Tuple{Vararg{<span class="pl-k">&lt;:</span><span class="pl-c1">Bijector{N}</span>}}<span class="pl-k">:</span> a tuple of bijectors of dimensionality N
+
+    •    AbstractArray{<span class="pl-k">&lt;:</span><span class="pl-c1">Bijector{N}</span>}<span class="pl-k">:</span> an array of bijectors of dimensionality N
+
+  A Bijector representing composition of bijectors. composel and composer results <span class="pl-k">in</span> a Composed <span class="pl-k">for</span> which application occurs from left<span class="pl-k">-</span>to<span class="pl-k">-</span>right and right<span class="pl-k">-</span>to<span class="pl-k">-</span>left, respectively.
+
+  Note that all the alternative ways of constructing a Composed returns a Tuple of bijectors. This ensures type<span class="pl-k">-</span>stability of implementations of all relating methdos, e<span class="pl-k">.</span>g. inv.
+
+  If you want to use an Array as the container instead you can <span class="pl-k">do</span>
+
+  <span class="pl-c1">Composed</span>([b1, b2, <span class="pl-k">...</span>])
+
+  In general this is not advised since you lose type<span class="pl-k">-</span>stability, but there might be cases <span class="pl-k">where</span> this is desired, e<span class="pl-k">.</span>g. <span class="pl-k">if</span> you have a insanely large number of bijectors to compose.
+
+  Examples
+  <span class="pl-k">≡≡≡≡≡≡≡≡≡≡</span>
+
+  It<span class="pl-k">'</span>s important to note that <span class="pl-k">∘</span> does what is expected mathematically, which means that the bijectors are applied to the input right<span class="pl-k">-</span>to<span class="pl-k">-</span>left, e<span class="pl-k">.</span>g. first applying b2 and then b1<span class="pl-k">:</span>
+
+  (b1 <span class="pl-k">∘</span> b2)(x) <span class="pl-k">==</span> <span class="pl-c1">b1</span>(<span class="pl-c1">b2</span>(x))     <span class="pl-c"><span class="pl-c">#</span> =&gt; true</span>
+
+  But <span class="pl-k">in</span> the Composed <span class="pl-k">struct</span> itself, we store the bijectors left<span class="pl-k">-</span>to<span class="pl-k">-</span>right, so that
+
+  cb1 <span class="pl-k">=</span> b1 <span class="pl-k">∘</span> b2                  <span class="pl-c"><span class="pl-c">#</span> =&gt; Composed.ts == (b2, b1)</span>
+  cb2 <span class="pl-k">=</span> <span class="pl-c1">composel</span>(b2, b1)         <span class="pl-c"><span class="pl-c">#</span> =&gt; Composed.ts == (b2, b1)</span>
+  <span class="pl-c1">cb1</span>(x) <span class="pl-k">==</span> <span class="pl-c1">cb2</span>(x) <span class="pl-k">==</span> <span class="pl-c1">b1</span>(<span class="pl-c1">b2</span>(x))  <span class="pl-c"><span class="pl-c">#</span> =&gt; true</span></pre></div>
+<p>If anything is lacking or not clear in docstrings, feel free to open an issue or PR.</p>
+<h4><a id="user-content-types" class="anchor" aria-hidden="true" href="#types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Types</h4>
+<p>The following are the bijectors available:</p>
+<ul>
+<li>Abstract:
+<ul>
+<li><code>Bijector</code>: super-type of all bijectors.</li>
+<li><code>ADBijector{AD} &lt;: Bijector</code>: subtypes of this only require the user to implement <code>(b::UserBijector)(x)</code> and <code>(ib::Inverse{&lt;:UserBijector})(y)</code>. Automatic differentation will be used to compute the <code>jacobian(b, x)</code> and thus `logabsdetjac(b, x).</li>
+</ul>
+</li>
+<li>Concrete:
+<ul>
+<li><code>Composed</code>: represents a composition of bijectors.</li>
+<li><code>Stacked</code>: stacks univariate and multivariate bijectors</li>
+<li><code>Identity</code>: does what it says, i.e. nothing.</li>
+<li><code>Logit</code></li>
+<li><code>Exp</code></li>
+<li><code>Log</code></li>
+<li><code>Scale</code>: scaling by scalar value, though at the moment only well-defined <code>logabsdetjac</code> for univariate.</li>
+<li><code>Shift</code>: shifts by a scalar value.</li>
+<li><code>Permute</code>: permutes the input array using matrix multiplication</li>
+<li><code>SimplexBijector</code>: mostly used as the constrained-to-unconstrained bijector for <code>SimplexDistribution</code>, e.g. <code>Dirichlet</code>.</li>
+<li><code>PlanarLayer</code>: §4.1 Eq. (10) in [1]</li>
+<li><code>RadialLayer</code>: §4.1 Eq. (14) in [1]</li>
+</ul>
+</li>
+</ul>
+<p>The distribution interface consists of:</p>
+<ul>
+<li><code>TransformedDistribution &lt;: Distribution</code>: implements the <code>Distribution</code> interface from Distributions.jl. This means <code>rand</code> and <code>logpdf</code> are provided at the moment.</li>
+</ul>
+<h4><a id="user-content-methods" class="anchor" aria-hidden="true" href="#methods"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Methods</h4>
+<p>The following methods are implemented by all subtypes of <code>Bijector</code>, this also includes bijectors such as <code>Composed</code>.</p>
+<ul>
+<li><code>(b::Bijector)(x)</code>: implements the transform of the <code>Bijector</code></li>
+<li><code>inv(b::Bijector)</code>: returns the inverse of <code>b</code>, i.e. <code>ib::Bijector</code> s.t. <code>(ib ∘ b)(x) ≈ x</code>. In most cases this is <code>Inverse{&lt;:Bijector}</code>.</li>
+<li><code>logabsdetjac(b::Bijector, x)</code>: computes log(abs(det(jacobian(b, x)))).</li>
+<li><code>forward(b::Bijector, x)</code>: returns named tuple <code>(rv=b(x), logabsdetjac=logabsdetjac(b, x))</code> in the most efficient manner.</li>
+<li><code>∘</code>, <code>composel</code>, <code>composer</code>: convenient and type-safe constructors for <code>Composed</code>. <code>composel(bs...)</code> composes s.t. the resulting composition is evaluated left-to-right, while <code>composer(bs...)</code> is evaluated right-to-left. <code>∘</code> is right-to-left, as excepted from standard mathematical notation.</li>
+<li><code>jacobian(b::Bijector, x)</code> [OPTIONAL]: returns the jacobian of the transformation. In some cases the analytical jacobian has been implemented for efficiency.</li>
+<li><code>dimension(b::Bijector)</code>: returns the dimensionality of <code>b</code>.</li>
+<li><code>isclosedform(b::Bijector)</code>: returns <code>true</code> or <code>false</code> depending on whether or not <code>b(x)</code> has a closed-form implementation.</li>
+</ul>
+<p>For <code>TransformedDistribution</code>, together with default implementations for <code>Distribution</code>, we have the following methods:</p>
+<ul>
+<li><code>bijector(d::Distribution)</code>: returns the default constrained-to-unconstrained bijector for <code>d</code></li>
+<li><code>transformed(d::Distribution)</code>, <code>transformed(d::Distribution, b::Bijector)</code>: constructs a <code>TransformedDistribution</code> from <code>d</code> and <code>b</code>.</li>
+<li><code>logpdf_forward(d::Distribution, x)</code>, <code>logpdf_forward(d::Distribution, x, logjac)</code>: computes the <code>logpdf(td, td.transform(x))</code> using the forward pass, which is potentially faster depending on the transform at hand.</li>
+<li><code>forward(d::Distribution)</code>: returns <code>(x = rand(dist), y = b(x), logabsdetjac = logabsdetjac(b, x), logpdf = logpdf_forward(td, x))</code> where <code>b = td.transform</code>. This combines sampling from base distribution and transforming into one function. The intention is that this entire process should be performed in the most efficient manner, e.g. the <code>logabsdetjac(b, x)</code> call might instead be implemented as <code>- logabsdetjac(inv(b), b(x))</code> depending on which is most efficient.</li>
+</ul>
+<h1><a id="user-content-bibliography" class="anchor" aria-hidden="true" href="#bibliography"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Bibliography</h1>
+<ol>
+<li>Rezende, D. J., &amp; Mohamed, S. (2015). Variational Inference With Normalizing Flows. <a href="https://arxiv.org/abs/1505.05770v6" rel="nofollow">arXiv:1505.05770</a>.</li>
+<li>Kucukelbir, A., Tran, D., Ranganath, R., Gelman, A., &amp; Blei, D. M. (2016). Automatic Differentiation Variational Inference. <a href="https://arxiv.org/abs/1603.00788v1" rel="nofollow">arXiv:1603.00788</a>.</li>
+</ol>
+</article></div>

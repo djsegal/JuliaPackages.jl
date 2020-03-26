@@ -1,0 +1,555 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-cxxwrap" class="anchor" aria-hidden="true" href="#cxxwrap"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CxxWrap</h1>
+<p><a href="https://travis-ci.org/JuliaInterop/CxxWrap.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/11b8d896779dcbbcad7bbd1cf761ecd347c2ed88/68747470733a2f2f7472617669732d63692e6f72672f4a756c6961496e7465726f702f437878577261702e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaInterop/CxxWrap.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/barche/cxxwrap-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/1a162dbd6d3677ea94e981a842415f5c5140e845/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f656d6a6e6235616673776e306c7136783f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/emjnb5afswn0lq6x?svg=true" style="max-width:100%;"></a></p>
+<p>This package aims to provide a Boost.Python-like wrapping for C++ types and functions to Julia.
+The idea is to write the code for the Julia wrapper in C++, and then use a one-liner on the Julia side to make the wrapped C++ library available there.</p>
+<p>The mechanism behind this package is that functions and types are registered in C++ code that is compiled into a dynamic library.
+This dynamic library is then loaded into Julia, where the Julia part of this package uses the data provided through a C interface to generate functions accessible from Julia.
+The functions are passed to Julia either as raw function pointers (for regular C++ functions that  don't need argument or return type conversion) or std::functions (for lambda expressions and automatic conversion of arguments and return types).
+The Julia side of this package wraps all this into Julia methods automatically.</p>
+<h2><a id="user-content-whats-the-difference-with-cxxjl" class="anchor" aria-hidden="true" href="#whats-the-difference-with-cxxjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>What's the difference with Cxx.jl?</h2>
+<p>With <a href="https://github.com/Keno/Cxx.jl/">Cxx.jl</a> it is possible to directly access C++ using the <code>@cxx</code> macro from Julia.
+So when facing the task of wrapping a C++ library in a Julia package, authors now have two options:</p>
+<ul>
+<li>Use Cxx.jl to write the wrapper package in Julia code (much like one uses <code>ccall</code> for wrapping a C library)</li>
+<li>Use CxxWrap to write the wrapper completely in C++ (and one line of Julia code to load the .so)</li>
+</ul>
+<p>Boost.Python also uses the latter (C++-only) approach, so translating existing Python bindings based on Boost.Python may be easier using CxxWrap.</p>
+<h2><a id="user-content-features" class="anchor" aria-hidden="true" href="#features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Features</h2>
+<ul>
+<li>Support for C++ functions, member functions and lambdas</li>
+<li>Classes with single inheritance, using abstract base classes on the Julia side</li>
+<li>Trivial C++ classes can be converted to a Julia isbits immutable</li>
+<li>Template classes map to parametric types, for the instantiations listed in the wrapper</li>
+<li>Automatic wrapping of default and copy constructor (mapped to deepcopy) if defined on the wrapped C++ class</li>
+<li>Facilitate calling Julia functions from C++</li>
+</ul>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<p>Just like any registered package, in pkg mode (<code>]</code> at the REPL)</p>
+<div class="highlight highlight-source-julia"><pre>add CxxWrap</pre></div>
+<p>CxxWrap v0.10 and later depends on the <code>libcxxwrap_julia_jll</code> <a href="https://julialang.org/blog/2019/11/artifacts/" rel="nofollow">JLL package</a> to manage the <code>libcxxwrap-julia</code> binaries. See the <a href="https://github.com/JuliaInterop/libcxxwrap-julia">libcxxwrap-julia Readme</a> for information on how to build this library yourself and force CxxWrap to use your own version.</p>
+<h2><a id="user-content-boost-python-hello-world-example" class="anchor" aria-hidden="true" href="#boost-python-hello-world-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Boost Python Hello World example</h2>
+<p>Let's try to reproduce the example from the <a href="http://www.boost.org/doc/libs/1_59_0/libs/python/doc/tutorial/doc/html/index.html" rel="nofollow">Boost.Python tutorial</a>.
+Suppose we want to expose the following C++ function to Julia in a module called <code>CppHello</code>:</p>
+<div class="highlight highlight-source-c++"><pre>std::string <span class="pl-en">greet</span>()
+{
+   <span class="pl-k">return</span> <span class="pl-s"><span class="pl-pds">"</span>hello, world<span class="pl-pds">"</span></span>;
+}</pre></div>
+<p>Using the C++ side of <code>CxxWrap</code>, this can be exposed as follows:</p>
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jlcxx/jlcxx.hpp<span class="pl-pds">"</span></span>
+
+JLCXX_MODULE <span class="pl-en">define_julia_module</span>(jlcxx::Module&amp; mod)
+{
+  mod.<span class="pl-c1">method</span>(<span class="pl-s"><span class="pl-pds">"</span>greet<span class="pl-pds">"</span></span>, &amp;greet);
+}</pre></div>
+<p>Once this code is compiled into a shared library (say <code>libhello.so</code>) it can be used in Julia as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Load the module and generate the functions</span>
+<span class="pl-k">module</span> CppHello
+  <span class="pl-k">using</span> CxxWrap
+  <span class="pl-c1">@wrapmodule</span>(<span class="pl-c1">joinpath</span>(<span class="pl-s"><span class="pl-pds">"</span>path/to/built/lib<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>libhello<span class="pl-pds">"</span></span>))
+
+  <span class="pl-k">function</span> <span class="pl-en">__init__</span>()
+    <span class="pl-c1">@initcxx</span>
+  <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Call greet and show the result</span>
+<span class="pl-c1">@show</span> CppHello<span class="pl-k">.</span><span class="pl-c1">greet</span>()</pre></div>
+<p>The code for this example can be found in [<code>hello.cpp</code>] in the <a href="https://github.com/JuliaInterop/libcxxwrap-julia/tree/master/examples">examples directory of the <code>libcxxwrap-julia</code> project</a> and <a href="test/hello.jl"><code>test/hello.jl</code></a>.
+Note that the <code>__init__</code> function is necessary to support precompilation, which is on by default since Julia 1.0.</p>
+<h2><a id="user-content-compiling-the-c-code" class="anchor" aria-hidden="true" href="#compiling-the-c-code"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Compiling the C++ code</h2>
+<p>The recommended way to compile the C++ code is to use CMake to discover <code>libcxxwrap-julia</code> and the Julia libraries.
+A full example is in the <a href="https://github.com/JuliaInterop/libcxxwrap-julia/tree/master/testlib-builder/src/testlib"><code>testlib</code> directory of <code>libcxxwrap-julia</code></a>.
+The following sequence of commands can be used to build:</p>
+<div class="highlight highlight-source-shell"><pre>mkdir build <span class="pl-k">&amp;&amp;</span> <span class="pl-c1">cd</span> build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/path/to/libcxxwrap-julia-prefix /path/to/sourcedirectory
+cmake --build <span class="pl-c1">.</span> --config Release</pre></div>
+<p>The path for <code>CMAKE_PREFIX_PATH</code> can be obtained from Julia using:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CxxWrap
+julia<span class="pl-k">&gt;</span> CxxWrap<span class="pl-k">.</span><span class="pl-c1">prefix_path</span>()</pre></div>
+<h3><a id="user-content-windows-and-msvc" class="anchor" aria-hidden="true" href="#windows-and-msvc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Windows and MSVC</h3>
+<p>the default binaries installed with CxxWrap are cross-compiled using GCC, and thus incompatible with Visual Studio C++ (MSVC).
+In MSVC 2019, it is easy to check out <code>libcxxwrap-julia</code> from git, and then build it and the wrapper module from source.
+Details are provided in the <a href="https://github.com/JuliaInterop/libcxxwrap-julia#building-on-windows">README</a>.</p>
+<h2><a id="user-content-module-entry-point" class="anchor" aria-hidden="true" href="#module-entry-point"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Module entry point</h2>
+<p>Above, we defined the module entry point as a function <code>JLCXX_MODULE define_julia_module(jlcxx::Module&amp; mod)</code>.
+In the general case, there may be multiple modules defined in a single library, and each should have its own entry point, called within the appropriate module:</p>
+<div class="highlight highlight-source-c++"><pre>JLCXX_MODULE <span class="pl-en">define_module_a</span>(jlcxx::Module&amp; mod)
+{
+  <span class="pl-c"><span class="pl-c">//</span> add stuff for A</span>
+}
+
+JLCXX_MODULE <span class="pl-en">define_module_b</span>(jlcxx::Module&amp; mod)
+{
+  <span class="pl-c"><span class="pl-c">//</span> add stuff for B</span>
+}</pre></div>
+<p>In Julia, the name of the entry point must now be specified explicitly:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> A
+  <span class="pl-k">using</span> CxxWrap
+  <span class="pl-c1">@wrapmodule</span>(<span class="pl-s"><span class="pl-pds">"</span>mylib.so<span class="pl-pds">"</span></span>,<span class="pl-c1">:define_module_a</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-k">module</span> B
+  <span class="pl-k">using</span> CxxWrap
+  <span class="pl-c1">@wrapmodule</span>(<span class="pl-s"><span class="pl-pds">"</span>mylib.so<span class="pl-pds">"</span></span>,<span class="pl-c1">:define_module_b</span>)
+<span class="pl-k">end</span></pre></div>
+<p>In specific cases, it may also be necessary to specify <code>dlopen</code> flags such as <code>RTLD_GLOBAL</code>.
+These can be supplied in a third, optional argument to <code>@wrapmodule</code>, e.g:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@wrapmodule</span>(CxxWrapCore<span class="pl-k">.</span>libcxxwrap_julia_stl, <span class="pl-c1">:define_cxxwrap_stl_module</span>, Libdl<span class="pl-k">.</span>RTLD_GLOBAL)</pre></div>
+<h2><a id="user-content-more-extensive-example-and-function-call-performance" class="anchor" aria-hidden="true" href="#more-extensive-example-and-function-call-performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>More extensive example and function call performance</h2>
+<p>A more extensive example, including wrapping a C++11 lambda and conversion for arrays can be found in <a href="https://github.com/JuliaInterop/libcxxwrap-julia/tree/master/examples/functions.cpp"><code>examples/functions.cpp</code></a> and <a href="test/functions.jl"><code>test/functions.jl</code></a>.
+This test also includes some performance measurements, showing that the function call overhead is the same as using <code>ccall</code> on a C function if the C++ function is a regular function and does not require argument conversion.
+When <code>std::function</code> is used (e.g. for C++ lambdas) extra overhead appears, as expected.</p>
+<h2><a id="user-content-exposing-classes" class="anchor" aria-hidden="true" href="#exposing-classes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Exposing classes</h2>
+<p>Consider the following C++ class to be wrapped:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">struct</span> <span class="pl-en">World</span>
+{
+  <span class="pl-en">World</span>(<span class="pl-k">const</span> std::string&amp; message = <span class="pl-s"><span class="pl-pds">"</span>default hello<span class="pl-pds">"</span></span>) : msg(message){}
+  <span class="pl-k">void</span> <span class="pl-en">set</span>(<span class="pl-k">const</span> std::string&amp; msg) { <span class="pl-c1">this</span>-&gt;<span class="pl-smi">msg</span> = msg; }
+  std::string <span class="pl-en">greet</span>() { <span class="pl-k">return</span> msg; }
+  std::string msg;
+  <span class="pl-en">~World</span>() { std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>Destroying World with message <span class="pl-pds">"</span></span> &lt;&lt; msg &lt;&lt; std::endl; }
+};</pre></div>
+<p>Wrapped in the entry point function as before and defining a module <code>CppTypes</code>, the code for exposing the type and some methods to Julia is:</p>
+<div class="highlight highlight-source-c++"><pre>types.add_type&lt;World&gt;(<span class="pl-s"><span class="pl-pds">"</span>World<span class="pl-pds">"</span></span>)
+  .constructor&lt;<span class="pl-k">const</span> std::string&amp;&gt;()
+  .method(<span class="pl-s"><span class="pl-pds">"</span>set<span class="pl-pds">"</span></span>, &amp;World::set)
+  .method(<span class="pl-s"><span class="pl-pds">"</span>greet<span class="pl-pds">"</span></span>, &amp;World::greet);</pre></div>
+<p>Here, the first line just adds the type.
+The second line adds the non-default constructor taking a string.
+Finally, the two <code>method</code> calls add member functions, using a pointer-to-member.
+The member functions become free functions in Julia, taking their object as the first argument.
+This can now be used in Julia as</p>
+<div class="highlight highlight-source-julia"><pre>w <span class="pl-k">=</span> CppTypes<span class="pl-k">.</span><span class="pl-c1">World</span>()
+<span class="pl-c1">@test</span> CppTypes<span class="pl-k">.</span><span class="pl-c1">greet</span>(w) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>default hello<span class="pl-pds">"</span></span>
+CppTypes<span class="pl-k">.</span><span class="pl-c1">set</span>(w, <span class="pl-s"><span class="pl-pds">"</span>hello<span class="pl-pds">"</span></span>)
+<span class="pl-c1">@test</span> CppTypes<span class="pl-k">.</span><span class="pl-c1">greet</span>(w) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>hello<span class="pl-pds">"</span></span></pre></div>
+<p>The manually added constructor using the <code>constructor</code> function also creates a finalizer.
+This can be disabled by adding the argument <code>false</code>:</p>
+<div class="highlight highlight-source-c++"><pre>types.add_type&lt;World&gt;(<span class="pl-s"><span class="pl-pds">"</span>World<span class="pl-pds">"</span></span>)
+  .constructor&lt;<span class="pl-k">const</span> std::string&amp;&gt;(<span class="pl-c1">false</span>);</pre></div>
+<p>The <code>add_type</code> function actually builds two Julia types related to <code>World</code>.
+The first is an abstract type:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">abstract type</span> World <span class="pl-k">end</span></pre></div>
+<p>The second is a mutable type (the "allocated" or "boxed" type) with the following structure:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> WorldAllocated <span class="pl-k">&lt;:</span> <span class="pl-c1">World</span>
+  cpp_object<span class="pl-k">::</span><span class="pl-c1">Ptr{Cvoid}</span>
+<span class="pl-k">end</span></pre></div>
+<p>This type needs to be mutable, because it must have a finalizer attached to it that deletes the held C++ object.</p>
+<p>This means that the variable <code>w</code> in the above example is of concrete type <code>WorldAllocated</code> and letting it go out of scope may trigger the finalizer and delete the object.
+When calling a C++ constructor, it is the responsibility of the caller to manage the lifetime of the resulting variable.</p>
+<p>The above types are used in method generation as follows, considering for example the greet method taking a <code>World</code> argument:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">greet</span>(w<span class="pl-k">::</span><span class="pl-c1">World</span>) <span class="pl-k">=</span> <span class="pl-c1">ccall</span>(<span class="pl-k">$</span>fpointer, Any, (Ptr{Cvoid}, WorldRef), <span class="pl-k">$</span>thunk, <span class="pl-c1">cconvert</span>(WorldRef, w))</pre></div>
+<p>Here, the <code>cconvert</code> from <code>WorldAllocated</code> to <code>WorldRef</code> is defined automatically when creating the type.</p>
+<p><strong>Warning:</strong> The ordering of the C++ code matters: types used as function arguments or return types must be added before they are used in a function.</p>
+<p>The full code for this example and more info on immutables and bits types can be found in <a href="https://github.com/JuliaInterop/libcxxwrap-julia/tree/master/examples/types.cpp"><code>examples/types.cpp</code></a> and <a href="test/types.jl"><code>test/types.jl</code></a>.</p>
+<h3><a id="user-content-checking-for-null" class="anchor" aria-hidden="true" href="#checking-for-null"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Checking for null</h3>
+<p>Values returned from C++ can be checked for being null using the <code>isnull</code> function.</p>
+<h2><a id="user-content-setting-the-module-to-which-methods-are-added" class="anchor" aria-hidden="true" href="#setting-the-module-to-which-methods-are-added"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Setting the module to which methods are added</h2>
+<p>It is possible to add methods directly to e.g. the Julia <code>Base</code> module, using <code>set_override_module</code>.
+After calling this, all methods will be added to the specified module.
+To revert to the default behavior of adding methods to the current module, call <code>unset_override_module</code>.</p>
+<p>Current <em>deprecated</em> behavior is to add the functions <code>getindex, setindex!, convert, deepcopy_internal, +, *, ==</code> to <code>Base</code> automatically.
+This default will change, and it can already be overridden by using <code>set_override_module</code>:</p>
+<div class="highlight highlight-source-c++"><pre>mod.add_type&lt;A&gt;(<span class="pl-s"><span class="pl-pds">"</span>A<span class="pl-pds">"</span></span>, jlcxx::julia_type(<span class="pl-s"><span class="pl-pds">"</span>AbstractFloat<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Base<span class="pl-pds">"</span></span>))
+    .constructor&lt;<span class="pl-k">double</span>&gt;();
+mod.set_override_module(mod.julia_module());
+<span class="pl-c"><span class="pl-c">//</span> == will be in the wrapped module:</span>
+mod.method(<span class="pl-s"><span class="pl-pds">"</span>==<span class="pl-pds">"</span></span>, [](A&amp; a, A&amp; b) { <span class="pl-k">return</span> a == b; });
+mod.set_override_module(jl_base_module);
+<span class="pl-c"><span class="pl-c">//</span> The following methods will be in Base</span>
+mod.method(<span class="pl-s"><span class="pl-pds">"</span>+<span class="pl-pds">"</span></span>, [](A&amp; a, A&amp; b) { <span class="pl-k">return</span> a + b; });
+mod.method(<span class="pl-s"><span class="pl-pds">"</span>float<span class="pl-pds">"</span></span>, [](A&amp; a) { <span class="pl-k">return</span> a.<span class="pl-c1">get_val</span>(); });
+<span class="pl-c"><span class="pl-c">//</span> Revert to default behavior</span>
+mod.unset_override_module();
+mod.method(<span class="pl-s"><span class="pl-pds">"</span>val<span class="pl-pds">"</span></span>, [](A&amp; a) { <span class="pl-k">return</span> a.<span class="pl-c1">get_val</span>(); });</pre></div>
+<h2><a id="user-content-inheritance" class="anchor" aria-hidden="true" href="#inheritance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Inheritance</h2>
+<p>To encapsulate inheritance, types must first inherit from each other in C++, so a <code>static_cast</code> to the base type can work:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">struct</span> <span class="pl-en">A</span>
+{
+  <span class="pl-k">virtual</span> std::string <span class="pl-en">message</span>() <span class="pl-k">const</span> = 0;
+  std::string data = <span class="pl-s"><span class="pl-pds">"</span>mydata<span class="pl-pds">"</span></span>;
+};
+
+<span class="pl-k">struct</span> <span class="pl-en">B</span> : A
+{
+  <span class="pl-k">virtual</span> std::string <span class="pl-en">message</span>() <span class="pl-k">const</span>
+  {
+    <span class="pl-k">return</span> <span class="pl-s"><span class="pl-pds">"</span>B<span class="pl-pds">"</span></span>;
+  }
+};</pre></div>
+<p>When adding the type, add the supertype as a second argument:</p>
+<div class="highlight highlight-source-c++"><pre>types.add_type&lt;A&gt;(<span class="pl-s"><span class="pl-pds">"</span>A<span class="pl-pds">"</span></span>).method(<span class="pl-s"><span class="pl-pds">"</span>message<span class="pl-pds">"</span></span>, &amp;A::message);
+types.add_type&lt;B&gt;(<span class="pl-s"><span class="pl-pds">"</span>B<span class="pl-pds">"</span></span>, jlcxx::julia_base_type&lt;A&gt;());</pre></div>
+<p>The supertype is of type <code>jl_datatype_t*</code> and using the template function <code>jlcxx::julia_base_type</code> looks up the abstract type associated with <code>A</code> here.
+There is also a variant taking a string for the type name and an optional Julia module name as second argument, which is useful for inheriting from a type defined in Julia, e.g.:</p>
+<div class="highlight highlight-source-c++"><pre>mod.add_type&lt;Teuchos::ParameterList&gt;(<span class="pl-s"><span class="pl-pds">"</span>ParameterList<span class="pl-pds">"</span></span>, jlcxx::julia_type(<span class="pl-s"><span class="pl-pds">"</span>AbstractDict<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Base<span class="pl-pds">"</span></span>))</pre></div>
+<p>The value returned by <code>add_type</code> also had a <code>dt()</code> method, useful in the case of template types:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">auto</span> multi_vector_base = mod.add_type&lt;Parametric&lt;TypeVar&lt;<span class="pl-c1">1</span>&gt;&gt;&gt;(<span class="pl-s"><span class="pl-pds">"</span>MultiVectorBase<span class="pl-pds">"</span></span>);
+<span class="pl-k">auto</span> vector_base = mod.add_type&lt;Parametric&lt;TypeVar&lt;<span class="pl-c1">1</span>&gt;&gt;&gt;(<span class="pl-s"><span class="pl-pds">"</span>VectorBase<span class="pl-pds">"</span></span>, multi_vector_base.dt());</pre></div>
+<p>Since the concrete arguments given to <code>ccall</code> are the reference types, we need a way to convert <code>BRef</code> into <code>ARef</code>.
+To allow CxxWrap to figure out the correct static_cast to use, the hierarchy must be defined at compile time as follows:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">namespace</span> <span class="pl-en">jlcxx</span>
+{
+  <span class="pl-k">template</span>&lt;&gt; <span class="pl-k">struct</span> <span class="pl-en">SuperType</span>&lt;B&gt; { <span class="pl-k">typedef</span> A type; };
+}</pre></div>
+<p>See the test at <a href="https://github.com/JuliaInterop/libcxxwrap-julia/tree/master/examples/inheritance.cpp"><code>examples/inheritance.cpp</code></a> and <a href="test/inheritance.jl"><code>test/inheritance.jl</code></a>.</p>
+<h2><a id="user-content-enum-types" class="anchor" aria-hidden="true" href="#enum-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Enum types</h2>
+<p>Enum types are converted to strongly-typed bits types on the Julia side.
+Consider the C++ enum:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">enum</span> MyEnum
+{
+  EnumValA,
+  EnumValB
+};</pre></div>
+<p>This is registered as follows:</p>
+<div class="highlight highlight-source-c++"><pre>JLCXX_MODULE <span class="pl-en">define_types_module</span>(jlcxx::Module&amp; types)
+{
+  types.<span class="pl-smi">add_bits</span>&lt;MyEnum&gt;(<span class="pl-s"><span class="pl-pds">"</span>MyEnum<span class="pl-pds">"</span></span>, <span class="pl-c1">jlcxx::julia_type</span>(<span class="pl-s"><span class="pl-pds">"</span>CppEnum<span class="pl-pds">"</span></span>));
+  types.<span class="pl-c1">set_const</span>(<span class="pl-s"><span class="pl-pds">"</span>EnumValA<span class="pl-pds">"</span></span>, EnumValA);
+  types.<span class="pl-c1">set_const</span>(<span class="pl-s"><span class="pl-pds">"</span>EnumValB<span class="pl-pds">"</span></span>, EnumValB);
+}</pre></div>
+<p>The enum constants will be available on the Julia side as <code>CppTypes.EnumValA</code> and <code>CppTypes.EnumValB</code>, both of type <code>CppTypes.MyEnum</code>.
+Wrapped C++ functions taking a <code>MyEnum</code> will only accept a value of type <code>CppTypes.MyEnum</code> in Julia.</p>
+<h2><a id="user-content-template-parametric-types" class="anchor" aria-hidden="true" href="#template-parametric-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Template (parametric) types</h2>
+<p>The natural Julia equivalent of a C++ template class is the parametric type.
+The mapping is complicated by the fact that all possible parameter values must be compiled in advance, requiring a deviation from the syntax for adding a regular class.
+Consider the following template class:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">template</span>&lt;<span class="pl-k">typename</span> A, <span class="pl-k">typename</span> B&gt;
+<span class="pl-k">struct</span> <span class="pl-en">TemplateType</span>
+{
+  <span class="pl-k">typedef</span> <span class="pl-k">typename</span> A::val_type first_val_type;
+  <span class="pl-k">typedef</span> <span class="pl-k">typename</span> B::val_type second_val_type;
+
+  first_val_type <span class="pl-en">get_first</span>()
+  {
+    <span class="pl-k">return</span> <span class="pl-c1">A::value</span>();
+  }
+
+  second_val_type <span class="pl-en">get_second</span>()
+  {
+    <span class="pl-k">return</span> <span class="pl-c1">B::value</span>();
+  }
+};</pre></div>
+<p>The code for wrapping this is:</p>
+<div class="highlight highlight-source-c++"><pre>types.add_type&lt;Parametric&lt;TypeVar&lt;<span class="pl-c1">1</span>&gt;, TypeVar&lt;<span class="pl-c1">2</span>&gt;&gt;&gt;(<span class="pl-s"><span class="pl-pds">"</span>TemplateType<span class="pl-pds">"</span></span>)
+  .apply&lt;TemplateType&lt;P1,P2&gt;, TemplateType&lt;P2,P1&gt;&gt;([](<span class="pl-k">auto</span> wrapped)
+{
+  <span class="pl-k">typedef</span> <span class="pl-k">typename</span> <span class="pl-smi">decltype</span>(wrapped)::type WrappedT;
+  wrapped.<span class="pl-c1">method</span>(<span class="pl-s"><span class="pl-pds">"</span>get_first<span class="pl-pds">"</span></span>, &amp;WrappedT::get_first);
+  wrapped.<span class="pl-c1">method</span>(<span class="pl-s"><span class="pl-pds">"</span>get_second<span class="pl-pds">"</span></span>, &amp;WrappedT::get_second);
+});</pre></div>
+<p>The first line adds the parametric type, using the generic placeholder <code>Parametric</code> and a <code>TypeVar</code> for each parameter.
+On the second line, the possible instantiations are created by calling <code>apply</code> on the result of <code>add_type</code>.
+Here, we allow for <code>TemplateType&lt;P1,P2&gt;</code> and <code>TemplateType&lt;P2,P1&gt;</code> to exist, where <code>P1</code> and <code>P2</code> are C++ classes that also must be wrapped and that fulfill the requirements for being a parameter to <code>TemplateType</code>.
+The argument to <code>apply</code> is a functor (generic C++14 lambda here) that takes the wrapped instantiated type (called <code>wrapped</code> here) as argument.
+This object can then be used as before to define methods.
+In the case of a generic lambda, the actual type being wrapped can be obtained using <code>decltype</code> as shown on the 4th line.</p>
+<p>Use on the Julia side:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> ParametricTypes<span class="pl-k">.</span>TemplateType, ParametricTypes<span class="pl-k">.</span>P1, ParametricTypes<span class="pl-k">.</span>P2
+
+p1 <span class="pl-k">=</span> <span class="pl-c1">TemplateType</span><span class="pl-c1">{P1, P2}</span>()
+p2 <span class="pl-k">=</span> <span class="pl-c1">TemplateType</span><span class="pl-c1">{P2, P1}</span>()
+
+<span class="pl-c1">@test</span> ParametricTypes<span class="pl-k">.</span><span class="pl-c1">get_first</span>(p1) <span class="pl-k">==</span> <span class="pl-c1">1</span>
+<span class="pl-c1">@test</span> ParametricTypes<span class="pl-k">.</span><span class="pl-c1">get_second</span>(p2) <span class="pl-k">==</span> <span class="pl-c1">1</span></pre></div>
+<p>There is also an <code>apply_combination</code> method to make applying all combinations of parameters shorter to write.</p>
+<p>Full example and test including non-type parameters at: <a href="https://github.com/JuliaInterop/libcxxwrap-julia/tree/master/examples/parametric.cpp"><code>examples/parametric.cpp</code></a> and <a href="test/parametric.jl"><code>test/parametric.jl</code></a>.</p>
+<h2><a id="user-content-constructors-and-destructors" class="anchor" aria-hidden="true" href="#constructors-and-destructors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Constructors and destructors</h2>
+<p>The default constructor and any manually added constructor using the <code>constructor</code> function will automatically create a Julia object that has a finalizer attached that calls delete to free the memory.
+To write a C++ function that returns a new object that can be garbage-collected in Julia, use the <code>jlcxx::create</code> function:</p>
+<div class="highlight highlight-source-c++"><pre>jlcxx::create&lt;Class&gt;(constructor_arg1, ...);</pre></div>
+<p>This will return the new C++ object wrapped in a <code>jl_value_t*</code> that has a finalizer.</p>
+<h2><a id="user-content-call-operator-overload" class="anchor" aria-hidden="true" href="#call-operator-overload"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Call operator overload</h2>
+<p>Since Julia supports overloading the function call operator <code>()</code>, this can be used to wrap <code>operator()</code> by just omitting the method name:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">struct</span> <span class="pl-en">CallOperator</span>
+{
+  <span class="pl-k">int</span> <span class="pl-en">operator</span>()() <span class="pl-k">const</span>
+  {
+    <span class="pl-k">return</span> <span class="pl-c1">43</span>;
+  }
+};
+
+<span class="pl-c"><span class="pl-c">//</span> ...</span>
+
+types.add_type&lt;CallOperator&gt;(<span class="pl-s"><span class="pl-pds">"</span>CallOperator<span class="pl-pds">"</span></span>).method(&amp;<span class="pl-en">CallOperator::operator</span>());</pre></div>
+<p>Use in Julia:</p>
+<div class="highlight highlight-source-julia"><pre>call_op <span class="pl-k">=</span> <span class="pl-c1">CallOperator</span>()
+<span class="pl-c1">@test</span> <span class="pl-c1">call_op</span>() <span class="pl-k">==</span> <span class="pl-c1">43</span></pre></div>
+<p>The C++ function does not even have to be <code>operator()</code>, but of course it is most logical use case.</p>
+<h2><a id="user-content-automatic-argument-conversion" class="anchor" aria-hidden="true" href="#automatic-argument-conversion"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Automatic argument conversion</h2>
+<p>By default, overloaded signatures for wrapper methods are generated, so a method taking a <code>double</code> in C++ can be called with e.g. an <code>Int</code> in Julia.
+Wrapping a function like this:</p>
+<div class="highlight highlight-source-c++"><pre>mod.method(<span class="pl-s"><span class="pl-pds">"</span>half_lambda<span class="pl-pds">"</span></span>, [](<span class="pl-k">const</span> <span class="pl-k">double</span> a) {<span class="pl-k">return</span> a*<span class="pl-c1">0.5</span>;});</pre></div>
+<p>then yields the methods:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">half_lambda</span>(arg1<span class="pl-k">::</span><span class="pl-c1">Int64</span>)
+<span class="pl-c1">half_lambda</span>(arg1<span class="pl-k">::</span><span class="pl-c1">Float64</span>)</pre></div>
+<p>In some cases (e.g. when a template parameter depends on the number type) this is not desired, so the behavior can be disabled on a per-argument basis using the <code>StrictlyTypedNumber</code> type.
+Wrapping a function like this:</p>
+<div class="highlight highlight-source-c++"><pre>mod.method(<span class="pl-s"><span class="pl-pds">"</span>strict_half<span class="pl-pds">"</span></span>, [](<span class="pl-k">const</span> jlcxx::StrictlyTypedNumber&lt;<span class="pl-k">double</span>&gt; a) {<span class="pl-k">return</span> a.<span class="pl-smi">value</span>*<span class="pl-c1">0.5</span>;});</pre></div>
+<p>will <em>only</em> yield the Julia method:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">strict_half</span>(arg1<span class="pl-k">::</span><span class="pl-c1">Float64</span>)</pre></div>
+<p>Note that in C++ the number value is accessed using the <code>value</code> member of <code>StrictlyTypedNumber</code>.</p>
+<h3><a id="user-content-customization" class="anchor" aria-hidden="true" href="#customization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Customization</h3>
+<p>The automatic overloading can be customized.
+For example, to allow passing an <code>Int64</code> where a <code>UInt64</code> is normally expected, the following method can be added:</p>
+<div class="highlight highlight-source-julia"><pre>CxxWrap<span class="pl-k">.</span><span class="pl-en">argument_overloads</span>(t<span class="pl-k">::</span><span class="pl-c1">Type{UInt64}</span>) <span class="pl-k">=</span> [Int64]</pre></div>
+<h2><a id="user-content-pointers-and-references" class="anchor" aria-hidden="true" href="#pointers-and-references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Pointers and references</h2>
+<p>Simple pointers and references are treated the same way, and wrapped in a struct with as a single member the pointer to the C++ object.</p>
+<h3><a id="user-content-references-to-pointers" class="anchor" aria-hidden="true" href="#references-to-pointers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>References to pointers</h3>
+<p>A reference to a pointer allows changing the referred object, e.g.:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">void</span> <span class="pl-en">writepointerref</span>(MyData*&amp; ptrref)
+{
+  <span class="pl-k">delete</span> ptrref;
+  ptrref = <span class="pl-k">new</span> <span class="pl-c1">MyData</span>(<span class="pl-c1">30</span>);
+}</pre></div>
+<p>is called from Julia as:</p>
+<div class="highlight highlight-source-julia"><pre>d <span class="pl-k">=</span> PtrModif<span class="pl-k">.</span><span class="pl-c1">MyData</span>()
+<span class="pl-c1">writepointerref</span>(<span class="pl-c1">Ref</span>(d))</pre></div>
+<p>Note that this modifies <code>d</code> itself, so <code>d</code> must be a <code>MyDataAllocated</code>.
+More details are in the <code>pointer_modification</code> example.</p>
+<h3><a id="user-content-smart-pointers" class="anchor" aria-hidden="true" href="#smart-pointers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Smart pointers</h3>
+<p>Currently, <code>std::shared_ptr</code>, <code>std::unique_ptr</code> and <code>std::weak_ptr</code> are supported transparently.
+Returning one of these pointer types will return an object inheriting from <code>SmartPointer{T}</code>:</p>
+<div class="highlight highlight-source-c++"><pre>types.method(<span class="pl-s"><span class="pl-pds">"</span>shared_world_factory<span class="pl-pds">"</span></span>, []()
+{
+  <span class="pl-k">return</span> std::shared_ptr&lt;World&gt;(<span class="pl-k">new</span> <span class="pl-c1">World</span>(<span class="pl-s"><span class="pl-pds">"</span>shared factory hello<span class="pl-pds">"</span></span>));
+});</pre></div>
+<p>The shared pointer can then be used in a function taking an object of type <code>World</code> like this (the module is named <code>CppTypes</code> here):</p>
+<div class="highlight highlight-source-julia"><pre>swf <span class="pl-k">=</span> CppTypes<span class="pl-k">.</span><span class="pl-c1">shared_world_factory</span>()
+CppTypes<span class="pl-k">.</span><span class="pl-c1">greet</span>(swf)</pre></div>
+<p>Explicit dereferencing is also supported, using the <code>[]</code> operator:</p>
+<div class="highlight highlight-source-julia"><pre>CppTypes<span class="pl-k">.</span><span class="pl-c1">greet</span>(swf[])</pre></div>
+<h4><a id="user-content-adding-a-custom-smart-pointer" class="anchor" aria-hidden="true" href="#adding-a-custom-smart-pointer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Adding a custom smart pointer</h4>
+<p>Suppose we have a "smart" pointer type defined as follows:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">template</span>&lt;<span class="pl-k">typename</span> T&gt;
+<span class="pl-k">struct</span> <span class="pl-en">MySmartPointer</span>
+{
+  <span class="pl-en">MySmartPointer</span>(T* ptr) : m_ptr(ptr)
+  {
+  }
+
+  <span class="pl-en">MySmartPointer</span>(std::shared_ptr&lt;T&gt; ptr) : m_ptr(ptr.get())
+  {
+  }
+
+  T&amp; <span class="pl-k">operator</span>*() <span class="pl-k">const</span>
+  {
+    <span class="pl-k">return</span> *m_ptr;
+  }
+
+  T* m_ptr;
+};</pre></div>
+<p>Specializing in the <code>jlcxx</code> namespace:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">namespace</span> <span class="pl-en">jlcxx</span>
+{
+  <span class="pl-k">template</span>&lt;<span class="pl-k">typename</span> T&gt; <span class="pl-k">struct</span> <span class="pl-en">IsSmartPointerType</span>&lt;cpp_types::MySmartPointer&lt;T&gt;&gt; : std::true_type { };
+  <span class="pl-k">template</span>&lt;<span class="pl-k">typename</span> T&gt; <span class="pl-k">struct</span> <span class="pl-en">ConstructorPointerType</span>&lt;cpp_types::MySmartPointer&lt;T&gt;&gt; { <span class="pl-k">typedef</span> std::shared_ptr&lt;T&gt; type; };
+}</pre></div>
+<p>Here, the first line marks our type as a smart pointer, enabling automatic conversion from the pointer to its referenced type and adding the dereferencing pointer.
+If the type uses inheritance and the hierarchy is defined using <code>SuperType</code>, automatic conversion to the pointer or reference of the base type is also supported.
+The second line indicates that our smart pointer can be constructed from a <code>std::shared_ptr</code>, also adding auto-conversion for that case.
+This is useful for a relation as in <code>std::weak_ptr</code> and <code>std::shared_ptr</code>, for example.</p>
+<h2><a id="user-content-function-arguments" class="anchor" aria-hidden="true" href="#function-arguments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Function arguments</h2>
+<p>Because C++ functions often return references or pointers, writing Julia functions that operate on C++ types can be tricky.
+For example, writing a function like:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">julia_greet</span>(w<span class="pl-k">::</span><span class="pl-c1">World</span>) <span class="pl-k">=</span> <span class="pl-c1">greet_cpp</span>(w)</pre></div>
+<p>If <code>World</code> is a type from C++, this will only work with objects that have been constructed directly or that were returned by value from C++.
+To make it work with references and pointers, we would need an additional method:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">julia_greet</span>(w<span class="pl-k">::</span><span class="pl-c1">CxxWrap.CxxBaseRef{World}</span>) <span class="pl-k">=</span> <span class="pl-c1">greet_cpp</span>(w[])</pre></div>
+<p>Note that in the general case, both the signature and the implementation need to change, making this cumbersome when there are many functions like this.
+Enter the <code>@cxxdereference</code> macro.
+Declaring the function like this makes sure it can accept both values and references:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@cxxdereference</span> <span class="pl-en">julia_greet</span>(w<span class="pl-k">::</span><span class="pl-c1">World</span>) <span class="pl-k">=</span> <span class="pl-c1">greet_cpp</span>(w)</pre></div>
+<p>The <code>@cxxdereference</code> macro changes the function into:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">julia_greet</span>(w<span class="pl-k">::</span><span class="pl-c1">CxxWrap.reference_type_union</span>(World))
+    w <span class="pl-k">=</span> CxxWrap<span class="pl-k">.</span><span class="pl-c1">dereference_argument</span>(w)
+    <span class="pl-c1">greet_cpp</span>(w)
+<span class="pl-k">end</span></pre></div>
+<p>The type of <code>w</code> is now calculated by the <code>CxxWrap.reference_type_union</code> function, which resolves to <code>Union{World, CxxWrap.CxxBaseRef{World}, CxxWrap.SmartPointer{World}}</code>.
+The behavior of the macro can be customized by adding methods to <code>CxxWrap.reference_type_union</code> and <code>CxxWrap.dereference_argument</code>.</p>
+<h2><a id="user-content-exceptions" class="anchor" aria-hidden="true" href="#exceptions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Exceptions</h2>
+<p>When directly adding a regular free C++ function as a method, it will be called directly using <code>ccall</code> and any exception will abort the Julia program.
+To avoid this, you can force wrapping it in an <code>std::functor</code> to intercept the exception automatically by setting the <code>force_convert</code> argument to <code>method</code> to true:</p>
+<div class="highlight highlight-source-c++"><pre>mod.method(<span class="pl-s"><span class="pl-pds">"</span>test_exception<span class="pl-pds">"</span></span>, test_exception, <span class="pl-c1">true</span>);</pre></div>
+<p>Member functions and lambdas are automatically wrapped in an <code>std::functor</code> and so any exceptions thrown there are always intercepted and converted to a Julia exception.</p>
+<h2><a id="user-content-tuples" class="anchor" aria-hidden="true" href="#tuples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tuples</h2>
+<p>C++11 tuples can be converted to Julia tuples by including the <code>containers/tuple.hpp</code> header:</p>
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jlcxx/jlcxx.hpp<span class="pl-pds">"</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jlcxx/tuple.hpp<span class="pl-pds">"</span></span>
+
+JLCXX_MODULE <span class="pl-en">define_types_module</span>(jlcxx::Module&amp; containers)
+{
+  containers.<span class="pl-c1">method</span>(<span class="pl-s"><span class="pl-pds">"</span>test_tuple<span class="pl-pds">"</span></span>, []() { <span class="pl-k">return</span> <span class="pl-c1">std::make_tuple</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>., <span class="pl-c1">3</span>.<span class="pl-smi">f</span>); });
+}</pre></div>
+<p>Use in Julia:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> CxxWrap
+<span class="pl-k">using</span> Base<span class="pl-k">.</span>Test
+
+<span class="pl-k">module</span> Containers
+  <span class="pl-c1">@wrapmodule</span>(libcontainers)
+  <span class="pl-k">export</span> test_tuple
+<span class="pl-k">end</span>
+<span class="pl-k">using</span> Containers
+
+<span class="pl-c1">@test</span> <span class="pl-c1">test_tuple</span>() <span class="pl-k">==</span> (<span class="pl-c1">1</span>,<span class="pl-c1">2.0</span>,<span class="pl-c1">3.0</span>f0)</pre></div>
+<h2><a id="user-content-working-with-arrays" class="anchor" aria-hidden="true" href="#working-with-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Working with arrays</h2>
+<h3><a id="user-content-reference-native-julia-arrays" class="anchor" aria-hidden="true" href="#reference-native-julia-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Reference native Julia arrays</h3>
+<p>The <code>ArrayRef</code> type is provided to work conveniently with array data from Julia.
+Defining a function like this in C++:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">void</span> <span class="pl-en">test_array_set</span>(jlcxx::ArrayRef&lt;<span class="pl-k">double</span>&gt; a, <span class="pl-k">const</span> <span class="pl-c1">int64_t</span> i, <span class="pl-k">const</span> <span class="pl-k">double</span> v)
+{
+  a[i] = v;
+}</pre></div>
+<p>This can be called from Julia as:</p>
+<div class="highlight highlight-source-julia"><pre>ta <span class="pl-k">=</span> [<span class="pl-c1">1.</span>,<span class="pl-c1">2.</span>]
+<span class="pl-c1">test_array_set</span>(ta, <span class="pl-c1">0</span>, <span class="pl-c1">3.</span>)</pre></div>
+<p>The <code>ArrayRef</code> type provides basic functionality:</p>
+<ul>
+<li>iterators</li>
+<li><code>size</code></li>
+<li><code>[]</code> read-write accessor</li>
+<li><code>push_back</code> for appending elements</li>
+</ul>
+<p>Note that <code>ArrayRef</code> only works with primitive types, if you need a "boxed" type it has to be made an array of <code>Any</code> with type <code>ArrayRef&lt;jl_value_t*&gt;</code> in C++.</p>
+<h3><a id="user-content-const-arrays" class="anchor" aria-hidden="true" href="#const-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Const arrays</h3>
+<p>Sometimes, a function returns a <code>const</code> pointer that is an array, either of fixed size or with a size that can be determined from elsewhere in the API.
+Example:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">const</span> <span class="pl-k">double</span>* <span class="pl-en">const_vector</span>()
+{
+  <span class="pl-k">static</span> <span class="pl-k">double</span> d[] = {<span class="pl-c1">1</span>., <span class="pl-c1">2</span>., <span class="pl-c1">3</span>};
+  <span class="pl-k">return</span> d;
+}</pre></div>
+<p>In this simple case, the most logical way to translate this would be as a tuple:</p>
+<div class="highlight highlight-source-c++"><pre>mymodule.method(<span class="pl-s"><span class="pl-pds">"</span>const_ptr_arg<span class="pl-pds">"</span></span>, []() { <span class="pl-k">return</span> <span class="pl-c1">std::make_tuple</span>(<span class="pl-c1">const_vector</span>().<span class="pl-smi">ptr</span>[<span class="pl-c1">0</span>], <span class="pl-c1">const_vector</span>().<span class="pl-smi">ptr</span>[<span class="pl-c1">1</span>], <span class="pl-c1">const_vector</span>().<span class="pl-smi">ptr</span>[<span class="pl-c1">2</span>]); });</pre></div>
+<p>In the case of a larger blob of heap-allocated data it makes more sense to convert this to a <code>ConstArray</code>, which implements the read-only part of the Julia array interface, so it exposes the data safely to Julia in a way that can be used natively:</p>
+<div class="highlight highlight-source-c++"><pre>mymodule.method(<span class="pl-s"><span class="pl-pds">"</span>const_vector<span class="pl-pds">"</span></span>, []() { <span class="pl-k">return</span> <span class="pl-c1">jlcxx::make_const_array</span>(<span class="pl-c1">const_vector</span>(), <span class="pl-c1">3</span>); });</pre></div>
+<p>For multi-dimensional arrays, the <code>make_const_array</code> function takes multiple sizes, e.g.:</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">const</span> <span class="pl-k">double</span>* <span class="pl-en">const_matrix</span>()
+{
+  <span class="pl-k">static</span> <span class="pl-k">double</span> d[<span class="pl-c1">2</span>][<span class="pl-c1">3</span>] = {{<span class="pl-c1">1</span>., <span class="pl-c1">2</span>., <span class="pl-c1">3</span>}, {<span class="pl-c1">4</span>., <span class="pl-c1">5</span>., <span class="pl-c1">6</span>.}};
+  <span class="pl-k">return</span> &amp;d[<span class="pl-c1">0</span>][<span class="pl-c1">0</span>];
+}
+
+<span class="pl-c"><span class="pl-c">//</span> ...module definition skipped...</span>
+
+mymodule.method(<span class="pl-s"><span class="pl-pds">"</span>const_matrix<span class="pl-pds">"</span></span>, []() { <span class="pl-k">return</span> <span class="pl-c1">jlcxx::make_const_array</span>(<span class="pl-c1">const_matrix</span>(), <span class="pl-c1">3</span>, <span class="pl-c1">2</span>); });</pre></div>
+<p>Note that because of the column-major convention in Julia, the sizes are in reversed order from C++, so the Julia code:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">display</span>(<span class="pl-c1">const_matrix</span>())</pre></div>
+<p>shows:</p>
+<pre><code>3x2 ConstArray{Float64,2}:
+ 1.0  4.0
+ 2.0  5.0
+ 3.0  6.0
+</code></pre>
+<h3><a id="user-content-mutable-arrays" class="anchor" aria-hidden="true" href="#mutable-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Mutable arrays</h3>
+<p>Replacing <code>make_const_array</code> in the examples above by <code>make_julia_array</code> creates a mutable, regular Julia array with memory owned by C++.</p>
+<h2><a id="user-content-calling-julia-functions-from-c" class="anchor" aria-hidden="true" href="#calling-julia-functions-from-c"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Calling Julia functions from C++</h2>
+<h3><a id="user-content-direct-call-to-julia" class="anchor" aria-hidden="true" href="#direct-call-to-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Direct call to Julia</h3>
+<p>Directly calling Julia functions uses <code>jl_call</code> from <code>julia.h</code> but with a more convenient syntax and automatic argument conversion and boxing.
+Use a <code>JuliaFunction</code> to get a functor that can be invoked directly.
+Example for calling the <code>max</code> function from <code>Base</code>:</p>
+<div class="highlight highlight-source-c++"><pre>mymodule.method(<span class="pl-s"><span class="pl-pds">"</span>julia_max<span class="pl-pds">"</span></span>, [](<span class="pl-k">double</span> a, <span class="pl-k">double</span> b)
+{
+  jlcxx::JuliaFunction <span class="pl-smi">max</span>(<span class="pl-s"><span class="pl-pds">"</span>max<span class="pl-pds">"</span></span>);
+  <span class="pl-k">return</span> <span class="pl-c1">max</span>(a, b);
+});</pre></div>
+<p>Internally, the arguments and return value are boxed, making this method convenient but slower than calling a regular C function.</p>
+<h3><a id="user-content-safe-cfunction" class="anchor" aria-hidden="true" href="#safe-cfunction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Safe <code>cfunction</code></h3>
+<p>The function <code>CxxWrap.safe_cfunction</code> provides a wrapper around <code>Base.cfunction</code> that checks the type of the function pointer.
+Example C++ function:</p>
+<div class="highlight highlight-source-c++"><pre>mymodule.method(<span class="pl-s"><span class="pl-pds">"</span>call_safe_function<span class="pl-pds">"</span></span>, [](<span class="pl-k">double</span>(*f)(<span class="pl-k">double</span>,<span class="pl-k">double</span>))
+{
+  <span class="pl-k">if</span>(<span class="pl-c1">f</span>(<span class="pl-c1">1</span>.,<span class="pl-c1">2</span>.) != <span class="pl-c1">3</span>.)
+  {
+    <span class="pl-k">throw</span> <span class="pl-smi">std::runtime_error</span>(<span class="pl-s"><span class="pl-pds">"</span>Incorrect callback result, expected 3<span class="pl-pds">"</span></span>);
+  }
+});</pre></div>
+<p>Use from Julia:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">testf</span>(x,y) <span class="pl-k">=</span> x<span class="pl-k">+</span>y
+c_func <span class="pl-k">=</span> <span class="pl-c1">safe_cfunction</span>(testf, Float64, (Float64,Float64))
+MyModule<span class="pl-k">.</span><span class="pl-c1">call_safe_function</span>(c_func)</pre></div>
+<p>Using types different from the expected function pointer call will result in an error.
+This check incurs a runtime overhead, so the idea here is that the function is converted only once and then applied many times on the C++ side.</p>
+<p>If the result of <code>safe_cfunction</code> needs to be stored before the calling signature is known, direct conversion of the created structure (type <code>SafeCFunction</code>) is also possible.
+It can then be converted later using <code>jlcxx::make_function_pointer</code>:</p>
+<div class="highlight highlight-source-c++"><pre>mymodule.method(<span class="pl-s"><span class="pl-pds">"</span>call_safe_function<span class="pl-pds">"</span></span>, [](jlcxx::SafeCFunction f_data)
+{
+  <span class="pl-k">auto</span> f = jlcxx::make_function_pointer&lt;<span class="pl-c1">double</span>(<span class="pl-k">double</span>,<span class="pl-k">double</span>)&gt;(f_data);
+  <span class="pl-k">if</span>(<span class="pl-c1">f</span>(<span class="pl-c1">1</span>.,<span class="pl-c1">2</span>.) != <span class="pl-c1">3</span>.)
+  {
+    <span class="pl-k">throw</span> <span class="pl-smi">std::runtime_error</span>(<span class="pl-s"><span class="pl-pds">"</span>Incorrect callback result, expected 3<span class="pl-pds">"</span></span>);
+  }
+});</pre></div>
+<p>This method of calling a Julia function is less convenient, but the call overhead should be no larger than calling a regular C function through its pointer.</p>
+<h2><a id="user-content-adding-julia-code-to-the-module" class="anchor" aria-hidden="true" href="#adding-julia-code-to-the-module"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Adding Julia code to the module</h2>
+<p>Sometimes, you may want to write additional Julia code in the module that is built from C++.
+To do this, call the <code>wrapmodule</code> method inside an appropriately named Julia module:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> ExtendedTypes
+
+<span class="pl-k">using</span> CxxWrap
+<span class="pl-c1">@wrapmodule</span>(<span class="pl-s"><span class="pl-pds">"</span>libextended<span class="pl-pds">"</span></span>)
+<span class="pl-k">export</span> ExtendedWorld, greet
+
+<span class="pl-k">end</span></pre></div>
+<p>Here, <code>ExtendedTypes</code> is a name that matches the module name passed to <code>create_module</code> on the C++ side.
+The <code>@wrapmodule</code> call works as before, but now the functions and types are defined in the existing <code>ExtendedTypes</code> module, and additional Julia code such as exports and macros can be defined.</p>
+<p>It is also possible to replace the <code>@wrapmodule</code> call with a call to <code>@readmodule</code> and then separately call <code>@wraptypes</code> and <code>@wrapfunctions</code>.
+This allows using the types before the functions get called, which is useful for overloading the <code>argument_overloads</code> with types defined on the C++ side.</p>
+<h2><a id="user-content-stl-support" class="anchor" aria-hidden="true" href="#stl-support"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>STL support</h2>
+<p>Version 0.9 introduces basic support for the C++ standard library, with mappings for <code>std::vector</code> (<code>StdVector</code>) and <code>std::string</code> (<code>StdString</code>).
+To add support for e.g. vectors of your own type <code>World</code>, either just add methods that use an <code>std::vector&lt;World&gt;</code> as an argument, or manually wrap them using <code>jlcxx::stl::apply_stl&lt;World&gt;(mod);</code>.</p>
+<p>If the type <code>World</code> contains methods that take or return <code>std::</code> collections of type <code>World</code> or <code>World*</code>, however, you must first complete the type, so that CxxWrap can generate the type and the template specializations for the <code>std::</code> collections.
+In this case, you can add those methods to your type like this:</p>
+<pre><code>jlcxx::stl::apply_stl&lt;World*&gt;(mod);
+mod.method("getSecondaryWorldVector", [](const World* p)-&gt;const std::vector&lt;World*&gt;&amp; {
+    return p-&gt;getSecondaries();
+});
+</code></pre>
+<p>Linking wrappers using STL support requires adding <code>JlCxx::cxxwrap_julia_stl</code> to the <code>target_link_libraries</code> command in <code>CMakeLists.txt</code>.</p>
+<h2><a id="user-content-breaking-changes-for-cxxwrap-07" class="anchor" aria-hidden="true" href="#breaking-changes-for-cxxwrap-07"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Breaking changes for CxxWrap 0.7</h2>
+<ul>
+<li>
+<p><code>JULIA_CPP_MODULE_BEGIN</code> and <code>JULIA_CPP_MODULE_END</code> no longer exists, define a function with return type <code>JLCXX_MODULE</code> in the global namespace instead.
+By default, the Julia side expects this function to be named <code>define_julia_module</code>, but another name can be chosen and passed as a second argument to <code>@wrapmodule</code>.</p>
+</li>
+<li>
+<p><code>wrap_modules</code> is removed, replace <code>wrap_modules(lib_file_path)</code> with:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> Foo
+  <span class="pl-k">using</span> CxxWrap
+  <span class="pl-c1">@wrapmodule</span>(lib_file_path)
+<span class="pl-k">end</span></pre></div>
+</li>
+<li>
+<p><code>export_symbols</code> is removed, since all C++ modules are now wrapped in a corresponding module declared on the Julia side, so the regular Julia export statement can be used.</p>
+</li>
+<li>
+<p><code>safe_cfunction</code> is now a macro, just like <code>cfunction</code> became a macro in Julia.</p>
+</li>
+<li>
+<p>Precompilation: add this function after the <code>@wrapmodule</code> macro:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">__init__</span>()
+  <span class="pl-c1">@initcxx</span>
+<span class="pl-k">end</span></pre></div>
+</li>
+</ul>
+<h2><a id="user-content-breaking-changes-in-v09" class="anchor" aria-hidden="true" href="#breaking-changes-in-v09"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Breaking changes in v0.9</h2>
+<ul>
+<li>No automatic conversion between Julia <code>String</code> and <code>std::string</code>, but <code>StdString</code> (which maps <code>std::string</code>) implements the Julia <code>AbstractString</code>interface.</li>
+<li>No automatic dereference of const ref</li>
+<li><code>ArrayRef</code> no longer supports boxed values</li>
+<li>Custom smart pointer: use <code>jlcxx::add_smart_pointer&lt;MySmartPointer&gt;(module, "MySmartPointer")</code></li>
+<li><code>IsMirroredType</code> instead of <code>IsImmutable</code> and <code>IsBits</code>, added using map_type.
+By default, <code>IsMirroredType</code> is true for trivial standard layout types, so if you want to wrap these normally
+(i.e. you get an unexpected error <code>Mirrored types (marked with IsMirroredType) can't be added using add_type, map them directly to a struct instead and use map_type</code>) then you have to explicitly disable the mirroring for that type:</li>
+</ul>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">template</span>&lt;&gt; <span class="pl-k">struct</span> <span class="pl-en">IsMirroredType</span>&lt;Foo&gt; : std::false_type { };</pre></div>
+<ul>
+<li><code>box</code> C++ function takes an explicit template argument</li>
+<li>Introduction of specific integer types, such as <code>CxxBool</code>, that map to the C++ equivalent (should be transparent except for template parameters)</li>
+<li>Defining <code>SuperType</code> on the C++ side is now necessary for any kind of casting to base class, because the previous implementation was wrong in the case of multiple inheritance.</li>
+<li>Use <code>Ref(CxxPtr(x))</code> for pointer or reference to pointer</li>
+<li>Use <code>CxxPtr{MyData}(C_NULL)</code> instead of <code>nullptr(MyData)</code></li>
+<li>Defining a C++ supertype in C++ must now be done using the <code>jlcxx::julia_base_type&lt;T&gt;()</code> function instead of <code>jlcxx::julia_type&lt;T&gt;()</code></li>
+</ul>
+</article></div>

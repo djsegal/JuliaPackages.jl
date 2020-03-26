@@ -1,0 +1,41 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-uniquevectors" class="anchor" aria-hidden="true" href="#uniquevectors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>UniqueVectors</h1>
+<p><a href="https://travis-ci.org/garrison/UniqueVectors.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/67d77d36a5ed02766c4abb7338079f30771185de/68747470733a2f2f7472617669732d63692e6f72672f6761727269736f6e2f556e69717565566563746f72732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/garrison/UniqueVectors.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://coveralls.io/r/garrison/UniqueVectors.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/48f84783f05e20b7b23c2e4cc42253d10f9e2555/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6761727269736f6e2f556e69717565566563746f72732e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/garrison/UniqueVectors.jl/badge.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://pkg.julialang.org/detail/UniqueVectors" rel="nofollow"><img src="https://camo.githubusercontent.com/3f544eb8916e492b01dc3eb2fc7cfb3dbdc7b7f1/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f556e69717565566563746f72735f302e362e737667" alt="UniqueVectors" data-canonical-src="http://pkg.julialang.org/badges/UniqueVectors_0.6.svg" style="max-width:100%;"></a>
+<a href="http://pkg.julialang.org/detail/UniqueVectors" rel="nofollow"><img src="https://camo.githubusercontent.com/b6a0c2ab2096e17de35f296525434c77cd3bf238/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f556e69717565566563746f72735f302e372e737667" alt="UniqueVectors" data-canonical-src="http://pkg.julialang.org/badges/UniqueVectors_0.7.svg" style="max-width:100%;"></a></p>
+<pre><code>julia&gt; import Pkg; Pkg.add("UniqueVectors")
+</code></pre>
+<p><code>UniqueVector</code> is a data structure acts like a <code>Vector</code> of unique elements, but also maintains a dictionary that is updated in sync with the vector, which allows for quick <code>O(1)</code> lookup of the index of any element:</p>
+<pre><code>julia&gt; using UniqueVectors
+
+julia&gt; uv = UniqueVector(["cat", "dog", "mouse"])
+3-element UniqueVectors.UniqueVector{String}:
+ "cat"
+ "dog"
+ "mouse"
+
+julia&gt; uv[1]
+"cat"
+
+julia&gt; findfirst(isequal("dog"), uv)         # executes quickly via a dictionary lookup, not sequential search
+2
+</code></pre>
+<p>As might be expected, <code>UniqueVector</code> supports many of the usual methods for <code>Vector</code>, but all operations enforce the condition that each element of the array must be unique (as defined by <code>isequal</code>).  The mutating methods <code>push!</code>, <code>pop!</code>, and <code>empty!</code> are implemented as well, as these operations keep constant the indices of existing elements in the array, allowing the dictionary to be updated efficiently.</p>
+<p>In addition, <code>UniqueVector</code> implements a mutating <code>findfirst!</code> method, which returns the index of an element if it exists in the array, or otherwise appends the element and returns its new index:</p>
+<pre><code>julia&gt; findfirst!(isequal("cat"), uv)
+1
+
+julia&gt; findfirst!(isequal("horse"), uv)
+4
+
+julia&gt; uv
+4-element UniqueVectors.UniqueVector{String}:
+ "cat"
+ "dog"
+ "mouse"
+ "horse"
+</code></pre>
+<p><code>UniqueVector</code> is derived from an abstract type known as <code>AbstractUniqueVector</code>.  This type is meant for anything that implements a fast bi-directional mapping between elements of a type <code>T</code> and integers from <code>1</code> to <code>N</code>.  For some applications, it will be possible to have alternative implementations of this interface--ones that resemble an <code>UniqueVector</code> but can be calculated quickly on the fly (and may not need to be fully stored in memory).  One notable example of this would be <a href="http://www.phy.cuhk.edu.hk/hqlin/paper/018PRB42_6561.pdf" rel="nofollow">Lin</a> <a href="http://www.phy.cuhk.edu.hk/hqlin/paper/033ComPhys7_400.pdf" rel="nofollow">Tables</a>, which are often used in numerical exact diagonalization studies, and which are used to map each basis element of a quantum Hamiltonian to indices <code>1</code> through <code>N</code>.</p>
+<p>(More generally, one might want an abstract type that represents any bidirectional mapping between two different sets (without one of them necessarily being contiguous integers from <code>1</code> to <code>N</code>).  In this case, using <code>findfirst</code> may not be the appropriate interface, and I'd welcome any comments on this.)</p>
+<p>Note: This package was formerly known as <code>IndexedArrays</code> (see issue #4).</p>
+</article></div>

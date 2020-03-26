@@ -1,0 +1,292 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-axiskeysjl" class="anchor" aria-hidden="true" href="#axiskeysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>AxisKeys.jl</h1>
+<p><a href="https://travis-ci.org/mcabbott/AxisKeys.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/b051276684bb04cc6ebf00a2db91fbfe91599d30/68747470733a2f2f7472617669732d63692e6f72672f6d636162626f74742f417869734b6579732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/mcabbott/AxisKeys.jl.svg?branch=master" style="max-width:100%;"></a></p>
+
+<p>This package defines a thin wrapper which, alongside any array, stores a vector of "keys"
+for each dimension. This may be useful to store perhaps actual times of measurements,
+or some strings labeling columns, etc. These will be propagated through many
+operations on arrays, including broadcasting, <code>map</code>, comprehensions, <code>sum</code> etc.</p>
+<p>It works closely with <a href="https://github.com/invenia/NamedDims.jl">NamedDims.jl</a>, another wrapper
+which attaches names to dimensions. These names are a tuple of symbols, like those of
+a <code>NamedTuple</code>. They can be used for specifying which dimensions to sum over, etc.
+The function <code>wrapdims</code> constructs a nested pair of these wrappers, for example:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> AxisKeys
+data <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>,<span class="pl-c1">3</span>) <span class="pl-k">.|</span><span class="pl-k">&gt;</span> abs;
+A <span class="pl-k">=</span> <span class="pl-c1">KeyedArray</span>(data; channel<span class="pl-k">=</span>[<span class="pl-c1">:left</span>, <span class="pl-c1">:right</span>], time<span class="pl-k">=</span><span class="pl-c1">range</span>(<span class="pl-c1">13</span>, step<span class="pl-k">=</span><span class="pl-c1">2.5</span>, length<span class="pl-k">=</span><span class="pl-c1">10</span>), iter<span class="pl-k">=</span><span class="pl-c1">31</span><span class="pl-k">:</span><span class="pl-c1">33</span>)</pre></div>
+<p align="center">
+<a target="_blank" rel="noopener noreferrer" href="docs/readmeterminal.png"><img src="docs/readmeterminal.png" alt="terminal pretty printing" width="550" align="center" style="max-width:100%;"></a>
+</p>
+<h3><a id="user-content-selections" class="anchor" aria-hidden="true" href="#selections"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Selections</h3>
+<p>Indexing still works directly on the underlying array,
+and keyword indexing works exactly as for a <code>NamedDimsArray</code>.
+But in addition, it is possible to pick out elements based on the keys,
+which for clarity we will call lookup. This is written with round brackets:</p>
+<table>
+<thead>
+<tr>
+<th>Dimension <code>d</code></th>
+<th>Indexing: <code>i ∈ axes(A,d)</code></th>
+<th>Lookup: <code>key ∈ axiskeys(A,d)</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>by position</td>
+<td><code>A[1,2,:]</code></td>
+<td><code>A(:left, 15.5, :)</code></td>
+</tr>
+<tr>
+<td>by name</td>
+<td><code>A[iter=1]</code></td>
+<td><code>A(iter=31)</code></td>
+</tr>
+<tr>
+<td>by type</td>
+<td>--</td>
+<td><code>B = A(:left)</code></td>
+</tr>
+</tbody>
+</table>
+<p>When using dimension names, fixing only some of them will return a slice,
+such as <code>B = A[channel=1]</code>.
+You may also give just one key, provided its type matches those of just one dimension,
+such as <code>B = A(:left)</code> where the key is a Symbol.</p>
+<p>There are also a numer of special selectors, which work like this:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Indexing</th>
+<th>Lookup</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one nearest</td>
+<td><code>B[time = 3]</code></td>
+<td><code>B(time = Near(17.0))</code></td>
+<td>vector</td>
+</tr>
+<tr>
+<td>all in a range</td>
+<td><code>B[2:5, :]</code></td>
+<td><code>B(Interval(14,25), :)</code></td>
+<td>matrix</td>
+</tr>
+<tr>
+<td>all matching</td>
+<td><code>B[3:end, Not(3)]</code></td>
+<td><code>B(&gt;(17), !=(33))</code></td>
+<td>matrix</td>
+</tr>
+<tr>
+<td>mixture</td>
+<td><code>A[1, 2, end]</code></td>
+<td><code>A(:left, Index[2], Index[end])</code></td>
+<td>scalar</td>
+</tr>
+<tr>
+<td>non-scalar</td>
+<td><code>B[iter=[1, 3]]</code></td>
+<td><code>B(iter=[31, 33])</code></td>
+<td>matrix</td>
+</tr>
+</tbody>
+</table>
+<p>Here <code>Interval(13,18)</code> can also be written <code>13..18</code>, it's from <a href="https://github.com/JuliaMath/IntervalSets.jl">IntervalSets.jl</a>.
+Any functions can be used to select keys, including lambdas: <code>B(time = t -&gt; 0&lt;t&lt;17)</code>.
+You may give just one <code>::Base.Fix2</code> function
+(such as <code>&lt;=(18)</code> or <code>==(20)</code>) provided its argument type matches the keys of one dimension.
+An interval or a function always selects via <code>findall</code>,
+i.e. it does not drop a dimension, even if there is exactly one match.</p>
+<p>By default lookup returns a view, while indexing returns a copy unless you add <code>@views</code>.
+This means that you can write into the array with <code>B(time = &lt;=(18)) .= 0</code>.
+For scalar output, you cannot of course write <code>B(13.0, 'α') = 0</code>
+as this parsed as a function definition, but you can write <code>B(13.0, 'α', :) .= 0</code>
+as a trailing colon makes a zero-dimensional view.</p>
+<p>(Possibly selectors should be made to work in square brackets too,
+allowing mixed indexing <code>B[1, Key('β')] == B(Index[1], 'β')</code>
+and <code>setkey!</code> via <code>B[Key(13.0), Key('α')] = 0</code>. But they don't right now,
+see <a href="https://github.com/mcabbott/AxisKeys.jl/pull/5">PR#5</a> for an attempt.)</p>
+<h3><a id="user-content-construction" class="anchor" aria-hidden="true" href="#construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Construction</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">KeyedArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>), ([<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>], <span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>)) <span class="pl-c"><span class="pl-c">#</span> AbstractArray, Tuple{AbstractVector, ...}</span></pre></div>
+<p>A nested pair with names can be constructed with keywords for names,
+and (apart from a few bugs) everything should work the same way in either order:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">KeyedArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>), row<span class="pl-k">=</span>[<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>], col<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>)     <span class="pl-c"><span class="pl-c">#</span> KeyedArray(NamedDimsArray(...))</span>
+<span class="pl-c1">NamedDimsArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>), row<span class="pl-k">=</span>[<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>], col<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>) <span class="pl-c"><span class="pl-c">#</span> NamedDimsArray(KeyedArray(...))</span></pre></div>
+<p>The function <code>wrapdims</code> does a bit more checking and fixing, but is not type-stable.
+It will adjust the length of ranges of keys if it can,
+and will fix indexing offsets if needed to match the array.
+The resulting order of wrappers is controlled by <code>AxisKeys.nameouter()=false</code>.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">wrapdims</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">10</span>), alpha<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>:<span class="pl-s"><span class="pl-pds">'</span>z<span class="pl-pds">'</span></span>) 
+<span class="pl-c"><span class="pl-c">#</span> Warning: range 'a':1:'z' replaced by 'a':1:'j', to match size(A, 1) == 10</span>
+
+<span class="pl-c1">wrapdims</span>(<span class="pl-c1">OffsetArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">10</span>),<span class="pl-k">-</span><span class="pl-c1">1</span>), iter<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>)
+<span class="pl-c1">axiskeys</span>(ans,<span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> 10:10:100 with indices 0:9</span></pre></div>
+<p>Finally, it will also convert <code>AxisArray</code>s, <code>NamedArray</code>s, as well as <code>NamedTuple</code>s.</p>
+<h3><a id="user-content-functions" class="anchor" aria-hidden="true" href="#functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Functions</h3>
+<p>As usual <code>axes(A)</code> returns (a tuple of vectors of) indices,
+and <code>axiskeys(A)</code> returns (a tuple of vectors of) keys.
+If the array has names, then <code>dimnames(A)</code> returns them.
+These functions work like <code>size(A, d) = size(A, name)</code> to get just one.</p>
+<p>Many functions should work, for example:</p>
+<ul>
+<li>
+<p>Broadcasting <code>log.(A)</code> and <code>map(log, A)</code>, as well as comprehensions
+<code>[log(x) for x in A]</code> should all work.</p>
+</li>
+<li>
+<p>Transpose etc, <code>permutedims</code>, <code>mapslices</code>.</p>
+</li>
+<li>
+<p>Concatenation <code>hcat(B, B .+ 100)</code> works.
+Note that the keys along the glued direction may not be unique afterwards.</p>
+</li>
+<li>
+<p>Reductions like <code>sum(A; dims=:channel)</code> can use dimension names.
+Likewise <code>prod</code>, <code>mean</code> etc., and <code>dropdims</code>.</p>
+</li>
+<li>
+<p>Some linear algebra functions like <code>*</code> and <code>\</code> will work.</p>
+</li>
+<li>
+<p>Getproperty returns the key vector, to allow things like
+<code>for (i,t) in enumerate(A.time); fun(val = A[i,:], time = t); ...</code>.</p>
+</li>
+<li>
+<p>Vectors support <code>push!(V, val)</code>, which will try to extend the key vector.
+There is also a method <code>push!(V, key =&gt; val)</code> which pushes in a new key.</p>
+</li>
+</ul>
+<p>To allow for this limited mutability, <code>V.keys isa Ref</code> for vectors,
+while <code>A.keys isa Tuple</code> for matrices &amp; higher. But <code>axiskeys(A)</code> always returns a tuple.</p>
+<ul>
+<li>
+<p>Named tuples can be converted to and from keyed vectors,
+with <code>collect(keys(nt)) == Symbol.(axiskeys(V),1)</code></p>
+</li>
+<li>
+<p><a href="https://github.com/mcabbott/LazyStack.jl">LazyStack</a><code>.stack</code> understands names and keys.
+Stacks of named tuples like <code>stack((a=i, b=i^2) for i=1:5)</code> create a matrix with <code>[:a, :b]</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/mcabbott/NamedPlus.jl">NamedPlus</a> has a macro which works on comprehensions:
+<code>@named [n^pow for n=1:10, pow=0:2:4]</code> has names and keys.</p>
+</li>
+</ul>
+<h3><a id="user-content-absent" class="anchor" aria-hidden="true" href="#absent"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Absent</h3>
+<ul>
+<li>There is no automatic alignment of dimensions by name.
+Thus <code>A .+ A[iter=3]</code> is fine as both names and keys line up,
+but <code>A .+ B</code> is an error, as <code>B</code>'s first name is <code>:time</code> not <code>:channel</code>.
+(See <a href="https://github.com/mcabbott/NamedPlus.jl">NamedPlus</a><code>.@named</code> for something like this.)</li>
+</ul>
+<p>As for <a href="https://github.com/invenia/NamedDims.jl">NamedDims.jl</a>, the guiding idea
+is that every operation which could be done on ordinary arrays
+should still produce the same data, but propagate the extra information (names/keys),
+and error if it conflicts.</p>
+<p>Both packages allow for wildcards, which never conflict.
+In NamedDims.jl this is the name <code>:_</code>, here it is a <code>Base.OneTo(n)</code>,
+like the <code>axes</code> of an <code>Array</code>. These can be constructed as
+<code>M = wrapdims(rand(2,2); _=[:a, :b], cols=nothing)</code>,
+and for instance <code>M .+ M'</code> is not an error.</p>
+<ul>
+<li>There are no special types provided for key vectors, they can be any <code>AbstractVector</code>s.
+Lookup happens by calling <code>i = findfirst(isequal(20.0), axiskeys(A,2))</code>,
+or <code>is = findall(&lt;(18), axiskeys(A,2))</code>.</li>
+</ul>
+<p>If you need lookup to be very fast, then you will want to use a package like
+<a href="https://github.com/garrison/UniqueVectors.jl">UniqueVectors.jl</a>
+or <a href="https://github.com/andyferris/AcceleratedArrays.jl">AcceleratedArrays.jl</a>
+or <a href="https://github.com/JuliaData/CategoricalArrays.jl">CategoricalArrays.jl</a>.
+To apply such a type to all dimensions, you may write
+<code>D = wrapdims(rand(1000), UniqueVector, rand(Int, 1000))</code>.
+Then <code>D(n)</code> here will use the fast lookup from UniqueVectors.jl (about 60x faster).</p>
+<p>When a key vector is a Julia <code>AbstractRange</code>, then this package provides some faster
+overloads for things like <code>findall(&lt;=(42), 10:10:100)</code>.</p>
+<ul>
+<li>There is also no automatic alignment by keys, like time.</li>
+</ul>
+<p>But this can be done elsewhere...</p>
+<h3><a id="user-content-elsewhere" class="anchor" aria-hidden="true" href="#elsewhere"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Elsewhere</h3>
+<p>This is more or less an attempt to replace <a href="https://github.com/JuliaArrays/AxisArrays.jl">AxisArrays</a>
+with several smaller packages. The complaints are:
+(1) It's confusing  to guess whether to perform indexing or lookup
+based on whether it is given an integer (index) or not (key).
+(2) Each "axis" was its own type <code>Axis{:name}</code> which allowed zero-overhead lookup
+before Julia 1.0. But this is now possible with a simpler design.
+(They were called axes before <code>Base.axes()</code> was added, hence (3) the confusing terminology.)
+(4) Broadcasting is not supported, as this changed dramatically in Julia 1.0.
+(5) There are lots of assorted functions, special categorical vector types, etc.
+which aren't part of the core.</p>
+<p>Other older packages (pre-Julia-1.0):</p>
+<ul>
+<li>
+<p><a href="https://github.com/davidavdav/NamedArrays.jl">NamedArrays</a> also provides names &amp; keys,
+which are always <code>OrderedDict</code>s. Named lookup looks like <code>NA[:x =&gt; 13.0]</code>
+instead of <code>A(x=13.0)</code> here; this is not very fast.
+Dimension names &amp; keys can be set after creation. Has nice pretty-printing routines.
+Returned by <a href="https://github.com/nalimilan/FreqTables.jl">FreqTables</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JuliaDiffEq/LabelledArrays.jl">LabelledArrays</a> adds names for individual elements, more like a NamedTuple.
+Only for small sizes: the storage inside is a Tuple, not an Array.</p>
+</li>
+<li>
+<p><a href="https://github.com/jw3126/AxisArrayPlots.jl">AxisArrayPlots</a> has some plot recipes.</p>
+</li>
+<li>
+<p><a href="https://github.com/JuliaArrays/OffsetArrays.jl">OffsetArrays</a> actually changes the indices
+of an Array, allowing any continuous integer range, like <code>0:9</code> or <code>-10:10</code>.
+This package is happy to wrap such arrays,
+and if needed will adjust indices of the given key vectors:
+<code>O = wrapdims(OffsetArray(["left", "mid", "right"], -1:1), 'A':'C')</code>,
+then <code>O[-1:0]</code> works.</p>
+</li>
+</ul>
+<p>Other new packages (post-1.0):</p>
+<ul>
+<li>
+<p><a href="https://github.com/rafaqz/DimensionalData.jl">DimensionalData</a> is another replacement
+for AxisArrays. It again uses types like <code>Dim{:name}</code> to store both name &amp; keys,
+plus some special ones like <code>X, Y</code> of the same abstract type.
+Named lookup then looks like <code>DA[X &lt;| At(13.0)]</code>, roughly like <code>A(x=13.0)</code> here.</p>
+</li>
+<li>
+<p><a href="https://github.com/mcabbott/NamedPlus.jl">NamedPlus</a> is some experiments using NamedDims.
+Function <code>align</code> permutes dimensions automatically,
+and macro <code>@named</code> can introduce this into broadcasting expressions.</p>
+</li>
+<li>
+<p><a href="https://github.com/invenia/IndexedDims.jl">IndexedDims</a> like this package adds keys
+on top of the names from NamedDims.
+These key vectors must always be <a href="https://github.com/andyferris/AcceleratedArrays.jl">AcceleratedArrays</a>.
+Like AxisArrays, it tries to guess whether to do indexing or lookup based on type.</p>
+</li>
+<li>
+<p><a href="https://github.com/andyferris/Dictionaries.jl">Dictionaries</a> does very fast lookup only
+(in our terminology) no indexing. Not <code>&lt;: AbstractArray</code>, not a wrapped around an Array.
+And presently only one-dimensional.</p>
+</li>
+</ul>
+<p>And see <a href="docs/speed.jl">docs/speed.jl</a> for some checks on this package,
+and comparisons to other ones.
+And see <a href="docs/repl.jl">docs/repl.jl</a> for some usage examples, showing pretty printing.
+For discussion, see <a href="https://github.com/JuliaCollections/AxisArraysFuture/issues/1">AxisArraysFuture</a>,
+and <a href="https://github.com/JuliaArrays/AxisArrays.jl/issues/84">AxisArrays#84</a>.</p>
+<p>In <g-emoji class="g-emoji" alias="snake" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f40d.png">🐍</g-emoji>-land:</p>
+<ul>
+<li>
+<p><a href="http://xarray.pydata.org/" rel="nofollow">xarray</a> does indexing <code>x[:, 0]</code>
+and lookup by "coordinate label" as <code>x.loc[:, 'IA']</code>;
+with names these become <code>x.isel(space=0)</code> and <code>da.sel(space='IA')</code>.</p>
+</li>
+<li>
+<p><a href="https://pandas.pydata.org" rel="nofollow">pandas</a> is really more like
+<a href="https://github.com/JuliaData/DataFrames.jl">DataFrames</a>, only one- and two-dimensional.
+Writes indexing "by position" as <code>df.iat[1, 1]</code> for scalars or <code>df.iloc[1:3, :]</code> allowing slices,
+and lookup "by label" as <code>df.at[dates[0], 'A']</code> for scalars or <code>df.loc['20130102':'20130104', ['A', 'B']]</code> for slices, "both endpoints are <em>included</em>" in this.
+See also <a href="https://github.com/JuliaPy/Pandas.jl">Pandas.jl</a> for a wrapper.</p>
+</li>
+</ul>
+</article></div>

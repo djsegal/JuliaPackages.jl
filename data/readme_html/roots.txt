@@ -1,0 +1,180 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p>Linux: <a href="https://travis-ci.org/JuliaMath/Roots.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/65fa1f58049dd9da146c10092338166cbf499a45/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614d6174682f526f6f74732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaMath/Roots.jl.svg?branch=master" style="max-width:100%;"></a>
+Windows: <a href="https://ci.appveyor.com/project/jverzani/roots-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/16097c5caecac57bf153fc61b656e4cc4d8eb36c/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f676f74657570746e356b79706166796c3f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/goteuptn5kypafyl?svg=true" style="max-width:100%;"></a></p>
+<h1><a id="user-content-root-finding-functions-for-julia" class="anchor" aria-hidden="true" href="#root-finding-functions-for-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Root finding functions for Julia</h1>
+<p>This package contains simple routines for finding roots of continuous
+scalar functions of a single real variable. The <code>find_zero</code>function provides the
+primary interface. It supports various algorithms through the
+specification of a method. These include:</p>
+<ul>
+<li>
+<p>Bisection-like algorithms. For functions where a bracketing interval
+is known (one where <code>f(a)</code> and <code>f(b)</code> have alternate signs), the
+<code>Bisection</code> method can be specified. For most floating point number
+types, bisection occurs in a manner exploiting floating point
+storage conventions. For others, an algorithm of Alefeld, Potra, and
+Shi is used. These methods are guaranteed to converge.</p>
+</li>
+<li>
+<p>Several derivative-free methods are implemented. These are specified
+through the methods <code>Order0</code>, <code>Order1</code> (the secant method), <code>Order2</code>
+(the Steffensen method), <code>Order5</code>, <code>Order8</code>, and <code>Order16</code>. The
+number indicates, roughly, the order of convergence. The <code>Order0</code>
+method is the default, and the most robust, but may take many more
+function calls to converge. The higher order methods promise higher
+order (faster) convergence, though don't always yield results with
+fewer function calls than <code>Order1</code> or <code>Order2</code>. The methods
+<code>Roots.Order1B</code> and <code>Roots.Order2B</code> are superlinear and quadratically converging
+methods independent of the multiplicity of the zero.</p>
+</li>
+<li>
+<p>There are historic methods that require a derivative or two:
+<code>Roots.Newton</code> and <code>Roots.Halley</code>.  <code>Roots.Schroder</code> provides a
+quadratic method, like Newton's method, which is independent of the
+multiplicity of the zero.</p>
+</li>
+</ul>
+<p>Each method's documentation has additional detail.</p>
+<p>Some examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Roots
+<span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">exp</span>(x) <span class="pl-k">-</span> x<span class="pl-k">^</span><span class="pl-c1">4</span>
+
+<span class="pl-c"><span class="pl-c">#</span> a bisection method has the bracket specified with a tuple or vector</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">find_zero</span>(f, (<span class="pl-c1">8</span>,<span class="pl-c1">9</span>), <span class="pl-c1">Bisection</span>())
+<span class="pl-c1">8.613169456441398</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">find_zero</span>(f, (<span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-c1">0</span>))  <span class="pl-c"><span class="pl-c">#</span> Bisection if x is a tuple and no method</span>
+<span class="pl-k">-</span><span class="pl-c1">0.8155534188089606</span>
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">find_zero</span>(f, (<span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-c1">0</span>), <span class="pl-c1">FalsePosition</span>())  <span class="pl-c"><span class="pl-c">#</span> just 11 function evaluations</span>
+<span class="pl-k">-</span><span class="pl-c1">0.8155534188089607</span></pre></div>
+<p>For non-bracketing methods, the initial position is passed in as a
+scalar:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span># find_zero(f, x0::Number) will use Order0()</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">find_zero</span>(f, <span class="pl-c1">3</span>)         <span class="pl-c"><span class="pl-c">#</span> default is Order0()</span>
+<span class="pl-c1">1.4296118247255556</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">find_zero</span>(f, <span class="pl-c1">3</span>, <span class="pl-c1">Order1</span>()) <span class="pl-c"><span class="pl-c">#</span> same answer, different method</span>
+<span class="pl-c1">1.4296118247255556</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">find_zero</span>(sin, <span class="pl-c1">BigFloat</span>(<span class="pl-c1">3.0</span>), <span class="pl-c1">Order16</span>())
+<span class="pl-c1">3.141592653589793238462643383279502884197169399375105820974944592307816406286198</span></pre></div>
+<p>The <code>find_zero</code> function can be used with callable objects:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> SymEngine
+<span class="pl-c1">@vars</span> x
+<span class="pl-c1">find_zero</span>(x<span class="pl-k">^</span><span class="pl-c1">5</span> <span class="pl-k">-</span> x <span class="pl-k">-</span> <span class="pl-c1">1</span>, <span class="pl-c1">1.0</span>)  <span class="pl-c"><span class="pl-c">#</span> 1.1673039782614185</span></pre></div>
+<p>Or,</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Polynomials
+x <span class="pl-k">=</span> <span class="pl-c1">variable</span>(Int)
+<span class="pl-c1">find_zero</span>(x<span class="pl-k">^</span><span class="pl-c1">5</span> <span class="pl-k">-</span> x <span class="pl-k">-</span> <span class="pl-c1">1</span>, <span class="pl-c1">1.0</span>)  <span class="pl-c"><span class="pl-c">#</span> 1.1673039782614185</span></pre></div>
+<p>The function should respect the units of the <code>Unitful</code> package:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Unitful
+s <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">u</span>"</span>s<span class="pl-pds">"</span></span>; m <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">u</span>"</span>m<span class="pl-pds">"</span></span>
+g <span class="pl-k">=</span> <span class="pl-c1">9.8</span><span class="pl-k">*</span>m<span class="pl-k">/</span>s<span class="pl-k">^</span><span class="pl-c1">2</span>
+v0 <span class="pl-k">=</span> <span class="pl-c1">10</span>m<span class="pl-k">/</span>s
+y0 <span class="pl-k">=</span> <span class="pl-c1">16</span>m
+<span class="pl-en">y</span>(t) <span class="pl-k">=</span> <span class="pl-k">-</span>g<span class="pl-k">*</span>t<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> v0<span class="pl-k">*</span>t <span class="pl-k">+</span> y0
+<span class="pl-c1">find_zero</span>(y, <span class="pl-c1">1</span>s)      <span class="pl-c"><span class="pl-c">#</span> 1.886053370668014 s</span></pre></div>
+<p>Newton's method can be used without taking derivatives, if the
+<code>ForwardDiff</code> package is available:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> ForwardDiff
+<span class="pl-en">D</span>(f) <span class="pl-k">=</span> x <span class="pl-k">-&gt;</span> ForwardDiff<span class="pl-k">.</span><span class="pl-c1">derivative</span>(f,<span class="pl-c1">float</span>(x))</pre></div>
+<p>Now we have:</p>
+<pre><code>f(x) = x^3 - 2x - 5
+x0 = 2
+find_zero((f,D(f)), x0, Roots.Newton())   # 2.0945514815423265
+</code></pre>
+<p>Automatic derivatives allow for easy solutions to finding critical
+points of a function.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span># mean</span>
+<span class="pl-k">using</span> Statistics
+as <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">5</span>)
+<span class="pl-k">function</span> <span class="pl-en">M</span>(x)
+  <span class="pl-c1">sum</span>([(x<span class="pl-k">-</span>a)<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">for</span> a <span class="pl-k">in</span> as])
+<span class="pl-k">end</span>
+<span class="pl-c1">find_zero</span>(<span class="pl-c1">D</span>(M), <span class="pl-c1">.5</span>) <span class="pl-k">-</span> <span class="pl-c1">mean</span>(as)	  <span class="pl-c"><span class="pl-c">#</span> 0.0</span>
+
+<span class="pl-c"><span class="pl-c">#</span># median</span>
+<span class="pl-k">function</span> <span class="pl-en">m</span>(x)
+  <span class="pl-c1">sum</span>([<span class="pl-c1">abs</span>(x<span class="pl-k">-</span>a) <span class="pl-k">for</span> a <span class="pl-k">in</span> as])
+
+<span class="pl-k">end</span>
+<span class="pl-c1">find_zero</span>(<span class="pl-c1">D</span>(m), (<span class="pl-c1">0</span>, <span class="pl-c1">1</span>)) <span class="pl-k">-</span> <span class="pl-c1">median</span>(as)	<span class="pl-c"><span class="pl-c">#</span> 0.0</span></pre></div>
+<h3><a id="user-content-multiple-zeros" class="anchor" aria-hidden="true" href="#multiple-zeros"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Multiple zeros</h3>
+<p>The <code>find_zeros</code> function can be used to search for all zeros in a
+specified interval. The basic algorithm essentially splits the interval into many
+subintervals. For each, if there is a bracket, a bracketing algorithm
+is used to identify a zero, otherwise a derivative free method is used
+to search for zeros. This algorithm can miss zeros for various reasons, so the
+results should be confirmed by other means.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">exp</span>(x) <span class="pl-k">-</span> x<span class="pl-k">^</span><span class="pl-c1">4</span>
+<span class="pl-c1">find_zeros</span>(f, <span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-c1">10</span>)</pre></div>
+<h3><a id="user-content-convergence" class="anchor" aria-hidden="true" href="#convergence"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Convergence</h3>
+<p>For most algorithms, convergence is decided when</p>
+<ul>
+<li>
+<p>The value |f(x_n)| &lt; tol with <code>tol = max(atol, abs(x_n)*rtol)</code>, or</p>
+</li>
+<li>
+<p>the values x_n ≈ x_{n-1} with tolerances <code>xatol</code> and <code>xrtol</code> <em>and</em>
+f(x_n) ≈ 0 with a <em>relaxed</em> tolerance based on <code>atol</code> and <code>rtol</code>.</p>
+</li>
+</ul>
+<p>The algorithm stops if</p>
+<ul>
+<li>
+<p>it encounters an <code>NaN</code> or an <code>Inf</code>, or</p>
+</li>
+<li>
+<p>the number of iterations exceed <code>maxevals</code>, or</p>
+</li>
+<li>
+<p>the number of function calls exceeds <code>maxfnevals</code>.</p>
+</li>
+</ul>
+<p>If the algorithm stops and the relaxed convergence criteria is met,
+the suspected zero is returned. Otherwise an error is thrown
+indicating no convergence. To adjust the tolerances, <code>find_zero</code>
+accepts keyword arguments <code>atol</code>, <code>rtol</code>, <code>xatol</code>, and <code>xrtol</code>.</p>
+<p>The <code>Bisection</code> and <code>Roots.A42</code> methods are guaranteed to converge
+even if the tolerances are set to zero, so these are the
+defaults. Non-zero values for <code>xatol</code> and <code>xrtol</code> can be specified to
+reduce the number of function calls when lower precision is required.</p>
+<h2><a id="user-content-an-alternate-interface" class="anchor" aria-hidden="true" href="#an-alternate-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>An alternate interface</h2>
+<p>This functionality is provided by the <code>fzero</code> function, familiar to
+MATLAB users. <code>Roots</code> also provides this alternative interface:</p>
+<ul>
+<li>
+<p><code>fzero(f, x0::Real; order=0)</code> calls a
+derivative-free method. with the order specifying one of
+<code>Order0</code>, <code>Order1</code>, etc.</p>
+</li>
+<li>
+<p><code>fzero(f, a::Real, b::Real)</code> calls the <code>find_zero</code> algorithm with the
+<code>Bisection</code> method.</p>
+</li>
+<li>
+<p><code>fzeros(f, a::Real, b::Real)</code> will call <code>find_zeros</code>.</p>
+</li>
+</ul>
+<h2><a id="user-content-usage-examples" class="anchor" aria-hidden="true" href="#usage-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage examples</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">exp</span>(x) <span class="pl-k">-</span> x<span class="pl-k">^</span><span class="pl-c1">4</span>
+<span class="pl-c"><span class="pl-c">#</span># bracketing</span>
+<span class="pl-c1">fzero</span>(f, <span class="pl-c1">8</span>, <span class="pl-c1">9</span>)		          <span class="pl-c"><span class="pl-c">#</span> 8.613169456441398</span>
+<span class="pl-c1">fzero</span>(f, <span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-c1">0</span>)		      <span class="pl-c"><span class="pl-c">#</span> -0.8155534188089606</span>
+<span class="pl-c1">fzeros</span>(f, <span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-c1">10</span>)            <span class="pl-c"><span class="pl-c">#</span> -0.815553, 1.42961  and 8.61317</span>
+
+<span class="pl-c"><span class="pl-c">#</span># use a derivative free method</span>
+<span class="pl-c1">fzero</span>(f, <span class="pl-c1">3</span>)			          <span class="pl-c"><span class="pl-c">#</span> 1.4296118247255558</span>
+
+<span class="pl-c"><span class="pl-c">#</span># use a different order</span>
+<span class="pl-c1">fzero</span>(sin, <span class="pl-c1">big</span>(<span class="pl-c1">3</span>), order<span class="pl-k">=</span><span class="pl-c1">16</span>)  <span class="pl-c"><span class="pl-c">#</span> 3.141592653589793...</span></pre></div>
+<h3><a id="user-content-technical-difference-between-find_zero-and-fzero" class="anchor" aria-hidden="true" href="#technical-difference-between-find_zero-and-fzero"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Technical difference between find_zero and fzero</h3>
+<p>The <code>fzero</code> function is not identical to <code>find_zero</code>. When a function, <code>f</code>,
+is passed to <code>find_zero</code> the code is specialized to the function <code>f</code>
+which means the first use of <code>f</code> will be slower due to compilation,
+but subsequent uses will be faster. For <code>fzero</code>, the code is not
+specialized to the function <code>f</code>, so the story is reversed.</p>
+<hr>
+<p>Some additional documentation can be read <a href="http://nbviewer.ipython.org/url/github.com/JuliaLang/Roots.jl/blob/master/doc/roots.ipynb?create=1" rel="nofollow">here</a>.</p>
+</article></div>

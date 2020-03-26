@@ -1,0 +1,65 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h2><a id="user-content-aws---julia-interface-to-amazon-web-services" class="anchor" aria-hidden="true" href="#aws---julia-interface-to-amazon-web-services"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>AWS - Julia interface to Amazon Web Services</h2>
+<p>This package provides a native Julia interface to the Amazon Web Services API</p>
+<p>The following services are supported as of now:</p>
+<ul>
+<li>EC2</li>
+<li>S3</li>
+<li>SQS</li>
+<li>Auto Scaling</li>
+</ul>
+<h3><a id="user-content-current-status" class="anchor" aria-hidden="true" href="#current-status"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Current status</h3>
+<ul>
+<li>
+<p>The basic APIs of EC2, S3, SQS and Auto Scaling are tested</p>
+</li>
+<li>
+<p>The advanced APIs (e.g. VPC related APIs, etc) of EC2 are yet untested. Any testing will be helpful.</p>
+</li>
+<li>
+<p>The REST API does not match exactly in certain cases
+with the WSDL. For the EC2 API, the bulk of the code is generated from the WSDL while it has been translated by hand for the
+S3 API.</p>
+<p>Please file issues on GitHub with the output from running the request in debug mode, i.e., with env.dbg = true.</p>
+</li>
+</ul>
+<h3><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h3>
+<ul>
+<li>Each of the functions takes in an AWSEnv as the first parameter</li>
+</ul>
+<pre><code>type AWSEnv
+    aws_id::String         # AWS Access Key id
+    aws_seckey::String     # AWS Secret key for signing requests
+    aws_token::String      # AWS Security Token for temporary credentials
+    region::String      # region name
+    ep_scheme::String      # URL scheme: http or https
+    ep_host::String     # region endpoint (host)
+    ep_path::String     # region endpoint (path)
+    sig_ver::Int                # AWS signature version (2 or 4)
+    timeout::Float64            # request timeout in seconds, if set to 0.0, request will never time out. Default is 0.0
+    dry_run::Bool               # If true, no actual request will be made - implies dbg flag below
+    dbg::Bool                   # print request and raw response to screen
+
+end
+</code></pre>
+<p>Constructors:</p>
+<pre><code>AWSEnv(; id=AWS_ID, key=AWS_SECKEY, token=AWS_TOKEN, ec2_creds=false, scheme="https", region=AWS_REGION, ep="", sig_ver=4, timeout=0.0, dr=false, dbg=false)
+</code></pre>
+<ul>
+<li>The <code>AWS_ID</code> and <code>AWS_SECKEY</code> are initialized from env if available. Else a file ~/.awssecret is read (if available) for the same.</li>
+<li>The <code>AWS_TOKEN</code> is an empty string by default. Override <code>token</code> if the <code>id</code> and <code>key</code> are temporary security credentials.</li>
+<li>Set <code>ec2_creds</code> to true to automatically retrieve temporary security credentials if running on an EC2 instance that has such credentials.</li>
+<li>Set <code>region</code> to one of the AWS region name strings, e.g., "us-east-1". Not needed if setting <code>ep</code>.</li>
+<li><code>ep</code> can contain both a hostname and a pathname for an AWS endpoint. It is generally not needed when using native AWS services; use <code>region</code> instead. If using a service that emulates AWS, set <code>ep</code> to the hostname of the endpoint to be used. If both <code>region</code> and <code>ep</code> are set, the host portion of <code>ep</code> will override region, and the path portion of <code>ep</code> will be used in conjunction with <code>region</code>.</li>
+<li><code>sig_ver</code> must be set to 2 or 4. Some AWS services require one signature version or the other, in which case this value will be ignored.</li>
+</ul>
+<p>APIs:</p>
+<ul>
+<li><a href="EC2.md">EC2 API</a></li>
+<li><a href="S3.md">S3 API</a></li>
+<li><a href="SQS.md">SQS API</a></li>
+<li><a href="AutoScale.md">Auto Scale API</a></li>
+</ul>
+<h3><a id="user-content-binary-dependencies" class="anchor" aria-hidden="true" href="#binary-dependencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Binary dependencies</h3>
+<p>libz must be installed</p>
+<p>libxml2 must be installed</p>
+</article></div>

@@ -1,0 +1,419 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-lowrankmodelsjl" class="anchor" aria-hidden="true" href="#lowrankmodelsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>LowRankModels.jl</h1>
+<p><a href="https://travis-ci.org/madeleineudell/LowRankModels.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6c7215c41d2f9866a65866972f43cfd7979c4814/68747470733a2f2f7472617669732d63692e6f72672f6d6164656c65696e657564656c6c2f4c6f7752616e6b4d6f64656c732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/madeleineudell/LowRankModels.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>LowRankModels.jl is a julia package for modeling and fitting generalized low rank models (GLRMs).
+GLRMs model a data array by a low rank matrix, and
+include many well known models in data analysis, such as
+principal components analysis (PCA), matrix completion, robust PCA,
+nonnegative matrix factorization, k-means, and many more.</p>
+<p>For more information on GLRMs, see <a href="https://people.orie.cornell.edu/mru8/doc/udell16_glrm.pdf" rel="nofollow">our paper</a>.
+There is a <a href="https://github.com/udellgroup/pyglrm">python interface</a> to this package,
+and a GLRM implementation in
+<a href="http://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/glrm.html" rel="nofollow">the H2O machine learning platform</a>
+with interfaces in a variety of languages.</p>
+<p>LowRankModels.jl makes it easy to mix and match loss functions and regularizers
+to construct a model suitable for a particular data set.
+In particular, it supports</p>
+<ul>
+<li>using different loss functions for different columns of the data array,
+which is useful when data types are heterogeneous
+(eg, real, boolean, and ordinal columns);</li>
+<li>fitting the model to only <em>some</em> of the entries in the table, which is useful for data tables with many missing (unobserved) entries; and</li>
+<li>adding offsets and scalings to the model without destroying sparsity,
+which is useful when the data is poorly scaled.</li>
+</ul>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<p>To install, just call</p>
+<pre><code>Pkg.add("LowRankModels")
+</code></pre>
+<p>at the julia prompt.</p>
+<h1><a id="user-content-generalized-low-rank-models" class="anchor" aria-hidden="true" href="#generalized-low-rank-models"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Generalized Low Rank Models</h1>
+<p>GLRMs form a low rank model for tabular data <code>A</code> with <code>m</code> rows and <code>n</code> columns,
+which can be input as an array or any array-like object (for example, a data frame).
+It is fine if only some of the entries have been observed
+(i.e., the others are <code>missing</code>); the GLRM will only be fit on the <code>!ismissing</code> entries.
+The desired model is specified by choosing a rank <code>k</code> for the model,
+an array of loss functions <code>losses</code>, and two regularizers, <code>rx</code> and <code>ry</code>.
+The data is modeled as <code>X'*Y</code>, where <code>X</code> is a <code>k</code>x<code>m</code> matrix and <code>Y</code> is a <code>k</code>x<code>n</code> matrix.
+<code>X</code> and <code>Y</code> are found by solving the optimization problem</p>
+
+<pre><code>minimize sum_{(i,j) in obs} losses[j]((X'*Y)[i,j], A[i,j]) + sum_i rx(X[:,i]) + sum_j ry(Y[:,j])
+</code></pre>
+<p>The basic type used by LowRankModels.jl is the GLRM. To form a GLRM,
+the user specifies</p>
+<ul>
+<li>the data <code>A</code> (any <code>AbstractArray</code>, such as an array, a sparse matrix, or a data frame)</li>
+<li>the array of loss functions <code>losses</code></li>
+<li>the regularizers <code>rx</code> and <code>ry</code></li>
+<li>the rank <code>k</code></li>
+</ul>
+<p>The user may also specify</p>
+<ul>
+<li>the observed entries <code>obs</code></li>
+<li>starting matrices X₀ and Y₀</li>
+</ul>
+<p><code>obs</code> is a list of tuples of the indices of the observed entries in the matrix,
+and may be omitted if all the entries in the matrix have been observed.
+If <code>A</code> is a sparse matrix, implicit zeros are interpreted
+as missing entries by default;
+see the discussion of <a href="https://github.com/madeleineudell/LowRankModels.jl#fitting-sparse-matrices">sparse matrices</a> below for more details.
+<code>X₀</code> and <code>Y₀</code> are initialization
+matrices that represent a starting guess for the optimization.</p>
+<p>Losses and regularizers must be of type <code>Loss</code> and <code>Regularizer</code>, respectively,
+and may be chosen from a list of supported losses and regularizers, which include</p>
+<p>Losses:</p>
+<ul>
+<li>quadratic loss <code>QuadLoss</code></li>
+<li>hinge loss <code>HingeLoss</code></li>
+<li>logistic loss <code>LogisticLoss</code></li>
+<li>poisson loss <code>PoissonLoss</code></li>
+<li>weighted hinge loss <code>WeightedHingeLoss</code></li>
+<li>l1 loss <code>L1Loss</code></li>
+<li>ordinal hinge loss <code>OrdinalHingeLoss</code></li>
+<li>periodic loss <code>PeriodicLoss</code></li>
+<li>multinomial categorical loss <code>MultinomialLoss</code></li>
+<li>multinomial ordinal (aka ordered logit) loss <code>OrderedMultinomialLoss</code></li>
+<li>bigger-vs-smaller loss <code>BvSLoss</code> (for ordinal data)</li>
+<li>one-vs all-loss <code>OvALoss</code> (for categorical data)</li>
+</ul>
+<p>The constructors for all the ordinal and categorical losses take as an
+argument  the maximum (or both minimum and maximum) value the variable may  take.
+Using the one-vs-all loss is equivalent to transforming a categorical value
+to a one-hot vector and using a binary loss on each entry in that vector.
+Using the bigger-vs-smaller loss is equivalent to transforming the ordinal value
+to a boolean vector and using a binary loss on each entry in that vector.
+By default,  the binary loss used is the logistic loss.</p>
+<p>Regularizers:</p>
+<ul>
+<li>quadratic regularization <code>QuadReg</code></li>
+<li>constrained squared euclidean norm <code>QuadConstraint</code></li>
+<li>l1 regularization <code>OneReg</code></li>
+<li>no regularization <code>ZeroReg</code></li>
+<li>nonnegative constraint <code>NonNegConstraint</code> (eg, for nonnegative matrix factorization)</li>
+<li>1-sparse constraint <code>OneSparseConstraint</code> (eg, for orthogonal NNMF)</li>
+<li>unit 1-sparse constraint <code>UnitOneSparseConstraint</code> (eg, for k-means)</li>
+<li>simplex constraint <code>SimplexConstraint</code></li>
+<li>l1 regularization, combined with nonnegative constraint <code>NonNegOneReg</code></li>
+<li>fix features at values <code>y0</code> <code>FixedLatentFeaturesConstraint(y0)</code></li>
+</ul>
+<p>Each of these losses and regularizers can be scaled
+(for example, to increase the importance of the loss relative to the regularizer)
+by calling <code>mul!(loss, newscale)</code>.
+Users may also implement their own losses and regularizers,
+or adjust internal parameters of the losses and regularizers;
+see <a href="https://github.com/madeleineudell/LowRankModels.jl/blob/src/losses.jl">losses.jl</a> and <a href="https://github.com/madeleineudell/LowRankModels.jl/blob/master/src/regularizers.jl">regularizers.jl</a> for more details.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example</h2>
+<p>For example, the following code forms a k-means model with <code>k=5</code> on the <code>100</code>x<code>100</code> matrix <code>A</code>:</p>
+<pre><code>using LowRankModels
+m,n,k = 100,100,5
+losses = QuadLoss() # minimize squared distance to cluster centroids
+rx = UnitOneSparseConstraint() # each row is assigned to exactly one cluster
+ry = ZeroReg() # no regularization on the cluster centroids
+glrm = GLRM(A,losses,rx,ry,k)
+</code></pre>
+<p>To fit the model, call</p>
+<pre><code>X,Y,ch = fit!(glrm)
+</code></pre>
+<p>which runs an alternating directions proximal gradient method on <code>glrm</code> to find the
+<code>X</code> and <code>Y</code> minimizing the objective function.
+(<code>ch</code> gives the convergence history; see
+<a href="https://github.com/madeleineudell/LowRankModels.jl#technical-details">Technical details</a>
+below for more information.)</p>
+<p>The <code>losses</code> argument can also be an array of loss functions,
+with one for each column (in order). For example,
+for a data set with 3 columns, you could use</p>
+<pre><code>losses = Loss[QuadLoss(), LogisticLoss(), HingeLoss()]
+</code></pre>
+<p>Similiarly, the <code>ry</code> argument can be an array of regularizers,
+with one for each column (in order). For example,
+for a data set with 3 columns, you could use</p>
+<pre><code>ry = Regularizer[QuadReg(1), QuadReg(10), FixedLatentFeaturesConstraint([1.,2.,3.])]
+</code></pre>
+<p>This regularizes the first to columns of <code>Y</code> with <code>||Y[:,1]||^2 + 10||Y[:,2]||^2</code>
+and constrains the third (and last) column of <code>Y</code> to be equal to <code>[1,2,3]</code>.</p>
+<p><a href="https://github.com/madeleineudell/LowRankModels.jl/blob/master/examples/simple_glrms.jl">More examples here.</a></p>
+<h1><a id="user-content-missing-data" class="anchor" aria-hidden="true" href="#missing-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Missing data</h1>
+<p>If not all entries are present in your data table, just tell the GLRM
+which observations to fit the model to by listing tuples of their indices in <code>obs</code>,
+eg, if <code>obs=[(1,2),(5,3)]</code>, exactly two entries have been observed.
+Then initialize the model using</p>
+<pre><code>GLRM(A,losses,rx,ry,k,obs=obs)
+</code></pre>
+<p>If <code>A</code> is a DataFrame and you just want the model to ignore
+any entry that is <code>missing</code>, you can use</p>
+<pre><code>obs = observations(A)
+</code></pre>
+<h1><a id="user-content-standard-low-rank-models" class="anchor" aria-hidden="true" href="#standard-low-rank-models"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Standard low rank models</h1>
+<p>Low rank models can easily be used to fit standard models such as PCA, k-means, and nonnegative matrix factorization.
+The following functions are available:</p>
+<ul>
+<li><code>pca</code>: principal components analysis</li>
+<li><code>qpca</code>: quadratically regularized principal components analysis</li>
+<li><code>rpca</code>: robust principal components analysis</li>
+<li><code>nnmf</code>: nonnegative matrix factorization</li>
+<li><code>k-means</code>: k-means</li>
+</ul>
+<p>See <a href="https://github.com/madeleineudell/LowRankModels.jl/blob/master/src/simple_glrms.jl">the code</a> for usage.
+Any keyword argument valid for a <code>GLRM</code> object,
+such as an initial value for <code>X</code> or <code>Y</code>
+or a list of observations,
+can also be used with these standard low rank models.</p>
+<h1><a id="user-content-scaling-and-offsets-" class="anchor" aria-hidden="true" href="#scaling-and-offsets-"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Scaling and offsets <a name="user-content-scaling"></a></h1>
+<p>If you choose, LowRankModels.jl can add an offset to your model and scale the loss
+functions and regularizers so all columns have the same pull in the model.
+Simply call</p>
+<pre><code>glrm = GLRM(A,losses,rx,ry,k, offset=true, scale=true)
+</code></pre>
+<p>This transformation generalizes standardization, a common proprocessing technique applied before PCA.
+(For more about offsets and scaling, see the code or the paper.)</p>
+<p>You can also add offsets and scalings to previously unscaled models:</p>
+<ul>
+<li>
+<p>Add an offset to the model (by applying no regularization to the last row
+of the matrix <code>Y</code>, and enforcing that the last column of <code>X</code> be all 1s) using</p>
+<pre><code>add_offset!(glrm)
+</code></pre>
+</li>
+<li>
+<p>Scale the loss functions and regularizers by calling</p>
+<pre><code>equilibrate_variance!(glrm)
+</code></pre>
+</li>
+<li>
+<p>Scale only the columns associated to <code>QuadLoss</code> or <code>HuberLoss</code> loss functions.</p>
+<pre><code>prob_scale!(glrm)
+</code></pre>
+</li>
+</ul>
+<h1><a id="user-content-fitting-dataframes" class="anchor" aria-hidden="true" href="#fitting-dataframes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fitting DataFrames</h1>
+<p>Perhaps all this sounds like too much work. Perhaps you happen to have a
+<a href="https://github.com/JuliaStats/DataFrames.jl">DataFrame</a> <code>df</code> lying around
+that you'd like a low rank (eg, <code>k=2</code>) model for. For example,</p>
+<pre><code>import RDatasets
+df = RDatasets.dataset("psych", "msq")
+</code></pre>
+<p>Never fear! Just call</p>
+<pre><code>glrm, labels = GLRM(df, k)
+X, Y, ch = fit!(glrm)
+</code></pre>
+<p>This will fit a GLRM with rank <code>k</code> to your data,
+using a QuadLoss loss for real valued columns,
+HingeLoss loss for boolean columns,
+and ordinal HingeLoss loss for integer columns,
+a small amount of QuadLoss regularization,
+and scaling and adding an offset to the model as described <a href="#scaling">here</a>.
+It returns the column labels for the columns it fit, along with the model.
+Right now, all other data types are ignored.
+<code>NaN</code> values are treated as missing values (<code>NA</code>s) and ignored in the fit.</p>
+<p>The full call signature is</p>
+<pre><code>function GLRM(df::DataFrame, k::Int;
+              losses = Loss[], rx = QuadReg(.01), ry = QuadReg(.01),
+              offset = true, scale = false,
+              prob_scale = true, NaNs_to_NAs = true)
+</code></pre>
+<p>You can modify the losses or regularizers, or turn off offsets or scaling,
+using these keyword arguments.</p>
+<p>Or to specify a map from data types to losses, define a new loss_map from datatypes to losses (like probabilistic_losses, below):</p>
+<pre><code>probabilistic_losses = Dict{Symbol, Any}(
+    :real        =&gt; QuadLoss,
+    :bool        =&gt; LogisticLoss,
+    :ord         =&gt; MultinomialOrdinalLoss,
+    :cat         =&gt; MultinomialLoss
+)
+</code></pre>
+<p>and input an array of datatypes (one for each column of your data frame: <code>GLRM(A, k, datatypes; loss_map = loss_map)</code>. The full call signature is</p>
+<pre><code>function GLRM(df::DataFrame, k::Int, datatypes::Array{Symbol,1};
+              loss_map = probabilistic_losses,
+              rx = QuadReg(.01), ry = QuadReg(.01),
+              offset = true, scale = false, prob_scale = true,
+              transform_data_to_numbers = true, NaNs_to_NAs = true)
+</code></pre>
+<p>You can modify the losses or regularizers, or turn off offsets or scaling,
+using these keyword arguments.</p>
+<p>To fit a data frame with categorical values, you can use the function
+<code>expand_categoricals!</code> to turn categorical columns into a Boolean column for each
+level of the categorical variable.
+For example, <code>expand_categoricals!(df, [:gender])</code> will replace the gender
+column with a column corresponding to <code>gender=male</code>,
+a column corresponding to <code>gender=female</code>, and other columns corresponding to
+labels outside the gender binary, if they appear in the data set.</p>
+<p>You can use the model to get some intuition for the data set. For example,
+try plotting the columns of <code>Y</code> with the labels; you might see
+that similar features are close to each other!</p>
+<h1><a id="user-content-fitting-sparse-matrices" class="anchor" aria-hidden="true" href="#fitting-sparse-matrices"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fitting Sparse Matrices</h1>
+<p>If you have a very large, sparsely observed dataset, then you may want to
+encode your data as a
+<a href="http://julia-demo.readthedocs.org/en/latest/stdlib/sparse.html" rel="nofollow">sparse matrix</a>.
+By default, <code>LowRankModels</code> interprets the sparse entries of a sparse
+matrix as missing entries (i.e. <code>NA</code> values). There is no need to
+pass the indices of observed entries (<code>obs</code>) -- this is done
+automatically when <code>GLRM(A::SparseMatrixCSC,...)</code> is called.
+In addition, calling <code>fit!(glrm)</code> when <code>glrm.A</code> is a sparse matrix
+will use the sparse variant of the proximal gradient descent algorithm,
+<code>fit!(glrm, SparseProxGradParams(); kwargs...)</code>.</p>
+<p>If, instead, you'd like to interpret the sparse entries as zeros, rather
+than missing or <code>NA</code> entries, use:</p>
+<div class="highlight highlight-source-julia"><pre>glrm <span class="pl-k">=</span> <span class="pl-c1">GLRM</span>(<span class="pl-k">...</span>;sparse_na<span class="pl-k">=</span><span class="pl-c1">false</span>)</pre></div>
+<p>In this case, the dataset is dense in terms of observations, but sparse
+in terms of nonzero values. Thus, it may make more sense to fit the
+model with the vanilla proximal gradient descent algorithm,
+<code>fit!(glrm, ProxGradParams(); kwargs...)</code>.</p>
+<h1><a id="user-content-parallel-fitting-experimental" class="anchor" aria-hidden="true" href="#parallel-fitting-experimental"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Parallel fitting (experimental)</h1>
+<p>LowRankModels makes use of Julia v0.5's new multithreading functionality
+to fit models in parallel.
+To fit a LowRankModel in parallel using multithreading,
+simply set the number of threads
+from the command line before starting Julia: eg,</p>
+<pre><code>export JULIA_NUM_THREADS=4
+</code></pre>
+<h1><a id="user-content-technical-details" class="anchor" aria-hidden="true" href="#technical-details"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Technical details</h1>
+<h2><a id="user-content-optimization" class="anchor" aria-hidden="true" href="#optimization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Optimization</h2>
+<p>The function <code>fit!</code> uses an alternating directions proximal gradient method
+to minimize the objective. This method is <em>not</em> guaranteed to converge to
+the optimum, or even to a local minimum. If your code is not converging
+or is converging to a model you dislike, there are a number of parameters you can tweak.</p>
+<h3><a id="user-content-warm-start" class="anchor" aria-hidden="true" href="#warm-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Warm start</h3>
+<p>The algorithm starts with <code>glrm.X</code> and <code>glrm.Y</code> as the initial estimates
+for <code>X</code> and <code>Y</code>. If these are not given explicitly, they will be initialized randomly.
+If you have a good guess for a model, try setting them explicitly.
+If you think that you're getting stuck in a local minimum, try reinitializing your
+GLRM (so as to construct a new initial random point) and see if the model you obtain improves.</p>
+<p>The function <code>fit!</code> sets the fields <code>glrm.X</code> and <code>glrm.Y</code>
+after fitting the model. This is particularly useful if you want to use
+the model you generate as a warm start for further iterations.
+If you prefer to preserve the original <code>glrm.X</code> and <code>glrm.Y</code> (eg, for cross validation),
+you should call the function <code>fit</code>, which does not mutate its arguments.</p>
+<p>You can even start with an easy-to-optimize loss function, run <code>fit!</code>,
+change the loss function (<code>glrm.losses = newlosses</code>),
+and keep going from your warm start by calling <code>fit!</code> again to fit
+the new loss functions.</p>
+<h3><a id="user-content-initialization" class="anchor" aria-hidden="true" href="#initialization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Initialization</h3>
+<p>If you don't have a good guess at a warm start for your model, you might try
+one of the initializations provided in <code>LowRankModels</code>.</p>
+<ul>
+<li><code>init_svd!</code> initializes the model as the truncated SVD of the matrix of observed entries, with unobserved entries filled in with zeros. This initialization is known to result in provably good solutions for a number of "PCA-like" problems. See <a href="https://people.orie.cornell.edu/mru8/doc/udell16_glrm.pdf" rel="nofollow">our paper</a> for details.</li>
+<li><code>init_kmeanspp!</code> initializes the model using a modification of the <a href="https://en.wikipedia.org/wiki/K-means_clustering" rel="nofollow">kmeans++</a> algorithm for data sets with missing entries; see <a href="https://people.orie.cornell.edu/mru8/doc/udell16_glrm.pdf" rel="nofollow">our paper</a> for details. This works well for fitting clustering models, and may help in achieving better fits for nonnegative matrix factorization problems as well.</li>
+<li><code>init_nndsvd!</code> initializes the model using a modification of the <a href="https://github.com/JuliaStats/NMF.jl/blob/master/src/initialization.jl#L18">NNDSVD</a> algorithm as implemented by the <a href="https://github.com/JuliaStats/NMF.jl">NMF</a> package. This modification handles data sets with missing entries by replacing missing entries with zeros. Optionally, by setting the argument <code>max_iters=n</code> with <code>n&gt;0</code>, it will iteratively replace missing entries by their values as imputed by the NNDSVD, and call NNDSVD again on the new matrix. (This procedure is similar to the <a href="http://dl.acm.org/citation.cfm?id=1859931" rel="nofollow">soft impute</a> method of Mazumder, Hastie and Tibshirani for matrix completion.)</li>
+</ul>
+<h3><a id="user-content-parameters" class="anchor" aria-hidden="true" href="#parameters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Parameters</h3>
+<p>As mentioned earlier, <code>LowRankModels</code> uses alternating proximal
+gradient descent to derive estimates of <code>X</code> and <code>Y</code>. This can be done
+by two slightly different procedures: (A) compute the full
+reconstruction, <code>X' * Y</code>, to compute the gradient and objective function;
+(B) only compute the model estimate for entries of <code>A</code> that are observed.
+The first method is likely preferred when there are few missing entries
+for <code>A</code> because of hardware level optimizations
+(e.g. chucking the operations so they just fit in various caches). The
+second method is likely preferred when there are many missing entries of
+<code>A</code>.</p>
+<p>To fit with the first (dense) method:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">fit!</span>(glrm, <span class="pl-c1">ProxGradParams</span>(); kwargs<span class="pl-k">...</span>)</pre></div>
+<p>To fit with the second (sparse) method:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">fit!</span>(glrm, <span class="pl-c1">SparseProxGradParams</span>(); kwargs<span class="pl-k">...</span>)</pre></div>
+<p>The first method is used by default if <code>glrm.A</code> is a standard
+matrix/array. The second method is used by default if <code>glrm.A</code> is a
+<code>SparseMatrixCSC</code>.</p>
+<p><code>ProxGradParams()</code> and <code>SparseProxGradParams()</code> run these respective
+methods with the default parameters:</p>
+<ul>
+<li><code>stepsize</code>: The step size controls the speed of convergence.
+Small step sizes will slow convergence, while large ones will cause
+divergence. <code>stepsize</code> should be of order 1.</li>
+<li><code>abs_tol</code>: The algorithm stops when the decrease in the
+objective per iteration is less than <code>abs_tol*length(obs)</code>.</li>
+<li><code>rel_tol</code>: The algorithm stops when the decrease in the
+objective per iteration is less than <code>rel_tol</code>.</li>
+<li><code>max_iter</code>: The algorithm also stops if maximum number of rounds
+<code>max_iter</code> has been reached.</li>
+<li><code>min_stepsize</code>: The algorithm also stops if <code>stepsize</code> decreases below
+this limit.</li>
+<li><code>inner_iter</code>: specifies how many proximal gradient steps to take on <code>X</code>
+before moving on to <code>Y</code> (and vice versa).</li>
+</ul>
+<p>The default parameters are: <code>ProxGradParams(stepsize=1.0;max_iter=100,inner_iter=1,abs_tol=0.00001,rel_tol=0.0001,min_stepsize=0.01*stepsize)</code></p>
+<h3><a id="user-content-convergence" class="anchor" aria-hidden="true" href="#convergence"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Convergence</h3>
+<p><code>ch</code> gives the convergence history so that the success of the optimization can be monitored;
+<code>ch.objective</code> stores the objective values, and <code>ch.times</code> captures the times these objective values were achieved.
+Try plotting this to see if you just need to increase <code>max_iter</code> to converge to a better model.</p>
+<h1><a id="user-content-imputation" class="anchor" aria-hidden="true" href="#imputation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Imputation</h1>
+<p>After fitting a GLRM, you can use it to impute values of <code>A</code> in
+four different ways:</p>
+<ul>
+<li><code>impute(glrm)</code> gives the maximum likelihood estimates for each entry</li>
+<li><code>impute_missing(glrm)</code> imputes missing entries and leaves observed entries unchanged</li>
+<li><code>sample(glrm)</code> gives a draw from the posterior distribution, conditioned on the fit values of <code>X</code> and <code>Y</code>, for each entry</li>
+<li><code>sample_missing(glrm)</code> samples missing entries and leaves observed entries unchanged</li>
+</ul>
+<h1><a id="user-content-cross-validation" class="anchor" aria-hidden="true" href="#cross-validation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Cross validation</h1>
+<p>A number of useful functions are available to help you check whether a given low rank model overfits to the test data set.
+These functions should help you choose adequate regularization for your model.</p>
+<h2><a id="user-content-cross-validation-1" class="anchor" aria-hidden="true" href="#cross-validation-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Cross validation</h2>
+<ul>
+<li>
+<p><code>cross_validate(glrm::GLRM, nfolds=5, params=Params(); verbose=false, use_folds=None, error_fn=objective, init=None)</code>: performs n-fold cross validation and returns average loss among all folds. More specifically, splits observations in <code>glrm</code> into <code>nfolds</code> groups, and builds new GLRMs, each with one group of observations left out. Fits each GLRM to the training set (the observations revealed to each GLRM) and returns the average loss on the test sets (the observations left out of each GLRM).</p>
+<p><strong>Optional arguments:</strong></p>
+<ul>
+<li><code>use_folds</code>: build <code>use_folds</code> new GLRMs instead of <code>n_folds</code> new GLRMs, each with <code>1/nfolds</code> of the entries left out. (<code>use_folds</code> defaults to <code>nfolds</code>.)</li>
+<li><code>error_fn</code>: use a custom error function to evaluate the fit, rather than the objective. For example, one might use the imputation error by setting <code>error_fn = error_metric</code>.</li>
+<li><code>init</code>: initialize the fit using a particular procedure. For example, consider <code>init=init_svd!</code>. See <a href="https://github.com/madeleineudell/LowRankModels.jl#initialization">Initialization</a> for more options.</li>
+</ul>
+</li>
+<li>
+<p><code>cv_by_iter(glrm::GLRM, holdout_proportion=.1, params=Params(1,1,.01,.01), niters=30; verbose=true)</code>: computes the test error and train error of the GLRM as it is trained. Splits the observations into a training set (<code>1-holdout_proportion</code> of the original observations) and a test set (<code>holdout_proportion</code> of the original observations). Performs <code>params.maxiter</code> iterations of the fitting algorithm on the training set <code>niters</code> times, and returns the test and train error as a function of iteration.</p>
+</li>
+</ul>
+<h2><a id="user-content-regularization-paths" class="anchor" aria-hidden="true" href="#regularization-paths"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Regularization paths</h2>
+<ul>
+<li><code>regularization_path(glrm::GLRM; params=Params(), reg_params=exp10.(range(2,stop=-2,length=5)), holdout_proportion=.1, verbose=true, ch::ConvergenceHistory=ConvergenceHistory("reg_path"))</code>: computes the train and test error for GLRMs varying the scaling of the regularization through any scaling factor in the array <code>reg_params</code>.</li>
+</ul>
+<h2><a id="user-content-utilities" class="anchor" aria-hidden="true" href="#utilities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Utilities</h2>
+<ul>
+<li><code>get_train_and_test(obs, m, n, holdout_proportion=.1)</code>: splits observations <code>obs</code> into a train and test set. <code>m</code> and <code>n</code> must be at least as large as the maximal value of the first or second elements of the tuples in <code>observations</code>, respectively. Returns <code>observed_features</code> and <code>observed_examples</code> for both train and test sets.</li>
+</ul>
+<h2><a id="user-content-scikitlearn" class="anchor" aria-hidden="true" href="#scikitlearn"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ScikitLearn</h2>
+<p>This library implements the
+<a href="https://github.com/cstjean/ScikitLearn.jl">ScikitLearn.jl</a> interface. These
+models are available: <code>SkGLRM, PCA, QPCA, NNMF, KMeans, RPCA</code>. See their
+docstrings for more information (eg. <code>?QPCA</code>). All models support the
+<code>ScikitLearnBase.fit!</code> and <code>ScikitLearnBase.transform</code> interface. Examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span># Apply PCA to the iris dataset</span>
+<span class="pl-k">using</span> LowRankModels
+<span class="pl-k">import</span> ScikitLearnBase
+<span class="pl-k">using</span> RDatasets    <span class="pl-c"><span class="pl-c">#</span> may require Pkg.add("RDatasets")</span>
+
+A <span class="pl-k">=</span> <span class="pl-c1">convert</span>(Matrix, <span class="pl-c1">dataset</span>(<span class="pl-s"><span class="pl-pds">"</span>datasets<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>iris<span class="pl-pds">"</span></span>)[[<span class="pl-c1">:SepalLength</span>, <span class="pl-c1">:SepalWidth</span>, <span class="pl-c1">:PetalLength</span>, <span class="pl-c1">:PetalWidth</span>]])
+ScikitLearnBase<span class="pl-k">.</span><span class="pl-c1">fit_transform!</span>(<span class="pl-c1">PCA</span>(k<span class="pl-k">=</span><span class="pl-c1">3</span>, max_iter<span class="pl-k">=</span><span class="pl-c1">500</span>), A)</pre></div>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span># Fit K-Means to a fake dataset of two Gaussians</span>
+<span class="pl-k">using</span> LowRankModels
+<span class="pl-k">import</span> ScikitLearnBase
+
+<span class="pl-c"><span class="pl-c">#</span> Generate two disjoint Gaussians with 100 and 50 points</span>
+gaussian1 <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">100</span>, <span class="pl-c1">2</span>) <span class="pl-k">+</span> <span class="pl-c1">5</span>
+gaussian2 <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">50</span>, <span class="pl-c1">2</span>) <span class="pl-k">-</span> <span class="pl-c1">10</span>
+<span class="pl-c"><span class="pl-c">#</span> Merge them into a single dataset</span>
+A <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(gaussian1, gaussian2)
+
+model <span class="pl-k">=</span> ScikitLearnBase<span class="pl-k">.</span><span class="pl-c1">fit!</span>(LowRankModels<span class="pl-k">.</span><span class="pl-c1">KMeans</span>(), A)
+<span class="pl-c"><span class="pl-c">#</span> Count how many points are assigned to each Gaussians (should be 100 and 50)</span>
+<span class="pl-c1">Set</span>(<span class="pl-c1">sum</span>(ScikitLearnBase<span class="pl-k">.</span><span class="pl-c1">transform</span>(model, A), <span class="pl-c1">1</span>))</pre></div>
+<p>See also <a href="https://github.com/cstjean/ScikitLearn.jl/blob/master/examples/Plot_Kmeans_Digits_Julia.ipynb">this notebook demonstrating K-Means</a>.</p>
+<p>These models can be used inside a <a href="http://scikitlearnjl.readthedocs.io/en/latest/pipelines/" rel="nofollow">ScikitLearn pipeline</a>, and every hyperparameter can be <a href="http://scikitlearnjl.readthedocs.io/en/latest/model_selection/" rel="nofollow">tuned with GridSearchCV</a>.</p>
+<h1><a id="user-content-citing-this-package" class="anchor" aria-hidden="true" href="#citing-this-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Citing this package</h1>
+<p>If you use LowRankModels for published work,
+we encourage you to cite the software.</p>
+<p>Use the following BibTeX citation:</p>
+<pre><code>@article{glrm,
+  title = {Generalized Low Rank Models},
+  author ={Madeleine Udell and Horn, Corinne and Zadeh, Reza and Boyd, Stephen},
+  doi = {10.1561/2200000055},
+  year = {2016},
+  archivePrefix = "arXiv",
+  eprint = {1410.0342},
+  primaryClass = "stat-ml",
+  journal = {Foundations and Trends in Machine Learning},
+  number = {1},
+  volume = {9},
+  issn = {1935-8237},
+  url = {http://dx.doi.org/10.1561/2200000055},
+}
+</code></pre>
+</article></div>

@@ -1,0 +1,87 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-googlecloudobjectstores" class="anchor" aria-hidden="true" href="#googlecloudobjectstores"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>GoogleCloudObjectStores</h1>
+<p>This package defines an <a href="https://github.com/JockLawrie/ObjectStores.jl">ObjectStore</a> that uses <em>Google Cloud Storage</em> as the storage back-end.</p>
+<p><strong>NOTE:</strong></p>
+<ol>
+<li>Google Cloud Storage does not allow the creation of buckets within buckets; buckets can contain only objects.</li>
+<li>Therefore a <code>GoogleCloudObjectStore</code> does not allow specification of a root bucket.</li>
+<li>Bucket names must be unique across your Google Cloud Platform (GCP) project.</li>
+<li>Some bucket names are rejected by GCP anyway, such as "xxx".</li>
+</ol>
+<h3><a id="user-content-example-1-object-store-with-read-only-permission" class="anchor" aria-hidden="true" href="#example-1-object-store-with-read-only-permission"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example 1: Object store with read-only permission</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Dates
+<span class="pl-k">using</span> GoogleCloudObjectStores
+
+<span class="pl-c"><span class="pl-c">#</span> Create store</span>
+store <span class="pl-k">=</span> <span class="pl-c1">GoogleCloudObjectStore</span>(<span class="pl-s"><span class="pl-pds">"</span>my_gcs_credentials.json<span class="pl-pds">"</span></span>)
+<span class="pl-c1">listcontents</span>(store)   <span class="pl-c"><span class="pl-c">#</span> Returns nothing. Store doesn't have read permission</span>
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-c1">:bucket</span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">false</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>, <span class="pl-c1">false</span>))  <span class="pl-c"><span class="pl-c">#</span> cRud (read-only) permission for all buckets within the root bucket</span>
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-c1">:object</span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">false</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>, <span class="pl-c1">false</span>))  <span class="pl-c"><span class="pl-c">#</span> cRud (read-only) permission for all objects within the root bucket</span>
+<span class="pl-c1">listcontents</span>(store)   <span class="pl-c"><span class="pl-c">#</span> A list of all buckets in the store</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Bucket abc123foo</span>
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> Fails (returns error message) because the store has no create permission</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Add temporary CRUD permission for bucket abc123foo</span>
+expiry <span class="pl-k">=</span> <span class="pl-c1">now</span>() <span class="pl-k">+</span> <span class="pl-c1">Second</span>(<span class="pl-c1">60</span>)  <span class="pl-c"><span class="pl-c">#</span> Set permission expiry for 60 seconds</span>
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>, expiry))
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foozzz<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> Fails (returns error message) because the store has no create permission for this bucket</span>
+<span class="pl-c1">listcontents</span>(store)
+<span class="pl-c1">isbucket</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> Bucket now exists</span>
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> "abc123foo" is a bucket not an object</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Object abc123foo/myobject</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>My first object<span class="pl-pds">"</span></span>  <span class="pl-c"><span class="pl-c">#</span> No-op, store doesn't have create permission</span>
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)            <span class="pl-c"><span class="pl-c">#</span> "abc123foo/myobject" doesn't exist</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Add temporary create permission for objects in bucket abc123foo</span>
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-sr"><span class="pl-pds">r"</span>^abc123foo/.+<span class="pl-pds">"</span></span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>, expiry))
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>My object<span class="pl-pds">"</span></span>
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> "abc123foo/myobject" now exists</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>]
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> (value<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Some new value<span class="pl-pds">"</span></span>, mimetype<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>application/json<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> An alternative way to create objects</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>]
+<span class="pl-c1">delete!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> "abc123foo/myobject" no longer exists</span>
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>zzz<span class="pl-pds">"</span></span>)            <span class="pl-c"><span class="pl-c">#</span> Failed (returns error msg) because store has no create permission for other buckets/objects</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Let permission expire</span>
+<span class="pl-c1">sleep</span>(<span class="pl-c1">max</span>(<span class="pl-c1">0</span>, <span class="pl-c1">convert</span>(Int, Dates<span class="pl-k">.</span><span class="pl-c1">value</span>(expiry <span class="pl-k">-</span> <span class="pl-c1">now</span>())) <span class="pl-k">/</span> <span class="pl-c1">1000</span>))  <span class="pl-c"><span class="pl-c">#</span> Sleep until permission expires</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>My first object<span class="pl-pds">"</span></span>  <span class="pl-c"><span class="pl-c">#</span> No-op, store no longer has create permission</span>
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)            <span class="pl-c"><span class="pl-c">#</span> "abc123foo/myobject" doesn't exist because the store's create permission expired</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Clean up</span>
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">false</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>, <span class="pl-c1">true</span>))   <span class="pl-c"><span class="pl-c">#</span> Allow delete permission</span>
+<span class="pl-c1">deletebucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">false</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>, <span class="pl-c1">false</span>))  <span class="pl-c"><span class="pl-c">#</span> Revert to read-only permission</span>
+<span class="pl-c1">listcontents</span>(store)</pre></div>
+<h3><a id="user-content-example-2-object-store-with-unrestricted-readcreatedelete-permission-on-buckets-and-objects" class="anchor" aria-hidden="true" href="#example-2-object-store-with-unrestricted-readcreatedelete-permission-on-buckets-and-objects"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example 2: Object store with unrestricted read/create/delete permission on buckets and objects</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> GoogleCloudObjectStores
+
+<span class="pl-c"><span class="pl-c">#</span> Create store</span>
+store <span class="pl-k">=</span> <span class="pl-c1">GoogleCloudObjectStore</span>(<span class="pl-s"><span class="pl-pds">"</span>my_gcs_credentials.json<span class="pl-pds">"</span></span>)
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-c1">:bucket</span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>))
+<span class="pl-c1">setpermission!</span>(store, <span class="pl-c1">:object</span>, <span class="pl-c1">Permission</span>(<span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">true</span>))
+<span class="pl-c1">listcontents</span>(store)   <span class="pl-c"><span class="pl-c">#</span> A list of all buckets in the store</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Bucket abc123foo</span>
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>../abc123foo<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> Failed (returns error msg) because the bucket name is invalid</span>
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)     <span class="pl-c"><span class="pl-c">#</span> Success (returns nothing)</span>
+<span class="pl-c1">listcontents</span>(store)                   <span class="pl-c"><span class="pl-c">#</span> The list of all buckets in the store now contains "abc123foo"</span>
+<span class="pl-c1">isbucket</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)
+<span class="pl-c1">createbucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)     <span class="pl-c"><span class="pl-c">#</span> Failed (returns error msg) because the bucket already exists</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Object abc123foo/myobject</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>My first object<span class="pl-pds">"</span></span> <span class="pl-c"><span class="pl-c">#</span> Success (returns value)</span>
+<span class="pl-c1">listcontents</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)                <span class="pl-c"><span class="pl-c">#</span> Lists the contents of the abc123foo bucket</span>
+<span class="pl-c1">listcontents</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)       <span class="pl-c"><span class="pl-c">#</span> Failed (returns nothing) because we can only list the contents of buckets, not objects</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>]                     <span class="pl-c"><span class="pl-c">#</span> Get myobject's value</span>
+store[<span class="pl-s"><span class="pl-pds">"</span>abc123foo/my_nonexistent_object<span class="pl-pds">"</span></span>]        <span class="pl-c"><span class="pl-c">#</span> Returns nothing because the object does not exist</span>
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)
+<span class="pl-c1">isobject</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/my_nonexistent_object<span class="pl-pds">"</span></span>)
+
+<span class="pl-c1">deletebucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)     <span class="pl-c"><span class="pl-c">#</span> Failed (returns error msg) because the bucket is not empty</span>
+<span class="pl-c1">delete!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo/myobject<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> Success (returns nothing)</span>
+<span class="pl-c1">deletebucket!</span>(store, <span class="pl-s"><span class="pl-pds">"</span>abc123foo<span class="pl-pds">"</span></span>)     <span class="pl-c"><span class="pl-c">#</span> Success (returns nothing) because the bucket was empty</span>
+<span class="pl-c1">listcontents</span>(store)</pre></div>
+</article></div>

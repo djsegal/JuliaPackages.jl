@@ -1,0 +1,200 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-lilith" class="anchor" aria-hidden="true" href="#lilith"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Lilith</h1>
+<p><a href="https://travis-ci.org/dfdx/Lilith.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/e024e7ef7ebfd6cfbd0fa0d3d05478e1dd0eb1f8/68747470733a2f2f7472617669732d63692e6f72672f646664782f4c696c6974682e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/dfdx/Lilith.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><strong>Lilith</strong> is a deep learning library in Julia with focus on <strong>high performance</strong> and <strong>interoperability with existing DL frameworks</strong>. Its main features include:</p>
+<ul>
+<li>tracing autograd engine - models are just structs, transformations are just functioins</li>
+<li>optimizing code generator based on hackable computational graph</li>
+<li>GPU support</li>
+<li>layer API similar to PyTorch's to ease translation of existing Python code to Julia</li>
+<li>high backward compatibility to allow accumulation of models</li>
+</ul>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>To get you a feeling of what Lilith is like, here's a definition of a small convolutional neural network:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Lilith
+
+
+<span class="pl-k">mutable struct</span> Net
+    conv1<span class="pl-k">::</span><span class="pl-c1">Conv2d</span>
+    conv2<span class="pl-k">::</span><span class="pl-c1">Conv2d</span>
+    fc1<span class="pl-k">::</span><span class="pl-c1">Linear</span>
+    fc2<span class="pl-k">::</span><span class="pl-c1">Linear</span>
+<span class="pl-k">end</span>
+
+
+<span class="pl-en">Net</span>() <span class="pl-k">=</span> <span class="pl-c1">Net</span>(
+    <span class="pl-c1">Conv2d</span>(<span class="pl-c1">1</span>, <span class="pl-c1">20</span>, <span class="pl-c1">5</span>),
+    <span class="pl-c1">Conv2d</span>(<span class="pl-c1">20</span>, <span class="pl-c1">50</span>, <span class="pl-c1">5</span>),
+    <span class="pl-c1">Linear</span>(<span class="pl-c1">4</span> <span class="pl-k">*</span> <span class="pl-c1">4</span> <span class="pl-k">*</span> <span class="pl-c1">50</span>, <span class="pl-c1">500</span>),
+    <span class="pl-c1">Linear</span>(<span class="pl-c1">500</span>, <span class="pl-c1">10</span>)
+)
+
+<span class="pl-k">function</span> (m<span class="pl-k">::</span><span class="pl-c1">Net</span>)(x<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>)
+    x <span class="pl-k">=</span> <span class="pl-c1">maxpool2d</span>(<span class="pl-c1">relu</span>.(m<span class="pl-k">.</span><span class="pl-c1">conv1</span>(x)), (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>))
+    x <span class="pl-k">=</span> <span class="pl-c1">maxpool2d</span>(<span class="pl-c1">relu</span>.(m<span class="pl-k">.</span><span class="pl-c1">conv2</span>(x)), (<span class="pl-c1">2</span>, <span class="pl-c1">2</span>))
+    x <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(x, <span class="pl-c1">4</span><span class="pl-k">*</span><span class="pl-c1">4</span><span class="pl-k">*</span><span class="pl-c1">50</span>, :)
+    x <span class="pl-k">=</span> <span class="pl-c1">relu</span>.(m<span class="pl-k">.</span><span class="pl-c1">fc1</span>(x))
+    x <span class="pl-k">=</span> <span class="pl-c1">logsoftmax</span>(m<span class="pl-k">.</span><span class="pl-c1">fc2</span>(x))
+    <span class="pl-k">return</span> x
+<span class="pl-k">end</span></pre></div>
+<p>For detailed explanation of this and other models see <a href="https://github.com/dfdx/Lilith.jl/tree/master/tutorial">the tutorial</a>. Some predefined models are also available in <a href="https://github.com/dfdx/Lilith.jl/tree/master/zoo">the zoo</a>.</p>
+<h2><a id="user-content-performance" class="anchor" aria-hidden="true" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Performance</h2>
+<p>Performance comparison between different libraries is hard and benchmarks are rarely fair, but here's our best shot in this direction:</p>
+<h3><a id="user-content-convolutional-neural-network" class="anchor" aria-hidden="true" href="#convolutional-neural-network"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Convolutional neural network</h3>
+<p>Code available <a href="https://github.com/dfdx/Lilith.jl/tree/master/benchmarks/cnn">here</a></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>training 1 epoch</th>
+<th>training total time*</th>
+<th>prediction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lilith (CPU)</td>
+<td>170 s</td>
+<td>1742 s</td>
+<td>39 ms</td>
+</tr>
+<tr>
+<td>Flux (CPU)</td>
+<td>250 s</td>
+<td>2515 s</td>
+<td>42 ms</td>
+</tr>
+<tr>
+<td>-------------</td>
+<td>----------------</td>
+<td>--------------------</td>
+<td>----------</td>
+</tr>
+<tr>
+<td>Lilith (GPU)</td>
+<td>10 s</td>
+<td>164 s</td>
+<td>5 ms</td>
+</tr>
+<tr>
+<td>Flux (GPU)</td>
+<td>12 s</td>
+<td>150 s</td>
+<td>5 ms</td>
+</tr>
+<tr>
+<td>PyTorch (GPU)</td>
+<td>12 s</td>
+<td>120 s</td>
+<td>2 ms</td>
+</tr>
+</tbody>
+</table>
+<p><code>*</code> - total time includes 10 epochs + compilation time</p>
+<p>Note that in the test on GPU Lilith has longest compilation time and thus
+longest total training time <em>after 10 epochs</em>. However, time per epoch
+is the lowest, so Lilith is typically the fastest one in longer run.</p>
+<h3><a id="user-content-variational-autoencoder" class="anchor" aria-hidden="true" href="#variational-autoencoder"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Variational Autoencoder</h3>
+<p>Code available <a href="https://github.com/dfdx/Lilith.jl/tree/master/benchmarks/vae">here</a></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>training 1 epoch</th>
+<th>training total time</th>
+<th>prediction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lilith (CPU)</td>
+<td>50 s</td>
+<td>535 s</td>
+<td>395 μs</td>
+</tr>
+<tr>
+<td>Flux (CPU)</td>
+<td>948 s</td>
+<td>158 min</td>
+<td>81 ms</td>
+</tr>
+<tr>
+<td>-------------</td>
+<td>----------------</td>
+<td>--------------------</td>
+<td>----------</td>
+</tr>
+<tr>
+<td>Lilith (GPU)</td>
+<td>3 s</td>
+<td>93 s</td>
+<td>194 μs</td>
+</tr>
+<tr>
+<td>Flux (GPU)**</td>
+<td>---</td>
+<td>---</td>
+<td>---</td>
+</tr>
+<tr>
+<td>PyTorch (GPU)</td>
+<td>7 s</td>
+<td>66 s</td>
+<td>501 µs</td>
+</tr>
+</tbody>
+</table>
+<p><code>**</code> - VAE example from the Flux zoo doesn't work on GPU</p>
+<h2><a id="user-content-api-stability" class="anchor" aria-hidden="true" href="#api-stability"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>API Stability</h2>
+<p>One of the central ideas behind Lilith is the ability to reuse existing code instead of writing everything from scratch.
+To facilitate it, Lilith is committed to high, although not absolute backward compatibility. The following table
+outlines stability level you should expect from various components of the library.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>API Stable?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Basic layers</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>CNN</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>RNN</td>
+<td>No*</td>
+</tr>
+<tr>
+<td>Losses</td>
+<td>Mostly</td>
+</tr>
+<tr>
+<td>Activations</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Initializations</td>
+<td>Mostly</td>
+</tr>
+<tr>
+<td>Optimizers</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Device API</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Fitting API</td>
+<td>No**</td>
+</tr>
+</tbody>
+</table>
+<p><code>*</code> - currently Lilith provides only basic implementations of vanilla RNN, LSTM and GRU; this implementation will be improved in future version and made more compatible with PyTorch version, but currently it cannot be considered stable</p>
+<p><code>**</code> - function <code>fit!()</code> provides a convenient shortcut for training supervised learning models, but in its current state it's too basic for most real use cases; for more durable code consider writing your own method for training using <code>fit!()</code> as a template</p>
+<p>Please note that until version 1.0 "stable API" means that we will try our best to keep it unchanged, but we reserve the right to the break the rule in some rare and exceptional cases.</p>
+</article></div>

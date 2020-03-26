@@ -1,0 +1,314 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-fixtures" class="anchor" aria-hidden="true" href="#fixtures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fixtures</h1>
+<p>Fixtures.jl provides fixtures, mocks, matchers and patching to improve your test life with Julia.</p>
+<p><a href="https://travis-ci.org/burrowsa/Fixtures.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/78020b3de9d65998b2253e09c7b07450b27dd3bb/68747470733a2f2f7472617669732d63692e6f72672f627572726f7773612f46697874757265732e6a6c2e706e673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/burrowsa/Fixtures.jl.png?branch=master" style="max-width:100%;"></a> <a href="http://codecov.io/github/invenia/Fixtures.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/19f2c468feb5f56d60fc52bafc6e4e54a112ba4e/687474703a2f2f636f6465636f762e696f2f6769746875622f696e76656e69612f46697874757265732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/invenia/Fixtures.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<h2><a id="user-content-requirement" class="anchor" aria-hidden="true" href="#requirement"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Requirement</h2>
+<p>You need the latest version of <code>MetaTools</code>. Run this to get the latest,</p>
+<pre><code>Pkg.add("MetaTools")
+Pkg.checkout("MetaTools")
+</code></pre>
+<h2><a id="user-content-an-introduction-to-fixtures-in-julia" class="anchor" aria-hidden="true" href="#an-introduction-to-fixtures-in-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>An introduction to fixtures in Julia##</h2>
+<p>According to <a href="http://en.wikipedia.org/wiki/Test_fixture#Software" title="wikipedia.org" rel="nofollow">wikipedia.org</a>:</p>
+<blockquote>
+<p>In software testing, a test fixture is a fixed state of the software under test used as a baseline for running tests; also known as the test context. It may also refer to the actions performed in order to bring the system into such a state.</p>
+</blockquote>
+<p>Examples of fixtures:</p>
+<ul>
+<li>Loading a database with a specific, known set of data</li>
+<li>Erasing a hard disk and installing a known clean operating system installation</li>
+<li>Copying a specific known set of files</li>
+<li>Preparation of input data and set-up/creation of fake or mock objects</li>
+</ul>
+<p>Practically, a test fixture is composed of one or more setup steps run before the test(s) and corresponding teardown step(s) performed afterwards. This kind of thing can be expressed rather nicely in Julia using the <code>do</code> syntax. Given a function like:</p>
+<pre><code>function example_fixture(fn::Function)
+    # Setup code goes here
+    try
+        return fn()
+    finally
+        # Teardown code goes here
+    end
+end
+</code></pre>
+<p>You can write your tests like:</p>
+<pre><code>example_fixture() do
+    # Test code goes here
+end
+</code></pre>
+<p>There are a number of handy functions of this form, that we may wish to use as test fixtures, already defined in the Julia standard library, for example <code>Base.cd</code>.</p>
+<h2><a id="user-content-fixture-macro" class="anchor" aria-hidden="true" href="#fixture-macro"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>@fixture macro</h2>
+<p>Defining a fixture this way does involve a certain amount of boilerplate code so Fixtures.jl provides the <code>@fixture</code> macro to streamline fixture writing in Julia. The example above could be written, using <code>@fixture</code>, as:</p>
+<pre><code>using Fixtures
+
+@fixture function example_fixture()
+    # Setup code goes here
+    yield_fixture()
+# Teardown code goes here
+end
+</code></pre>
+<p>and the calling code remains unchanged:</p>
+<pre><code>example_fixture() do
+    # Test code goes here
+end
+</code></pre>
+<h2><a id="user-content-fixture-arguments-and-return-values" class="anchor" aria-hidden="true" href="#fixture-arguments-and-return-values"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fixture arguments and return values</h2>
+<p>It is very common for fixtures to take one or more arguments, for example:</p>
+<pre><code>@fixture function greetings(who::String)
+    println("Hello $who")
+    yield_fixture()
+    println("Good bye $who")
+end
+
+greetings("Bob") do
+    println("Test code here")
+end
+</code></pre>
+<p>would produce the output:</p>
+<blockquote>
+<p>Hello Bob<br>
+Test code here<br>
+Good bye Bob</p>
+</blockquote>
+<p><code>@fixture</code> supports all argument types, including default arguments, keyword arguments and varargs.</p>
+<p>It is also rather common for fixtures to produce a value that needs to be used in the tests. For example a database fixture might  setup a test database then want to pass a connection object to the tests. This can easily be done by calling <code>yield_fixture</code> with the values to be returned to the test code. For example:</p>
+<pre><code>@fixture function greetings(who::String)
+    println("Hello $who")
+    yield_fixture("Secret message for $who")
+    println("Good bye $who")
+end
+
+greetings("Bob") do message
+    println(message)
+end
+</code></pre>
+<p>would produce the output:</p>
+<blockquote>
+<p>Hello Bob<br>
+Secret message for Bob<br>
+Good bye Bob</p>
+</blockquote>
+<p>You can pass any number of values to the test code, however keyword arguments are not supported by <code>do</code> blocks so you can't use those.</p>
+<h2><a id="user-content-fixture-reuse" class="anchor" aria-hidden="true" href="#fixture-reuse"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fixture reuse</h2>
+<p>Often you want to resuse the same fixture several times, for example you might want the same setup and teardown code to run before and after each database test. Using Fixtures.jl you can add fixtures to a named scope then repeatedly use that named scope:</p>
+<pre><code>@fixture function testdb()
+    # setup database
+    yield_fixture()
+    # teardown database
+end
+
+add_fixture(:databasetests, testdb)
+
+apply_fixtures(:databasetests) do
+    # some test that uses the database
+end
+
+apply_fixtures(:databasetests) do
+    # another test that uses the database
+end
+</code></pre>
+<p>You can define multiple fixtures for a named scope and they will all be used.</p>
+<pre><code>@fixture function fixture1()
+  # ...
+end
+
+@fixture function fixture2()
+  # ...
+end
+
+@fixture function fixture3()
+  # ...
+end
+
+add_fixture(:myscope, fixture1)
+add_fixture(:myscope, fixture2)
+add_fixture(:myscope, fixture3)
+</code></pre>
+<p>You can also nest scopes. If a fixture is added to a nested scope then it will be removed at the end of the parent scope. An example should make this clearer:</p>
+<pre><code>function demo(fn::Function)
+    println("before")
+    try
+        return fn()
+    finally
+        println("after")
+    end
+end
+
+function another(fn::Function)
+    println("avant")
+    try
+        return fn()
+    finally
+        println("après")
+    end
+end
+
+add_fixture(:childscope, demo)
+
+apply_fixtures(:parentscope) do
+    add_fixture(:childscope, another)
+    apply_fixtures(:childscope) do
+        println("hello world")
+    end
+end
+
+apply_fixtures(:childscope) do
+    println("Bonjour tout le monde")
+end
+</code></pre>
+<p>the output is:</p>
+<blockquote>
+<p>before<br>
+avant<br>
+hello world<br>
+après<br>
+after<br>
+before<br>
+Bonjour tout le monde<br>
+after</p>
+</blockquote>
+<p>You can add fixtures that take arguments by specifying the arguments in the call to <code>add_fixture</code>:</p>
+<pre><code>add_fixture(:some_scope, greetings, "Bob")
+</code></pre>
+<p>positional, default, vararg and keyword arguments are supported. Also if you want to capture the values produced by the fixture you must give it a name:</p>
+<pre><code>add_fixture(:some_scope, :greet_bob, greetings, "Bob")
+</code></pre>
+<p>and then setting <code>fixture_values=true</code> when calling <code>apply_fixtures</code> makes all the fixture outputs available to the test code via a <code>Dict</code> passed to the <code>do</code> which is indexed by fixture name:</p>
+<pre><code>apply_fixtures(:some_scope, fixture_values=true) do values
+    println(values[:greet_bob])
+end
+</code></pre>
+<p>Output is still:</p>
+<blockquote>
+<p>Hello Bob<br>
+Secret message for Bob<br>
+Good bye Bob</p>
+</blockquote>
+<h2><a id="user-content-simple-fixtures" class="anchor" aria-hidden="true" href="#simple-fixtures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Simple Fixtures</h2>
+<p>Fixtures.jl has a handy <code>add_simple_fixture</code> method that lets you define the setup and teardown functions separately:</p>
+<p><code>function add_fixture(scope::Symbol, before::Function, after::Function)</code></p>
+<h2><a id="user-content-factcheckjl-support" class="anchor" aria-hidden="true" href="#factcheckjl-support"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>FactCheck.jl support</h2>
+<p>For users of FactCheck.jl methods are provided to make it simple to use Fixtures.jl, here is an example using the two packages together:</p>
+<pre><code>using FactCheck
+using Fixtures
+
+add_fixture(:facts, demo)
+add_fixture(:context, another)
+ 
+facts("FactCheck support tests", using_fixtures) do
+    context("Example with fixtures set on a context level", using_fixtures) do
+        @fact 100 =&gt; 100
+    end
+end
+</code></pre>
+<p>All the features listed in the sections above are available when using FactCheck.jl</p>
+<h2><a id="user-content-file-fixtures" class="anchor" aria-hidden="true" href="#file-fixtures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>File fixtures</h2>
+<p>Fixtures.jl comes with a number of fixtures for using files in your tests:</p>
+<ul>
+<li><code>temp_filename([extension=&lt;filename extension&gt;],[create=&lt;true, false or string content&gt;])</code></li>
+<li><code>temp_file([mode=&lt;file mode, default is "w"&gt;],[extension=&lt;filename extension&gt;],[content=&lt;string content&gt;])</code></li>
+<li><code>temp_dir()</code></li>
+<li><code>cleanup_path(&lt;path&gt;[, ignore_missing=true|false])</code></li>
+</ul>
+<h2><a id="user-content-patching" class="anchor" aria-hidden="true" href="#patching"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Patching</h2>
+<p>A common type of fixture is to patch a function, method or value within a module or object. This is most often done in unit testing to isolate the function under test from the rest of the system. Fixtures.jl provides a patch fixture to do this. For example if we wanted to test this function:</p>
+<pre><code>function firstline(filename)
+    f = open(filename)
+    try
+        return chomp(readlines(f)[1])
+    finally
+        close(f)
+    end
+end
+</code></pre>
+<p>we might want to isolate it from the real filesystem. We can do this by patching <code>Base.open</code> with our own implementation, just for the duration of the test:</p>
+<pre><code>function fake_open(filename)
+    return IOBuffer("Hello Julia\nGoodbye Julia")
+end
+
+patch(Base, :open, fake_open) do
+    @Test.test firstline("foobar.txt") == "Hello Julia"
+end
+</code></pre>
+<p>You can use <code>patch()</code> as above or you can use it with <code>add_fixture()</code> and <code>apply_fixtures()</code>.</p>
+<pre><code>add_fixture(:mock_io, patch, Base, :open, fake_open)
+
+apply_fixtures(:mock_io) do
+    @Test.test firstline("foobar.txt") == "Hello Julia"
+end
+</code></pre>
+<p>You can also have multiple patches passed in as an array.</p>
+<pre><code>function firstline(filename)
+    foo = open(filename)
+    bar = close(filename)
+    return foo, bar
+end
+
+function fake_open(filename)
+    return "hello,"
+end
+
+function fake_close(filename)
+    return "world"
+end
+
+patchers = [
+        Patcher(Base, :open, fake_open),
+        Patcher(Base, :close, fake_close),
+    ]
+
+patch(patchers) do
+    @Test.test firstline("foobar.txt") == ("hello,", "world")
+end
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Due to a current <a href="https://github.com/JuliaLang/julia/issues/265">issue</a> in Julia your ability to patch a function may be limited if the code calling that function has already been called.</p>
+</blockquote>
+<h2><a id="user-content-mocks" class="anchor" aria-hidden="true" href="#mocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Mocks</h2>
+<p>But Fixtures.jl also provides mocks so we can patch <code>open</code> with a mock, this also allows us to verify it was called:</p>
+<pre><code>function firstline(filename)
+    f = open(filename)
+    try
+        return chomp(readlines(f)[1])
+    finally
+        close(f)
+    end
+end
+
+mock_open = mock(return_value=IOBuffer("Hello Julia\nGoodbye Julia"))
+
+patch(Base, :open, mock_open) do
+  @Test.test firstline("foobar.txt") == "Hello Julia"
+end
+
+@Test.test calls(mock_open) == [call("foobar.txt")]
+</code></pre>
+<p>Mocks are just generated functions that record their arguments everytime they are called. You can access the call history using <code>calls(mock)</code> as shown above and clear it with <code>reset(mock)</code>. When creating a mock you can (optionally) specify its return value or an implementation for the mock:</p>
+<pre><code>mock1 = mock(return_value=200)
+@Test.test mock1(100) == 200
+
+mock2 = mock(side_effect=x-&gt;x+200)
+@Test.test mock2(100) == 300
+
+mock3 = mock()
+@Test.test mock3(100) == nothing
+</code></pre>
+<p>The <code>call()</code> function makes it easy to express and test the expected calls to a mock (see above). And you can ignore any given argument by using <code>ANYTHING</code></p>
+<pre><code>mock1 = mock()
+mock1(rand(), 200)
+
+@Test.test calls(mock1) == [ call(ANYTHING, 200) ]
+</code></pre>
+<h2><a id="user-content-matchers" class="anchor" aria-hidden="true" href="#matchers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Matchers</h2>
+<p><code>ANYTHING</code> is just one example of a matcher, a kind of wildcard that can be used when verifying mock calls. Fixtures.jl provides the following matchers (and it is possible to define your own):</p>
+<ul>
+<li><code>anything_of_type(T::Type)</code></li>
+<li><code>anything_in(value::Any)</code></li>
+<li><code>anything_containing(value::Any)</code></li>
+</ul>
+<p>So we could be a bit stricter in our previous example:</p>
+<pre><code>mock1 = mock()
+mock1(rand(), 200)
+
+@Test.test calls(mock1) == [ call(anything_of_type(Number), 200) ]
+</code></pre>
+<h2><a id="user-content-code-coverage" class="anchor" aria-hidden="true" href="#code-coverage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Code Coverage</h2>
+<p>Code Coverage is not saying 100% because of the <a href="https://codecov.io/github/invenia/Fixtures.jl/src/registered_fixtures.jl?ref=8149cca5a6e6304a573e77923cd9bd35703a8251#l-49" rel="nofollow">code in red</a>. We did test to make sure it ran by putting a break point in there. If there are no other untested lines of code, the coverage should be at 100%.</p>
+</article></div>

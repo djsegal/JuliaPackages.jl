@@ -1,0 +1,69 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-nonpromoting" class="anchor" aria-hidden="true" href="#nonpromoting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><a href="https://github.com/eschnett/NonPromoting">NonPromoting</a></h1>
+<p>A Julia library for non-promoting type wrappers, i.e. for arithmetic
+types that do not get automatically promoted to other types. This can
+help prevent subtle type errors</p>
+<p><a href="https://travis-ci.org/eschnett/NonPromoting.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/e010b8c1a7a5618aa1a9bc32af5a18e8315bb124/68747470733a2f2f7472617669732d63692e6f72672f657363686e6574742f4e6f6e50726f6d6f74696e672e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status (Travis)" data-canonical-src="https://travis-ci.org/eschnett/NonPromoting.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/eschnett/nonpromoting-jl/branch/master" rel="nofollow"><img src="https://camo.githubusercontent.com/bb0fea5874238ae0f4c73a55dfa284c316365d5c/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6d31726c36763964676e6773626565653f7376673d74727565" alt="Build status (Appveyor)" data-canonical-src="https://ci.appveyor.com/api/projects/status/m1rl6v9dgngsbeee?svg=true" style="max-width:100%;"></a>
+<a href="https://coveralls.io/github/eschnett/NonPromoting.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/5b74fcabefcd33b95f28e0eae7b9c16f39fa267e/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f657363686e6574742f4e6f6e50726f6d6f74696e672e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status (Coveralls)" data-canonical-src="https://coveralls.io/repos/github/eschnett/NonPromoting.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<h1><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview</h1>
+<p>Sometimes, Julia's automatic type promotion gets things subtly wrong.
+This is especially a problem if you want a precision higher than
+<code>Float64</code>, since <code>Float64</code> is often the default go-to type when a
+floating point number is generated from non-floating-point numbers.</p>
+<p>Here is an example. Of course, this code is so simple that one can
+spot the problem right away. If multiple modules are involved, then
+spotting this isn't that easy any more.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">pi_plus_tenth_bad</span>()
+    x <span class="pl-k">=</span> <span class="pl-c1">big</span>(pi)   <span class="pl-c"><span class="pl-c">#</span> highly accurate</span>
+    y <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">10</span>      <span class="pl-c"><span class="pl-c">#</span> unintentionally inaccurate</span>
+    x <span class="pl-k">+</span> y
+<span class="pl-k">end</span></pre></div>
+<p>The problem here is that the expression <code>1/10</code> has type <code>Float64</code>,
+which is much less accurate than <code>BigFloat</code>. The error is difficult to
+spot since the type <code>Float64</code> is not mentioned explicitly. <code>Float64</code>
+just happens to be the default type that Julia chooses when dividing
+two integers.</p>
+<p>This version of the code does not have a problem:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">pi_plus_tenth</span>()
+    x <span class="pl-k">=</span> <span class="pl-c1">big</span>(pi)   <span class="pl-c"><span class="pl-c">#</span> highly accurate</span>
+    y <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">//</span><span class="pl-c1">10</span>     <span class="pl-c"><span class="pl-c">#</span> infinitely accurate</span>
+    x <span class="pl-k">+</span> y
+<span class="pl-k">end</span></pre></div>
+<p>This uses a rational number to represent the fraction <code>1/10</code>, which is
+arbitrarily accurate when converted to <code>BigFloat</code>.</p>
+<p>One way to avoid such surprises is by avoiding automatic type
+promotion. If the compiler refuses the expression <code>+(::BigFloat, ::Float64)</code>, then the error is quickly detected.</p>
+<h1><a id="user-content-design" class="anchor" aria-hidden="true" href="#design"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Design</h1>
+<p>The module <code>NonPromoting</code> defines a wrapper type <code>NP{T}</code>. <code>T</code> is
+expected to be a subtype of <code>AbstractFloat</code> such as <code>Float64</code>,
+<code>BigFloat</code>, etc. This type supports all operations that <code>T</code> supports,
+except that the automatic promotion rules to and from <code>T</code> are
+disabled. Julia is very efficient for this kind of setup, and there is
+zero run-time overhead.</p>
+<p>To make a value non-promotable, call the constructor <code>NP{T}</code>. To
+extract the value, convert it back to <code>T</code> with <code>convert(T, x)</code>. The
+usual arithmetic operations (add, subtract, multiply, square root,
+trigonometric functions, ...) are supported directly on the <code>NP{T}</code>
+type.</p>
+<p>The first (inaccurate) code looks like this:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> NonPromoting
+<span class="pl-k">function</span> <span class="pl-en">pi_plus_tenth_bad</span>()
+    x <span class="pl-k">=</span> <span class="pl-c1">NP</span>(<span class="pl-c1">big</span>(pi))   <span class="pl-c"><span class="pl-c">#</span> highly accurate</span>
+    y <span class="pl-k">=</span> <span class="pl-c1">NP</span>(<span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">10</span>)      <span class="pl-c"><span class="pl-c">#</span> unintentionally inaccurate</span>
+    x <span class="pl-k">+</span> y             <span class="pl-c"><span class="pl-c">#</span> ERROR REPORTED HERE</span>
+<span class="pl-k">end</span></pre></div>
+<p>This code will now produce an error, because the addition
+<code>+(::NP{BigFloat}, NP{Float64})</code> is not defined, and Julia will not
+promote <code>NP{Float64}</code> to <code>NP{BigFloat}</code>.</p>
+<p>This version is explicit about types and works correctly (i.e.
+accurately):</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> NonPromoting
+<span class="pl-k">function</span> <span class="pl-en">pi_plus_tenth</span>()
+    x <span class="pl-k">=</span> <span class="pl-c1">NP</span><span class="pl-c1">{BigFloat}</span>(pi)      <span class="pl-c"><span class="pl-c">#</span> highly accurate</span>
+    y <span class="pl-k">=</span> <span class="pl-c1">NP</span><span class="pl-c1">{BigFloat}</span>(<span class="pl-c1">1</span><span class="pl-k">//</span><span class="pl-c1">10</span>)   <span class="pl-c"><span class="pl-c">#</span> also highly accurate</span>
+    x <span class="pl-k">+</span> y
+<span class="pl-k">end</span></pre></div>
+<p>The basic design idea is that one uses the type <code>NP{T}</code> instead of <code>T</code>
+everywhere, except to interface with other modules who do not know
+about <code>NonPromoting</code>.</p>
+</article></div>

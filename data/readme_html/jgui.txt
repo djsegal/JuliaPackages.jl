@@ -1,0 +1,489 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-jgui" class="anchor" aria-hidden="true" href="#jgui"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>JGUI</h1>
+<p>[This package may not work! Using Gtk.jl might just be best...]</p>
+<p>A package to simplify the creation of GUIs within Julia</p>
+<p>The <code>JGUI</code> package provides a few different means to ease the
+creation of GUIs within <code>Julia</code>. These include a simplified
+implementation of Mathematica's <code>Manipulate</code> function, and a simplified
+interface for using the <code>tcl/tk</code>, <code>Gtk</code>, or <code>Qt</code> toolkits within <code>Julia</code>.</p>
+<h1><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h1>
+<p>The <code>JGUI</code> package installs with <code>Pkg.clone("https://github.com/jverzani/JGUI.jl")</code>. For it to work one
+needs to have installed the <code>Tk</code> package, the <code>Gtk</code> package, or the
+<code>PySide</code> package. The latter requires an installation of the <code>Qt</code>
+libraries (<a href="http://qt-project.org/downloads" rel="nofollow">http://qt-project.org/downloads</a>), <code>Python</code>
+(<a href="http://www.python.org/download/" rel="nofollow">http://www.python.org/download/</a>), the <code>PySide</code>
+(<a href="http://qt-project.org/wiki/Get-PySide" rel="nofollow">http://qt-project.org/wiki/Get-PySide</a>) interface between <code>Python</code> and
+<code>Qt</code>, and the <code>PyCall</code> package to connect <code>Python</code> with <code>Julia</code>
+(installed with the <code>PySide</code> package). The Anaconda
+(<a href="http://docs.continuum.io/anaconda/" rel="nofollow">http://docs.continuum.io/anaconda/</a>) packaging of <code>Python</code> should be a
+one-stop installation, though the <code>Qt</code> part can be buggy.</p>
+<h1><a id="user-content-manipulate" class="anchor" aria-hidden="true" href="#manipulate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Manipulate</h1>
+<p>The easiest way to create a GUI with this package is to use the
+<code>manipulate</code> function, which can be used to evaluate an expression
+parameterized by values coming from easily specified controls within a
+GUI.</p>
+<p>The first line below allows one to specify the toolkit, currently
+<code>Tk</code>, <code>Gtk</code> (default) or <code>Qt</code>.  Mixing and matching within a <code>Julia</code>
+session will likely lead to crashes. The toolkit is specified before
+<code>JGUI</code> is loaded, so that toolkit-specific code can be loaded.</p>
+<pre><code>ENV["toolkit"] = "Gtk"		# default, can be skipped
+using JGUI
+</code></pre>
+<p>Now, consider the following expression which when evaluated produces a
+Winston plot object:</p>
+<pre><code>expr = quote
+     using Winston
+     plot(x -&gt; sin(u*x), 0, 2pi)
+end
+</code></pre>
+<p>We can use the <code>manipulate</code> function to fill in values for the unbound
+variable <code>u</code>, when the expression is evaluated. The <code>plot</code> command
+above returns a Winston plot object, which is then plotted. To create
+a control to specify values for <code>u</code>, we simply need to specify a
+range, as follows:</p>
+<pre><code>a = manipulate(expr, (:u, 1:10))
+</code></pre>
+<p>This call will pop up a simple GUI with a slider that allows one to
+adjust the value of <code>u</code> from 1 to 10, updating the graphic as this is
+done.</p>
+<p>Here is a how one can add a title to the plot. First we modify the
+<code>plot</code> call to include a title:</p>
+<pre><code>expr = quote
+     using Winston
+     xs = linspace(0, 2pi)
+     ys = [sin(u*x) for x in xs]
+     plot(x, y, title=title)
+end
+</code></pre>
+<p>Now <code>title</code> is also unbound. To specify a control to set a title, we use a string:</p>
+<pre><code>a = manipulate(expr, (:u, 1:10), (:title, "A sine plot"))
+</code></pre>
+<p>Now when the plot is updated, the title is also taken from a text box.</p>
+<p>Manipulate has other simple-to-specify controls:</p>
+<ul>
+<li><code>(:symbol, Bool)</code> - checkbox. Use <code>{:label=&gt;"some label"}</code> to label it.</li>
+<li><code>(:symbol, Range)</code> - slider</li>
+<li><code>(:symbol, Range, Range)</code> - 2d slider</li>
+<li><code>(:symbol, Vector)</code> - radio or combobox (depends on size)</li>
+<li><code>(:symbol, String)</code> - text edit</li>
+<li><code>(:symbol, Real)</code> - text edit with conversion to float via <code>parsefloat</code></li>
+<li><code>(:symbol, Int)</code> - text edit with conversion to integer via <code>parseint</code></li>
+</ul>
+<p>The expression can evaluate to a Winston plot object or any other
+object. Plot objects are rendered in a graphics device, text objects
+in a text box.</p>
+<p>When using <code>Qt</code> (<code>ENV["toolkit"] = "Qt"</code>) one can plot <code>PyPlot</code> calls, not
+<code>Winston</code> calls. The <code>modules</code> argument should include <code>PyPlot</code>.</p>
+<h2><a id="user-content-a-simplified-gui-interface" class="anchor" aria-hidden="true" href="#a-simplified-gui-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>A simplified GUI interface</h2>
+<p>The <code>Gtk</code>, <code>Tk</code>, and <code>PySide</code> packages for <code>Julia</code> provide relatively
+easy means to produce GUIs with the <code>Gtk</code>, <code>Tcl/Tk</code> and <code>Qt</code> toolkits,
+respectively. In addition to the <code>manipulate</code> function, this package
+provides a small API for creating GUIs that makes it even easier than
+the other packages, though sacrificing a huge amount of their power
+and flexibility. (The <code>JGUI</code> interface is primarily concerned with
+simpler things like controls, and not more involved interfaces like
+those with a canvas widget.)</p>
+<p>Here is a simple example where a window has a button which when
+clicked will destroy the window.</p>
+<pre><code>w = window(size=[200, 200])
+w[:title] = "hello world"
+
+b = button(w, "Close")
+push!(w, b)
+
+connect(b, "clicked", w, destroy)
+raise(w)
+</code></pre>
+<p>The first line creates a window object with an optional size
+specified.</p>
+<p>The second line shows how a property of the window object may be
+set, using indexing notation with an appropriate symbol, in this case
+<code>:title</code>. There are relatively few properties for any given
+object. For a control, the most important is <code>:value</code>. (The method
+<code>properties</code> will list all of a widget's properties.)</p>
+<p>The third line creates a button object. All constructors except
+<code>window</code> use a parent container for the first argument. (This is
+similar to <code>Tk</code> and so the widget hierarchy is determined, but not the
+actual layout). The <code>button</code> constructor has label value for the
+second positional argument.</p>
+<p>The fourth line is specific to <code>JGUI</code> and not the underlying
+toolkit. (Though, the same idea is present in <code>Gtk</code>.)  Rather than use
+separate layout managers, as is done with <code>Qt</code> or <code>Tk</code>, each container
+object is conceptualized as a queue of some sort.  For the window
+object, the <code>push!</code> method adds the button to the window queue, laying
+it out as it does so.</p>
+<p>The fifth line is how one connects a callback to an event. In this
+case the receiver of a click event, <code>b</code>, will emit a signal
+<code>clicked</code>. The <code>w</code> object is passed to its method <code>destroy</code> to destroy
+the window. This pattern follows Qt's signal-and-slots style. One can
+also just pass in a function to call instead of the last two
+arguments, something like <code>connect(b, "clicked", () -&gt; destroy(w))</code>.</p>
+<p>Finally, the window is raised.</p>
+<p>Though simple, the above example demonstrates most all the procedures
+when creating a GUI: creating GUI objects, accessing their properties,
+laying out the objects, and creating interactivity by assigning
+callbacks to user-initiated events.</p>
+<h2><a id="user-content-basics" class="anchor" aria-hidden="true" href="#basics"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Basics</h2>
+<h3><a id="user-content-constructors" class="anchor" aria-hidden="true" href="#constructors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>constructors</h3>
+<p>Let's look at another example, this one mimics, the first manipulate
+example.</p>
+<pre><code>## needs Gtk or Tk
+ENV["toolkit"] = "Gtk"
+using JGUI, Winston
+
+w = window()
+f = hbox(w); push!(f)
+
+sl = slider(f, 1:10)
+sl[:size] = [100, 20]
+cnv = cairographic(f)
+
+append!(f, [sl, cnv])
+
+connect(sl, "valueChanged") do u
+  p = plot(x -&gt; sin(u * x), 0, 2pi)
+  display(cnv, p)
+end
+
+notify(sl, "valueChanged", 1) # draw initial graphic
+</code></pre>
+<p>In the above we have several constructors: <code>window</code>, <code>hbox</code>, <code>slider</code>,
+and <code>cairographic</code>. Each produces a widget. The <code>window</code> creates a
+toplevel window, and <code>slider</code> a slider. The <code>hbox</code> constructor creates
+a horizontal box container, which is used above to hold two children,
+the slider and a cairo graphic device produced by
+<code>cairographic</code>. (The <code>pyplotgraphic</code> widget produces a device for
+graphics drawn via <code>PyPlot</code> and can be use with the <code>Qt</code> toolkit.)</p>
+<p>As mentioned, constructors in <code>JGUI</code>, except for <code>window</code>, have a
+parent container passed as the first argument. Additional arguments
+are used to customize the constructor. For <code>hbox</code> and <code>cairographic</code>,
+there is no needed customization, though the latter may have a width
+and height argument specified. For a slider, one needs to specify the
+range that is stepped over. Unlike most slider implementations, such as
+the one in <code>Tk</code>, a slider is used to select amongst the specified
+range or sorted vector. This reduces the need to specify a step size
+and is more in line with how <code>julia</code> produces sequences of values.</p>
+<p>For a slider, the <code>valueChanged</code> signal passes the new value to the
+callback. This value is then used within the callback that produces
+the graphic. One could also access this value within the callback with
+<code>sl[:value]</code>.</p>
+<p>The <code>cairographic</code> widget is not integrated into the multimedia
+display system (out of ignorance). Following <code>Winston</code>, the <code>display</code>
+method above takes as a first argument the <code>cairographic</code> widget and
+the second object a <code>Winston</code> object to plot. If doing this at the
+command line, use a semicolon after the plot call to avoid displaying
+automatically.</p>
+<p>The last line is one hacky way to get the initial graphic drawn. The
+<code>notify</code> method of the underlying model notifies any observers of a
+"valueChanged" event for a specified value.</p>
+<h3><a id="user-content-containers" class="anchor" aria-hidden="true" href="#containers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Containers</h3>
+<p>Constructors produce basically two types of objects: controls and
+containers. The containers available in this package are few:</p>
+<ul>
+<li>
+<p><code>hbox</code> and <code>vbox</code> produce horizontal and vertical box containers.</p>
+</li>
+<li>
+<p><code>grid</code> makes a container for arranging its children in a grid.</p>
+</li>
+<li>
+<p><code>notebook</code> provides a tabbed notebook for organizing its children.</p>
+</li>
+<li>
+<p><code>formlayout</code> provides a simple way to lay out label/controls in a grid</p>
+</li>
+<li>
+<p><code>labelframe</code> provides a simple container for holding a single child
+(like <code>window</code>), in this case with a label and decorative frame.</p>
+</li>
+</ul>
+<p>Containers are coupled with a layout manager which are utilized in a "julian" manner:</p>
+<ul>
+<li>
+<p>The <code>hbox</code> and <code>vbox</code> containers have methods <code>push!</code>, <code>insert!</code>, and
+<code>append!</code> for adding children to the layout;  <code>pop!</code> and
+<code>splice!</code> for removing children. In the above example, we use
+<code>append!</code> to add two children at a time.</p>
+</li>
+<li>
+<p>The <code>formlayout</code> and <code>notebook</code> containers also implement the above
+for adding a child at a time, with an additional label.</p>
+</li>
+<li>
+<p>The single-child containers, <code>labelframe</code> and <code>window</code>, use <code>push!</code> to add their child.</p>
+</li>
+<li>
+<p>Children of a <code>grid</code> container are managed via matrix notation. There are two styles. One can add a matrix of widgets:</p>
+</li>
+</ul>
+<pre><code>w = window(title="Matrix of widgets")
+g = grid(w); push!(g)		# push!(g) is same as push!(w, g)
+b1 = button(g, "one")
+b2 = button(g, "two")
+b3 = button(g, "three")
+
+g[:,:] = [b1 b2; nothing b3]
+raise(w)
+</code></pre>
+<p>Or one can add a single child using <code>[row,column]</code> notation. These may
+be specified through a range to span multiple rows or columns.</p>
+<p>The expanding and alignment properties of how a child is placed into a
+parent are specified for the child, not the container. These are done
+through the properties <code>:sizepolicy</code> and <code>:alignment</code>. Padding is done
+through the <code>:spacing</code> properties of the containers.</p>
+<h3><a id="user-content-properties" class="anchor" aria-hidden="true" href="#properties"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Properties</h3>
+<p>Widgets have properties that can be queried and set through index
+notation where a symbol is used for indexing. For example, to set the
+size policy  of a widget, we have:</p>
+<pre><code>w = window(size=[300, 300])
+f = hbox(w); push!(f)
+b = button(f, "expanding")
+
+#b[:sizepolicy] = (:expand, :fixed)  # expand in x direction
+b[:sizepolicy] = (:fixed, :expand)   # expand in y direction
+#b[:sizepolicy] = (:expand, :expand) # expand in both
+
+push!(b)
+raise(w)
+</code></pre>
+<p>Some properties are dynamic, this one is not. It should be set before packing into a layout.</p>
+<p>The main value of a widget is assigned the <code>value</code> property. For a button this is its label:</p>
+<pre><code>w = window(title="change label")
+b = button(w, "old label"); push!(b)
+b[:value]			# "old label"
+b[:value] = "new label"		# updates button
+b[:value]			# "new label"
+</code></pre>
+<p>When a property, say <code>:prop</code>, is looked up a search for
+either a <code>getProp</code> or <code>setProp</code> method is made. Though not exported, save for <code>getValue</code> and <code>setValue</code>,
+these functions can be conveniently employed when using the property in a callback.</p>
+<h2><a id="user-content-signals" class="anchor" aria-hidden="true" href="#signals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Signals</h2>
+<p>The basic <code>connect</code> method is used to connect a callback to an
+event. The syntax follows Qt's signals and slots usage. It can take
+two forms: <code>connect(receiver, signal, obj, slot)</code> or
+<code>connect(receiver, signal, slot)</code>, where <code>slot</code> is a function. In the
+first instance, the call is <code>slot(obj, vals...)</code> and the second, just
+<code>slot(vals...)</code> where <code>vals...</code> depends on the signal: the basic
+<code>valueChanged</code> signal passes in the value; whereas, a button's
+<code>clicked</code> signal has no value passed. One can also use the <code>do</code> syntax
+to specify the slot as a function.</p>
+<p>Widgets have different signals defined. Mostly the names follow a
+small subset of those for the corresponding Qt widget (hence the names
+in camelCase format).</p>
+<p>The connect method returns an id. This can be used with <code>disconnect</code>
+to remove an observer of an object. At present there is no way to
+temporarily suspend a callback.</p>
+<p>As an example,  This is how
+one connects a slider value to a label:</p>
+<pre><code>w = window(title="label and slider")
+f = hbox(w); push!(f)
+sl = slider(f, 1:20)
+sl[:size] = [100, 20]
+l = label(f, sl[:value])
+append!(f, [sl, l])
+
+connect(sl, "valueChanged", l, setValue)
+raise(w)
+</code></pre>
+<p>Some alternatives would be <code>connect(rb, "valueChanged", l, (l, value) -&gt; l[:value] = value)</code> or <code>connect(rb, "valueChanged", value -&gt; l[:value] = value)</code>.</p>
+<p>As an aside, this can also be done just by sharing the underlying
+model, as with:</p>
+<pre><code>w = window(title="label and slider")
+f = hbox(w); push!(f)
+sl = slider(f, 1:20)
+sl[:size] = [100, 20]
+l = label(f, sl.model)
+append!(f, [sl, l])
+</code></pre>
+<h3><a id="user-content-react" class="anchor" aria-hidden="true" href="#react"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>React</h3>
+<p>The <code>React.jl</code> package is a signaling package. It will be integrated more fully, but for the output of one widget can be used as the input of another. The above example can be done via:</p>
+<pre><code>w =  window(title="label and slider")
+f = hbox(w); push!(f)
+sl = slider(f, 1:20)
+sl[:size] = [100, 20]
+l = label(f, "")
+l[:value] = sl			# connect value of slider to value of label.
+append!(f, [sl, l])
+raise(w)
+</code></pre>
+<h2><a id="user-content-widgets" class="anchor" aria-hidden="true" href="#widgets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Widgets</h2>
+<p>The basic widgets are:</p>
+<ul>
+<li>
+<p><code>label</code> a standard text label</p>
+</li>
+<li>
+<p><code>separator</code> used to place a horizontal or vertical line in a layout</p>
+</li>
+<li>
+<p><code>button</code> a push button</p>
+</li>
+<li>
+<p><code>lineedit</code> a single line text edit</p>
+</li>
+<li>
+<p><code>textedit</code> multi-line text edit</p>
+</li>
+<li>
+<p><code>checkbox</code> a simple true/false toggle</p>
+</li>
+<li>
+<p><code>radiogroup</code> exclusive set of buttons</p>
+</li>
+<li>
+<p><code>buttongroup</code> exclusive (or not) set of buttons</p>
+</li>
+<li>
+<p><code>combobox</code> a popup selection widget</p>
+</li>
+<li>
+<p><code>slider</code> select from numeric range</p>
+</li>
+<li>
+<p><code>slider2d</code> select two variables from numeric range. (Not <code>Gtk</code>.)</p>
+</li>
+<li>
+<p><code>listview</code> Show a vector of values allowing selection of one or more. (Not <code>Gtk</code>.)</p>
+</li>
+<li>
+<p><code>storeview</code>  used to display store of records.</p>
+</li>
+<li>
+<p><code>treeview</code> used to display tree structured records.  (Not <code>Gtk</code>.)</p>
+</li>
+<li>
+<p><code>cairographic</code>  used with <code>Winston</code> graphics (<code>Gtk</code> and <code>Tk</code> only)</p>
+</li>
+<li>
+<p><code>pyplotgraphic</code> used with <code>PyPlot</code> graphics (<code>Qt</code> only)</p>
+</li>
+<li>
+<p><code>imageview</code> used to display <code>png</code> or <code>gif</code> image files.</p>
+</li>
+</ul>
+<h4><a id="user-content-xxx-example" class="anchor" aria-hidden="true" href="#xxx-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>XXX example</h4>
+<h4><a id="user-content-cairo-graphic-example" class="anchor" aria-hidden="true" href="#cairo-graphic-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Cairo graphic example</h4>
+<p>The <code>cairographic</code> widget is a light wrapper around a Cairo canvas provided by the <code>Tk</code> and <code>Gtk</code> packages.</p>
+<p>To use the canvas, access the <code>:widget</code> property of the <code>cairographic</code>
+object:</p>
+<pre><code>## update two graphics windows...
+ENV["toolkit"] = "Gtk"
+using JGUI, Winston
+w = window()
+f = grid(w); push!(f)
+cnv1 = cairographic(f, width=480, height=400)
+cnv2 = cairographic(f, width=480, height=400)
+b = button(f, "update"); b[:alignment] = (:right, :center)
+f[:,:] = [cnv1 cnv2; nothing b]
+connect(b, "clicked") do
+   p = FramedPlot(); add(p, Curve(rand(10), rand(10))); display(cnv1, p)
+   p = FramedPlot(); add(p, Curve(rand(10), rand(10))); display(cnv2, p)
+end
+notify(b, "clicked")	# roundabout way to draw initial graphic, ...
+</code></pre>
+<h4><a id="user-content-storeview-example" class="anchor" aria-hidden="true" href="#storeview-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Storeview example</h4>
+<p>A common widget is a tabular display of data, where each row
+represents a case, and column some measurement associate to that
+case. Basically a spreadsheet with some consistency in the usage. The
+<code>storeview</code> widget can display such data.</p>
+<p>A <code>Store</code> is a vector of records, or cases. Each record is an array of
+type <code>Any</code> or a <code>tuple</code>. The records are displayed in a grid , one row
+per record. The <code>storeview</code> widget is used to display values in an
+underlying <code>Store</code> object.</p>
+<p>Here is an example. First a store is defined. We specify the type of
+variables for each column, as this information is needed in some
+toolkits (such as <code>Gtk</code>, where this design is used for
+<code>@GtkListStore</code>).</p>
+<pre><code>
+store = Store(Int, Float64, String)
+push!(store, (1, 1.0, "one"))
+push!(store, (2, 2.0, "two"))
+push!(store, (3, 3.0, "three"))
+</code></pre>
+<p>Here is how we lay it out:</p>
+<pre><code>w = window(size=[300, 300])
+sv = storeview(w, store)
+push!(sv)			
+sv[:names] = ["Int", "Float64", "String"]
+sv[:widths] = [100, 100, 100]	# column widths
+sv[:selectmode] = :multiple	# :single or :multiple
+id = connect(sv, "clicked", (row, col) -&gt; println((row, col))) # sample handler
+
+raise(w)
+</code></pre>
+<p>One can add and remove items through <code>insert!</code>, <code>splice!</code>; one can modify existing items through indexing:</p>
+<pre><code>t4 = (4, 4.0, "four")
+push!(store, t4)
+splice!(store, 1)
+item = store[1]
+item[3] = uppercase(item[3])
+store[1] = item
+</code></pre>
+<p>The <code>valueChanged</code> signal passes the index (or indices) that are
+selected. These are also given by the <code>:index</code> property. The <code>:value</code>
+property returns the items. One uses <code>:index</code> to set the selection, not <code>:value</code>.</p>
+<p>In addition to <code>rowClicked</code>, there are <code>rowDoubleClicked</code>, <code>headerClicked</code>, and <code>selectionChanged</code> signals.</p>
+<h2><a id="user-content-treeview-example" class="anchor" aria-hidden="true" href="#treeview-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Treeview example</h2>
+<p>A treeview uses a treestore to hold the data. Here is a simple example:</p>
+<pre><code>ENV["toolkit"] = "Tk"		# not Gtk!!!
+
+tstore = treestore(Int, Float64, String)
+
+t1 = (1, 1.0, "one")
+t11 = (11, 11.0, "one-one")
+t2  = (2, 2.0, "two")
+
+
+w = window(size=[300, 300])
+tv = treeview(w, tstore)
+tv[:names] = ["Int", "Float", "String"]
+tv[:widths] = [50,50,-1]
+
+tv[:keyname] = "key"
+tv[:keywidth] = 100
+
+push!(w, tv)  
+
+raise(w)
+</code></pre>
+<p>To manage child items, we have <code>insert!</code> (with signature <code>(store, parent, sibling position, label, [data])</code>):</p>
+<pre><code>node = insert!(tstore, nothing, 1, "label1", t1)
+insert!(tstore, node, 1, "label11", t11)
+node = insert!(tstore, nothing, 2, "label2", t2)
+</code></pre>
+<p>Nodes are related to a <code>path</code>, which specifies the ancestry. The path
+<code>[3,2,1]</code> would be the first child of the second child of the third
+child of the root. We use the path to find a node to open via:</p>
+<pre><code>node = path_to_node(tstore, [1])
+expand_node(tv, node)
+</code></pre>
+<p>We can remove nodes via a two-argument form of <code>pop!</code></p>
+<pre><code>node = path_to_node(tstore, [1,1])
+pop!(tstore, node)
+</code></pre>
+<h3><a id="user-content-dialogs" class="anchor" aria-hidden="true" href="#dialogs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Dialogs</h3>
+<p>There are some standard modal dialogs</p>
+<ul>
+<li>
+<p><code>filedialog</code></p>
+</li>
+<li>
+<p><code>messagebox</code></p>
+</li>
+<li>
+<p><code>confirmbox</code></p>
+</li>
+</ul>
+<p>In addition, the <code>dialog</code> constructor can be used to generate dialogs, somewhat similar to Qt's base Dialog class:</p>
+<pre><code>ENV["toolkit"] = "Tk"		# not Gtk!!!
+using JGUI
+w = window()			# Some parent to position the dialog near
+
+dlg = dialog(w, buttons=[:cancel, :ok]) # default is just `:ok`
+f = vbox(dlg); push!(f)
+
+l = label(f, "More complicated controls go here"); push!(l)
+
+connect(dlg, "finished", state -&gt; println(state))
+dlg.exec()
+</code></pre>
+</article></div>

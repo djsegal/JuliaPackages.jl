@@ -1,0 +1,116 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-polynomialfactors" class="anchor" aria-hidden="true" href="#polynomialfactors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>PolynomialFactors</h1>
+<p>A package for factoring polynomials with integer or rational coefficients over the integers.</p>
+<p><a href="http://pkg.julialang.org/?pkg=PolynomialFactors&amp;ver=0.6" rel="nofollow"><img src="https://camo.githubusercontent.com/80aa1260dc1952cf53292e32d9000f7daa7db6c8/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f506f6c796e6f6d69616c466163746f72735f302e362e737667" alt="PolynomialFactors" data-canonical-src="http://pkg.julialang.org/badges/PolynomialFactors_0.6.svg" style="max-width:100%;"></a></p>
+<p>Linux: <a href="https://travis-ci.org/jverzani/PolynomialFactors.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/442d00d221e50b73e0828efd0a0323eacc332404/68747470733a2f2f7472617669732d63692e6f72672f6a7665727a616e692f506f6c796e6f6d69616c466163746f72732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/jverzani/PolynomialFactors.jl.svg?branch=master" style="max-width:100%;"></a>
+ 
+Windows: <a href="https://ci.appveyor.com/project/jverzani/polynomialfactors-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/88077808ac6a97e834a985d1beee9cf215a0ef52/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6769746875622f6a7665727a616e692f506f6c796e6f6d69616c466163746f72732e6a6c3f6272616e63683d6d6173746572267376673d74727565" alt="Build St 0.1.1atus" data-canonical-src="https://ci.appveyor.com/api/projects/status/github/jverzani/PolynomialFactors.jl?branch=master&amp;svg=true" style="max-width:100%;"></a></p>
+<p>For polynomials over the integers or rational numbers, this package provides</p>
+<ul>
+<li>
+<p>a <code>factor</code> command to factor into irreducible factors over the integers;</p>
+</li>
+<li>
+<p>a <code>rational_roots</code> function to return the rational roots;</p>
+</li>
+<li>
+<p>a <code>powermod</code> function to factor the polynomial over Z/pZ.</p>
+</li>
+</ul>
+<p>The implementation is based on the Cantor-Zassenhaus approach, as
+detailed in Chapters 14 and 15 of the excellent text <em>Modern Computer Algebra</em> by von zer
+Gathen and Gerhard and a paper by Beauzamy, Trevisan, and Wang.</p>
+<p>The factoring solutions in <code>SymPy.jl</code> or <code>Nemo.jl</code> would be preferred,
+in general, especially for larger problems (degree 30 or more, say) where the performance here is not good. However, this package
+requires no additional external libraries. (PRs improving performance are most welcome.)</p>
+<p>Examples:</p>
+<pre><code>julia&gt; using AbstractAlgebra, PolynomialFactors;
+
+julia&gt; R, x = ZZ["x"];
+
+julia&gt; p = prod(x .-[1,1,3,3,3,3,5,5,5,5,5,5])
+x^12-44*x^11+874*x^10-10348*x^9+81191*x^8-443800*x^7+1728556*x^6-4818680*x^5+9505375*x^4-12877500*x^3+11306250*x^2-5737500*x+1265625
+
+julia&gt; poly_factor(p)
+Dict{AbstractAlgebra.Generic.Poly{BigInt},Int64} with 3 entries:
+  x-5 =&gt; 6
+  x-1 =&gt; 2
+  x-3 =&gt; 4
+</code></pre>
+<p>As can be seen <code>factor</code> returns a dictionary whose keys are
+irreducible factors of the polynomial <code>p</code> as <code>Polynomial</code> objects, the
+values being their multiplicity. If the polynomial is non-monic, a
+degree $0$ polynomial is there so that the original polynomial can be
+recovered as the product  <code>prod(k^v for (k,v) in poly_factor(p))</code>.</p>
+<p>Here we construct the polynomial in terms of a variable <code>x</code>:</p>
+<pre><code>julia&gt; poly_factor((x-1)^2 * (x-3)^4 * (x-5)^6)
+Dict{AbstractAlgebra.Generic.Poly{BigInt},Int64} with 3 entries:
+  x-5 =&gt; 6
+  x-1 =&gt; 2
+  x-3 =&gt; 4
+</code></pre>
+<p>Factoring over the rationals is really done over the integers, The
+first step is to find a common denominator for the coefficients. The
+constant polynomial term reflects this.</p>
+<pre><code>julia&gt; R, x = QQ["x"]
+(Univariate Polynomial Ring in x over Rationals, x)
+
+julia&gt; poly_factor( (1//2 - x)^2 * (1//3 - 1//4 * x)^5 )
+Dict{AbstractAlgebra.Generic.Poly{Rational{BigInt}},Int64} with 3 entries:
+  2//1*x-1//1 =&gt; 2
+  3//1*x-4//1 =&gt; 5
+  -1//995328  =&gt; 1
+</code></pre>
+<p>For some problems big integers are necessary to express the problem:</p>
+<pre><code>julia&gt; p = prod(x .- collect(1:20))
+x^20-210*x^19+20615*x^18-1256850*x^17+53327946*x^16-1672280820*x^15+40171771630*x^14-756111184500*x^13+11310276995381*x^12-135585182899530*x^11+1307535010540395*x^10-10142299865511450*x^9+63030812099294896*x^8-311333643161390640*x^7+1206647803780373360*x^6-3599979517947607200*x^5+8037811822645051776*x^4-12870931245150988800*x^3+13803759753640704000*x^2-8752948036761600000*x+2432902008176640000
+
+julia&gt; poly_factor(p)
+Dict{AbstractAlgebra.Generic.Poly{BigInt},Int64} with 20 entries:
+  x-15 =&gt; 1
+  x-18 =&gt; 1
+  x-17 =&gt; 1
+  x-9  =&gt; 1
+  x-5  =&gt; 1
+  x-14 =&gt; 1
+  x-7  =&gt; 1
+  x-13 =&gt; 1
+  x-11 =&gt; 1
+  x-2  =&gt; 1
+  x-12 =&gt; 1
+  x-1  =&gt; 1
+  x-3  =&gt; 1
+  x-8  =&gt; 1
+  x-10 =&gt; 1
+  x-4  =&gt; 1
+  x-19 =&gt; 1
+  x-16 =&gt; 1
+  x-6  =&gt; 1
+  x-20 =&gt; 1
+</code></pre>
+<pre><code>julia&gt; poly_factor(x^2 - big(2)^256)
+Dict{AbstractAlgebra.Generic.Poly{BigInt},Int64} with 2 entries:
+  x+340282366920938463463374607431768211456 =&gt; 1
+  x-340282366920938463463374607431768211456 =&gt; 1
+</code></pre>
+<p>Factoring polynomials over a finite field of coefficients, <code>Z_p[x]</code> with <code>p</code> a prime, is also provided by <code>factormod</code>:</p>
+<pre><code>julia&gt; factormod(x^4 + 1, 2)
+Dict{AbstractAlgebra.Generic.Poly{AbstractAlgebra.gfelem{BigInt}},Int64} with 1 entry:
+  x+1 =&gt; 4
+
+julia&gt; factormod(x^4 + 1, 5)
+Dict{AbstractAlgebra.Generic.Poly{AbstractAlgebra.gfelem{BigInt}},Int64} with 2 entries:
+  x^2+3 =&gt; 1
+  x^2+2 =&gt; 1
+
+julia&gt; factormod(x^4 + 1, 3)
+Dict{AbstractAlgebra.Generic.Poly{AbstractAlgebra.gfelem{BigInt}},Int64} with 2 entries:
+  x^2+x+2   =&gt; 1
+  x^2+2*x+2 =&gt; 1
+
+julia&gt; factormod(x^4 + 1, 7)
+Dict{AbstractAlgebra.Generic.Poly{AbstractAlgebra.gfelem{BigInt}},Int64} with 2 entries:
+  x^2+3*x+1 =&gt; 1
+  x^2+4*x+1 =&gt; 1
+</code></pre>
+<p>The keys are polynomials a finite group, not over the integers.</p>
+</article></div>

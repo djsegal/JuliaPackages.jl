@@ -1,0 +1,181 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-growablearraysjl" class="anchor" aria-hidden="true" href="#growablearraysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>GrowableArrays.jl</h1>
+<p><a href="https://travis-ci.org/ChrisRackauckas/GrowableArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/2e7566942a9ef073a1ae4b3bccf193a3656bec24/68747470733a2f2f7472617669732d63692e6f72672f43687269735261636b6175636b61732f47726f7761626c654172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/ChrisRackauckas/GrowableArrays.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/ChrisRackauckas/growablearrays-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/a1eb62024260ab2ac6e602b7d8bd4395894b42d6/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f383933637436766870306638326539753f7376673d74727565" alt="Build status" data-canonical-src="https://ci.appveyor.com/api/projects/status/893ct6vhp0f82e9u?svg=true" style="max-width:100%;"></a></p>
+<p>GrowableArrays was developed by Chris Rackauckas. This package implements the data
+structures GrowableArray and StackedArray which are designed to grow efficiently
+yet be easy to access and transform into more traditional arrays.</p>
+<h1><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h1>
+<p>To install the package, simply do</p>
+<div class="highlight highlight-source-julia"><pre>Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>GrowableArrays<span class="pl-pds">"</span></span>)
+<span class="pl-k">using</span> GrowableArrays</pre></div>
+<h1><a id="user-content-using-the-package" class="anchor" aria-hidden="true" href="#using-the-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Using the Package</h1>
+<p>The use of GrowableArrays is best shown by an example problem. Say at every step
+of a loop we wished to append a matrix <code>u</code> to a vector <code>uFull</code>. One case where
+this shows up is in solving Partial Differential Equations. The naive way to
+solve this problem is to concatenate <code>u</code> to an array <code>uFull</code>. Such a code would
+look as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">const</span> PROBLEM_SIZE <span class="pl-k">=</span> <span class="pl-c1">10000</span>
+<span class="pl-k">function</span> <span class="pl-en">test1</span>()
+  u <span class="pl-k">=</span>    [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">3</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span> <span class="pl-c1">3</span>
+          <span class="pl-c1">5</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">1</span>]
+
+  uFull <span class="pl-k">=</span> u
+  <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>PROBLEM_SIZE
+    uFull <span class="pl-k">=</span> <span class="pl-c1">hcat</span>(uFull,u)
+  <span class="pl-k">end</span>
+  uFull
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">test2</span>()
+  u <span class="pl-k">=</span>    [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">3</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span> <span class="pl-c1">3</span>
+          <span class="pl-c1">5</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">1</span>]
+
+  uFull <span class="pl-k">=</span> u
+
+  <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>PROBLEM_SIZE
+    uFull <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(uFull,u)
+  <span class="pl-k">end</span>
+  uFull
+<span class="pl-k">end</span></pre></div>
+<p>For a more efficient implementation, we may want to store everything as a vector:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">test3</span>()
+  u <span class="pl-k">=</span>    [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">3</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span> <span class="pl-c1">3</span>
+          <span class="pl-c1">5</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">1</span>]
+
+  uFull <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Int}</span>(undef, <span class="pl-c1">0</span>)
+  <span class="pl-c1">sizehint!</span>(uFull,PROBLEM_SIZE<span class="pl-k">*</span><span class="pl-c1">16</span>)
+  <span class="pl-c1">append!</span>(uFull,<span class="pl-c1">vec</span>(u))
+
+  <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>PROBLEM_SIZE
+    <span class="pl-c1">append!</span>(uFull,<span class="pl-c1">vec</span>(u))
+  <span class="pl-k">end</span>
+  <span class="pl-c1">reshape</span>(uFull,<span class="pl-c1">4</span>,<span class="pl-c1">4</span>,PROBLEM_SIZE<span class="pl-k">+</span><span class="pl-c1">1</span>)
+  uFull
+<span class="pl-k">end</span></pre></div>
+<p>While this works, we have to mangle the code in our loop (adding vecs and reshaping
+whenever we want to use it) in order to use this properly. However, if we instead do:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">test4</span>()
+  u <span class="pl-k">=</span>    [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">3</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span> <span class="pl-c1">3</span>
+          <span class="pl-c1">5</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">1</span>]
+
+  uFull <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Array{Int,2}}</span>(undef, <span class="pl-c1">0</span>)
+  <span class="pl-c1">push!</span>(uFull,<span class="pl-c1">copy</span>(u))
+
+  <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>PROBLEM_SIZE
+    <span class="pl-c1">push!</span>(uFull,<span class="pl-c1">copy</span>(u))
+  <span class="pl-k">end</span>
+  uFull
+<span class="pl-k">end</span></pre></div>
+<p>(Notice that we have to use copy in case the array changes since it's only a reference!).
+We can get timing results as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span>Compile Test Functions</span>
+<span class="pl-c1">test1</span>()
+<span class="pl-c1">test2</span>()
+<span class="pl-c1">test3</span>()
+<span class="pl-c1">test4</span>()
+<span class="pl-k">const</span> NUM_RUNS <span class="pl-k">=</span> <span class="pl-c1">100</span>
+<span class="pl-k">const</span> PROBLEM_SIZE <span class="pl-k">=</span> <span class="pl-c1">1000</span>
+t1 <span class="pl-k">=</span> <span class="pl-c1">@elapsed</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>NUM_RUNS <span class="pl-c1">test1</span>() <span class="pl-k">end</span>
+t2 <span class="pl-k">=</span> <span class="pl-c1">@elapsed</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>NUM_RUNS <span class="pl-c1">test2</span>() <span class="pl-k">end</span>
+t3 <span class="pl-k">=</span> <span class="pl-c1">@elapsed</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>NUM_RUNS <span class="pl-c1">test3</span>() <span class="pl-k">end</span>
+t4 <span class="pl-k">=</span> <span class="pl-c1">@elapsed</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>NUM_RUNS <span class="pl-c1">test4</span>() <span class="pl-k">end</span>
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Benchmark results: <span class="pl-v">$t1</span> <span class="pl-v">$t2</span> <span class="pl-v">$t3</span> <span class="pl-v">$t4</span><span class="pl-pds">"</span></span>)
+<span class="pl-c"><span class="pl-c">#</span>Benchmark results: 1.923640854 2.131108443 0.012493308 0.00866045 0.005246504 0.00532613 0.00773568 0.00819909</span></pre></div>
+<p>Notice that this implementation is orders of magnitude more efficient than the
+naive choice, and still an much faster than the vector approach. What we
+did here was create a vector of the matrix type and then repeatedly add
+these matrices to the vector. It's easy to understand why this is much more efficient:
+at each step of the loop this version only adds pointers to the new matrices,
+whereas the naive version has to copy the matrix each time the <code>uFull</code> is grown.</p>
+<p>The downside to this implementation is that it's hard to use as an actual result.
+For example, to grab a time course of the first row of <code>u</code> (i.e. what the value
+of <code>u</code> was at each step of the loop), we cannot do this without and reshaping
+the data structure. Also, this method silently has an error! Since we only pushed
+the reference to <code>u</code>, when <code>u</code> changes, all of the entries of <code>uFull</code> change!</p>
+<p>GrowableArray implements the solution of test 4 with the appropriate copy fix
+while re-defining the indexing functions to make it more convenient to use. Thus
+it's not as fast as <code>test4</code>, but is still an order of magnitude faster than naive
+approaches. Since it implements the best solution to the growing array problem, it has a
+constructor which is defined to be useful in that situation. An example of its use is:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">test4</span>()
+  u <span class="pl-k">=</span>    [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">3</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+          <span class="pl-c1">1</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span> <span class="pl-c1">3</span>
+          <span class="pl-c1">5</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">1</span>]
+
+  uFull <span class="pl-k">=</span> <span class="pl-c1">GrowableArray</span>(u)
+  <span class="pl-c1">sizehint!</span>(uFull,PROBLEM_SIZE)
+  <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>PROBLEM_SIZE
+    <span class="pl-c1">push!</span>(uFull,u)
+  <span class="pl-k">end</span>
+  uFull
+<span class="pl-k">end</span></pre></div>
+<p>Notice here we constrcted the GrowableArray by giving it the object <code>u</code>. This
+creates a Vector which holds <code>typeof(u)</code>s and grows the array. <code>sizehint!</code> is
+defined to sizehint the underlying array. [Note that <code>GrowableArray(u)</code> initiates
+the data vector with <code>u</code>. To initialize the GrowableArray with empty data (but
+typed to <code>typeof(u)</code>), use the constructor <code>GrowableArray(u,initvalue=false)</code>].
+With the wrapper, basic array usage matches that of other arrays:</p>
+<div class="highlight highlight-source-julia"><pre>A <span class="pl-k">=</span> [<span class="pl-c1">1</span> <span class="pl-c1">2</span>; <span class="pl-c1">3</span> <span class="pl-c1">4</span>]
+B <span class="pl-k">=</span> [<span class="pl-c1">1</span> <span class="pl-c1">2</span>; <span class="pl-c1">4</span> <span class="pl-c1">3</span>]
+G <span class="pl-k">=</span> <span class="pl-c1">GrowableArray</span>(A)
+<span class="pl-c1">push!</span>(G,A)
+<span class="pl-c1">push!</span>(G,A)
+<span class="pl-c1">push!</span>(G,A)
+<span class="pl-k">using</span> EllipsisNotation
+G[<span class="pl-c1">4</span>,<span class="pl-k">..</span>] <span class="pl-k">=</span> B <span class="pl-c"><span class="pl-c">#</span>Acts as a standard array</span>
+G[<span class="pl-c1">3</span>] <span class="pl-k">=</span> B <span class="pl-c"><span class="pl-c">#</span>Acts as a vector of matrices</span>
+K <span class="pl-k">=</span> G[<span class="pl-c1">3</span>,<span class="pl-k">..</span>] <span class="pl-k">+</span> G[<span class="pl-c1">4</span>,<span class="pl-k">..</span>]</pre></div>
+<p>Notice here we show the <code>..</code> notation from (EllipsesNotation)[]. <code>..</code> simply fills in the other columns
+with colons, meaning <code>G[3,..]==G[3,:,:]</code> (or <code>G[..,3]==G[:,:,3]</code>, and the number
+of colons matches the number of remaining dimensions).  This is  useful since
+what someone put in the GrowableArray could be an arbitrary sized array, so
+this access will always work.</p>
+<p>While because of the way our GrowableArray is stored (<code>Vector{Array}</code>) it is
+the fastest implementation for growing the array, it is not as performant as
+contiguous arrays for memory access. Thus after growing the array, one may wish
+to change this to an array with dimensions <code>ndims(u)+1</code> (i.e. the new first dimension
+is the one we concatenated along). To do this, we simply use:</p>
+<div class="highlight highlight-source-julia"><pre>Garr <span class="pl-k">=</span> <span class="pl-c1">copy</span>(G)</pre></div>
+<p>The output <code>Garr</code> is a continguous array. GrowableArrays also exports the <code>..</code> notation
+on AbstractArrays, and therefore we can still use the notation <code>Garr[..,1] = Garr[:,:,1]</code>.</p>
+<h2><a id="user-content-note-non-array-elements" class="anchor" aria-hidden="true" href="#note-non-array-elements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Note: Non-array elements</h2>
+<p>If someone tries to use a GrowableArray on a non-array element:</p>
+<div class="highlight highlight-source-julia"><pre>G2 <span class="pl-k">=</span> <span class="pl-c1">GrowableArray</span>(<span class="pl-c1">1</span>)
+<span class="pl-c1">push!</span>(G2,<span class="pl-c1">3</span>)</pre></div>
+<p>then the GrowableArray will act like a regular vector of the objects which are
+being added. Thus there is no reason to write special cases when the input is a
+number rather than an array!</p>
+<h2><a id="user-content-extra-the-stackedarray" class="anchor" aria-hidden="true" href="#extra-the-stackedarray"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Extra: The StackedArray</h2>
+<p>If we had already developed our code as in test 4 and have this <code>Vector{Array}</code>
+which we wish to gain easier access to, the StackedArray is designed to take in
+such a value and convert it to be as easy to use as the GrowableArray. An example
+of the use is as follows:</p>
+<div class="highlight highlight-source-julia"><pre>u <span class="pl-k">=</span>    [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+        <span class="pl-c1">1</span> <span class="pl-c1">3</span> <span class="pl-c1">3</span> <span class="pl-c1">4</span>
+        <span class="pl-c1">1</span> <span class="pl-c1">5</span> <span class="pl-c1">6</span> <span class="pl-c1">3</span>
+        <span class="pl-c1">5</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span> <span class="pl-c1">1</span>]
+
+uFull <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Array{Int,2}}</span>(undef, <span class="pl-c1">0</span>)
+<span class="pl-c1">push!</span>(uFull,u)
+
+<span class="pl-k">let</span> u<span class="pl-k">=</span>u
+    <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>PROBLEM_SIZE
+        <span class="pl-c1">push!</span>(uFull,u)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+S <span class="pl-k">=</span> <span class="pl-c1">StackedArray</span>(uFull)
+Sarr <span class="pl-k">=</span> <span class="pl-c1">copy</span>(S)</pre></div>
+<p>As before, Sarr is a now a standard multidimensional array.</p>
+<h2><a id="user-content-acknowledgements" class="anchor" aria-hidden="true" href="#acknowledgements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Acknowledgements</h2>
+<p>I would like to acknowledge StackExchange user Matt B. for coming up with the
+StackedArray implementation and the idea for the GrowableArray.</p>
+</article></div>

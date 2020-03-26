@@ -1,0 +1,180 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-arrayviewsjl" class="anchor" aria-hidden="true" href="#arrayviewsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ArrayViews.jl</h1>
+<p><a href="https://travis-ci.org/JuliaArrays/ArrayViews.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/299a916d45582e01cf71119725f848db7916e3ff/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614172726179732f417272617956696577732e6a6c2e737667" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaArrays/ArrayViews.jl.svg" style="max-width:100%;"></a>
+<a href="https://coveralls.io/r/JuliaArrays/ArrayViews.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ff2fddef7e75882bdfd7d20032b046c96eeac037/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f4a756c69614172726179732f417272617956696577732e6a6c2f62616467652e737667" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/JuliaArrays/ArrayViews.jl/badge.svg" style="max-width:100%;"></a></p>
+<p><a href="http://pkg.julialang.org/?pkg=ArrayViews&amp;ver=0.6" rel="nofollow"><img src="https://camo.githubusercontent.com/bbaa0db09bfae48336e0aa67aecd4eeaaf43b148/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f417272617956696577735f302e362e737667" alt="ArrayViews" data-canonical-src="http://pkg.julialang.org/badges/ArrayViews_0.6.svg" style="max-width:100%;"></a></p>
+<p>A Julia package to explore a new system of array views.</p>
+<hr>
+<h2><a id="user-content-for-users-of-julia-04-or-higher" class="anchor" aria-hidden="true" href="#for-users-of-julia-04-or-higher"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>For users of julia 0.4 or higher</h2>
+<p>By and large, this package is no longer necessary: base julia now has
+efficient <code>SubArrays</code> (i.e., <code>sub</code> and <code>slice</code>).  In choosing whether
+to use <code>SubArray</code>s or the <code>ArrayView</code>s package, here are some
+considerations:</p>
+<p>Reasons to prefer <code>SubArrays</code>:</p>
+<ul>
+<li>
+<p><code>ArrayViews</code> can only make a view of an <code>Array</code>, whereas <code>SubArray</code>s
+can create a view of any <code>AbstractArray</code>.</p>
+</li>
+<li>
+<p>The views created by <code>ArrayViews</code> are most efficient for
+<code>ContiguousView</code>s such as column slices. In contrast, the views
+created by <code>SubArray</code>s are efficient for any type of view (e.g.,
+also row slices), in some cases resulting in a 3- to 10-fold
+advantage. In either case, it's generally recommended to write functions
+using cartesian indexing rather than linear indexing (e.g.,
+<code>for I in eachindex(S)</code> rather than <code>for i = 1:length(S)</code>),
+although in both cases there are some view types that are also
+efficient under linear indexing.</p>
+</li>
+<li>
+<p><code>SubArray</code>s allow more general slicing behavior, e.g., you can make
+a view with <code>S = sub(A, [1,3,17], :)</code>.</p>
+</li>
+<li>
+<p>By default, <code>SubArray</code>s check bounds upon construction whereas
+<code>ArrayView</code>s do not: <code>V = view(A, -5:10, :)</code> does not generate an
+error, and if <code>V</code> is used in a function with an <code>@inbounds</code>
+declaration you are likely to get a segfault.  (You can bypass
+bounds checking with <code>Base._sub</code> and <code>Base._slice</code>, in cases where
+you want out-of-bounds construction for <code>SubArray</code>s.)</p>
+</li>
+</ul>
+<p>Reasons to prefer <code>ArrayViews</code>:</p>
+<ul>
+<li>Construction of <code>SubArray</code>s is frequently (but not always) 2-4 times
+slower than construction of <code>view</code>s. If you are constructing many
+column views, <code>ArrayView</code>s may still be the better choice.</li>
+</ul>
+<h2><a id="user-content-main-features" class="anchor" aria-hidden="true" href="#main-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Main Features</h2>
+<ul>
+<li>An efficient <code>aview</code> function that implements array views</li>
+<li>Support of arrays of arbitrary dimension and arbitrary combinations of indexers</li>
+<li>Support <code>aview</code> composition (<em>i.e.</em> construct views over views)</li>
+<li>Special attention to ensure type stability in most cases</li>
+<li>Efficient indexing (both cartesian and linear)</li>
+<li>Light weight array view construction</li>
+<li>A systematic approach to detect contiguous views (statically)</li>
+<li>Views work with linear algebra functions</li>
+</ul>
+<h2><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview</h2>
+<p>The key function in this package is <code>aview</code>. This function is similar to <code>sub</code> in Julia Base, except that it returns an aview instance with more efficient representation:</p>
+<div class="highlight highlight-source-julia"><pre>a <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">4</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>)
+
+<span class="pl-c1">aview</span>(a, :)
+<span class="pl-c1">aview</span>(a, :, <span class="pl-c1">2</span>)
+<span class="pl-c1">aview</span>(a, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">5</span>, <span class="pl-c1">4</span>)
+<span class="pl-c1">aview</span>(a, <span class="pl-c1">2</span>, :, <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">6</span>)</pre></div>
+<p>The <code>aview</code> function returns an array view of type <code>ArrayView</code>.
+Here, <code>ArrayView</code> is an abstract type with two derived types (<code>ContiguousView</code> and <code>StridedView</code>), defined as:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">abstract type</span> ArrayView{T,N,M} <span class="pl-k">&lt;:</span> <span class="pl-c1">DenseArray{T,N}</span> <span class="pl-k">end</span></pre></div>
+<p>We can see that each view type has three static properties: element type <code>T</code>, the number of dimensions <code>N</code>, and the <em>contiguous rank</em> <code>M</code>.</p>
+<h4><a id="user-content-contiguous-rank" class="anchor" aria-hidden="true" href="#contiguous-rank"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Contiguous Rank</h4>
+<p>The <em>contiguous rank</em> plays an important role in determining (statically) the contiguousness of a subview. Below are illustrations of 2D views respective with contiguous rank <code>0</code>, <code>1</code>, and <code>2</code>.</p>
+<p><strong>2D View with contiguous rank 0</strong></p>
+<pre><code>* * * * * *
+. . . . . .
+* * * * * *
+. . . . . .
+* * * * * *
+. . . . . .
+</code></pre>
+<p>Here, <code>*</code> indicates a position covered by the array view, and <code>.</code> otherwise. We can see that the columns are not contiguous.</p>
+<p><strong>2D View with contiguous rank 1</strong></p>
+<pre><code>* * * * * *
+* * * * * *
+* * * * * *
+* * * * * *
+. . . . . .
+. . . . . .
+</code></pre>
+<p>We can see that each column is contiguous, while the entire array view is not.</p>
+<p><strong>2D View with contiguous rank 2</strong></p>
+<pre><code>* * * * * *
+* * * * * *
+* * * * * *
+* * * * * *
+* * * * * *
+* * * * * *
+</code></pre>
+<p>The entire 2D array view is contiguous.</p>
+<p>Formally, when <code>v</code> is an array view with contiguous rank <code>M</code>, then <code>aview(v, :, :, ..., :, 1)</code> must be contiguous when the number of colons is less than or equal to <code>M</code>.</p>
+<h4><a id="user-content-view-types" class="anchor" aria-hidden="true" href="#view-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>View Types</h4>
+<p>The package provide a hierarchy of array view types (defined as follows):</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> T: the element type</span>
+<span class="pl-c"><span class="pl-c">#</span> N: the number of dimensions</span>
+<span class="pl-c"><span class="pl-c">#</span> M: the contiguous rank</span>
+
+abstract StridedArrayView{T,N,M} <span class="pl-k">&lt;:</span> <span class="pl-c1">DenseArray{T,N}</span>
+abstract ArrayView{T,N,M} <span class="pl-k">&lt;:</span> <span class="pl-c1">StridedArrayView{T,N,M}</span>
+abstract UnsafeArrayView{T,N,M} <span class="pl-k">&lt;:</span> <span class="pl-c1">StridedArrayView{T,N,M}</span>
+
+immutable ContiguousView{T,N,Arr<span class="pl-k">&lt;:</span><span class="pl-c1">Array</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">ArrayView{T,N,N}</span>
+immutable StridedView{T,N,M,Arr<span class="pl-k">&lt;:</span><span class="pl-c1">Array</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">ArrayView{T,N,M}</span>
+
+immutable UnsafeContiguousView{T,N} <span class="pl-k">&lt;:</span> <span class="pl-c1">UnsafeArrayView{T,N,N}</span>
+immutable UnsafeStridedView{T,N,M} <span class="pl-k">&lt;:</span> <span class="pl-c1">UnsafeArrayView{T,N,M}</span></pre></div>
+<p>Here, an instance of <code>ArrayView</code> maintains a reference to the underlying array, and is generally safe to use in most cases. An instance of <code>UnsafeArrayView</code> maintains a raw pointer, and should only be used within a local scope (as it does not guarantee that the source array remains valid if it is passed out of a function).</p>
+<h4><a id="user-content-view-types-in-action" class="anchor" aria-hidden="true" href="#view-types-in-action"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>View Types in Action</h4>
+<p>The following example illustrates how contiguous rank is used to determine aview types in practice.</p>
+<div class="highlight highlight-source-julia"><pre>a <span class="pl-k">=</span> <span class="pl-c1">rand</span>(m, n)
+
+<span class="pl-c"><span class="pl-c">#</span> safe views</span>
+
+v0 <span class="pl-k">=</span> <span class="pl-c1">aview</span>(a, :)         <span class="pl-c"><span class="pl-c">#</span> of type ContiguousView{Float64, 1}</span>
+
+u1 <span class="pl-k">=</span> <span class="pl-c1">aview</span>(a, a<span class="pl-k">:</span>b, :)    <span class="pl-c"><span class="pl-c">#</span> of type StridedView{Float64, 2, 1}</span>
+u2 <span class="pl-k">=</span> <span class="pl-c1">aview</span>(u1, :, i)     <span class="pl-c"><span class="pl-c">#</span> of type ContiguousView{Float64, 1}</span>
+
+v1 <span class="pl-k">=</span> <span class="pl-c1">aview</span>(a, a<span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">:</span>b, :)  <span class="pl-c"><span class="pl-c">#</span> of type StridedView{Float64, 2, 0}</span>
+v2 <span class="pl-k">=</span> <span class="pl-c1">aview</span>(v1, :, i)     <span class="pl-c"><span class="pl-c">#</span> of type StridedView{Float64, 1, 0}</span>
+
+<span class="pl-c"><span class="pl-c">#</span> unsafe views</span>
+
+v0 <span class="pl-k">=</span> <span class="pl-c1">unsafe_aview</span>(a, :)         <span class="pl-c"><span class="pl-c">#</span> of type UnsafeContiguousView{Float64, 1}</span>
+
+u1 <span class="pl-k">=</span> <span class="pl-c1">unsafe_aview</span>(a, a<span class="pl-k">:</span>b, :)    <span class="pl-c"><span class="pl-c">#</span> of type UnsafeStridedView{Float64, 2, 1}</span>
+u2 <span class="pl-k">=</span> <span class="pl-c1">unsafe_aview</span>(u1, :, i)     <span class="pl-c"><span class="pl-c">#</span> of type UnsafeContiguousView{Float64, 1}</span>
+
+v1 <span class="pl-k">=</span> <span class="pl-c1">unsafe_aview</span>(a, a<span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">:</span>b, :)  <span class="pl-c"><span class="pl-c">#</span> of type UnsafeStridedView{Float64, 2, 0}</span>
+v2 <span class="pl-k">=</span> <span class="pl-c1">unsafe_aview</span>(v1, :, i)     <span class="pl-c"><span class="pl-c">#</span> of type UnsafeStridedView{Float64, 1, 0}</span></pre></div>
+<p>Four kinds of indexers are supported, integer, range (<em>e.g.</em> <code>a:b</code>), stepped range (<em>e.g.</em> <code>a:b:c</code>), and colon (<em>i.e.</em>, <code>:</code>).</p>
+<h2><a id="user-content-view-construction" class="anchor" aria-hidden="true" href="#view-construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>View Construction</h2>
+<p>The procedure of constructing a aview consists of several steps:</p>
+<ol>
+<li>
+<p>Compute the shape of an array view. This is done by an internal function <code>vshape</code>.</p>
+</li>
+<li>
+<p>Compute the offset of an array view. This is done by an internal function <code>aoffset</code>. The computation is based on the following formula:</p>
+<pre><code>offset(v(I1, I2, ..., Im)) = (first(I1) - 1) * stride(v, 1)
+                           + (first(I2) - 1) * stride(v, 2)
+                           + ...
+                           + (first(Im) - 1) * stride(v, m)
+</code></pre>
+</li>
+<li>
+<p>Compute the contiguous rank, based on both view shape and the combination of indexer types. A type <code>ContRank{M}</code> is introduced for static computation of contiguous rank (please refer to <code>src/contrank.jl</code> for details).</p>
+</li>
+<li>
+<p>Construct a aview, where the array view type is determined by both the number of dimensions and the value of contiguous rank (which is determined statically).</p>
+</li>
+</ol>
+<p>For runtime efficiency, specialized methods of these functions are implemented for views of 1D, 2D, and 3D. These methods are extensively tested.</p>
+<h2><a id="user-content-convenience-functions" class="anchor" aria-hidden="true" href="#convenience-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Convenience Functions</h2>
+<p>The <em>ArrayViews</em> package provides several functions to make it more convenient to constructing certain views:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">diagview</span>(a)   <span class="pl-c"><span class="pl-c">#</span> make a strided view of the diagonal elements, the length is `min(size(a)...)`</span>
+              <span class="pl-c"><span class="pl-c">#</span> `a` needs to be a matrix here (contiguous or strided)</span>
+
+<span class="pl-c1">flatten_view</span>(a)   <span class="pl-c"><span class="pl-c">#</span> make a contiguous view of `a` as a vector</span>
+                  <span class="pl-c"><span class="pl-c">#</span> `a` needs to be contiguous here</span>
+
+<span class="pl-c1">reshape_view</span>(a, shp)   <span class="pl-c"><span class="pl-c">#</span> make a contiguous view of `a` of shape `shp`</span>
+                       <span class="pl-c"><span class="pl-c">#</span> `a` needs to be contiguous here.</span>
+
+<span class="pl-c1">rowvec_view</span>(a, i)   <span class="pl-c"><span class="pl-c">#</span> make a view of `a[i,:]` as a strided vector.</span>
+                    <span class="pl-c"><span class="pl-c">#</span> `a` needs to be a matrix here (contiguous or strided)</span>
+
+<span class="pl-c1">ellipview</span>(a, i)     <span class="pl-c"><span class="pl-c">#</span> make a view of the i-th slice of a</span>
+                    <span class="pl-c"><span class="pl-c">#</span> e.g. `a` is a matrix =&gt; this is equiv. to `aview(a, :, i)`</span>
+                    <span class="pl-c"><span class="pl-c">#</span>      `a` is a cube =&gt; this is equiv. to `aview(a, :, :, i)`, etc.</span></pre></div>
+</article></div>

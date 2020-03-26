@@ -1,0 +1,87 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-hsajl" class="anchor" aria-hidden="true" href="#hsajl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>HSA.jl</h1>
+<p>This is a package wrapping the Heterogeneous System Architecture (HSA) runtime libraries.</p>
+<p>For links to official HSA Documentation, check out the
+<a href="https://github.com/JuliaGPU/HSA.jl/wiki/HSA.jl">wiki</a></p>
+<h3><a id="user-content-library-discovery" class="anchor" aria-hidden="true" href="#library-discovery"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Library Discovery</h3>
+<p>The package needs to know where to find the HSA runtime.
+The code responsible for discovering the HSA libraries and headers is located in
+src/discovery.jl. It expects to find the path containing the HSA libraries
+(libhsa-runtime64, libhsakmt [and libhsa-runtime-ext64.so]) in
+<code>ENV["LD_LIBRARY_PATH"]</code>.</p>
+<p>For a port of the <code>vector_copy</code> example that comes with the HSA runtime, see the
+<code>sample</code> directory.</p>
+<h3><a id="user-content-julia-functions-as-kernels" class="anchor" aria-hidden="true" href="#julia-functions-as-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Julia functions as Kernels</h3>
+<p>In combination with a <a href="https://github.com/rollingthunder/julia">modified Julia
+binary</a>, HSA.jl can be used to execute
+Kernel functions written in Julia on an HSA agent.</p>
+<p>Minimal example:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> HSA
+
+<span class="pl-c1">@hsa_kernel</span> <span class="pl-k">function</span> <span class="pl-en">vector_copy</span>(a, b)
+    i <span class="pl-k">=</span> <span class="pl-c1">get_global_id</span>()
+    b[i] <span class="pl-k">=</span> a[i]
+<span class="pl-k">end</span>
+
+N <span class="pl-k">=</span>  <span class="pl-c1">1024</span><span class="pl-k">*</span><span class="pl-c1">1024</span>
+
+a_in <span class="pl-k">=</span> <span class="pl-c1">Array</span>(Int, N)
+<span class="pl-c1">rand!</span>(a_in)
+
+b_out <span class="pl-k">=</span> <span class="pl-c1">Array</span>(Int, N)
+<span class="pl-c1">rand!</span>(b_out)
+
+<span class="pl-c1">assert</span>(a_in <span class="pl-k">!=</span> b_out)
+
+<span class="pl-c1">@hsa</span> (N) <span class="pl-c1">vector_copy_kernel</span>(a_in, b_out)
+
+<span class="pl-c1">assert</span>(a_in <span class="pl-k">==</span> b_out)</pre></div>
+<p>More examples using this facility can be found in <code>samples/codegen</code></p>
+<h3><a id="user-content-module-overview" class="anchor" aria-hidden="true" href="#module-overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Module overview</h3>
+<ul>
+<li>HSA
+Container Module for all HSA functionality.
+<ul>
+<li>Wrappers for functions and constants defined by the HSA runtime.</li>
+<li>Functionality to emulate execution of Julia kernels
+<ul>
+<li>On a non-HSA CPU</li>
+<li>if there is no codegen support</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>HSA.Builtins
+Functions that compile down to device intrinsics for use in Kernels</li>
+<li>HSA.ExtFinalization
+Custom Wrappers for the finalization extension to the HSA Runtime</li>
+</ul>
+<h3><a id="user-content-source-folder" class="anchor" aria-hidden="true" href="#source-folder"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Source Folder</h3>
+<ul>
+<li>binding
+Contains the code that interfaces with the various parts of the HSA Runtime
+<ul>
+<li>generated
+Files generated from the hsa headers via gen/generate.jl</li>
+<li>custom
+Custom wrapper code</li>
+</ul>
+</li>
+<li>codegen
+Contains all code that relies on the modified julia code generator to work</li>
+<li>emulation
+Provides emulation for some parts of the codegen infrastructure even when no
+hsa or codegen are available</li>
+</ul>
+<h3><a id="user-content-source-generation" class="anchor" aria-hidden="true" href="#source-generation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Source Generation</h3>
+<p>The files in src/binding/generated are generated by the script gen/generate.jl.
+Regenerating these is usually unnecessary unless the HSA headers have changed or
+you made changes to the generation script.
+The script has some additional dependencies (mainly Clang.jl) and needs to be able to
+find the HSA headers.</p>
+<h3><a id="user-content-known-issues" class="anchor" aria-hidden="true" href="#known-issues"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Known Issues</h3>
+<ul>
+<li>HSA.executable_get_symbol does not find symbols<br>
+Maybe the name string for the symbol is not being passed correctly?<br>
+Workaround: iterate over all symbols and inspect their names</li>
+</ul>
+</article></div>

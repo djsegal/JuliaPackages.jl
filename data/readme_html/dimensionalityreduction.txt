@@ -1,0 +1,75 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-dimensionalityreductionjl" class="anchor" aria-hidden="true" href="#dimensionalityreductionjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DimensionalityReduction.jl</h1>
+<p>**The DimensionalityReduction package is deprecated. It is superseded by a new package <a href="https://github.com/JuliaStats/MultivariateStats.jl">MultivariateStats</a>. **.</p>
+<hr>
+<h1><a id="user-content-algorithms" class="anchor" aria-hidden="true" href="#algorithms"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Algorithms</h1>
+<ul>
+<li>Principal Component Analysis (PCA)</li>
+</ul>
+<h1><a id="user-content-pca-usage" class="anchor" aria-hidden="true" href="#pca-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>PCA Usage</h1>
+<pre><code>using DimensionalityReduction
+
+# simulate 100 random observations
+# rotate and scale as well
+X = randn(100,2) * [0.8 0.7; 0.9 0.5]
+Xpca = pca(X)
+</code></pre>
+<p>Rows of <code>X</code> each represent a data point (i.e., a different repetition of the experiment),
+and columns of <code>X</code> represent the different variables measured.</p>
+<p>Attributes:</p>
+<pre><code>Xpca.rotation                # principal components
+Xpca.scores                  # rotated X
+Xpca.standard_deviations     # square roots of the eigenvalues
+Xpca.proportion_of_variance  # fraction of variance brought by each principal component
+Xpca.cumulative_variance     # cumulative proportion of variance
+</code></pre>
+<p>By default, <code>pca()</code> uses SVD decomposition. Alternatively, <code>pcaeig(X)</code> will calculate
+directly the eigenvectors of the covariance matrix.</p>
+<p><code>pca()</code> centers and re-scales input data by default.
+This is controlled by the <code>center</code> and <code>scale</code> keyword arguments:</p>
+<pre><code>pca(X::Matrix ; center::Bool, scale::Bool)
+</code></pre>
+<p>Centering is done by subtracting the mean, and scaling by normalizing each variable by its
+standard deviation.</p>
+<p>If <code>scale</code> is true (default), then the principal components of the data are also
+scaled back to the original space and saved to <code>Xpca.rotation</code></p>
+<p>To overlay the principal components on top of the data with <a href="https://github.com/stevengj/PyPlot.jl">PyPlot</a></p>
+<pre><code>using PyPlot
+plot( X[:,1], X[:,2], "r." )  # point cloud
+
+# get data center
+ctr = mean( X, 1 )
+
+# plot principal components as lines
+#  weight by their standard deviation
+PCs = Xpca.rotation
+for v=1:2
+	weight = Xpca.standard_deviations[v]
+	plot( ctr[1] + weight * [0, PCs[1,v]], 
+		  ctr[2] + weight * [0, PCs[2,v]],
+		  linewidth = 2)
+end
+</code></pre>
+<p>To make a biplot with <a href="https://github.com/stevengj/PyPlot.jl">PyPlot</a></p>
+<pre><code>using PyPlot
+scores = Xpca.scores[:,1:2]
+plot( scores[:,1], scores[:,2], "r." )
+</code></pre>
+<p>To make a biplot with <a href="http://dcjones.github.io/Gadfly.jl/" rel="nofollow">Gadfly</a>:</p>
+<pre><code>using Gadfly
+scores = Xpca.scores[:,1:2]
+pl = plot(x=scores[:,1],y=scores[:,2], Geom.point)
+draw(PNG("pca.png", 6inch, 6inch), pl)
+</code></pre>
+<p>Starting from a DataFrame:</p>
+<pre><code>using RDatasets
+iris = data("datasets", "iris")
+iris = convert(Array,DataArray(iris[:,1:4]))
+Xpca = pca(iris)
+</code></pre>
+<h1><a id="user-content-ica-usage" class="anchor" aria-hidden="true" href="#ica-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ICA Usage</h1>
+<p>ICA has been deprecated.</p>
+<h1><a id="user-content-t-sne-usage" class="anchor" aria-hidden="true" href="#t-sne-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>t-SNE Usage</h1>
+<p>t-SNE has been deprecated.</p>
+<h1><a id="user-content-nmf" class="anchor" aria-hidden="true" href="#nmf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>NMF</h1>
+<p>NMF has been moved into a separate <a href="https://github.com/JuliaStats/NMF.jl">package</a>.</p>
+</article></div>

@@ -1,0 +1,151 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-mutablearithmeticsjl" class="anchor" aria-hidden="true" href="#mutablearithmeticsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>MutableArithmetics.jl</h1>
+<p><a href="https://juliaopt.github.io/MutableArithmetics.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/f7b92a177c912c1cc007fc9b40f17ff3ee3bb414/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://juliaopt.github.io/MutableArithmetics.jl/latest" rel="nofollow"><img src="https://camo.githubusercontent.com/57bae07ecd50a99519ad0516d91f4ec8f0f48e12/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6c61746573742d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-latest-blue.svg" style="max-width:100%;"></a>
+<a href="https://travis-ci.com/JuliaOpt/MutableArithmetics.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/784412c9b11755c11c24b37e8461c05cf5922251/68747470733a2f2f7472617669732d63692e636f6d2f4a756c69614f70742f4d757461626c6541726974686d65746963732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/JuliaOpt/MutableArithmetics.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaOpt/MutableArithmetics.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ec0d7f5bd5e9ac358d4b24d894af52cfabd2b1ac/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614f70742f4d757461626c6541726974686d65746963732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/JuliaOpt/MutableArithmetics.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a>
+<a href="https://coveralls.io/github/JuliaOpt/MutableArithmetics.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/3875baf1e2662e8d407447fdf56e831fb18d6b45/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f4a756c69614f70742f4d757461626c6541726974686d65746963732e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coveralls" data-canonical-src="https://coveralls.io/repos/github/JuliaOpt/MutableArithmetics.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<p><strong>MutableArithmetics</strong> (MA for short) is a <a href="http://julialang.org" rel="nofollow">Julia</a> package which allows:</p>
+<ul>
+<li>for mutable types to implement mutable arithmetics;</li>
+<li>for algorithms that could exploit mutable arithmetics to exploit them while still being completely generic.</li>
+</ul>
+<p>While in some cases, similar features have been included in packages
+idiosyncratically, the goal of this package is to provide a generic interface to
+allow anyone to make use of mutability when desired.</p>
+<p>The package allows a given type to declare itself mutable through the
+<code>MA.mutability</code> trait.
+Then the user can use the <code>MA.operate!</code> function to write generic code
+that works for arbitrary type while exploiting mutability of the type
+if possible. More precisely:</p>
+<ul>
+<li>The <code>MA.operate!(op::Function, x, args...)</code> redirects to <code>op(x, args...)</code>
+if <code>x</code> is not mutable or if the result of the operation cannot be stored in <code>x</code>.
+Otherwise, it redirects to <code>MA.mutable_operate!(op, x, args...)</code>.</li>
+<li><code>MA.mutable_operate!(op::Function, x, args...)</code> stores the result of the
+operation in <code>x</code>. It is a <code>MethodError</code> if <code>x</code> is not mutable or if the
+result of the operation cannot be stored in <code>x</code>.</li>
+</ul>
+<p>So from a generic code, <code>MA.operate!</code> can be used when the value of <code>x</code> is not
+used anywhere else to recycle it if possible. This allows the code to both
+work for mutable and for non-mutable type.</p>
+<p>When the type is known to be mutable, <code>MA.mutable_operate!</code> can be used to make
+sure the operation is done in-place. If it is not possible, the <code>MethodError</code>
+allows to easily fix the issue while <code>MA.operate!</code> would have silently fallen
+back to the non-mutating function.</p>
+<p>In conclusion, the distinction between <code>MA.operate!</code> and <code>MA.mutable_operate!</code>
+allows to cover all use case while having an universal convention accross all
+operations.</p>
+<p>The following types implement the MutableArithmetics API:</p>
+<ul>
+<li>The API is implemented for <code>Base.BigInt</code> in <code>src/bigint.jl</code>.</li>
+<li>The API is implemented for <code>Base.BigFloat</code> in <code>src/bigfloat.jl</code>.</li>
+<li>The API is implemented for <code>Base.Array</code> in <code>src/linear_algebra.jl</code>.</li>
+<li>The interface for multivariate polynomials <a href="https://github.com/JuliaAlgebra/MultivariatePolynomials.jl">MultivariatePolynomials</a>
+as well as its two implementations <a href="https://github.com/JuliaAlgebra/DynamicPolynomials.jl">DynamicPolynomials</a>
+and <a href="https://github.com/JuliaAlgebra/TypedPolynomials.jl">TypedPolynomials</a>.</li>
+<li>The scalar and quadratic functions used to define an Optimization Program in
+<a href="https://github.com/JuliaOpt/MathOptInterface.jl">MathOptInterface</a>.</li>
+<li>The scalar and quadratic expressions used to model optimization in
+<a href="https://github.com/JuliaOpt/JuMP.jl">JuMP</a>.</li>
+</ul>
+<p>The algorithms from the following libraries use the MutableArithmetics API
+to exploit the mutability of the type when possible:</p>
+<ul>
+<li>The multivariate polynomials implemented in <a href="https://github.com/JuliaAlgebra/MultivariatePolynomials.jl">MultivariatePolynomials</a>,
+<a href="https://github.com/JuliaAlgebra/DynamicPolynomials.jl">DynamicPolynomials</a>
+and <a href="https://github.com/JuliaAlgebra/TypedPolynomials.jl">TypedPolynomials</a>
+work with any type and exploit the mutability of the type through the MA API.</li>
+</ul>
+<p>In addition, the implementation of the following functionalities available from
+<code>Base</code> are reimplemented on top of the MA API:</p>
+<ul>
+<li>Matrix-matrix, matrix-vector and array-scalar multiplication including
+<code>SparseArrays.AbstractSparseArray</code>, <code>LinearAlgebra.Adjoint</code>,
+<code>LinearAlgebra.Transpose</code>, <code>LinearAlgebra.Symmetric</code>.</li>
+<li><code>Base.sum</code>, <code>LinearAlgebra.dot</code> and <code>LinearAlgebra.diagm</code>.</li>
+</ul>
+<p>These methods are reimplemented in this package for several reasons:</p>
+<ul>
+<li>The implementation in <code>Base</code> does not exploit the mutability of the type
+(except for <code>sum(::Vector{BigInt})</code> which has a specialized method) and
+are hence much slower.</li>
+<li>Some implementations in <code>Base</code> assume the following for the types <code>S</code>, <code>T</code> used satisfy:
+<ul>
+<li><code>typeof(zero(T)) == T</code>, <code>typeof(one(T)) == T</code>, <code>typeof(S + T) == promote_type(S, T)</code>
+or <code>typeof(S * T) == promote_type(S, T)</code> which is not true for
+instance if <code>T</code> is a polynomial variable or the decision variable of an
+optimization model.</li>
+<li>The multiplication between elements of type <code>S</code> and <code>T</code> is commutative which
+is not true for matrices or non-commutative polynomial variables.</li>
+</ul>
+</li>
+</ul>
+<p>The trait defined in this package cannot make the methods for the functions
+defined in Base to be dispatched to the implementations of this package.
+For these to be used for a given type, it needs to inherit from <code>MA.AbstractMutable</code>.
+Not that subtypes of <code>MA.AbstractMutable</code> are not necessarily mutable,
+for instance, polynomial variables and the decision variable of an optimization
+model are subtypes of <code>MA.AbstractMutable</code> but are not mutable.
+The only purpose of this abstract type is to have <code>Base</code> methods to be dispatched
+to the implementations of this package. See <code>src/dispatch.jl</code> for more details.</p>
+<h2><a id="user-content-documentation" class="anchor" aria-hidden="true" href="#documentation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Documentation</h2>
+<ul>
+<li><a href="https://juliaopt.github.io/MutableArithmetics.jl/stable" rel="nofollow"><strong>STABLE</strong></a> — <strong>most recently tagged version of the documentation.</strong></li>
+<li><a href="https://juliaopt.github.io/MutableArithmetics.jl/latest" rel="nofollow"><strong>LATEST</strong></a> — <em>in-development version of the documentation.</em></li>
+</ul>
+<h2><a id="user-content-quick-example--benchmark" class="anchor" aria-hidden="true" href="#quick-example--benchmark"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Quick Example &amp; Benchmark</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> BenchmarkTools
+<span class="pl-k">using</span> MutableArithmetics
+<span class="pl-k">const</span> MA <span class="pl-k">=</span> MutableArithmetics
+
+n <span class="pl-k">=</span> <span class="pl-c1">200</span>
+A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span>, n, n)
+b <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span>, n)
+c <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span>, n)
+
+<span class="pl-c"><span class="pl-c">#</span> MA.mul works for arbitrary types</span>
+MA<span class="pl-k">.</span><span class="pl-c1">mul</span>(A, b)
+
+A2 <span class="pl-k">=</span> <span class="pl-c1">big</span>.(A)
+b2 <span class="pl-k">=</span> <span class="pl-c1">big</span>.(b)
+c2 <span class="pl-k">=</span> <span class="pl-c1">big</span>.(c)</pre></div>
+<p>The default implementation <code>LinearAlgebra.generic_matvecmul!</code> does not exploit
+the mutability of <code>BigInt</code> is quite slow and allocates a lot:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LinearAlgebra
+trial <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">mul!</span>(<span class="pl-k">$</span>c2, <span class="pl-k">$</span>A2, <span class="pl-k">$</span>b2)
+<span class="pl-c1">display</span>(trial)
+
+<span class="pl-c"><span class="pl-c">#</span> output</span>
+
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">3.67</span> MiB
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">238775</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">6.116</span> ms (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">6.263</span> ms (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">11.711</span> ms (<span class="pl-c1">27.72</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">122.627</span> ms (<span class="pl-c1">70.45</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">429</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">1</span></pre></div>
+<p>In <code>MA.mutable_operate_to(::Vector, ::typeof(*), ::Matrix, ::Vector)</code>, we
+exploit the mutability of <code>BigInt</code> through the MutableArithmetics API.
+This provides a significant speedup and a drastic reduction of memory usage:</p>
+<div class="highlight highlight-source-julia"><pre>trial2 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> MA<span class="pl-k">.</span><span class="pl-c1">mul_to!</span>(<span class="pl-k">$</span>c2, <span class="pl-k">$</span>A2, <span class="pl-k">$</span>b2)
+<span class="pl-c1">display</span>(trial2)
+
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">48</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">3</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">917.819</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">999.239</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">1.042</span> ms (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">2.319</span> ms (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">4791</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">1</span></pre></div>
+<blockquote>
+<p>This package started out as a GSoC '19 project.</p>
+</blockquote>
+</article></div>

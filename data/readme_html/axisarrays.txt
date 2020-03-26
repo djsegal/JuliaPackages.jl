@@ -1,0 +1,223 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-axisarraysjl" class="anchor" aria-hidden="true" href="#axisarraysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>AxisArrays.jl</h1>
+<p><a href="https://travis-ci.org/JuliaArrays/AxisArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/2ef42e3af610a82346e02b71b11de3a950b6c0df/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614172726179732f417869734172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaArrays/AxisArrays.jl.svg?branch=master" style="max-width:100%;"></a> <a href="https://coveralls.io/github/JuliaArrays/AxisArrays.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/3fb458da7f02115ae2036b4c4d32d0a4eadd2d6d/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f4a756c69614172726179732f417869734172726179732e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/github/JuliaArrays/AxisArrays.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<p>This package for the Julia language provides an array type (the <code>AxisArray</code>) that knows about its dimension names and axis values.
+This allows for indexing by name without incurring any runtime overhead.
+This permits one to implement algorithms that are oblivious to the storage order of the underlying arrays.
+AxisArrays can also be indexed by the values along their axes, allowing column names or interval selections.</p>
+<p>In contrast to similar approaches in <a href="https://github.com/timholy/Images.jl">Images.jl</a> and <a href="https://github.com/davidavdav/NamedArrays">NamedArrays.jl</a>, this allows for type-stable selection of dimensions and compile-time axis lookup.  It is also better suited for regularly sampled axes, like samples over time.</p>
+<p>Collaboration is welcome! This is still a work-in-progress. See <a href="https://github.com/JuliaArrays/AxisArrays.jl/issues/7">the roadmap</a> for the project's current direction.</p>
+<h3><a id="user-content-note-about-axis-and-keywords" class="anchor" aria-hidden="true" href="#note-about-axis-and-keywords"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Note about <code>Axis{}</code> and keywords</h3>
+<p>An <code>AxisArray</code> stores an object of type <code>Axis{:name}</code> for each dimension,
+containing both the name (a <code>Symbol</code>) and the "axis values" (an <code>AbstractVector</code>).
+These types are what made compile-time lookup possible.
+Instead of providing them explicitly, it is now possible to use keyword arguments
+for both construction and indexing:</p>
+<div class="highlight highlight-source-julia"><pre>V <span class="pl-k">=</span> <span class="pl-c1">AxisArray</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">10</span>); row<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>:<span class="pl-s"><span class="pl-pds">'</span>j<span class="pl-pds">'</span></span>)  <span class="pl-c"><span class="pl-c">#</span> AxisArray(rand(10), Axis{:row}('a':'j'))</span>
+V[row<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>c<span class="pl-pds">'</span></span>] <span class="pl-k">==</span> V[<span class="pl-c1">Axis</span><span class="pl-c1">{:row}</span>(<span class="pl-s"><span class="pl-pds">'</span>c<span class="pl-pds">'</span></span>)] <span class="pl-k">==</span> V[row<span class="pl-k">=</span><span class="pl-c1">3</span>] <span class="pl-k">==</span> V[<span class="pl-c1">3</span>] </pre></div>
+<h3><a id="user-content-note-about-axes-and-indices" class="anchor" aria-hidden="true" href="#note-about-axes-and-indices"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Note about <code>axes()</code> and <code>indices()</code></h3>
+<p>The function <code>AxisArrays.axes</code> returns the tuple of such <code>Axis</code> objects.
+Since Julia version 0.7, <code>Base.axes(V) == (1:10,)</code> gives instead the range of possible
+ordinary integer indices. (This was called <code>Base.indices</code>.) Since both names are exported,
+this collision results in a warning if you try to use <code>axes</code> without qualification:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">axes</span>([<span class="pl-c1">1</span>,<span class="pl-c1">2</span>])
+WARNING<span class="pl-k">:</span> both AxisArrays and Base <span class="pl-k">export</span> <span class="pl-s"><span class="pl-pds">"</span>axes<span class="pl-pds">"</span></span>; uses of it <span class="pl-k">in</span> <span class="pl-k">module</span> Main must be qualified
+ERROR<span class="pl-k">:</span> UndefVarError<span class="pl-k">:</span> axes not defined</pre></div>
+<p>Packages that are upgrading to support Julia 0.7+ should:</p>
+<ul>
+<li>Replace all uses of the <code>axes</code> function with the fully-qualified <code>AxisArrays.axes</code></li>
+<li>Replace all uses of the deprecated <code>indices</code> function with the un-qualified <code>axes</code></li>
+<li>Immediately after <code>using AxisArrays</code>, add <code>const axes = Base.axes</code></li>
+</ul>
+<p>In the future, AxisArrays will be looking for a new name for its functionality.
+This will allow you to use the idiomatic <code>Base</code> name and offers an easy upgrade
+path to whatever the new name will be.</p>
+<h2><a id="user-content-example-of-currently-implemented-behavior" class="anchor" aria-hidden="true" href="#example-of-currently-implemented-behavior"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example of currently-implemented behavior:</h2>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Pkg; <span class="pl-s"><span class="pl-pds"><span class="pl-c1">pkg</span>"</span>add AxisArrays Unitful<span class="pl-pds">"</span></span>
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> AxisArrays, Unitful, Random
+
+julia<span class="pl-k">&gt;</span> fs <span class="pl-k">=</span> <span class="pl-c1">40000</span>; <span class="pl-c"><span class="pl-c">#</span> Generate a 40kHz noisy signal, with spike-like stuff added for testing</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> Unitful<span class="pl-k">:</span> s, ms, µs
+julia<span class="pl-k">&gt;</span> rng <span class="pl-k">=</span> Random<span class="pl-k">.</span><span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">123</span>); <span class="pl-c"><span class="pl-c">#</span> Seed a random number generator for repeatable examples</span>
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">randn</span>(rng, <span class="pl-c1">60</span><span class="pl-k">*</span>fs<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">*</span><span class="pl-c1">3</span>;
+julia<span class="pl-k">&gt;</span> <span class="pl-k">for</span> spk <span class="pl-k">=</span> (<span class="pl-c1">sin</span>.(<span class="pl-c1">0.8</span><span class="pl-k">:</span><span class="pl-c1">0.2</span><span class="pl-k">:</span><span class="pl-c1">8.6</span>) <span class="pl-k">.*</span> [<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0.01</span><span class="pl-k">:</span><span class="pl-c1">.1</span>; <span class="pl-c1">.15</span><span class="pl-k">:</span><span class="pl-c1">.1</span><span class="pl-k">:</span><span class="pl-c1">.95</span>; <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-k">-</span><span class="pl-c1">.05</span><span class="pl-k">:</span><span class="pl-c1">.05</span>] <span class="pl-k">.*</span> <span class="pl-c1">50</span>,
+                  <span class="pl-c1">sin</span>.(<span class="pl-c1">0.8</span><span class="pl-k">:</span><span class="pl-c1">0.4</span><span class="pl-k">:</span><span class="pl-c1">8.6</span>) <span class="pl-k">.*</span> [<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0.02</span><span class="pl-k">:</span><span class="pl-c1">.1</span>; <span class="pl-c1">.15</span><span class="pl-k">:</span><span class="pl-c1">.1</span><span class="pl-k">:</span><span class="pl-c1">1</span>; <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-k">-</span><span class="pl-c1">.2</span><span class="pl-k">:</span><span class="pl-c1">.1</span>] <span class="pl-k">.*</span> <span class="pl-c1">50</span>)
+           i <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, <span class="pl-c1">round</span>(Int,<span class="pl-c1">.001</span>fs)<span class="pl-k">:</span><span class="pl-c1">1</span>fs)
+           <span class="pl-k">while</span> i<span class="pl-k">+</span><span class="pl-c1">length</span>(spk)<span class="pl-k">-</span><span class="pl-c1">1</span> <span class="pl-k">&lt;</span> <span class="pl-c1">length</span>(y)
+               y[i<span class="pl-k">:</span>i<span class="pl-k">+</span><span class="pl-c1">length</span>(spk)<span class="pl-k">-</span><span class="pl-c1">1</span>] <span class="pl-k">+=</span> spk
+               i <span class="pl-k">+=</span> <span class="pl-c1">rand</span>(rng, <span class="pl-c1">round</span>(Int,<span class="pl-c1">.001</span>fs)<span class="pl-k">:</span><span class="pl-c1">1</span>fs)
+           <span class="pl-k">end</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">AxisArray</span>(<span class="pl-c1">hcat</span>(y, <span class="pl-c1">2</span> <span class="pl-k">.*</span> y); time <span class="pl-k">=</span> (<span class="pl-c1">0</span>s<span class="pl-k">:</span><span class="pl-c1">1</span>s<span class="pl-k">/</span>fs<span class="pl-k">:</span><span class="pl-c1">60</span>s), chan <span class="pl-k">=</span> ([<span class="pl-c1">:c1</span>, <span class="pl-c1">:c2</span>]))
+<span class="pl-c1">2</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">2</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time</span>, <span class="pl-c1">0.0</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">60.0</span> s
+    <span class="pl-c1">:chan</span>, Symbol[<span class="pl-c1">:c1</span>, <span class="pl-c1">:c2</span>]
+And data, a <span class="pl-c1">2400001</span><span class="pl-k">×</span><span class="pl-c1">2</span> Array{Float64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">3.5708</span>     <span class="pl-c1">7.14161</span>
+  <span class="pl-c1">6.14454</span>   <span class="pl-c1">12.2891</span>  
+  <span class="pl-c1">3.42795</span>    <span class="pl-c1">6.85591</span>
+  <span class="pl-c1">1.37825</span>    <span class="pl-c1">2.75649</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.19004</span>   <span class="pl-k">-</span><span class="pl-c1">2.38007</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.99414</span>   <span class="pl-k">-</span><span class="pl-c1">3.98828</span>
+  <span class="pl-c1">2.9429</span>     <span class="pl-c1">5.88581</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.226449</span>  <span class="pl-k">-</span><span class="pl-c1">0.452898</span>
+  <span class="pl-c1">0.821446</span>   <span class="pl-c1">1.64289</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.582687</span>  <span class="pl-k">-</span><span class="pl-c1">1.16537</span>
+  ⋮                  
+ <span class="pl-k">-</span><span class="pl-c1">3.50593</span>   <span class="pl-k">-</span><span class="pl-c1">7.01187</span>
+  <span class="pl-c1">2.26783</span>    <span class="pl-c1">4.53565</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.16902</span>   <span class="pl-k">-</span><span class="pl-c1">0.33804</span>
+ <span class="pl-k">-</span><span class="pl-c1">3.84852</span>   <span class="pl-k">-</span><span class="pl-c1">7.69703</span>
+  <span class="pl-c1">0.226457</span>   <span class="pl-c1">0.452914</span>
+  <span class="pl-c1">0.560809</span>   <span class="pl-c1">1.12162</span>
+  <span class="pl-c1">4.67663</span>    <span class="pl-c1">9.35326</span>
+ <span class="pl-k">-</span><span class="pl-c1">2.41005</span>   <span class="pl-k">-</span><span class="pl-c1">4.8201</span>  
+ <span class="pl-k">-</span><span class="pl-c1">3.71612</span>   <span class="pl-k">-</span><span class="pl-c1">7.43224</span></pre></div>
+<p>AxisArrays behave like regular arrays, but they additionally use the axis
+information to enable all sorts of fancy behaviors. For example, we can specify
+indices in <em>any</em> order, just so long as we annotate them with the axis name:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A[time<span class="pl-k">=</span><span class="pl-c1">4</span>] <span class="pl-c"><span class="pl-c">#</span> or A[Axis{:time}(4)]</span>
+<span class="pl-c1">1</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">1</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:chan</span>, Symbol[<span class="pl-c1">:c1</span>, <span class="pl-c1">:c2</span>]
+And data, a <span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1.37825</span>
+ <span class="pl-c1">2.75649</span>
+
+julia<span class="pl-k">&gt;</span> A[chan <span class="pl-k">=</span> <span class="pl-c1">:c2</span>, time <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>] <span class="pl-c"><span class="pl-c">#</span> or A[Axis{:chan}(:c2), Axis{:time}(1:5)]</span>
+<span class="pl-c1">1</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">1</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time</span>, <span class="pl-c1">0.0</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">0.0001</span> s
+And data, a <span class="pl-c1">5</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">7.14161</span>
+ <span class="pl-c1">12.2891</span>
+  <span class="pl-c1">6.85591</span>
+  <span class="pl-c1">2.75649</span>
+ <span class="pl-k">-</span><span class="pl-c1">2.38007</span></pre></div>
+<p>We can also index by the <em>values</em> of each axis using an <code>Interval</code> type that
+selects all values between two endpoints <code>a .. b</code> or the axis values directly.
+Notice that the returned AxisArray still has axis information itself... and it
+still has the correct time information for those datapoints!</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">40</span>µs <span class="pl-k">..</span> <span class="pl-c1">220</span>µs, <span class="pl-c1">:c1</span>]
+<span class="pl-c1">1</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">1</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time</span>, <span class="pl-c1">5.0e-5</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">0.0002</span> s
+And data, a <span class="pl-c1">7</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">3.42795</span>
+  <span class="pl-c1">1.37825</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.19004</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.99414</span>
+  <span class="pl-c1">2.9429</span>  
+ <span class="pl-k">-</span><span class="pl-c1">0.226449</span>
+  <span class="pl-c1">0.821446</span>
+
+julia<span class="pl-k">&gt;</span> AxisArrays<span class="pl-k">.</span><span class="pl-c1">axes</span>(ans, <span class="pl-c1">1</span>)
+AxisArrays<span class="pl-k">.</span>Axis{<span class="pl-c1">:time</span>,StepRangeLen{Quantity{Float64, Dimensions<span class="pl-k">:</span>{𝐓}, Units<span class="pl-k">:</span>{s}},Base<span class="pl-k">.</span>TwicePrecision{Quantity{Float64, Dimensions<span class="pl-k">:</span>{𝐓}, Units<span class="pl-k">:</span>{s}}},Base<span class="pl-k">.</span>TwicePrecision{Quantity{Float64, Dimensions<span class="pl-k">:</span>{𝐓}, Units<span class="pl-k">:</span>{s}}}}}(<span class="pl-c1">5.0e-5</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">0.0002</span> s)</pre></div>
+<p>You can also index by a single value using <code>atvalue(t)</code>.
+This function is not needed for categorical axes like <code>:chan</code> here,
+as <code>:c1</code> is a <code>Symbol</code> which can't be confused with an integer index.</p>
+<p>Using <code>atvalue()</code> will drop a dimension (like using a single integer).
+Indexing with an <code>Interval(lo, hi)</code> type retains dimensions, even
+when the ends of the interval are equal (like using a range <code>1:1</code>):</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">atvalue</span>(<span class="pl-c1">2.5e-5</span>s), <span class="pl-c1">:c1</span>]
+<span class="pl-c1">6.14453912336772</span>
+
+julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">2.5e-5</span>s<span class="pl-k">..</span><span class="pl-c1">2.5e-5</span>s, <span class="pl-c1">:c1</span>]
+<span class="pl-c1">1</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">1</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time</span>, <span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s
+And data, a <span class="pl-c1">1</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">6.14454</span></pre></div>
+<p>You can even index by multiple values by broadcasting <code>atvalue</code> over an array:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">atvalue</span>.([<span class="pl-c1">2.5e-5</span>s, <span class="pl-c1">75.0</span>µs])]
+<span class="pl-c1">2</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">2</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time</span>, Quantity{Float64, Dimensions<span class="pl-k">:</span>{𝐓}, Units<span class="pl-k">:</span>{s}}[<span class="pl-c1">2.5e-5</span> s, <span class="pl-c1">7.5e-5</span> s]
+    <span class="pl-c1">:chan</span>, Symbol[<span class="pl-c1">:c1</span>, <span class="pl-c1">:c2</span>]
+And data, a <span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">2</span> Array{Float64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">6.14454</span>  <span class="pl-c1">12.2891</span>
+ <span class="pl-c1">1.37825</span>   <span class="pl-c1">2.75649</span></pre></div>
+<p>Sometimes, though, what we're really interested in is a window of time about a
+specific index. One of the operations above (looking for values in the window from 40µs
+to 220µs) might be more clearly expressed as a symmetrical window about a
+specific index where we know something interesting happened. To represent this,
+we use the <code>atindex</code> function:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">atindex</span>(<span class="pl-k">-</span><span class="pl-c1">90</span>µs <span class="pl-k">..</span> <span class="pl-c1">90</span>µs, <span class="pl-c1">5</span>), <span class="pl-c1">:c2</span>]
+<span class="pl-c1">1</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">1</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time_sub</span>, <span class="pl-k">-</span><span class="pl-c1">7.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">7.500000000000002e-5</span> s
+And data, a <span class="pl-c1">7</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">6.85591</span>
+  <span class="pl-c1">2.75649</span>
+ <span class="pl-k">-</span><span class="pl-c1">2.38007</span>
+ <span class="pl-k">-</span><span class="pl-c1">3.98828</span>
+  <span class="pl-c1">5.88581</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.452898</span>
+  <span class="pl-c1">1.64289</span></pre></div>
+<p>Note that the returned AxisArray has its time axis shifted to represent the
+interval about the given index!  This simple concept can be extended to some
+very powerful behaviors. For example, let's threshold our data and find windows
+about those threshold crossings.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> idxs <span class="pl-k">=</span> <span class="pl-c1">findall</span>(<span class="pl-c1">diff</span>(A[:,<span class="pl-c1">:c1</span>] <span class="pl-k">.&lt;</span> <span class="pl-k">-</span><span class="pl-c1">15</span>) <span class="pl-k">.&gt;</span> <span class="pl-c1">0</span>);
+
+julia<span class="pl-k">&gt;</span> spks <span class="pl-k">=</span> A[<span class="pl-c1">atindex</span>(<span class="pl-k">-</span><span class="pl-c1">200</span>µs <span class="pl-k">..</span> <span class="pl-c1">800</span>µs, idxs), <span class="pl-c1">:c1</span>]
+<span class="pl-c1">2</span><span class="pl-k">-</span>dimensional AxisArray{Float64,<span class="pl-c1">2</span>,<span class="pl-k">...</span>} with axes<span class="pl-k">:</span>
+    <span class="pl-c1">:time_sub</span>, <span class="pl-k">-</span><span class="pl-c1">0.0002</span> s<span class="pl-k">:</span><span class="pl-c1">2.5e-5</span> s<span class="pl-k">:</span><span class="pl-c1">0.0008</span> s
+    <span class="pl-c1">:time_rep</span>, Quantity{Float64, Dimensions<span class="pl-k">:</span>{𝐓}, Units<span class="pl-k">:</span>{s}}[<span class="pl-c1">0.162</span> s, <span class="pl-c1">0.20045</span> s, <span class="pl-c1">0.28495</span> s, <span class="pl-c1">0.530325</span> s, <span class="pl-c1">0.821725</span> s, <span class="pl-c1">1.0453</span> s, <span class="pl-c1">1.11967</span> s, <span class="pl-c1">1.1523</span> s, <span class="pl-c1">1.22085</span> s, <span class="pl-c1">1.6253</span> s  …  <span class="pl-c1">57.0094</span> s, <span class="pl-c1">57.5818</span> s, <span class="pl-c1">57.8716</span> s, <span class="pl-c1">57.8806</span> s, <span class="pl-c1">58.4353</span> s, <span class="pl-c1">58.7041</span> s, <span class="pl-c1">59.1015</span> s, <span class="pl-c1">59.1783</span> s, <span class="pl-c1">59.425</span> s, <span class="pl-c1">59.5657</span> s]
+And data, a <span class="pl-c1">41</span><span class="pl-k">×</span><span class="pl-c1">247</span> Array{Float64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+   <span class="pl-c1">0.672063</span>    <span class="pl-c1">7.25649</span>      <span class="pl-c1">0.633375</span>  …    <span class="pl-c1">1.54583</span>     <span class="pl-c1">5.81194</span>    <span class="pl-k">-</span><span class="pl-c1">4.706</span>
+  <span class="pl-k">-</span><span class="pl-c1">1.65182</span>     <span class="pl-c1">2.57487</span>      <span class="pl-c1">0.477408</span>       <span class="pl-c1">3.09505</span>     <span class="pl-c1">3.52478</span>     <span class="pl-c1">4.13037</span>
+   <span class="pl-c1">4.46035</span>     <span class="pl-c1">2.11313</span>      <span class="pl-c1">4.78372</span>        <span class="pl-c1">1.23385</span>     <span class="pl-c1">7.2525</span>      <span class="pl-c1">3.57485</span>
+   <span class="pl-c1">5.25651</span>    <span class="pl-k">-</span><span class="pl-c1">2.19785</span>      <span class="pl-c1">3.05933</span>        <span class="pl-c1">0.965021</span>    <span class="pl-c1">6.78414</span>     <span class="pl-c1">5.94854</span>
+   <span class="pl-c1">7.8537</span>      <span class="pl-c1">0.345008</span>     <span class="pl-c1">0.960533</span>       <span class="pl-c1">0.812989</span>    <span class="pl-c1">0.336715</span>    <span class="pl-c1">0.303909</span>
+   <span class="pl-c1">0.466816</span>    <span class="pl-c1">0.643649</span>    <span class="pl-k">-</span><span class="pl-c1">3.67087</span>   …    <span class="pl-c1">3.92978</span>    <span class="pl-k">-</span><span class="pl-c1">3.1242</span>      <span class="pl-c1">0.789722</span>
+  <span class="pl-k">-</span><span class="pl-c1">6.0445</span>    <span class="pl-k">-</span><span class="pl-c1">13.2441</span>      <span class="pl-k">-</span><span class="pl-c1">4.60716</span>        <span class="pl-c1">0.265144</span>   <span class="pl-k">-</span><span class="pl-c1">4.50987</span>    <span class="pl-k">-</span><span class="pl-c1">8.84897</span>
+  <span class="pl-k">-</span><span class="pl-c1">9.21703</span>   <span class="pl-k">-</span><span class="pl-c1">13.2254</span>     <span class="pl-k">-</span><span class="pl-c1">14.4409</span>        <span class="pl-k">-</span><span class="pl-c1">8.6664</span>    <span class="pl-k">-</span><span class="pl-c1">13.3457</span>    <span class="pl-k">-</span><span class="pl-c1">11.6213</span>
+ <span class="pl-k">-</span><span class="pl-c1">16.1809</span>    <span class="pl-k">-</span><span class="pl-c1">22.7037</span>     <span class="pl-k">-</span><span class="pl-c1">25.023</span>        <span class="pl-k">-</span><span class="pl-c1">15.9376</span>    <span class="pl-k">-</span><span class="pl-c1">28.0817</span>    <span class="pl-k">-</span><span class="pl-c1">16.996</span>
+ <span class="pl-k">-</span><span class="pl-c1">23.2671</span>    <span class="pl-k">-</span><span class="pl-c1">31.2021</span>     <span class="pl-k">-</span><span class="pl-c1">25.3787</span>       <span class="pl-k">-</span><span class="pl-c1">24.4914</span>    <span class="pl-k">-</span><span class="pl-c1">32.2599</span>    <span class="pl-k">-</span><span class="pl-c1">26.1118</span>
+   ⋮                                  ⋱                ⋮
+  <span class="pl-k">-</span><span class="pl-c1">0.301629</span>    <span class="pl-c1">0.0683982</span>   <span class="pl-k">-</span><span class="pl-c1">4.36574</span>        <span class="pl-c1">1.92362</span>    <span class="pl-k">-</span><span class="pl-c1">5.12333</span>    <span class="pl-k">-</span><span class="pl-c1">3.4431</span>
+   <span class="pl-c1">4.7182</span>      <span class="pl-c1">1.18615</span>      <span class="pl-c1">4.40717</span>       <span class="pl-k">-</span><span class="pl-c1">4.51757</span>    <span class="pl-k">-</span><span class="pl-c1">8.64314</span>     <span class="pl-c1">0.0800021</span>
+  <span class="pl-k">-</span><span class="pl-c1">2.43775</span>    <span class="pl-k">-</span><span class="pl-c1">0.151882</span>    <span class="pl-k">-</span><span class="pl-c1">1.40817</span>       <span class="pl-k">-</span><span class="pl-c1">3.38555</span>    <span class="pl-k">-</span><span class="pl-c1">2.23418</span>     <span class="pl-c1">0.728549</span>
+   <span class="pl-c1">3.2482</span>     <span class="pl-k">-</span><span class="pl-c1">0.60967</span>      <span class="pl-c1">0.471288</span>  …    <span class="pl-c1">2.53395</span>     <span class="pl-c1">0.468817</span>   <span class="pl-k">-</span><span class="pl-c1">3.65905</span>
+  <span class="pl-k">-</span><span class="pl-c1">4.26967</span>     <span class="pl-c1">2.24747</span>     <span class="pl-k">-</span><span class="pl-c1">3.13758</span>        <span class="pl-c1">1.74967</span>     <span class="pl-c1">4.5052</span>     <span class="pl-k">-</span><span class="pl-c1">0.145357</span>
+  <span class="pl-k">-</span><span class="pl-c1">0.752487</span>    <span class="pl-c1">1.69446</span>     <span class="pl-k">-</span><span class="pl-c1">1.20491</span>        <span class="pl-c1">1.71429</span>     <span class="pl-c1">1.81936</span>     <span class="pl-c1">0.290158</span>
+   <span class="pl-c1">4.64348</span>    <span class="pl-k">-</span><span class="pl-c1">3.94187</span>     <span class="pl-k">-</span><span class="pl-c1">1.59213</span>        <span class="pl-c1">7.15428</span>    <span class="pl-k">-</span><span class="pl-c1">0.539748</span>    <span class="pl-c1">4.82309</span>
+   <span class="pl-c1">1.09652</span>    <span class="pl-k">-</span><span class="pl-c1">2.66999</span>      <span class="pl-c1">0.521931</span>      <span class="pl-k">-</span><span class="pl-c1">3.80528</span>     <span class="pl-c1">1.70421</span>     <span class="pl-c1">3.40583</span>
+  <span class="pl-k">-</span><span class="pl-c1">0.94341</span>     <span class="pl-c1">2.60785</span>     <span class="pl-k">-</span><span class="pl-c1">3.34291</span>   …    <span class="pl-c1">1.10584</span>     <span class="pl-c1">4.31118</span>     <span class="pl-c1">3.6404</span></pre></div>
+<p>By indexing with a repeated interval, we have <em>added</em> a dimension to the
+output! The returned AxisArray's columns specify each repetition of the
+interval, and each datapoint in the column represents a timepoint within that
+interval, adjusted by the time of the theshold crossing. The best part here
+is that the returned matrix knows precisely where its data came from, and has
+labeled its dimensions appropriately. Not only is there the proper time
+base for each waveform, but we also have recorded the event times as the axis
+across the columns.</p>
+<h2><a id="user-content-indexing" class="anchor" aria-hidden="true" href="#indexing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Indexing</h2>
+<p>Two main types of Axes supported by default include:</p>
+<ul>
+<li>
+<p>Categorical axis -- These are vectors of labels, normally symbols or
+strings. Elements or slices can be selected by elements or vectors
+of elements.</p>
+</li>
+<li>
+<p>Dimensional axis -- These are sorted vectors or iterators that can
+be selected by <code>Intervals</code>. These are commonly used for sequences of
+times or date-times. For regular sample rates, ranges can be used.</p>
+</li>
+</ul>
+<p>Here is an example with a Dimensional axis representing a time
+sequence along rows and a Categorical axis of symbols for column
+headers.</p>
+<div class="highlight highlight-source-julia"><pre>B <span class="pl-k">=</span> <span class="pl-c1">AxisArray</span>(<span class="pl-c1">reshape</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">15</span>, <span class="pl-c1">5</span>, <span class="pl-c1">3</span>), <span class="pl-c1">.1</span><span class="pl-k">:</span><span class="pl-c1">.1</span><span class="pl-k">:</span><span class="pl-c1">0.5</span>, [<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>, <span class="pl-c1">:c</span>])
+B[row <span class="pl-k">=</span> (<span class="pl-c1">0.2</span><span class="pl-k">..</span><span class="pl-c1">0.4</span>)] <span class="pl-c"><span class="pl-c">#</span> restrict the AxisArray along the time axis</span>
+B[<span class="pl-c1">0.0</span><span class="pl-k">..</span><span class="pl-c1">0.3</span>, [<span class="pl-c1">:a</span>, <span class="pl-c1">:c</span>]]   <span class="pl-c"><span class="pl-c">#</span> select an interval and two of the columns</span></pre></div>
+<p>User-defined axis types can be added along with custom indexing
+behaviors.</p>
+<h3><a id="user-content-example-compute-the-intensity-weighted-mean-along-the-z-axis" class="anchor" aria-hidden="true" href="#example-compute-the-intensity-weighted-mean-along-the-z-axis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example: compute the intensity-weighted mean along the z axis</h3>
+<div class="highlight highlight-source-julia"><pre>B <span class="pl-k">=</span> <span class="pl-c1">AxisArray</span>(<span class="pl-c1">randn</span>(<span class="pl-c1">100</span>,<span class="pl-c1">100</span>,<span class="pl-c1">100</span>), <span class="pl-c1">:x</span>, <span class="pl-c1">:y</span>, <span class="pl-c1">:z</span>)
+Itotal <span class="pl-k">=</span> sumz <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+<span class="pl-k">for</span> iter <span class="pl-k">in</span> <span class="pl-c1">CartesianIndices</span>(Base<span class="pl-k">.</span><span class="pl-c1">axes</span>(B))  <span class="pl-c"><span class="pl-c">#</span> traverses in storage order for cache efficiency</span>
+    <span class="pl-k">global</span> Itotal, sumz
+    I <span class="pl-k">=</span> B[iter]  <span class="pl-c"><span class="pl-c">#</span> intensity in a single voxel</span>
+    Itotal <span class="pl-k">+=</span> I
+    sumz <span class="pl-k">+=</span> I <span class="pl-k">*</span> iter[<span class="pl-c1">axisdim</span>(B, Axis{<span class="pl-c1">:z</span>})]  <span class="pl-c"><span class="pl-c">#</span> axisdim "looks up" the z dimension</span>
+<span class="pl-k">end</span>
+meanz <span class="pl-k">=</span> sumz<span class="pl-k">/</span>Itotal</pre></div>
+<p>The intention is that all of these operations are just as efficient as they would be if you used traditional position-based indexing with all the inherent assumptions about the storage order of <code>B</code>.</p>
+</article></div>

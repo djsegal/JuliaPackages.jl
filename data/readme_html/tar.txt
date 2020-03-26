@@ -1,0 +1,176 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-tarjl" class="anchor" aria-hidden="true" href="#tarjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tar.jl</h1>
+<p><a href="https://travis-ci.org/JuliaIO/Tar.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/e8743dcd1385e51d4b088e281a02640c25f25206/68747470733a2f2f7472617669732d63692e6f72672f4a756c6961494f2f5461722e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaIO/Tar.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaIO/Tar.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/d40454b7a08ca68b19e4a3947d9d4ffed7bcefb5/68747470733a2f2f636f6465636f762e696f2f67682f4a756c6961494f2f5461722e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/JuliaIO/Tar.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>The <code>Tar</code> package can list, extract and create POSIX TAR archives ("tarballs") as specified in <a href="https://pubs.opengroup.org/onlinepubs/9699919799/utilities/pax.html" rel="nofollow">POSIX 1003.1-2001</a>.
+It is designed to support using the TAR format as a mechanism for sending trees of files from one system to another, rather than for the historical use case of backing up files for restoration to the same system.
+Because of this design goal, <code>Tar</code> intentionally ignores much of the metadata included in the TAR format, which does not make sense for the data transfer use case.
+The package also does not aim to read or create legacy non-POSIX variants of the TAR format, although it does support reading GNU long name and long link extensions.</p>
+<h2><a id="user-content-design--features" class="anchor" aria-hidden="true" href="#design--features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Design &amp; Features</h2>
+<p>Unlike the <code>tar</code> command line tool, which was originally designed to archive data in order to restore it back to the same system or to a replica thereof, the <code>Tar</code> package is designed for using the TAR format to transfer trees of files and directories from one system to another.
+This design goal means that some metadata fields supported by the TAR format and used by default by historical <code>tar</code> tools are not used or supported by <code>Tar</code>.
+In short, the choice of features and defaults for <code>Tar</code> are designed to support transfer of data, rather than backup and restoration.</p>
+<p>The TAR format can, for example, record the name and ID of the user that owns each file.
+Recording this information makes perfect sense when using tarballs for backup:
+the <code>tar</code> program should run as root when restoring data, so it can restore the original owner of each file and directory.
+On the other hand, this ownership information is of no use when using the TAR format to transfer data from one system to another:
+the user names and IDs will not generally be the same on different systems, and the tool should <em>not</em> be run as <code>root</code>, so it cannot change the owner of anything it extracts.
+For data transfer, ownership metadata should be disregarded and need not be recorded in the first place.</p>
+<p>Similarly, it makes little sense, when using tarballs for data transfer, to copy the modification time of each file from the source system.
+Those time stamps are unlikely to be relevant on the destination system, and in some cases, clock skew between the systems could mean that time stamps from the source appear to be in the future at the destination.
+This can confuse some programs and may even be perceived as an attempted security breach;
+most <code>tar</code> command line tools print warnings when extracting files with time stamps from the future.
+When using the TAR format for data transfer, it is better to ignore time stamps and just let the extracted contents have natural modification times.</p>
+<p>The features and defaults of the <code>Tar</code> package are guided by the principle that it uses the TAR format for transmitting data, not as a tool for backup and restoration.
+If you want to use the TAR format for archival purposes, you are likely better off using a traditional command line tool like <a href="https://www.gnu.org/software/tar/" rel="nofollow">GNU tar</a>.
+If, on the other hand, you want to use the TAR format to transmit data from one system to another, then you've come to the right place.</p>
+<h3><a id="user-content-file-types" class="anchor" aria-hidden="true" href="#file-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>File Types</h3>
+<p>Since <code>Tar</code> is designed for transmission of file and directory trees, it supports only the following file types:</p>
+<ul>
+<li>plain files</li>
+<li>directories</li>
+<li>symlinks</li>
+</ul>
+<p>The <code>Tar</code> package does not support other file types that the TAR format can represent, including: hard links, character devices, block devices, and FIFOs.
+If you attempt to create or extract an archive that contains any of these kinds of entries, <code>Tar</code> will raise an error.
+You can, however, list the contents of a tarball containing other kinds of entries by passing the <code>strict=false</code> flag to the <code>list</code> function; without this option, <code>list</code> raises the same error as <code>extract</code> would.</p>
+<p>In the future, optional support may be added for using hard links within archives to avoid duplicating identical files.</p>
+<h3><a id="user-content-time-stamps" class="anchor" aria-hidden="true" href="#time-stamps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Time Stamps</h3>
+<p>Also in accordance with its design goal as a data transfer tool, the <code>Tar</code> package does not record or set modification times upon tarball creation and extraction.
+When creating a tarball, it sets the time stamp of each entry to <code>0</code>, representing the UNIX epoch (Jan 1st, 1970).
+When extracting a tarball, it ignores the time stamps of entries and lets all extracted content have "natural" modification times based on when each file or directory is extracted.</p>
+<p>In the future, optional support may be added for recording and restoring time stamps.</p>
+<h3><a id="user-content-users--groups" class="anchor" aria-hidden="true" href="#users--groups"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Users &amp; Groups</h3>
+<p><code>Tar</code> ignores user and group names and IDs when creating and extracting tarballs.
+This is due to two facts:</p>
+<ul>
+<li>names and IDs on source and destination systems will generally not match;</li>
+<li>names and IDs can only be changed if <code>Tar</code> is run with elevated privileges.</li>
+</ul>
+<p>The first fact means that it probably doesn't make sense to try to restore ownership when transferring data, while the second fact means that it's probably not possible.
+Accordingly, <code>Tar</code> disregards user and group names and IDs when creating and extracting tarballs.
+During creation, the ID fields are recorded as <code>0</code> and names fields are recorded as the empty string.
+When extracting a tarball, the user and group fields are ignored entirely and all extracted content is owned by the current user.</p>
+<p>It is unlikely that support will be added for recording or restoring ownership of files or directories since that functionality only makes sense when using the TAR format for backup, a purpose better served by using a command line <code>tar</code> tool.</p>
+<h3><a id="user-content-permissions" class="anchor" aria-hidden="true" href="#permissions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Permissions</h3>
+<p>When it comes to permissions, <code>Tar</code> records and restores only one significant bit of information:
+whether plain files are executable by their owner or not.
+No permission information is recorded or restored for directories or symlinks.
+This one bit of information is the only one which makes sense across all platforms, so this choice makes <code>Tar</code>'s behavior as portable as possible.
+(Unfortunately, this is currently broken on Windows since <code>libuv</code> does not correctly support querying or changing the user executable "bit"; this is actively being worked on, however, and should be fixed in future versions of Julia.)</p>
+<p>Modes are normalized in the following manner for both tarball creation and extraction:</p>
+<ul>
+<li>files that are not executable by the owner are archived/restored with mode <code>0o644</code>;</li>
+<li>files that are executable by the owner are archived/restored with mode <code>0o755</code>;</li>
+<li>directories and symlinks are always archived/restored with mode <code>0o755</code>.</li>
+</ul>
+<p>On systems (like Windows) that do not use POSIX modes, whatever permissions mechanism exists (<em>e.g.</em> ACLs) should be queried/modified to determine/set whether each file is executable by its owner or not.</p>
+<p>In the future, optional support may be added for recording and applying exact permission modes on POSIX systems.</p>
+<h3><a id="user-content-reproducibility" class="anchor" aria-hidden="true" href="#reproducibility"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Reproducibility</h3>
+<p>The information that <code>Tar</code> records about permissions is the same information that <code>git</code> considers to be significant when recording and hashing tree contents (admittedly not by coincidence).
+As a result, an important and useful consequence of <code>Tar</code>'s design is that it has the following properties:</p>
+<ul>
+<li>if you create a tarball from a file tree and extract it, the new tree will have the same <code>git</code> tree hash as the original;</li>
+<li>if you <code>git checkout</code> a file tree and archive it using <code>Tar</code>, the resulting TAR archive file is always the same.</li>
+</ul>
+<p>One important caveat to keep in mind is that <code>git</code> ignores directories that recursively contain only directories—<em>i.e.</em> unless there's a file or a symlink somewhere, <code>git</code> will not acknowledge the existence of a subdirectory.
+This means that two trees with the same <code>git</code> tree hash can produce different tarballs if they differ by subdirectories containing no files or symlinks:
+<code>git</code> will ignore those subdirectories, while <code>Tar</code> will not.
+Therefore, they will have the same <code>git</code> tree hash, but produce different tarballs.
+Two <em>identical</em> file trees will always produce identical tarballs, however, and that tarball should remain stable in future versions of the <code>Tar</code> package.</p>
+<h2><a id="user-content-api--usage" class="anchor" aria-hidden="true" href="#api--usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>API &amp; Usage</h2>
+<p>The public API of <code>Tar</code> includes three functions and one type:</p>
+<ul>
+<li><code>create</code> — creates a tarball from an on-disk file tree</li>
+<li><code>extract</code> — extracts a tarball to an on-disk file tree</li>
+<li><code>list</code> — lists the contents of a tarball as a vector of <code>Header</code> objects</li>
+<li><code>Header</code> — struct representing metadata that <code>Tar</code> considers important in a TAR entry</li>
+</ul>
+<p>None of these are exported, however: the recommended usage is to do <code>import Tar</code> and then access all of these names fully qualified as <code>Tar.create</code>, <code>Tar.extract</code> and so on.</p>
+
+<h3><a id="user-content-tarcreate" class="anchor" aria-hidden="true" href="#tarcreate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tar.create</h3>
+<pre><code>create([ predicate, ] dir, [ tarball ]) -&gt; tarball
+</code></pre>
+<ul>
+<li><code>predicate :: Function</code></li>
+<li><code>dir       :: AbstractString</code></li>
+<li><code>tarball   :: Union{AbstractString, IO}</code></li>
+</ul>
+<p>Create a tar archive ("tarball") of the directory <code>dir</code>. The resulting archive
+is written to the path <code>tarball</code> or if no path is specified, a temporary path is
+created and returned by the function call. If <code>tarball</code> is an IO object then the
+tarball content is written to that handle instead (the handle is left open).</p>
+<p>If a <code>predicate</code> function is passed, it is called on each system path that is
+encountered while recursively searching <code>dir</code> and <code>path</code> is only included in the
+tarball if <code>predicate(path)</code> is true. If <code>predicate(path)</code> returns false for a
+directory, then the directory is excluded entirely: nothing under that directory
+will be included in the archive.</p>
+<h3><a id="user-content-tarextract" class="anchor" aria-hidden="true" href="#tarextract"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tar.extract</h3>
+<pre><code>extract(tarball, [ dir ]) -&gt; dir
+</code></pre>
+<ul>
+<li><code>tarball   :: Union{AbstractString, IO}</code></li>
+<li><code>dir       :: AbstractString</code></li>
+</ul>
+<p>Extract a tar archive ("tarball") located at the path <code>tarball</code> into the
+directory <code>dir</code>. If <code>tarball</code> is an IO object instead of a path, then the
+archive contents will be read from that IO stream. The archive is extracted to
+<code>dir</code> which must either be an existing empty directory or a non-existent path
+which can be created as a new directory. If <code>dir</code> is not specified, the archive
+is extracted into a temporary directory which is returned by <code>extract</code>.</p>
+<h3><a id="user-content-tarlist" class="anchor" aria-hidden="true" href="#tarlist"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tar.list</h3>
+<pre><code>list(tarball; [ strict = true ]) -&gt; Vector{Header}
+</code></pre>
+<ul>
+<li><code>tarball   :: Union{AbstractString, IO}</code></li>
+<li><code>strict    :: Bool</code></li>
+</ul>
+<p>List the contents of a tar archive ("tarball") located at the path <code>tarball</code>.
+If <code>tarball</code> is an IO handle, read the tar contents from that stream. Returns
+a vector of <code>Header</code> structs. See <a href="#TarHeader"><code>Header</code></a> for details.</p>
+<p>By default <code>list</code> will error if it encounters any tarball contents which the
+<code>extract</code> function would refuse to extract. With <code>strict=false</code> it will skip
+these checks and list all the the contents of the tar file whether <code>extract</code>
+would extract them or not. Beware that malicious tarballs can do all sorts of
+crafty and unexpected things to try to trick you into doing something bad.</p>
+<h3><a id="user-content-tarheader" class="anchor" aria-hidden="true" href="#tarheader"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tar.Header</h3>
+<p>The <code>Header</code> type is a struct representing the essential metadata for a single
+record in a tar file with this definition:</p>
+<pre><code>struct Header
+    path :: String # path relative to the root
+    type :: Symbol # type indicator (see below)
+    mode :: UInt16 # mode/permissions (best viewed in octal)
+    size :: Int64  # size of record data in bytes
+    link :: String # target path of a symlink
+end
+</code></pre>
+<p>Types are represented with the following symbols: <code>file</code>, <code>hardlink</code>, <code>symlink</code>,
+<code>chardev</code>, <code>blockdev</code>, <code>directory</code>, <code>fifo</code>, or for unknown types, the typeflag
+character as a symbol. Note that <a href="#Tarextract"><code>extract</code></a> refuses to extract records
+types other than <code>file</code>, <code>symlink</code> and <code>directory</code>; <a href="#Tarlist"><code>list</code></a> will only
+list other kinds of records if called with <code>strict=false</code>.</p>
+
+<h3><a id="user-content-api-comparison-with-command-line-tar" class="anchor" aria-hidden="true" href="#api-comparison-with-command-line-tar"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>API comparison with command-line tar</h3>
+<p>It might be helpful to compare the <code>Tar</code> API with command-line <code>tar</code>.
+Unlike <code>tar -c</code> the <code>Tar.create</code> function does not include any of the path you tell it to bundle in the resulting TAR file:
+the location of the data is not part of the data.
+Doing <code>Tar.create(dir, tarball)</code> is roughly equivalent to running the following <code>tar</code> command:</p>
+<div class="highlight highlight-source-shell"><pre>tar -f <span class="pl-smi">$tarball</span> -C <span class="pl-smi">$dir</span> -c <span class="pl-s"><span class="pl-pds">$(</span>cd <span class="pl-smi">$dir</span><span class="pl-k">;</span> ls -A<span class="pl-pds">)</span></span></pre></div>
+<p>In other words, <code>tar</code> is told to change into the directory  <code>dir</code> before constructing the tarball and then include all the top-level items in that directory without any path prefix.
+Note that the above command does not fully emulate the behavior of <code>Tar.create</code>:
+it does not sort entries in the same order and it still records user and group information, modification times and exact permissions.
+Coaxing command-line <code>tar</code> programs to omit this non-portable information and use a portable (and <code>git</code>-compatible sort order) is non-trivial.</p>
+<p>Another difference from command-line <code>tar</code>:
+non-empty directories are also omitted from the tarballs that <code>Tar</code> creates since no metadata is recorded about directories aside from the fact that they exist and the existence of non-empty directories is already implied by the fact that they contain something else.
+If, in the future, the ability to record metadata about directories is added, tarballs will record entries for non-empty directories with non-default metadata.</p>
+<p>On the extraction side of things, doing <code>Tar.extract(tarball, dir)</code> is roughly equivalent to the following commands:</p>
+<div class="highlight highlight-source-shell"><pre><span class="pl-c1">test</span> -d <span class="pl-smi">$dir</span> <span class="pl-k">||</span> mkdir <span class="pl-smi">$dir</span>
+tar -f <span class="pl-smi">$tarball</span> -C <span class="pl-smi">$dir</span> -mx</pre></div>
+<p>Again, <code>tar</code> is told to change into the directory <code>dir</code> before extracting the tarball and to extract each path relative to that directory.
+The <code>-m</code> option tells <code>tar</code> to ignore the modification times recorded in the tarball and just let files and directories have their natural modification times.</p>
+<p>If the current user has elevated privileges, the <code>tar</code> command will attempt to change the owner and group of files to what is recorded in the tarball, whereas <code>Tar.extract</code> will never do that.
+The <code>tar</code> command may also try to restore permissions without respecting the current <code>umask</code> if the user is an administrator.
+Again, <code>Tar.extract</code> will never do that—it behaves the same way for any users:
+by ignoring any user/group/permission information, aside from whether plain files are executable by their owner or not.
+To suppress these behaviors with GNU tar, you can use the <code>--no-same-owner</code> and <code>--no-same-permissions</code> options;
+these options are not broadly supported by other <code>tar</code> commands, which may not have options to support these behaviors.</p>
+</article></div>

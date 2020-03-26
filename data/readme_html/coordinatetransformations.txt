@@ -1,0 +1,153 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-coordinatetransformations" class="anchor" aria-hidden="true" href="#coordinatetransformations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CoordinateTransformations</h1>
+<p><a href="https://github.com/JuliaGeometry/CoordinateTransformations.jl/actions?query=workflow%3ACI"><img src="https://github.com/JuliaGeometry/CoordinateTransformations.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a></p>
+<p><strong>CoordinateTransformations</strong> is a Julia package to manage simple or complex
+networks of coordinate system transformations. Transformations can be easily
+applied, inverted, composed, and differentiated (both with respect to the
+input coordinates and with respect to transformation parameters such as rotation
+angle). Transformations are designed to be light-weight and efficient enough
+for, e.g., real-time graphical applications, while support for both explicit
+and automatic differentiation makes it easy to perform optimization and
+therefore ideal for computer vision applications such as SLAM (simultaneous
+localization and mapping).</p>
+<p>The package provide two main pieces of functionality</p>
+<ol>
+<li>
+<p>Primarily, an interface for defining <code>Transformation</code>s and applying
+(by calling), inverting (<code>inv()</code>), composing (<code>∘</code> or <code>compose()</code>) and
+differentiating (<code>transform_deriv()</code> and <code>transform_deriv_params()</code>) them.</p>
+</li>
+<li>
+<p>A small set of built-in, composable, primitive transformations for
+transforming 2D and 3D points (optionally leveraging the <em>StaticArrays</em>
+and <em>Rotations</em> packages).</p>
+</li>
+</ol>
+<h3><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Quick start</h3>
+<p>Let's translate a 3D point:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> CoordinateTransformations, Rotations, StaticArrays
+
+x <span class="pl-k">=</span> <span class="pl-c1">SVector</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>)  <span class="pl-c"><span class="pl-c">#</span> SVector is provided by StaticArrays.jl</span>
+trans <span class="pl-k">=</span> <span class="pl-c1">Translation</span>(<span class="pl-c1">3.5</span>, <span class="pl-c1">1.5</span>, <span class="pl-c1">0.0</span>)
+
+y <span class="pl-k">=</span> <span class="pl-c1">trans</span>(x)</pre></div>
+<p>We can either apply different transformations in turn,</p>
+<div class="highlight highlight-source-julia"><pre>rot <span class="pl-k">=</span> <span class="pl-c1">LinearMap</span>(<span class="pl-c1">RotX</span>(<span class="pl-c1">0.3</span>))  <span class="pl-c"><span class="pl-c">#</span> Rotate 0.3 radians about X-axis, from Rotations.jl</span>
+
+z <span class="pl-k">=</span> <span class="pl-c1">trans</span>(<span class="pl-c1">rot</span>(x))</pre></div>
+<p>or build a composed transformation using the <code>∘</code> operator (accessible at the
+REPL by typing <code>\circ</code> then tab):</p>
+<div class="highlight highlight-source-julia"><pre>composed <span class="pl-k">=</span> trans <span class="pl-k">∘</span> rot  <span class="pl-c"><span class="pl-c">#</span> alternatively, use compose(trans, rot)</span>
+
+<span class="pl-c1">composed</span>(x) <span class="pl-k">==</span> z</pre></div>
+<p>A composition of a <code>Translation</code> and a <code>LinearMap</code> results in an <code>AffineMap</code>.</p>
+<p>We can invert the transformation:</p>
+<div class="highlight highlight-source-julia"><pre>composed_inv <span class="pl-k">=</span> <span class="pl-c1">inv</span>(composed)
+
+<span class="pl-c1">composed_inv</span>(z) <span class="pl-k">==</span> x</pre></div>
+<p>For any transformation, we can shift the origin to a new point using <code>recenter</code>:</p>
+<div class="highlight highlight-source-julia"><pre>rot_around_x <span class="pl-k">=</span> <span class="pl-c1">recenter</span>(rot, x)</pre></div>
+<p>Now <code>rot_around_x</code> is a rotation around the point <code>x = SVector(1.0, 2.0, 3.0)</code>.</p>
+<p>Finally, we can construct a matrix describing how the components of <code>z</code>
+differentiates with respect to components of <code>x</code>:</p>
+<div class="highlight highlight-source-julia"><pre>∂z_∂x <span class="pl-k">=</span> <span class="pl-c1">transform_deriv</span>(composed, x) <span class="pl-c"><span class="pl-c">#</span> In general, the transform may be non-linear, and thus we require the value of x to compute the derivative</span></pre></div>
+<p>Or perhaps we want to know how <code>y</code> will change with respect to changes of
+to the translation parameters:</p>
+<div class="highlight highlight-source-julia"><pre>∂y_∂θ <span class="pl-k">=</span> <span class="pl-c1">transform_deriv_params</span>(trans, x)</pre></div>
+<h3><a id="user-content-the-interface" class="anchor" aria-hidden="true" href="#the-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The interface</h3>
+<p>Transformations are derived from <code>Transformation</code>. As an example, we have
+<code>Translation{T} &lt;: Transformation</code>. A <code>Translation</code> will accept and translate
+points in a variety of formats, such as <code>Vector</code> or <code>SVector</code>, but in general
+your custom-defined <code>Transformation</code>s could transform any Julia object.</p>
+<p>Transformations can be reversed using <code>inv(trans)</code>. They can be chained
+together using the <code>∘</code> operator (<code>trans1 ∘ trans2</code>) or <code>compose</code> function (<code>compose(trans1, trans2)</code>).
+In this case, <code>trans2</code> is applied first to the data, before <code>trans1</code>.
+Composition may be intelligent, for instance by precomputing a new <code>Translation</code>
+by summing the elements of two existing <code>Translation</code>s, and yet other
+transformations may compose to the <code>IdentityTransformation</code>. But by default,
+composition will result in a <code>ComposedTransformation</code> object which simply
+dispatches to apply the transformations in the correct order.</p>
+<p>Finally, the matrix describing how differentials propagate through a transform
+can be calculated with the <code>transform_deriv(trans, x)</code> method. The derivatives
+of how the output depends on the transformation parameters is accessed via
+<code>transform_deriv_params(trans, x)</code>. Users currently have to overload these methods,
+as no fall-back automatic differentiation is currently included. Alternatively,
+all the built-in types and transformations are compatible with automatic differentiation
+techniques, and can be parameterized by <em>DualNumbers</em>' <code>DualNumber</code> or <em>ForwardDiff</em>'s <code>Dual</code>.</p>
+<h3><a id="user-content-built-in-transformations" class="anchor" aria-hidden="true" href="#built-in-transformations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Built-in transformations</h3>
+<p>A small number of 2D and 3D coordinate systems and transformations are included.
+We also have <code>IdentityTransform</code> and <code>ComposedTransformation</code>, which allows us
+to nest together arbitrary transformations to create a complex yet efficient
+transformation chain.</p>
+<h4><a id="user-content-coordinate-types" class="anchor" aria-hidden="true" href="#coordinate-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Coordinate types</h4>
+<p>The package accepts any <code>AbstractVector</code> type for Cartesian coordinates (as
+well as <em>FixedSizeArrays</em> types in Julia v0.4 only). For speed, we recommend
+using a statically-sized container such as <code>SVector{N}</code> from <em>StaticArrays</em>.</p>
+<p>We do provide a few specialist coordinate types. The <code>Polar(r, θ)</code> type is a 2D
+polar representation of a point, and similarly in 3D we have defined
+<code>Spherical(r, θ, ϕ)</code> and <code>Cylindrical(r, θ, z)</code>.</p>
+<h4><a id="user-content-coordinate-system-transformations" class="anchor" aria-hidden="true" href="#coordinate-system-transformations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Coordinate system transformations</h4>
+<p>Two-dimensional coordinates may be converted using these parameterless (singleton)
+transformations:</p>
+<ol>
+<li><code>PolarFromCartesian()</code></li>
+<li><code>CartesianFromPolar()</code></li>
+</ol>
+<p>Three-dimensional coordinates may be converted using these parameterless
+transformations:</p>
+<ol>
+<li><code>SphericalFromCartesian()</code></li>
+<li><code>CartesianFromSpherical()</code></li>
+<li><code>SphericalFromCylindrical()</code></li>
+<li><code>CylindricalFromSpherical()</code></li>
+<li><code>CartesianFromCylindrical()</code></li>
+<li><code>CylindricalFromCartesian()</code></li>
+</ol>
+<p>However, you may find it simpler to use the convenience constructors like
+<code>Polar(SVector(1.0, 2.0))</code>.</p>
+<h4><a id="user-content-translations" class="anchor" aria-hidden="true" href="#translations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Translations</h4>
+<p>Translations can be be applied to Cartesian coordinates in arbitrary dimensions,
+by e.g. <code>Translation(Δx, Δy)</code> or <code>Translation(Δx, Δy, Δz)</code> in 2D/3D, or by
+<code>Translation(Δv)</code> in general (with <code>Δv</code> an <code>AbstractVector</code>). Compositions of
+two <code>Translation</code>s will intelligently create a new <code>Translation</code> by adding the
+translation vectors.</p>
+<h4><a id="user-content-linear-transformations" class="anchor" aria-hidden="true" href="#linear-transformations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Linear transformations</h4>
+<p>Linear transformations (a.k.a. linear maps), including rotations, can be
+encapsulated in the <code>LinearMap</code> type, which is a simple wrapper of an
+<code>AbstractMatrix</code>.</p>
+<p>You are able to provide any matrix of your choosing, but your choice of type
+will have a large effect on speed. For instance, if you know the dimensionality
+of your points (e.g. 2D or 3D) you might consider a statically sized matrix
+like <code>SMatrix</code> from <em>StaticArrays.jl</em>. We recommend performing 3D rotations
+using those from <em>Rotations.jl</em> for their speed and flexibility. Scaling will
+be efficient with Julia's built-in <code>UniformScaling</code>. Also note that compositions
+of two <code>LinearMap</code>s will intelligently create a new <code>LinearMap</code> by multiplying
+the transformation matrices.</p>
+<h4><a id="user-content-affine-maps" class="anchor" aria-hidden="true" href="#affine-maps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Affine maps</h4>
+<p>An Affine map encapsulates a more general set of transformation which are
+defined by a composition of a translation and a linear transformation. An
+<code>AffineMap</code> is constructed from an <code>AbstractVector</code> translation <code>v</code> and an
+<code>AbstractMatrix</code> linear transformation <code>M</code>. It will perform the mapping
+<code>x -&gt; M*x + v</code>, but the order of addition and multiplication will be more obvious
+(and controllable) if you construct it from a composition of a linear map
+and a translation, e.g. <code>Translation(v) ∘ LinearMap(v)</code> (or any combination of
+<code>LinearMap</code>, <code>Translation</code> and <code>AffineMap</code>).</p>
+<h4><a id="user-content-perspective-transformations" class="anchor" aria-hidden="true" href="#perspective-transformations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Perspective transformations</h4>
+<p>The perspective transformation maps real-space coordinates to those on a virtual
+"screen" of one lesser dimension. For instance, this process is used to render
+3D scenes to 2D images in computer generated graphics and games. It is an ideal
+model of how a pinhole camera operates and is a good approximation of the modern
+photography process.</p>
+<p>The <code>PerspectiveMap()</code> command creates a <code>Transformation</code> to perform the
+projective mapping. It can be applied individually, but is particularly
+powerful when composed with an <code>AffineMap</code> containing the position and
+orientation of the camera in your scene. For example, to transfer <code>points</code> in 3D
+space to 2D <code>screen_points</code> giving their projected locations on a virtual camera
+image, you might use the following code:</p>
+<div class="highlight highlight-source-julia"><pre>cam_transform <span class="pl-k">=</span> <span class="pl-c1">PerspectiveMap</span>() <span class="pl-k">∘</span> <span class="pl-c1">inv</span>(<span class="pl-c1">AffineMap</span>(cam_rotation, cam_position))
+screen_points <span class="pl-k">=</span> <span class="pl-c1">map</span>(cam_transform, points)</pre></div>
+<p>There is also a <code>cameramap()</code> convenience function that can create a composed
+transformation that includes the intrinsic scaling (e.g. focal length and pixel
+size) and offset (defining which pixel is labeled <code>(0,0)</code>) of an imaging system.</p>
+<h2><a id="user-content-acknowledgements" class="anchor" aria-hidden="true" href="#acknowledgements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Acknowledgements</h2>
+<p><a href="https://github.com/FugroRoames"><img src="https://avatars.githubusercontent.com/FugroRoames?s=150" alt="FugroRoames" style="max-width:100%;"></a></p>
+</article></div>

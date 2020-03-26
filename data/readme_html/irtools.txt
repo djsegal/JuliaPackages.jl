@@ -1,0 +1,63 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-irtools" class="anchor" aria-hidden="true" href="#irtools"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>IRTools</h1>
+<p><a href="https://travis-ci.org/MikeInnes/IRTools.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/cf347141efecfa61d89e00b2594bd3d59782e9e4/68747470733a2f2f7472617669732d63692e6f72672f4d696b65496e6e65732f4952546f6f6c732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/MikeInnes/IRTools.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://mikeinnes.github.io/IRTools.jl/latest/" rel="nofollow"><img src="https://camo.githubusercontent.com/3e353c26ddfe819150acbc732248f4f2a37f5175/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a></p>
+<p>IRTools aims to provide a simple and flexible IR format, expressive enough to work with both lowered and typed Julia code, as well as external IRs. It can be used with Julia metaprogramming tools such as <a href="https://github.com/jrevels/Cassette.jl">Cassette</a>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> IRTools
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">pow</span>(x, n) <span class="pl-c"><span class="pl-c">#</span> A simple Julia function</span>
+         r <span class="pl-k">=</span> <span class="pl-c1">1</span>
+         <span class="pl-k">while</span> n <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+           n <span class="pl-k">-=</span> <span class="pl-c1">1</span>
+           r <span class="pl-k">*=</span> x
+         <span class="pl-k">end</span>
+         <span class="pl-k">return</span> r
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> ir <span class="pl-k">=</span> <span class="pl-c1">@code_ir</span> <span class="pl-c1">pow</span>(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> Get its IR</span>
+<span class="pl-c1">1</span><span class="pl-k">:</span> (<span class="pl-k">%</span><span class="pl-c1">1</span>, <span class="pl-k">%</span><span class="pl-c1">2</span>, <span class="pl-k">%</span><span class="pl-c1">3</span>)
+  br <span class="pl-c1">2</span> (<span class="pl-k">%</span><span class="pl-c1">3</span>, <span class="pl-c1">1</span>)
+<span class="pl-c1">2</span><span class="pl-k">:</span> (<span class="pl-k">%</span><span class="pl-c1">4</span>, <span class="pl-k">%</span><span class="pl-c1">5</span>)
+  <span class="pl-k">%</span><span class="pl-c1">6</span> <span class="pl-k">=</span> <span class="pl-k">%</span><span class="pl-c1">4</span> <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+  br <span class="pl-c1">4</span> unless <span class="pl-k">%</span><span class="pl-c1">6</span>
+  br <span class="pl-c1">3</span>
+<span class="pl-c1">3</span><span class="pl-k">:</span>
+  <span class="pl-k">%</span><span class="pl-c1">7</span> <span class="pl-k">=</span> <span class="pl-k">%</span><span class="pl-c1">4</span> <span class="pl-k">-</span> <span class="pl-c1">1</span>
+  <span class="pl-k">%</span><span class="pl-c1">8</span> <span class="pl-k">=</span> <span class="pl-k">%</span><span class="pl-c1">5</span> <span class="pl-k">*</span> <span class="pl-k">%</span><span class="pl-c1">2</span>
+  br <span class="pl-c1">2</span> (<span class="pl-k">%</span><span class="pl-c1">7</span>, <span class="pl-k">%</span><span class="pl-c1">8</span>)
+<span class="pl-c1">4</span><span class="pl-k">:</span>
+  <span class="pl-k">return</span> <span class="pl-k">%</span><span class="pl-c1">5</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> IRTools<span class="pl-k">:</span> var, xcall
+
+julia<span class="pl-k">&gt;</span> ir[<span class="pl-c1">var</span>(<span class="pl-c1">8</span>)] <span class="pl-k">=</span> <span class="pl-c1">xcall</span>(:<span class="pl-k">+</span>, <span class="pl-c1">var</span>(<span class="pl-c1">5</span>), <span class="pl-c1">var</span>(<span class="pl-c1">2</span>)) <span class="pl-c"><span class="pl-c">#</span> Tweak it</span>
+:(<span class="pl-k">%</span><span class="pl-c1">5</span> <span class="pl-k">+</span> <span class="pl-k">%</span><span class="pl-c1">2</span>)
+
+julia<span class="pl-k">&gt;</span> ir
+<span class="pl-c1">1</span><span class="pl-k">:</span> (<span class="pl-k">%</span><span class="pl-c1">1</span>, <span class="pl-k">%</span><span class="pl-c1">2</span>, <span class="pl-k">%</span><span class="pl-c1">3</span>)
+  br <span class="pl-c1">2</span> (<span class="pl-k">%</span><span class="pl-c1">3</span>, <span class="pl-c1">1</span>)
+<span class="pl-c1">2</span><span class="pl-k">:</span> (<span class="pl-k">%</span><span class="pl-c1">4</span>, <span class="pl-k">%</span><span class="pl-c1">5</span>)
+  <span class="pl-k">%</span><span class="pl-c1">6</span> <span class="pl-k">=</span> <span class="pl-k">%</span><span class="pl-c1">4</span> <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+  br <span class="pl-c1">4</span> unless <span class="pl-k">%</span><span class="pl-c1">6</span>
+  br <span class="pl-c1">3</span>
+<span class="pl-c1">3</span><span class="pl-k">:</span>
+  <span class="pl-k">%</span><span class="pl-c1">7</span> <span class="pl-k">=</span> <span class="pl-k">%</span><span class="pl-c1">4</span> <span class="pl-k">-</span> <span class="pl-c1">1</span>
+  <span class="pl-k">%</span><span class="pl-c1">8</span> <span class="pl-k">=</span> <span class="pl-k">%</span><span class="pl-c1">5</span> <span class="pl-k">+</span> <span class="pl-k">%</span><span class="pl-c1">2</span>
+  br <span class="pl-c1">2</span> (<span class="pl-k">%</span><span class="pl-c1">7</span>, <span class="pl-k">%</span><span class="pl-c1">8</span>)
+<span class="pl-c1">4</span><span class="pl-k">:</span>
+  <span class="pl-k">return</span> <span class="pl-k">%</span><span class="pl-c1">5</span>
+
+julia<span class="pl-k">&gt;</span> f <span class="pl-k">=</span> IRTools<span class="pl-k">.</span><span class="pl-c1">func</span>(ir); <span class="pl-c"><span class="pl-c">#</span> Turn the new IR into a lambda</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">f</span>(<span class="pl-c1">nothing</span>, <span class="pl-c1">10</span>, <span class="pl-c1">5</span>)
+<span class="pl-c1">51</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_llvm</span> <span class="pl-c1">f</span>(<span class="pl-c1">nothing</span>, <span class="pl-c1">10</span>, <span class="pl-c1">5</span>)
+define i64 @<span class="pl-s"><span class="pl-pds">"</span>julia_##399_17438<span class="pl-pds">"</span></span>(i64, i64) {
+top<span class="pl-k">:</span>
+     <span class="pl-k">%</span><span class="pl-c1">2</span> <span class="pl-k">=</span> icmp slt i64 <span class="pl-k">%</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span>
+     <span class="pl-k">%</span><span class="pl-c1">3</span> <span class="pl-k">=</span> mul i64 <span class="pl-k">%</span><span class="pl-c1">1</span>, <span class="pl-k">%</span><span class="pl-c1">0</span>
+     <span class="pl-k">%</span><span class="pl-c1">4</span> <span class="pl-k">=</span> add i64 <span class="pl-k">%</span><span class="pl-c1">3</span>, <span class="pl-c1">1</span>
+     <span class="pl-k">%</span>value_phi1<span class="pl-k">.</span>lcssa <span class="pl-k">=</span> select i1 <span class="pl-k">%</span><span class="pl-c1">2</span>, i64 <span class="pl-c1">1</span>, i64 <span class="pl-k">%</span><span class="pl-c1">4</span>
+    ret i64 <span class="pl-k">%</span>value_phi1<span class="pl-k">.</span>lcssa
+}</pre></div>
+</article></div>

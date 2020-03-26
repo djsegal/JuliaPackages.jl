@@ -1,0 +1,178 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-tilediteration" class="anchor" aria-hidden="true" href="#tilediteration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TiledIteration</h1>
+<p><a href="https://travis-ci.org/JuliaArrays/TiledIteration.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/da4fd5501c96328d71b484d9d647970b4819f78b/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614172726179732f54696c6564497465726174696f6e2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaArrays/TiledIteration.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="http://codecov.io/github/JuliaArrays/TiledIteration.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/04e92fcb368c6096894680f1278680c2a5d29ebf/687474703a2f2f636f6465636f762e696f2f6769746875622f4a756c69614172726179732f54696c6564497465726174696f6e2e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/JuliaArrays/TiledIteration.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>This Julia package handles some of the low-level details for writing
+cache-efficient, possibly-multithreaded code for multidimensional
+arrays. A "tile" corresponds to a chunk of a larger array, typically a
+region that is large enough to encompass any "local" computations you
+need to perform; some of these computations may require temporary storage.</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>This package offers two basic kinds of functionality: the management
+of temporary buffers for processing on tiles, and the iteration over
+disjoint tiles of a larger array.</p>
+<h3><a id="user-content-iteration" class="anchor" aria-hidden="true" href="#iteration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Iteration</h3>
+<p>To iterate over disjoint tiles of a larger array, use a <code>TileIterator</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> TiledIteration
+
+A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>);   <span class="pl-c"><span class="pl-c">#</span> our big array</span>
+<span class="pl-k">for</span> tileaxs <span class="pl-k">in</span> <span class="pl-c1">TileIterator</span>(<span class="pl-c1">axes</span>(A), (<span class="pl-c1">128</span>,<span class="pl-c1">8</span>))
+    <span class="pl-c1">@show</span> tileaxs
+<span class="pl-k">end</span></pre></div>
+<p>This produces</p>
+<div class="highlight highlight-source-julia"><pre>tileaxs <span class="pl-k">=</span> (<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">128</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">129</span><span class="pl-k">:</span><span class="pl-c1">256</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">257</span><span class="pl-k">:</span><span class="pl-c1">384</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">385</span><span class="pl-k">:</span><span class="pl-c1">512</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">513</span><span class="pl-k">:</span><span class="pl-c1">640</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">641</span><span class="pl-k">:</span><span class="pl-c1">768</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">769</span><span class="pl-k">:</span><span class="pl-c1">896</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">897</span><span class="pl-k">:</span><span class="pl-c1">1000</span>,<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">128</span>,<span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">16</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">129</span><span class="pl-k">:</span><span class="pl-c1">256</span>,<span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">16</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">257</span><span class="pl-k">:</span><span class="pl-c1">384</span>,<span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">16</span>)
+tileaxs <span class="pl-k">=</span> (<span class="pl-c1">385</span><span class="pl-k">:</span><span class="pl-c1">512</span>,<span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">16</span>)
+<span class="pl-k">...</span></pre></div>
+<p>You can see that the total axes range is split up into chunks,
+which are of size <code>(128,8)</code> except at the edges of <code>A</code>. Naturally,
+these axes serve as the basis for processing individual chunks of
+the array.</p>
+<p>As a further example, suppose you've started julia with <code>JULIA_NUM_THREADS=4</code>; then</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">fillid!</span>(A, tilesz)
+    tileinds_all <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">TileIterator</span>(<span class="pl-c1">axes</span>(A), tilesz))
+    Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(tileinds_all)
+        tileaxs <span class="pl-k">=</span> tileinds_all[i]
+        A[tileaxs<span class="pl-k">...</span>] <span class="pl-k">.=</span> Threads<span class="pl-k">.</span><span class="pl-c1">threadid</span>()
+    <span class="pl-k">end</span>
+    A
+<span class="pl-k">end</span>
+
+A <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Int, <span class="pl-c1">8</span>, <span class="pl-c1">8</span>)
+<span class="pl-c1">fillid!</span>(A, (<span class="pl-c1">2</span>,<span class="pl-c1">2</span>))</pre></div>
+<p>would yield</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">8</span><span class="pl-k">×</span><span class="pl-c1">8</span> Array{Int64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">3</span>  <span class="pl-c1">4</span>  <span class="pl-c1">4</span></pre></div>
+<p>See also "EdgeIterator" below.</p>
+<h3><a id="user-content-determining-the-chunk-size" class="anchor" aria-hidden="true" href="#determining-the-chunk-size"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Determining the chunk size</h3>
+<p><a href="https://en.wikipedia.org/wiki/Stencil_code" rel="nofollow">Stencil computations</a>
+typically require "padding" values, so the inputs to a computation may
+be of a different size than the resulting outputs. Naturally, you can
+set the tile size manually; a simple convenience function,
+<code>padded_tilesize</code>, attempts to pick reasonable choices for you
+depending on the size of your kernel (stencil) and element type you'll
+be using:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">padded_tilesize</span>(UInt8, (<span class="pl-c1">3</span>,<span class="pl-c1">3</span>))
+(<span class="pl-c1">768</span>,<span class="pl-c1">18</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">padded_tilesize</span>(UInt8, (<span class="pl-c1">3</span>,<span class="pl-c1">3</span>), <span class="pl-c1">4</span>)  <span class="pl-c"><span class="pl-c">#</span> we want 4 of these to fit in L1 cache at once</span>
+(<span class="pl-c1">512</span>,<span class="pl-c1">12</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">padded_tilesize</span>(Float64, (<span class="pl-c1">3</span>,<span class="pl-c1">3</span>))
+(<span class="pl-c1">96</span>,<span class="pl-c1">18</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">padded_tilesize</span>(Float32, (<span class="pl-c1">3</span>,<span class="pl-c1">3</span>,<span class="pl-c1">3</span>))
+(<span class="pl-c1">64</span>,<span class="pl-c1">6</span>,<span class="pl-c1">6</span>)</pre></div>
+<h3><a id="user-content-allocating-and-managing-temporary-storage" class="anchor" aria-hidden="true" href="#allocating-and-managing-temporary-storage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Allocating and managing temporary storage</h3>
+<p>To allocate temporary storage while working with tiles, use <code>TileBuffer</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> tileaxs <span class="pl-k">=</span> (<span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">15</span>, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">7</span>)  <span class="pl-c"><span class="pl-c">#</span> really this might have come from TileIterator</span>
+
+julia<span class="pl-k">&gt;</span> buf <span class="pl-k">=</span> <span class="pl-c1">TileBuffer</span>(Float32, tileaxs)
+TiledIteration<span class="pl-k">.</span>TileBuffer{Float32,<span class="pl-c1">2</span>,<span class="pl-c1">2</span>} with indices <span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">15</span><span class="pl-k">×</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">7</span><span class="pl-k">:</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">2.38221</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">9.3887</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>   <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">1.26117</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">8.26766</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">6.02558</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">7.28675</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">1.54143</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">9.94922</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">8.82818</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">9.10844</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">1.03696</span>f<span class="pl-k">-</span><span class="pl-c1">43</span>  <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span></pre></div>
+<p>This returns an uninitialized buffer for use over the indicated domain. You can reuse this same storage for the next tile, even if the tile is smaller because it corresponds to the edge of the original array:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">pointer</span>(buf)
+Ptr{Float32} @<span class="pl-c1">0x00007f79131fd550</span>
+
+julia<span class="pl-k">&gt;</span> buf <span class="pl-k">=</span> <span class="pl-c1">TileBuffer</span>(buf, (<span class="pl-c1">16</span><span class="pl-k">:</span><span class="pl-c1">20</span>, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">7</span>))
+TiledIteration<span class="pl-k">.</span>TileBuffer{Float32,<span class="pl-c1">2</span>,<span class="pl-c1">2</span>} with indices <span class="pl-c1">16</span><span class="pl-k">:</span><span class="pl-c1">20</span><span class="pl-k">×</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">7</span><span class="pl-k">:</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">1.54143</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">1.26117</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>  <span class="pl-c1">2.38221</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">pointer</span>(buf)
+Ptr{Float32} @<span class="pl-c1">0x00007f79131fd550</span></pre></div>
+<p>When you use it again at the top of the next block of columns, it returns to its original size while still reusing the same memory:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> buf <span class="pl-k">=</span> <span class="pl-c1">TileBuffer</span>(buf, (<span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">15</span>, <span class="pl-c1">8</span><span class="pl-k">:</span><span class="pl-c1">15</span>))
+TiledIteration<span class="pl-k">.</span>TileBuffer{Float32,<span class="pl-c1">2</span>,<span class="pl-c1">2</span>} with indices <span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">15</span><span class="pl-k">×</span><span class="pl-c1">8</span><span class="pl-k">:</span><span class="pl-c1">15</span><span class="pl-k">:</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">2.38221</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">9.3887</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>   <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">1.26117</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">8.26766</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">6.02558</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">7.28675</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">1.54143</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">9.94922</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">8.82818</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">9.10844</span>f<span class="pl-k">-</span><span class="pl-c1">44</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">1.03696</span>f<span class="pl-k">-</span><span class="pl-c1">43</span>  <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+ <span class="pl-c1">0.0</span>  <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>          <span class="pl-c1">0.0</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">pointer</span>(buf)
+Ptr{Float32} @<span class="pl-c1">0x00007f79131fd550</span></pre></div>
+<h3><a id="user-content-edgeiterator" class="anchor" aria-hidden="true" href="#edgeiterator"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>EdgeIterator</h3>
+<p>When performing stencil operations, oftentimes the edge of the array
+requires special treatment. Several approaches to handling the edges
+(adding explicit padding, or executing special code just when on the
+boundaries) can slow your algorithm down because of extra steps or
+branches.</p>
+<p>This package helps support implementations which first handle the
+"interior" of an array (for example using <code>TiledIterator</code> over just
+the interior) using a "fast path," and then handle just the edges by a
+(possibly) less carefully optimized algorithm. The key component of
+this is <code>EdgeIterator</code>:</p>
+<div class="highlight highlight-source-julia"><pre>outerrange <span class="pl-k">=</span> <span class="pl-c1">CartesianIndices</span>((<span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span>, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span>))
+innerrange <span class="pl-k">=</span> <span class="pl-c1">CartesianIndices</span>(( <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>))
+julia<span class="pl-k">&gt;</span> <span class="pl-k">for</span> I <span class="pl-k">in</span> <span class="pl-c1">EdgeIterator</span>(outerrange, innerrange)
+           <span class="pl-c1">@show</span> I
+       <span class="pl-k">end</span>
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">0</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">0</span>, <span class="pl-c1">0</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">1</span>, <span class="pl-c1">0</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">2</span>, <span class="pl-c1">0</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">3</span>, <span class="pl-c1">0</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">4</span>, <span class="pl-c1">0</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">4</span>, <span class="pl-c1">1</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">0</span>, <span class="pl-c1">2</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">4</span>, <span class="pl-c1">2</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">3</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">0</span>, <span class="pl-c1">3</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">1</span>, <span class="pl-c1">3</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">2</span>, <span class="pl-c1">3</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>)
+I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndex</span>(<span class="pl-c1">4</span>, <span class="pl-c1">3</span>)</pre></div>
+<p>The time required to visit these edge sites is on the order of the
+number of edge sites, not the order of the number of sites encompassed
+by <code>outerrange</code>, and consequently is efficient.</p>
+</article></div>

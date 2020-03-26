@@ -1,0 +1,134 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-arraymeta" class="anchor" aria-hidden="true" href="#arraymeta"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ArrayMeta</h1>
+<h2><a id="user-content-rationale" class="anchor" aria-hidden="true" href="#rationale"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Rationale</h2>
+<p>The abstractness (or lack thereof) of fallback implementations of array operations in Base Julia left me unsatisfied. Some of the problems we have:</p>
+<ol>
+<li>Fallback methods of array operations assume the presence of an efficient elementwise access (<code>getindex</code>) operation (either <code>IndexLinear</code> or <code>IndexCartesian</code>). It is hard to reconcile this abstraction for distributed / blocked arrays, resulting in DArray implementations having to wrap every operation on AbstractArray. Wrapping some of these operations is trivial (e.g. <code>map</code> and <code>reduce</code>) but some are not trivial to wrap (e.g. <code>reducedim</code>, <code>broadcast</code>). Further, the wrappers need to be constantly updated to keep in sync with Base's set of features, across Julia versions.</li>
+<li>Operations often involve similar boiler-plate code for dimensionality checks and reflection to find output array type and dimensions.</li>
+<li>Not all operations are optimized for memory locality, those that are have different implementations - thus leading to more complex code that strictly need not exist.</li>
+</ol>
+<p>This package aims to evolve the means available to express array operations at a higher level than currently possible. The basic idea is if you get the general <code>@arrayop</code> case working for a new array type then the implementations of many array operations would fall out of it (see <a href="#the-arrayop-macro">next section</a> to learn about the <code>@arrayop</code> macro). <code>@arrayop</code> is also higher level than elementwise access, so distributed arrrays can implement it efficiently.</p>
+<p>Hypothetically, if the <code>@arrayop</code> macro was moved to Base and array operations in Base like <code>broadcast</code> and <code>reducedim</code> were implemented in Base using it, then</p>
+<ol>
+<li>We can delete a lot of array code from <code>Base</code> and replace them with much simpler <code>@arrayop</code> expressions</li>
+<li>Complex array types like <code>DArray</code>, for example, wouldn't have to wrap each operation, they just need to get <code>@arrayop</code> working once, and operations defined in Base will work for that array type. (This package has a Dagger.jl array implementation as an example of this.)</li>
+<li>Make optimizations (like multi-threading, memory-locality) that may speed up many operations at once across the whole array ecosystem.</li>
+</ol>
+<h2><a id="user-content-the-arrayop-macro" class="anchor" aria-hidden="true" href="#the-arrayop-macro"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The <code>@arrayop</code> macro</h2>
+<p>The <code>@arrayop</code> macro can express array operations by denoting how the dimensions of the input arrays interact to produce dimensions of the output array. The notation is similar to <a href="https://en.wikipedia.org/wiki/Einstein_notation" rel="nofollow">Einstein notation</a> (or its equivalent in <a href="https://github.com/Jutho/TensorOperations.jl">TensorOperations.jl</a> see <a href="#differences-with-tensoroperationsjl">below</a> for a comparison) with some added features to support more operations. The notation is best described by some examples:</p>
+<div class="highlight highlight-source-julia"><pre>X <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">reshape</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">12</span>, <span class="pl-c1">4</span>,<span class="pl-c1">3</span>))
+Y <span class="pl-k">=</span> <span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">4</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> transpose (equivalent to X')</span>
+<span class="pl-c1">@arrayop</span> Z[i,j] <span class="pl-k">:=</span> X[j,i]
+
+<span class="pl-c"><span class="pl-c">#</span> elementwise 1-arg (equivalent to sin.(X))</span>
+<span class="pl-c1">@arrayop</span> Z[i,j] <span class="pl-k">:=</span> <span class="pl-c1">sin</span>(X[i,j])
+
+<span class="pl-c"><span class="pl-c">#</span> elementwise 2-args (equivalent to X .+ Y')</span>
+<span class="pl-c1">@arrayop</span> Z[i,j] <span class="pl-k">:=</span> X[i,j] <span class="pl-k">+</span> Y[j,i]
+
+<span class="pl-c"><span class="pl-c">#</span> elementwise with a constant (equivalent to X .+ (im .* Y'))</span>
+<span class="pl-c1">@arrayop</span> Z[i,j] <span class="pl-k">:=</span> X[i,j] <span class="pl-k">+</span> im <span class="pl-k">*</span> Y[j,i]
+
+<span class="pl-c"><span class="pl-c">#</span> reduce (default +-reduce). Note: returns a 0-dimensional array</span>
+<span class="pl-c"><span class="pl-c">#</span> NOTE: any dimension that is left out in the LHS of the expression</span>
+<span class="pl-c"><span class="pl-c">#</span> is reduced as in Einsten notation. By default + is used as the reducer.</span>
+<span class="pl-c1">@arrayop</span> Z[] <span class="pl-k">:=</span> X[i,j]
+
+<span class="pl-c"><span class="pl-c">#</span> reduce with a user-specified function, * in this case.</span>
+<span class="pl-c1">@arrayop</span> Z[] <span class="pl-k">:=</span> X[i,j] (<span class="pl-k">*</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> reducedim (defaults reducer is +)</span>
+<span class="pl-c1">@arrayop</span> Z[<span class="pl-c1">1</span>, j] <span class="pl-k">:=</span> X[i,j] <span class="pl-c"><span class="pl-c">#</span> equivalent to reducedim(+, X, 1)</span>
+<span class="pl-c1">@arrayop</span> Z[i, <span class="pl-c1">1</span>] <span class="pl-k">:=</span> X[i,j] <span class="pl-c"><span class="pl-c">#</span> equivalent to reducedim(+, X, 2)</span>
+<span class="pl-c1">@arrayop</span> Z[i] <span class="pl-k">:=</span> X[i,j]    <span class="pl-c"><span class="pl-c">#</span> equivalent to squeeze(reducedim(+, X, 2)) / APL-style reducedim</span>
+
+<span class="pl-c"><span class="pl-c">#</span> reducedim with a user-specified function</span>
+<span class="pl-c1">@arrayop</span> Z[<span class="pl-c1">1</span>, j] <span class="pl-k">:=</span> X[i,j] (<span class="pl-k">*</span>)  <span class="pl-c"><span class="pl-c">#</span> equivalent to prod(X, 1)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> broadcast</span>
+y <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>]
+<span class="pl-c1">@arrayop</span> Z[i, j] <span class="pl-k">:=</span> X[i, j] <span class="pl-k">+</span> y[i]
+
+y <span class="pl-k">=</span> [<span class="pl-c1">1</span> <span class="pl-c1">2</span> <span class="pl-c1">3</span>]
+<span class="pl-c1">@arrayop</span> Z[i, j] <span class="pl-k">:=</span> X[i, j] <span class="pl-k">+</span> y[<span class="pl-c1">1</span>, j]
+
+<span class="pl-c"><span class="pl-c">#</span> matmul</span>
+<span class="pl-c1">@arrayop</span> Z[i, j] <span class="pl-k">:=</span> X[i, k] <span class="pl-k">*</span> Y[k, j]</pre></div>
+<p>Note that these expressions generate the <code>for</code>-loops to perform the required operation. They can hence be used to implement the array operations noted in the comments.</p>
+<p>An expression like <code>@arrayop Z[i, j] = X[i,k] * Y[k,j]</code> works in-place by overwriting <code>Z</code> (notice that <code>=</code> is used instead of <code>:=</code>).</p>
+<p>The same expressions currently work on both AbstractArrays and are specialized for efficiency to <a href="https://github.com/shashi/ArrayMeta.jl/blob/d1aced541e82de5021ed92ea72f29375b472c77c/test/runtests.jl#L165-L210">work on Dagger arrays</a>.</p>
+<p>The examples here are on 1 and 2 dimensional arrays but the notation trivially generalizes to N dimensions.</p>
+<p>As an example of how this aids genericness, potentially, Base can define the <code>reducedim</code> (for example) function on an n-dimensional array as:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@generated</span> <span class="pl-k">function</span> <span class="pl-en">reducedim</span><span class="pl-c1">{dim}</span>(f, X<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>, <span class="pl-k">::</span><span class="pl-c1">Val{dim}</span>)
+    idx_in  <span class="pl-k">=</span> Any[<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>i<span class="pl-v">$n</span><span class="pl-pds">"</span></span>) <span class="pl-k">for</span> n<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">ndims</span>(X)]
+    idx_out <span class="pl-k">=</span> <span class="pl-c1">copy</span>(idx_in)
+    idx_out[dim] <span class="pl-k">=</span> <span class="pl-c1">1</span>
+    :(<span class="pl-c1">@arrayop</span> Y[<span class="pl-k">$</span>(idx_out<span class="pl-k">...</span>)] <span class="pl-k">:=</span> X[<span class="pl-k">$</span>(idx_in<span class="pl-k">...</span>)], <span class="pl-k">$</span>f)
+<span class="pl-k">end</span></pre></div>
+<p>Allowing it to work efficiently both on AbstractArrays and in a specialized way on Dagger's arrays (or another array which has a specialized implementation for <code>@arrayop</code>).</p>
+<h2><a id="user-content-blocked-iteration" class="anchor" aria-hidden="true" href="#blocked-iteration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Blocked iteration</h2>
+<p><code>@arrayop</code> uses <a href="https://github.com/JuliaArrays/TiledIteration.jl">TiledIteration.jl</a> to perform operations in cache-efficient way. As a demo of this, consider a 3-dimensional <code>permutedims</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">128</span>,<span class="pl-c1">128</span>,<span class="pl-c1">128</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">@arrayop</span> y[i,j,k] <span class="pl-k">:=</span> x[k,j,i];
+  <span class="pl-c1">4.871</span> ms (<span class="pl-c1">16</span> allocations<span class="pl-k">:</span> <span class="pl-c1">16.00</span> MiB)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">permutedims</span>(x, (<span class="pl-c1">3</span>,<span class="pl-c1">2</span>,<span class="pl-c1">1</span>));
+  <span class="pl-c1">23.611</span> ms (<span class="pl-c1">10</span> allocations<span class="pl-k">:</span> <span class="pl-c1">16.00</span> MiB)</pre></div>
+<p>Presumably the Base <code>permutedims</code> doesn't make efforts to block the inputs, leading to many more cache misses than the <code>@arrayop</code> version.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> A<span class="pl-k">+</span>A<span class="pl-k">'</span>;
+  <span class="pl-c1">3.752</span> ms (<span class="pl-c1">6</span> allocations<span class="pl-k">:</span> <span class="pl-c1">15.26</span> MiB)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">@arrayop</span> _[i, j] <span class="pl-k">:=</span> A[i,j] <span class="pl-k">+</span> A[j,i];
+  <span class="pl-c1">2.607</span> ms (<span class="pl-c1">22</span> allocations<span class="pl-k">:</span> <span class="pl-c1">7.63</span> MiB)</pre></div>
+<p>This might open up opportunities to syntactically rewrite things like <code>A+A'</code> to <code>@arrayop _[i,j] = A[i,j] + A[j,i]</code> which is faster and allocates no temporaries. This also should speed up operations on <code>PermuteDimsArray</code>.</p>
+<h2><a id="user-content-how-it-works" class="anchor" aria-hidden="true" href="#how-it-works"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>How it works</h2>
+<h3><a id="user-content-step-1-lowering-an-arrayop-expression-to-an-intermediate-form" class="anchor" aria-hidden="true" href="#step-1-lowering-an-arrayop-expression-to-an-intermediate-form"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Step 1: Lowering an <code>@arrayop</code> expression to an intermediate form</h3>
+<p>The <code>@arrayop &lt;expr&gt;</code> simply translates to <code>arrayop!(@lower &lt;expr&gt;)</code>. The goal of <code>@lower</code> is to lower the expression to type <code>Assign</code> which contains an LHS and an RHS consisting of combination of <code>Indexing</code> and <code>Map</code> types.</p>
+<ul>
+<li><code>A[i, j]</code> becomes <code>Indexing(A, IndexSym{:i}(), IndexSym{:j}())</code></li>
+<li><code>A[i, 1]</code> becomes <code>Indexing(A, IndexSym{:i}(), IndexConst{Int}(1))</code></li>
+<li><code>f(A[i, j])</code> becomes <code>Map(f, &lt;lowering of A[i,j]&gt;)</code></li>
+<li><code>B[i] = f(A[i, j])</code> becomes <code>Assign(&lt;lowering of B[i]&gt;, &lt;lowering of f(A[i,j])&gt;, +, reduction_identity(+, eltype(A)))</code> on the RHS, and <code>Indexing(B, IndexSym{:i}())</code> on LHS</li>
+<li><code>B[i] := f(A[i, j])</code> creates a similar <code>Assign</code> but the LHS contains <code>Indexing(AllocVar{:B}, IndexSym{:i}())</code> denoting an output array (named <code>B</code>) should be allocated and then iterated.</li>
+</ul>
+<p>You can try out a few expressions with the <code>@lower</code> macro to see how they get lowered. These types for representing the lowered form of the expression are parameterized by the types of all their arguments allowing functions in the next steps to dispatch on and generate efficient code tailored to the specific expression and specific array types.</p>
+<h3><a id="user-content-step-2-calling-arrayop---entry-point-to-the-generated-world" class="anchor" aria-hidden="true" href="#step-2-calling-arrayop---entry-point-to-the-generated-world"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Step 2: calling <code>arrayop!</code> - entry point to the <code>@generated</code> world</h3>
+<p>The lowered object got from the expression in Step 1 is passed to <code>arrayop!</code>. By default <code>arrayop!(op)</code> calls <code>arrayop!(&lt;type of LHS array&gt;, op)</code> which is a way to dispatch to different implementations based on the type of array in the LHS. This is how <code>@arrayop</code> is able to pick different implementations for normal arrays and Dagger arrays. <code>arrayop!(::Type{AllocVar}, op)</code> is special and tries to allocate the LHS <a href="https://github.com/shashi/ArrayMeta.jl/blob/7df2c0a08e3dcd6d05f1aab1dc229c925f174790/src/lowering.jl#L202">by calling <code>ArrayMeta.allocarray</code></a> and then calls <code>arrayop!(&lt;type of LHS&gt;, op)</code>.</p>
+<h3><a id="user-content-step-3-generating-loop-expressions" class="anchor" aria-hidden="true" href="#step-3-generating-loop-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Step 3: generating loop expressions</h3>
+<p>The task of <code>arrayop!</code> is to act as a generated function which returns the code that can perofm a given operation. The code for doing this on AbstractArrays is at <a href="https://github.com/shashi/ArrayMeta.jl/blob/7df2c0a08e3dcd6d05f1aab1dc229c925f174790/src/impl/abstract.jl#L124-L126"><code>src/impl/abstract.jl</code></a>. The Dagger implementation is at <a href="https://github.com/shashi/ArrayMeta.jl/blob/7df2c0a08e3dcd6d05f1aab1dc229c925f174790/src/impl/dagger.jl#L42-L49"><code>src/impl/dagger.jl</code></a>. It was possible to acheive the Dagger implementation without generating any loop expressions, and interestingly, only by rewriting the lowered form from Step 1 to a lowered form that act on the chunks of the DArray can be handled by the AbstractArray implementation.</p>
+<h2><a id="user-content-things-to-do" class="anchor" aria-hidden="true" href="#things-to-do"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Things to do</h2>
+<h3><a id="user-content-already-practical-things" class="anchor" aria-hidden="true" href="#already-practical-things"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Already practical things</h3>
+<ul>
+<li>Dispatch to <code>BLAS.gemm!</code> where possible.</li>
+<li>Loop reordering (it does give some improvements although we do blocked iteration)</li>
+<li>Optimizations for PermuteDimsArray</li>
+<li>Communication / computation time optimizations in Dagger a la <a href="http://www.csc.lsu.edu/~gb/TCE/" rel="nofollow">Tensor Contraction Engine</a></li>
+</ul>
+<h3><a id="user-content-researchy-things" class="anchor" aria-hidden="true" href="#researchy-things"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Researchy things</h3>
+<ul>
+<li>formalize interface for new array types to implement</li>
+<li>implementation for sparse matrices</li>
+<li>implementation for IndexedTable &amp; AxisArrays</li>
+<li>Autodifferentiation</li>
+<li>Explore more operations to express in <code>@arrayop</code>
+<ul>
+<li>mapslices</li>
+<li>getindex</li>
+<li>stencils</li>
+</ul>
+</li>
+</ul>
+<h2><a id="user-content-differences-with-tensoroperationsjl" class="anchor" aria-hidden="true" href="#differences-with-tensoroperationsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Differences with <a href="https://github.com/Jutho/TensorOperations.jl">TensorOperations.jl</a></h2>
+<p>Jutho's TensorOperations.jl has inspired this package a whole lot. However, its codebase is tailored to work specifically on tensors of real and complex numbers, their contraction, transposition, conjugation and multiplication with scalars and it does that very well. This package aims to cover all of those features in a more general framework. Notable additions:</p>
+<ul>
+<li>Works on arrays of any type</li>
+<li>You can use any Julia function for combining arrays and reducing dimensions, and any constants as arguments (as opposed to allowing only scalar multiplication or offsets)</li>
+<li>Supports indexing where some dimensions can be constants, as in:</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@arrayop</span> y[<span class="pl-c1">1</span>, j] <span class="pl-k">:=</span> x[i, j]</pre></div>
+<p>to support operations like <code>reducedim</code>.</p>
+<ul>
+<li>Finally, it has a dispatch system to pick different implementations for different array types. <code>Dagger</code> array operations have been implemented as an example.</li>
+</ul>
+</article></div>

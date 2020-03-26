@@ -1,0 +1,80 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-bsonqs" class="anchor" aria-hidden="true" href="#bsonqs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>BSONqs</h1>
+<p>This is a fork of <a href="https://github.com/MikeInnes/BSON.jl">BSON.jl</a>, with much
+better performance for loading composite data types in particular. The 'qs'
+stands for "quick structs".</p>
+<p>BSONqs appears to be between 2-4x faster than BSON in read
+<a href="https://github.com/richiejp/serbench">benchmarks</a>. See the performance
+section below for more info.</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p>Usage is mostly the same as the original package. You should be able to use
+this as a drop in replacement, except that you may need to alias the package
+name.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> BSONqs
+
+<span class="pl-k">const</span> BSON <span class="pl-k">=</span> BSONqs</pre></div>
+<p>Currently the <code>load</code> function does not support some of the more exotic data
+types, however you may use <code>load_compat</code> instead. There are also now two forms
+of the <code>parse</code> function.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">parse</span>(x<span class="pl-k">::</span><span class="pl-c1">Union{IO, String}</span>)
+<span class="pl-c1">parse</span>(x<span class="pl-k">::</span><span class="pl-c1">Union{IO, String}</span>, ctx<span class="pl-k">::</span><span class="pl-c1">ParseCtx</span>; mmap<span class="pl-k">=</span><span class="pl-c1">false</span>)</pre></div>
+<p>The later provides the best performance in most circumstances and is the least
+compatible. It should be noted that <code>load(x; args...) = parse(x, ParseCtx(); args...)</code>, but that <code>parse(x)</code> is not the same as <code>load_compat(x)</code>.</p>
+<p>On Linux atleast you can set <code>mmap=true</code> for better perfomance when loading
+from a file.</p>
+<h3><a id="user-content-partial-loading" class="anchor" aria-hidden="true" href="#partial-loading"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Partial loading</h3>
+<p>Finally there is an experimental interface for lazily loading a BSON document
+one member at a time. This also allows you to specify the type of each
+document member.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> Mmap
+
+<span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>a_file.bson<span class="pl-pds">"</span></span>) <span class="pl-k">do</span> fio
+  io <span class="pl-k">=</span> <span class="pl-c1">IOBuffer</span>(Mmap<span class="pl-k">.</span><span class="pl-c1">mmap</span>(fio))
+  doc <span class="pl-k">=</span> <span class="pl-c1">Document</span>(io, DefaultMemberType)
+
+  <span class="pl-c"><span class="pl-c">#</span> Get a doc member, parsing it as the DefaultMemberType</span>
+  val <span class="pl-k">=</span> doc[<span class="pl-c1">:a_member_key</span>]
+  <span class="pl-c"><span class="pl-c">#</span> Get a doc member, parsing it as T</span>
+  val <span class="pl-k">=</span> doc[T, <span class="pl-c1">:a_member_key</span>]
+
+  <span class="pl-c"><span class="pl-c">#</span> iterate over all the members, parsing them as DefaultMemberType</span>
+  <span class="pl-k">for</span> (k, v) <span class="pl-k">in</span> doc
+    <span class="pl-k">...</span>
+  <span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Load the entire document into a Dict, again using DefaultMemberType</span>
+  <span class="pl-c1">Dict</span>(doc)
+<span class="pl-k">end</span></pre></div>
+<p>Lazy or partial loading could be useful if you have a large document with many
+large members. I have used the word 'partial', because calling <code>Document</code> will
+scan the input stream and build an index which may not be considered lazy
+enough. Note that there is no automatic caching of parsed results.</p>
+<p>Specifying a concrete type allows some parsing to be skipped.</p>
+<h2><a id="user-content-performance-hints" class="anchor" aria-hidden="true" href="#performance-hints"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Performance hints</h2>
+<p>This library works best with large, repetitive datasets with concrete
+types. You should always try to use concrete types in structs in Julia (see
+the official docs).</p>
+<p>This library makes heavy use of <code>@generated</code> and type specific functions, so
+the compilation time is longer than the original. This means that (in theory)
+for smaller or highly irregular datasets, the original library may be faster
+for the first call to <code>load</code> where the dataset is small and contains one or
+more uncached data types.</p>
+<p>Also for generic BSON documents, without any Julia type data, this library may
+or may not be faster.</p>
+<p>If your platform supports it, use <code>mmap</code>. It is generally faster anyway, but
+in this case it also allows us to avoid unecessary copies and
+allocations. Below is a comparison of the original library and BSONqs with and
+without mmap on a common dataset (on the second pass).</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> BSON<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>vgg19.bson<span class="pl-pds">"</span></span>);
+  <span class="pl-c1">0.626661</span> seconds (<span class="pl-c1">1.97</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">1.071</span> GiB, <span class="pl-c1">33.95</span><span class="pl-k">%</span> gc time)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> BSONqs<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>vgg19.bson<span class="pl-pds">"</span></span>);
+  <span class="pl-c1">0.482821</span> seconds (<span class="pl-c1">1.82</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">1.071</span> GiB, <span class="pl-c1">42.69</span><span class="pl-k">%</span> gc time)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> BSONqs<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>vgg19.bson<span class="pl-pds">"</span></span>; mmap<span class="pl-k">=</span><span class="pl-c1">true</span>);
+  <span class="pl-c1">0.237986</span> seconds (<span class="pl-c1">1.82</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">548.121</span> MiB, <span class="pl-c1">26.12</span><span class="pl-k">%</span> gc time)</pre></div>
+<p>In any case, if performance is important to you, you should create a benchmark
+with your data. Finally note that this library mainly uses the same
+serialization code as the original, so write performance should be the same
+(although at the time of writing the original has a bug which makes it much
+worse). If you are interested in write performance then please let me know.</p>
+</article></div>

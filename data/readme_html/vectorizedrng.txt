@@ -1,0 +1,234 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-vectorizedrng" class="anchor" aria-hidden="true" href="#vectorizedrng"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>VectorizedRNG</h1>
+<p><a href="https://chriselrod.github.io/VectorizedRNG.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/f7b92a177c912c1cc007fc9b40f17ff3ee3bb414/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://chriselrod.github.io/VectorizedRNG.jl/latest" rel="nofollow"><img src="https://camo.githubusercontent.com/57bae07ecd50a99519ad0516d91f4ec8f0f48e12/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6c61746573742d626c75652e737667" alt="Latest" data-canonical-src="https://img.shields.io/badge/docs-latest-blue.svg" style="max-width:100%;"></a>
+<a href="https://travis-ci.com/chriselrod/VectorizedRNG.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/be964b68e1822afb11a5659da49e969da400f202/68747470733a2f2f7472617669732d63692e636f6d2f6368726973656c726f642f566563746f72697a6564524e472e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/chriselrod/VectorizedRNG.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/chriselrod/VectorizedRNG-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/5bb15e6014fde66cc2a693ff61a540f2477f74a7/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6769746875622f6368726973656c726f642f566563746f72697a6564524e472e6a6c3f7376673d74727565" alt="Build Status" data-canonical-src="https://ci.appveyor.com/api/projects/status/github/chriselrod/VectorizedRNG.jl?svg=true" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/chriselrod/VectorizedRNG.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/184a1a3fbfacace7623ecab1016c1e508becc43f/68747470733a2f2f636f6465636f762e696f2f67682f6368726973656c726f642f566563746f72697a6564524e472e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/chriselrod/VectorizedRNG.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>This library provides vectorized Xoshiro++ and PCG random number generators. The larger the host computers SIMD vector width, the better they will perform. On a machine with AVX-512, they are faster than <a href="http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/" rel="nofollow">SIMD-oriented Fast Mersenne Twister (SFMT) </a>. Base Julia uses dSFMT,  which in a few tests appears to outperform this library on avx2 systems in generating uniformly distributed random numbers.</p>
+<p>You can get an instance of the <code>Xoshiro</code> generator with <code>local_rng()</code>, and the <code>PCG</code> with <code>local_pcg()</code>. These return thread local instances. The <code>Xoshiro</code> generated is treated as the default, because it gets better performance with AVX2 (while both are similar with AVX512), and because it has <code>2^256</code> bits of state. Each parallel stream jumps ahead <code>2^128</code> samples, which should be more than enough samples per stream for any real calculation. Each thread gets 8 parallel streams with AVX, or 16 with AVX512, allowing there to be up to <code>2^125</code> or <code>2^124</code> threads with AVX512. These numbers are all much larger than what the PCG offers, which is a state of <code>2^64</code> and only as many unique streams as there are multipliers in the <code>src/multipliers.jl</code> file.</p>
+<p>Testing on an old haswell machine (AVX2-only):</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> BenchmarkTools, Random, VectorizedRNG
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">1024</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">randn!</span>(<span class="pl-c1">local_pcg</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">4.266</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">4.285</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">4.303</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">50.301</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">7</span>
+  
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">randn!</span>(<span class="pl-c1">local_rng</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">4.675</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">4.684</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">4.726</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">149.727</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">7</span></pre></div>
+<p>The performance advantage is thanks primarily to a fast SIMD <a href="https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform" rel="nofollow">Box-Muller</a> implementation; <code>randn(::MersenneTwister)</code> uses the ziggurat algorithm, which is more efficient for scalars.
+With only AVX2, the <code>Random</code> underlying uniform random number generator is faster than <code>VectorizedRNG</code>:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">rand!</span>(<span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> 
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">835.798</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">922.893</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">941.433</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">3.507</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">84</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">rand!</span>(<span class="pl-c1">local_pcg</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> 
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">1.428</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">1.433</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">1.519</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">23.062</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">10</span></pre></div>
+<p>This library shines on a system with AVX512:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> BenchmarkTools, Random, VectorizedRNG
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">1024</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">randn!</span>(<span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">4.036</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">4.238</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">4.263</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">7.228</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">7</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">randn!</span>(<span class="pl-c1">local_pcg</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">1.191</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">1.195</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">1.197</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">3.436</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">10</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">randn!</span>(<span class="pl-c1">local_rng</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">1.218</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">1.251</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">1.253</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">3.166</span> μs (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">10</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">rand!</span>(<span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">561.022</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">563.452</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">564.475</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">751.543</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">186</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">rand!</span>(<span class="pl-c1">local_pcg</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">264.393</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">265.479</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">266.028</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">391.811</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">328</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">rand!</span>(<span class="pl-c1">local_rng</span>(), <span class="pl-k">$</span>x)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span>
+  memory estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span> bytes
+  allocs estimate<span class="pl-k">:</span>  <span class="pl-c1">0</span>
+  <span class="pl-k">--------------</span>
+  minimum time<span class="pl-k">:</span>     <span class="pl-c1">198.492</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  median time<span class="pl-k">:</span>      <span class="pl-c1">198.684</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  mean time<span class="pl-k">:</span>        <span class="pl-c1">200.397</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  maximum time<span class="pl-k">:</span>     <span class="pl-c1">239.297</span> ns (<span class="pl-c1">0.00</span><span class="pl-k">%</span> GC)
+  <span class="pl-k">--------------</span>
+  samples<span class="pl-k">:</span>          <span class="pl-c1">10000</span>
+  evals<span class="pl-k">/</span>sample<span class="pl-k">:</span>     <span class="pl-c1">585</span></pre></div>
+<h2><a id="user-content-bigcrush" class="anchor" aria-hidden="true" href="#bigcrush"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>BigCrush</h2>
+<p>The generators pass <a href="https://github.com/andreasnoack/RNGTest.jl">BigCrush</a>. We can run BigCrush in a matter of minutes on a multicore system (10980XE CPU). Testing the uniform number generator:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Distributed; <span class="pl-c1">addprocs</span>(); <span class="pl-c1">nprocs</span>()
+<span class="pl-c1">37</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@everywhere</span> <span class="pl-k">using</span> RNGTest, VectorizedRNG, Random
+[ Info<span class="pl-k">:</span> Precompiling RNGTest [<span class="pl-c1">97</span>cc5700<span class="pl-k">-</span>e6cb<span class="pl-k">-</span><span class="pl-c1">5</span>ca1<span class="pl-k">-</span><span class="pl-c1">8</span>fb2<span class="pl-k">-</span><span class="pl-c1">7</span>f6b45264ecd]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@everywhere</span> <span class="pl-k">struct</span> U01 <span class="pl-k">&lt;:</span> <span class="pl-c1">Random.AbstractRNG</span> <span class="pl-c1">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@everywhere</span> Random<span class="pl-k">.</span><span class="pl-en">rand!</span>(r<span class="pl-k">::</span><span class="pl-c1">U01</span>, x<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>) <span class="pl-k">=</span> <span class="pl-c1">rand!</span>(<span class="pl-c1">local_pcg</span>(), x)
+
+julia<span class="pl-k">&gt;</span> u01 <span class="pl-k">=</span> <span class="pl-c1">U01</span>()
+<span class="pl-c1">U01</span>()
+
+julia<span class="pl-k">&gt;</span> rngunif <span class="pl-k">=</span> RNGTest<span class="pl-k">.</span><span class="pl-c1">wrap</span>(<span class="pl-c1">U01</span>(), Float64);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> bcjunif <span class="pl-k">=</span> RNGTest<span class="pl-k">.</span><span class="pl-c1">bigcrushJulia</span>(rngunif);
+<span class="pl-c1">515.822511</span> seconds (<span class="pl-c1">31.86</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">1.633</span> GiB, <span class="pl-c1">0.07</span><span class="pl-k">%</span> gc time)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">minimum</span>(<span class="pl-c1">minimum</span>.(bcjunif))
+<span class="pl-c1">0.011956745927781287</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">maximum</span>(<span class="pl-c1">maximum</span>.(bcjunif))
+<span class="pl-c1">0.9789973072036692</span></pre></div>
+<p>and applying the cdf to the normal generator, it runs in under 10 minutes:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Distributed; <span class="pl-c1">addprocs</span>(); <span class="pl-c1">nprocs</span>()
+<span class="pl-c1">37</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@everywhere</span> <span class="pl-k">begin</span>;
+        <span class="pl-k">using</span> Random
+        <span class="pl-k">using</span> VectorizedRNG
+        <span class="pl-k">using</span> RNGTest
+        <span class="pl-k">const</span> INVSQRT2 <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">sqrt</span>(<span class="pl-c1">2</span>)
+        <span class="pl-c1">@inline</span> <span class="pl-k">function</span> <span class="pl-en">normalcdf</span>(v)
+                T <span class="pl-k">=</span> <span class="pl-c1">eltype</span>(v)
+                <span class="pl-c1">T</span>(<span class="pl-c1">0.5</span>) <span class="pl-k">*</span> ( <span class="pl-c1">one</span>(T) <span class="pl-k">+</span> VectorizedRNG<span class="pl-k">.</span>SIMDPirates<span class="pl-k">.</span><span class="pl-c1">verf</span>( v <span class="pl-k">*</span> INVSQRT2 ) )
+        <span class="pl-k">end</span>
+        <span class="pl-k">function</span> <span class="pl-en">normalcdf!</span>(x<span class="pl-k">::</span><span class="pl-c1">AbstractVector{T}</span>) <span class="pl-k">where</span> {T}
+                _W, Wshift <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>VectorizationBase<span class="pl-k">.</span><span class="pl-c1">pick_vector_width_shift</span>(T)
+                W <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>VectorizationBase<span class="pl-k">.</span><span class="pl-c1">pick_vector_width_val</span>(T)
+                N <span class="pl-k">=</span> <span class="pl-c1">length</span>(x)
+                ptrx <span class="pl-k">=</span> <span class="pl-c1">pointer</span>(x)
+                i <span class="pl-k">=</span> <span class="pl-c1">0</span>
+                <span class="pl-k">for</span> _ <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span>(N <span class="pl-k">&gt;&gt;&gt;</span> Wshift)
+                        ptrxᵢ <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>VectorizationBase<span class="pl-k">.</span><span class="pl-c1">gep</span>(ptrx, i)
+                        v <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>SIMDPirates<span class="pl-k">.</span><span class="pl-c1">vload</span>(W, ptrxᵢ)
+                        VectorizedRNG<span class="pl-k">.</span>SIMDPirates<span class="pl-k">.</span><span class="pl-c1">vstore!</span>(ptrxᵢ, <span class="pl-c1">normalcdf</span>(v))
+                        i <span class="pl-k">+=</span> _W
+                <span class="pl-k">end</span>
+                <span class="pl-k">if</span> i <span class="pl-k">&lt;</span> N
+                        ptrxᵢ <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>VectorizationBase<span class="pl-k">.</span><span class="pl-c1">gep</span>(ptrx, i)
+                        mask <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>VectorizationBase<span class="pl-k">.</span><span class="pl-c1">mask</span>(T, N <span class="pl-k">&amp;</span> (_W <span class="pl-k">-</span> <span class="pl-c1">1</span>))
+                        v <span class="pl-k">=</span> VectorizedRNG<span class="pl-k">.</span>SIMDPirates<span class="pl-k">.</span><span class="pl-c1">vload</span>(W, ptrxᵢ, mask)
+                        VectorizedRNG<span class="pl-k">.</span>SIMDPirates<span class="pl-k">.</span><span class="pl-c1">vstore!</span>(ptrxᵢ, <span class="pl-c1">normalcdf</span>(v), mask)
+                <span class="pl-k">end</span>
+                x
+        <span class="pl-k">end</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@everywhere</span> <span class="pl-k">struct</span> RN01 <span class="pl-k">&lt;:</span> <span class="pl-c1">Random.AbstractRNG</span> <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@everywhere</span> Random<span class="pl-k">.</span><span class="pl-en">rand!</span>(r<span class="pl-k">::</span><span class="pl-c1">RN01</span>, x<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>) <span class="pl-k">=</span> <span class="pl-c1">normalcdf!</span>(<span class="pl-c1">randn!</span>(<span class="pl-c1">local_pcg</span>(), x))
+
+julia<span class="pl-k">&gt;</span> rngnorm <span class="pl-k">=</span> RNGTest<span class="pl-k">.</span><span class="pl-c1">wrap</span>(<span class="pl-c1">RN01</span>(), Float64);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> bcj <span class="pl-k">=</span> RNGTest<span class="pl-k">.</span><span class="pl-c1">bigcrushJulia</span>(rngnorm);
+<span class="pl-c1">599.973976</span> seconds (<span class="pl-c1">9.77</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">513.287</span> MiB, <span class="pl-c1">0.02</span><span class="pl-k">%</span> gc time)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">minimum</span>(<span class="pl-c1">minimum</span>.(bcj))
+<span class="pl-c1">0.0007634498380764132</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">maximum</span>(<span class="pl-c1">maximum</span>.(bcj))
+<span class="pl-c1">0.9905810414645684</span></pre></div>
+<hr>
+<p>On vectorization: the strategy is to simply have many distinct streams, and sample from them simultaneously via SIMD operations. The linear congrutional element of the PCG generators each use different multipliers, so that each sequences is unique.</p>
+<p>The <code>local_pcg()</code> returns the thread-local pcg object. Each thread, as well as each Julia process with a unique <code>Distributed.myid()</code> will use a unique multiplier, up to the currently supported limit of 1024 multipliers. After this, old multipliers will begin to be recycled.
+If you have an application needing more multipliers than 1024 multipliers, please file an issue or a PR (but [beware of the <a href="https://en.wikipedia.org/wiki/Linear_congruential_generator#c_%E2%89%A0_0" rel="nofollow">multiplier's requirements</a>), and we can add more.
+Note that each multiplier is 64 bits, and each thread will use 4*vector width number of bits. That means an AVX2 system (with 256 bit vectors) will use 16 multipliers per thread, and an AVX512 system will use 32. Thus, 1024 multipliers is enough for up to 64 threads on an AVX2 system or 32 threads on an AVX512 system to have unique multipliers.</p>
+<p>In addition to more multipliers, projects running on distributed systems will probably also want a way of specifying which node they are running on (will <code>myid()</code> work appropriately?); it would be great if all streams are entirely unique, so a little infrastructure may be needed to manage this.</p>
+<hr>
+<p>The implementations were inspired by:
+<a href="https://github.com/lemire/simdpcg">https://github.com/lemire/simdpcg</a>
+For more on Permuted Congrutional Generators:
+<a href="http://www.pcg-random.org/" rel="nofollow">http://www.pcg-random.org/</a>
+<a href="http://www.pcg-random.org/blog/" rel="nofollow">http://www.pcg-random.org/blog/</a></p>
+</article></div>

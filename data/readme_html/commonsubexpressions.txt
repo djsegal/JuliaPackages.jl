@@ -1,0 +1,60 @@
+<div id="readme" class="md" data-path="Readme.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-commonsubexpressionsjl" class="anchor" aria-hidden="true" href="#commonsubexpressionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CommonSubexpressions.jl</h1>
+<p><a href="https://travis-ci.org/rdeits/CommonSubexpressions.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/a462ecd0b2bfb132d3c31105b53f19751e1753c4/68747470733a2f2f7472617669732d63692e6f72672f7264656974732f436f6d6d6f6e53756265787072657373696f6e732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/rdeits/CommonSubexpressions.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/github/rdeits/CommonSubexpressions.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/02833c660e320d92d4084400b24e3af99bf5a5c1/68747470733a2f2f636f6465636f762e696f2f6769746875622f7264656974732f436f6d6d6f6e53756265787072657373696f6e732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="https://codecov.io/github/rdeits/CommonSubexpressions.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>This Julia package provides the <code>@cse</code> macro, which performs common subexpression elimination. That means that, given a piece of code like:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>
+    x[i] <span class="pl-k">=</span> <span class="pl-c1">foo</span>(<span class="pl-c1">1</span>) <span class="pl-k">+</span> i
+<span class="pl-k">end</span></pre></div>
+<p>in which the function <code>foo(1)</code> is evaluated 10 times, the <code>@cse</code> macro will produce code that moves that expression out of the loop:</p>
+<div class="highlight highlight-source-julia"><pre>foo_1 <span class="pl-k">=</span> <span class="pl-c1">foo</span>(<span class="pl-c1">1</span>)
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>
+    x[i] <span class="pl-k">=</span> foo_1 <span class="pl-k">+</span> i
+<span class="pl-k">end</span></pre></div>
+<p>and thus only evaluates <code>foo(1)</code> once.</p>
+<p>Arbitrarily complex nested expressions can be handled, and should result in more efficient code:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@cse</span> <span class="pl-c1">inv</span>(H) <span class="pl-k">*</span> (G <span class="pl-k">+</span> W) <span class="pl-k">-</span> (G <span class="pl-k">+</span> W)<span class="pl-k">'</span> <span class="pl-k">*</span> <span class="pl-c1">inv</span>(H)</pre></div>
+<p>becomes:</p>
+<div class="highlight highlight-source-julia"><pre>inv_H <span class="pl-k">=</span> <span class="pl-c1">inv</span>(H)
+G_plus_W <span class="pl-k">=</span> G <span class="pl-k">+</span> W
+inv_H <span class="pl-k">*</span> G_plus_W <span class="pl-k">-</span> G_plus_W<span class="pl-k">'</span> <span class="pl-k">*</span> inv_H</pre></div>
+<p>You can also wrap entire function definitions or code blocks:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@cse</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(x)
+    [<span class="pl-c1">f</span>(x) <span class="pl-k">==</span> i <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>]
+<span class="pl-k">end</span></pre></div>
+<h1><a id="user-content-caveats" class="anchor" aria-hidden="true" href="#caveats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Caveats</h1>
+<p><em>This package is very new and its results may not be correct. Please use it carefully and report any issues you find.</em></p>
+<p>Any function called within a block wrapped in the <code>@cse</code> macro <em>must be pure</em>. That is to say, the function must have no side-effects. The <code>@cse</code> macro <em>can not enforce or verify this</em>. If your function has side-effects, then the common subexpression elimination may change the behavior of your program, since those side-effects will not happen as often as you had expected.</p>
+<h3><a id="user-content-brief-aside-on-function-purity" class="anchor" aria-hidden="true" href="#brief-aside-on-function-purity"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Brief aside on function purity</h3>
+<p>A pure function is one with no side-effects. When we say that a function has side-effects, we mean that calling it somehow changes the state of your program, beyond just the value that it returns. A trivial function that does have a side-effect is:</p>
+<pre><code>f_counter = 0
+function f(x)
+    global f_counter
+    f_counter += 1
+    2 * x
+end
+</code></pre>
+<p>which increases a counter <code>f_counter</code> every time it is called.</p>
+<p>In addition, any function that mutates its input arguments can not be pure, since changing its input arguments constitutes a side effect.</p>
+<h1><a id="user-content-visualization" class="anchor" aria-hidden="true" href="#visualization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Visualization</h1>
+<p>The CSE transformation can be visualized using the <a href="https://github.com/dpsanders/treeview.jl">TreeView.jl</a> package. Here's a very simple example:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/rdeits/CommonSubexpressions.jl/master/doc/img/tree_view_demo.png"><img src="https://raw.githubusercontent.com/rdeits/CommonSubexpressions.jl/master/doc/img/tree_view_demo.png" alt="rendering of before and after as TreeView.jl trees" style="max-width:100%;"></a></p>
+<h1><a id="user-content-how-it-works" class="anchor" aria-hidden="true" href="#how-it-works"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>How it Works</h1>
+<p>This package does not (currently) construct a full data-flow graph like <a href="https://github.com/MikeInnes/DataFlow.jl">DataFlow.jl</a>. Instead, it performs a few relatively simple steps:</p>
+<ol>
+<li>Initialize the set of <em>disqualified symbols</em> to {}</li>
+<li>Initialize the list of <em>setup commands</em> to []</li>
+<li>Walk the expression tree, repeatedly performing these steps:
+<ol>
+<li>If an assignment operation (like <code>x = 5</code>) is encountered, then add the target of the assignment (<code>x</code> in this case) to the <em>disqualified symbols</em>.</li>
+<li>If a function call is encountered and all the function arguments are either constants or symbols, and those symbols are not <em>disqualified</em>, then:
+<ol>
+<li>Replace the function call in the current expression with a newly generated symbol</li>
+<li>Append to the <em>setup commands</em> an expression which performs the function call and assigns it to the new symbol</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>Return the transformed expression, with all the <em>setup commands</em> prepended.</li>
+</ol>
+<p>This simple procedure ensures that we only cache functions whose inputs do not change within the given code block (assuming that all function calls are pure, as required above).</p>
+</article></div>

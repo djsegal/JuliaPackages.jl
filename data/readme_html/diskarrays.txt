@@ -1,0 +1,130 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-diskarraysjl" class="anchor" aria-hidden="true" href="#diskarraysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DiskArrays.jl</h1>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/646b448bd38200d1c7f3cd622b3cb9aa79d5abe0/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6c6966656379636c652d6d61747572696e672d626c75652e737667"><img src="https://camo.githubusercontent.com/646b448bd38200d1c7f3cd622b3cb9aa79d5abe0/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6c6966656379636c652d6d61747572696e672d626c75652e737667" alt="Lifecycle" data-canonical-src="https://img.shields.io/badge/lifecycle-maturing-blue.svg" style="max-width:100%;"></a>
+<a href="https://travis-ci.com/meggart/DiskArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4da57493b235409336e70e41ea699adba3f2244e/68747470733a2f2f7472617669732d63692e636f6d2f6d6567676172742f4469736b4172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/meggart/DiskArrays.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/meggart/DiskArrays.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/159c353b50255d243c47a0398122d3362456f1d1/687474703a2f2f636f6465636f762e696f2f6769746875622f6d6567676172742f4469736b4172726179732e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/meggart/DiskArrays.jl/coverage.svg?branch=master" style="max-width:100%;"></a></p>
+<p>This package is an attempt to collect utilities for working with n-dimensional array-like data
+structures that do not have considerable overhead for single read operations. Most important
+examples are arrays that represent data on hard disk that are accessed through a C
+library or that are compressed in chunks. It can be inadvisable to make these arrays a subtype
+of <code>AbstractArray</code> many functions working with AbstractArrays assume fast random access into single
+values (including basic things like <code>getindex</code>, <code>show</code>, <code>reduce</code>, etc...). Currently supported features are:</p>
+<ul>
+<li><code>getindex</code>/<code>setindex</code> with the same rules as base (trailing or singleton dimensions etc)</li>
+<li>views into <code>DiskArrays</code></li>
+<li>a fallback <code>Base.show</code> method that does not call getindex repeatedly</li>
+<li>implementations for <code>mapreduce</code> and <code>mapreducedim</code>, that respect the chunking of the underlying
+dataset. This greatly increases performance of higher-level reductions like <code>sum(a,dims=d)</code></li>
+<li>an iterator over the values of a DiskArray that caches a chunk of data and returns the values
+within. This allows efficient usage of e.g. <code>using DataStructures; counter(a)</code></li>
+<li>customization of <code>broadcast</code> when there is a <code>DiskArray</code> on the LHS. This at least makes things
+like <code>a.=5</code> possible and relatively fast</li>
+</ul>
+<p>There are basically two ways to use this package.
+Either one makes the abstraction directly a subtype of <code>AbstractDiskArray</code> which requires
+to implement a single <code>readblock!</code> method that reads a Cartesian range of data points.
+The remaining <code>getindex</code> methods will come for free then. The second way is to use
+the <code>interpret_indices_disk</code> function to get a translation of the user-supplied indices
+into a set of ranges and then use these to read the data from disk.</p>
+<h1><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example</h1>
+<p>Here we define a new array type that wraps a normal AbstractArray.
+The only access method that we define is a
+<code>readblock!</code> function where indices are strictly given as unit ranges along
+every dimension of the array. This is a very common API used in libraries
+like HDF5, NetCDF and Zarr. We also define a chunking, which will control
+the way iteration and reductions are computed. In order to understand how exactly
+data is accessed, we added the additional print statements in the <code>readblock!</code>
+and <code>writeblock!</code> functions.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> DiskArrays
+
+<span class="pl-k">struct</span> PseudoDiskArray{T,N,A<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractArray{T,N}</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractDiskArray{T,N}</span>
+  parent<span class="pl-k">::</span><span class="pl-c1">A</span>
+  chunksize<span class="pl-k">::</span><span class="pl-c1">NTuple{N,Int}</span>
+<span class="pl-k">end</span>
+<span class="pl-en">PseudoDiskArray</span>(a;chunksize<span class="pl-k">=</span><span class="pl-en">size</span>(a)) <span class="pl-k">=</span> <span class="pl-c1">PseudoDiskArray</span>(a,chunksize)
+<span class="pl-en">haschunks</span>(a<span class="pl-k">::</span><span class="pl-c1">PseudoDiskArray</span>) <span class="pl-k">=</span> <span class="pl-c1">Chunked</span>()
+<span class="pl-en">eachchunk</span>(a<span class="pl-k">::</span><span class="pl-c1">PseudoDiskArray</span>) <span class="pl-k">=</span> <span class="pl-c1">GridChunks</span>(a,a<span class="pl-k">.</span>chunksize)
+Base<span class="pl-k">.</span><span class="pl-en">size</span>(a<span class="pl-k">::</span><span class="pl-c1">PseudoDiskArray</span>) <span class="pl-k">=</span> <span class="pl-c1">size</span>(a<span class="pl-k">.</span>parent)
+<span class="pl-k">function</span> DiskArrays<span class="pl-k">.</span><span class="pl-en">readblock!</span>(a<span class="pl-k">::</span><span class="pl-c1">PseudoDiskArray</span>,aout,i<span class="pl-k">::</span><span class="pl-c1">AbstractUnitRange...</span>)
+  <span class="pl-c1">ndims</span>(a) <span class="pl-k">==</span> <span class="pl-c1">length</span>(i) <span class="pl-k">||</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>Number of indices is not correct<span class="pl-pds">"</span></span>)
+  <span class="pl-c1">all</span>(r<span class="pl-k">-&gt;</span><span class="pl-c1">isa</span>(r,AbstractUnitRange),i) <span class="pl-k">||</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>Not all indices are unit ranges<span class="pl-pds">"</span></span>)
+  <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Reading at index <span class="pl-pds">"</span></span>, <span class="pl-c1">join</span>(<span class="pl-c1">string</span>.(i),<span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>))
+  aout <span class="pl-k">.=</span> a<span class="pl-k">.</span>parent[i<span class="pl-k">...</span>]
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> DiskArrays<span class="pl-k">.</span><span class="pl-en">writeblock!</span>(a<span class="pl-k">::</span><span class="pl-c1">PseudoDiskArray</span>,v,i<span class="pl-k">::</span><span class="pl-c1">AbstractUnitRange...</span>)
+  <span class="pl-c1">ndims</span>(a) <span class="pl-k">==</span> <span class="pl-c1">length</span>(i) <span class="pl-k">||</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>Number of indices is not correct<span class="pl-pds">"</span></span>)
+  <span class="pl-c1">all</span>(r<span class="pl-k">-&gt;</span><span class="pl-c1">isa</span>(r,AbstractUnitRange),i) <span class="pl-k">||</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>Not all indices are unit ranges<span class="pl-pds">"</span></span>)
+  <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Writing to indices <span class="pl-pds">"</span></span>, <span class="pl-c1">join</span>(<span class="pl-c1">string</span>.(i),<span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>))
+  <span class="pl-c1">view</span>(a<span class="pl-k">.</span>parent,i<span class="pl-k">...</span>) <span class="pl-k">.=</span> v
+<span class="pl-k">end</span>
+a <span class="pl-k">=</span> <span class="pl-c1">RangeArray</span>(<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">1</span>)</pre></div>
+<pre><code>Disk Array with size 10 x 9 x 1
+</code></pre>
+<p>Now all the Base indexing behaviors work for our array, while minimizing the
+number of reads that have to be done:</p>
+<div class="highlight highlight-source-julia"><pre>a[:,<span class="pl-c1">3</span>]</pre></div>
+<pre><code>Reading at index Base.OneTo(10) 3:3 1:1
+
+10-element Array{Float64,1}:
+ 0.8821177068878834
+ 0.6220977650963209
+ 0.22676949571723437
+ 0.3177934541451004
+ 0.08014908894614026
+ 0.9989838001681182
+ 0.5865160181790519
+ 0.27931778627456216
+ 0.449108677620097  
+ 0.22886146620923808
+</code></pre>
+<p>As can be seen from the read message, only a single call to <code>readblock</code> is performed,
+which will map to a single call into the underlying C library.</p>
+<div class="highlight highlight-source-julia"><pre>mask <span class="pl-k">=</span> <span class="pl-c1">falses</span>(<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">1</span>)
+mask[<span class="pl-c1">3</span>,<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">4</span>,<span class="pl-c1">1</span>] <span class="pl-k">.=</span> <span class="pl-c1">true</span>
+a[mask]</pre></div>
+<pre><code>3-element Array{Int64,1}:
+ 6
+ 7
+ 8
+</code></pre>
+<p>One can check in a similar way, that reductions respect the chunks defined by the data type:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">sum</span>(a,dims<span class="pl-k">=</span>(<span class="pl-c1">1</span>,<span class="pl-c1">3</span>))</pre></div>
+<pre><code>Reading at index 1:5 1:3 1:1
+Reading at index 6:10 1:3 1:1
+Reading at index 1:5 4:6 1:1
+Reading at index 6:10 4:6 1:1
+Reading at index 1:5 7:9 1:1
+Reading at index 6:10 7:9 1:1
+
+1×9×1 Array{Float64,3}:
+[:, :, 1] =
+ 6.33221  4.91877  3.98709  4.18658  …  6.01844  5.03799  3.91565  6.06882
+</code></pre>
+<p>When a DiskArray is on the LHS of a broadcasting expression, the results with be
+written chunk by chunk:</p>
+<div class="highlight highlight-source-julia"><pre>va <span class="pl-k">=</span> <span class="pl-c1">view</span>(a,<span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">10</span>,<span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">8</span>,<span class="pl-c1">1</span>)
+va <span class="pl-k">.=</span> <span class="pl-c1">2.0</span>
+a[:,:,<span class="pl-c1">1</span>]</pre></div>
+<pre><code>Writing to indices 5:5 5:6 1:1
+Writing to indices 6:10 5:6 1:1
+Writing to indices 5:5 7:8 1:1
+Writing to indices 6:10 7:8 1:1
+Reading at index Base.OneTo(10) Base.OneTo(9) 1:1
+
+10×9 Array{Float64,2}:
+ 0.929979   0.664717  0.617594  0.720272   …  0.564644  0.430036  0.791838
+ 0.392748   0.508902  0.941583  0.854843      0.682924  0.323496  0.389914
+ 0.761131   0.937071  0.805167  0.951293      0.630261  0.290144  0.534721
+ 0.332388   0.914568  0.497409  0.471007      0.470808  0.726594  0.97107
+ 0.251657   0.24236   0.866905  0.669599      2.0       2.0       0.427387
+ 0.388476   0.121011  0.738621  0.304039   …  2.0       2.0       0.687802
+ 0.991391   0.621701  0.210167  0.129159      2.0       2.0       0.733581
+ 0.371857   0.549601  0.289447  0.509249      2.0       2.0       0.920333
+ 0.76309    0.648815  0.632453  0.623295      2.0       2.0       0.387723
+ 0.0882056  0.842403  0.147516  0.0562536     2.0       2.0       0.107673
+</code></pre>
+<h2><a id="user-content-accessing-strided-arrays" class="anchor" aria-hidden="true" href="#accessing-strided-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Accessing strided Arrays</h2>
+<p>There are situations where one wants to read every other value along a certain axis or provide arbitrary strides. Some DiskArray backends may want to provide optimized methods to read these strided arrays.
+In this case a backend can define <code>readblock!(a,aout,r::OrdinalRange...)</code> and the respective <code>writeblock</code>
+method which will overwrite the fallback behavior that would read the whol block of data and only return
+the desired range.</p>
+</article></div>

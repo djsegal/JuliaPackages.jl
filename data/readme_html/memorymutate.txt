@@ -1,0 +1,230 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-memorymutate" class="anchor" aria-hidden="true" href="#memorymutate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>MemoryMutate</h1>
+<p><em>WARNING: proof of conept</em></p>
+<p><em>also note the <a href="https://github.com/jw3126/Setfield.jl">Setfield.jl</a> package</em></p>
+<p>A macro <code>@mem</code> is provided for multi-<em>level</em> assignments <code>a.b.c.d.e = v</code> that uses <code>fieldoffset</code> to calculate the memory offset of the to-be-assigned field relative to the rightmost mutable <em>level</em> and uses <code>pointer_from_objref</code> on that rightmost mutable <em>level</em>, adds this offset to the obtained pointer and uses <code>unsafe_store!</code> to write the value to that memory location. It compiles down to a few <code>mov</code> assembly instructions, if the types and symbols are statically determinable.</p>
+<p>This is a <strong>different</strong> approach then replacing the <em>whole</em><sup><a href="#whole">1</a></sup> immutable of the right-most mutable with a new, modified one, as in</p>
+<ol>
+<li>Julep: setfield! for mutable references to immutables
+<a href="https://github.com/JuliaLang/julia/issues/17115">https://github.com/JuliaLang/julia/issues/17115</a></li>
+</ol>
+<ul>
+<li><em>we propose making it possible to have setfield! modify fields inside of immutable objects that are wrapped in mutable objects</em></li>
+<li><em>To support this proposal, the setfield! function will get a multi-arg form, with the following behaviors:</em>
+<em>setfield!(x, a, b, c, value) mutates the right most mutable object to change the value of its fields to be</em>
+<em>equivalent to copying the immutable objects and updating the referenced field.</em></li>
+<li><em>tl;dr The syntax:</em>
+<em>x.a.b.c = 3</em>
+<em>would now be valid, as long as at least one of the referenced fields is mutable.</em></li>
+</ul>
+<ol start="2">
+<li>WIP: Make mutating immutables easier
+<a href="https://github.com/JuliaLang/julia/pull/21912">https://github.com/JuliaLang/julia/pull/21912</a></li>
+</ol>
+<ul>
+<li>proposes an @ operator as in <code>x@a = 2</code> for an immutable <code>x</code></li>
+<li><em>The ways this works is that under the hood, it creates a new immutable object with the specified field modified and then assigns it back to the appropriate place.</em>
+<em>Syntax wise, everything to the left of the @ is what's being assigned to, everything to the right of the @ is what is to be modified.</em></li>
+</ul>
+<p>There are two important justifications to make on which this approach relies:</p>
+<ol>
+<li>That immutables, allocated with <code>Ref</code> must not be assumed to stay constant when using <code>unsafe_store!</code>.</li>
+<li>That the memory layout of bitstypes is exaclty what we achieve with <code>fieldoffset</code>.</li>
+</ol>
+<p>Furthermore, although the assignment becomes just a few <code>mov</code> assembly instructions, it is not quite clear which optimizations might break by using <code>unsafe_store!</code>.</p>
+<p><a name="user-content-whole"><sup>[1]</sup></a> Conceptually the <em>whole</em> - this might also get optimized to just a few <code>mov</code> instructions. The reason for this package is primarily C-interoperability.</p>
+<h1><a id="user-content-use-case" class="anchor" aria-hidden="true" href="#use-case"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Use case</h1>
+<p>In order to wrap C/C++ libraries in Julia, it is necessary to represent the C-structs as Julia types of the same layout.
+That can be achieved for nested C-structs only with nested immutable Julia types (bitstypes).
+More precisely, the most top level Julia type can be a mutable one, but all contained Julia types need to be immutable (bitstypes).</p>
+<p>The <a href="https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Passing-Pointers-for-Modifying-Inputs-1" rel="nofollow">Julia documentation</a> writes</p>
+<blockquote>
+<p>Because C doesn't support multiple return values, often C functions will take pointers to data that the function will modify.</p>
+</blockquote>
+<p>Consider <a href="https://github.com/ValveSoftware/openvr/blob/master/headers/openvr.h#L3625">the following C/C++ function</a></p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-c"><span class="pl-c">/*</span>* Computes the overlay-space pixel coordinates of where the ray intersects the overlay with the</span>
+<span class="pl-c">* specified settings. Returns false if there is no intersection. <span class="pl-c">*/</span></span>
+<span class="pl-k">bool</span> <span class="pl-en">ComputeOverlayIntersection</span>(
+	<span class="pl-c1">uint64_t</span> ulOverlayHandle,
+	<span class="pl-k">const</span> VROverlayIntersectionParams_t *pParams,
+	VROverlayIntersectionResults_t *pResults
+);</pre></div>
+<p>Here <code>pResults</code> should hold a pointer to a <code>VROverlayIntersectionResults_t</code> C-struct that is defined in the following way</p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">enum</span> ETrackingUniverseOrigin
+{
+	…
+};
+
+<span class="pl-k">struct</span> <span class="pl-en">HmdVector3_t</span>
+{
+	<span class="pl-k">float</span> v[<span class="pl-c1">3</span>];
+};
+
+<span class="pl-k">struct</span> <span class="pl-en">HmdVector2_t</span>
+{
+	<span class="pl-k">float</span> v[<span class="pl-c1">2</span>];
+};
+
+<span class="pl-k">struct</span> <span class="pl-en">VROverlayIntersectionParams_t</span>
+{
+	HmdVector3_t vSource;
+	HmdVector3_t vDirection;
+	ETrackingUniverseOrigin eOrigin;
+};
+
+<span class="pl-k">struct</span> <span class="pl-en">VROverlayIntersectionResults_t</span>
+{
+	HmdVector3_t vPoint;
+	HmdVector3_t vNormal;
+	HmdVector2_t vUVs;
+	<span class="pl-k">float</span> <span class="pl-smi">fDistance</span>;
+};</pre></div>
+<p>In order to provide C-layout compatible Julia structs, we might use</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">const</span> ETrackingUniverseOrigin <span class="pl-k">=</span> UInt32 <span class="pl-c"><span class="pl-c">#</span> sizeof(ETrackingUniverseOrigin) == 4</span>
+
+<span class="pl-k">struct</span> HmdVector3_t <span class="pl-c"><span class="pl-c">#</span> sizeof(HmdVector3_t) == 12</span>
+  v <span class="pl-k">::</span> <span class="pl-c1">SArray{Tuple{3},Float32,1,3}</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> HmdVector2_t <span class="pl-c"><span class="pl-c">#</span> sizeof(HmdVector2_t) == 8</span>
+  v <span class="pl-k">::</span> <span class="pl-c1">SArray{Tuple{2},Float32,1,2}</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> VROverlayIntersectionParams_t <span class="pl-c"><span class="pl-c">#</span> sizeof(VROverlayIntersectionParams_t) == 28</span>
+  vSource <span class="pl-k">::</span> <span class="pl-c1">HmdVector3_t</span>
+  vDirection <span class="pl-k">::</span> <span class="pl-c1">HmdVector3_t</span>
+  eOrigin <span class="pl-k">::</span> <span class="pl-c1">ETrackingUniverseOrigin</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> VROverlayIntersectionResults_t <span class="pl-c"><span class="pl-c">#</span> sizeof(VROverlayIntersectionResults_t) == 36</span>
+  vPoint <span class="pl-k">::</span> <span class="pl-c1">HmdVector3_t</span>
+  vNormal <span class="pl-k">::</span> <span class="pl-c1">HmdVector3_t</span>
+  vUVs <span class="pl-k">::</span> <span class="pl-c1">HmdVector2_t</span>
+  fDistance <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+<span class="pl-k">end</span></pre></div>
+<p>A <code>Ref{VROverlayIntersectionResults_t}</code> will be passed to Julia's <code>ccall</code> and the C/C++ function will alter the underlying immutable - it will mutate the immutable in an arbitrary C-style way.</p>
+<p>Therefore we assume that immutables <code>x</code>, allocated on the heap via <code>Ref(x)</code> are not assumed to be constant anymore by Julia and one can modify them in a C-style way, i.e. modify any parts of the immutables memory.</p>
+<h1><a id="user-content-what-this-module-provides" class="anchor" aria-hidden="true" href="#what-this-module-provides"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>What this module provides</h1>
+<h2><a id="user-content-mem" class="anchor" aria-hidden="true" href="#mem"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>@mem</code></h2>
+<p>Consider the Julia immutable types <code>Pconst</code> and <code>Cconst</code></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Pconst <span class="pl-c"><span class="pl-c">#</span> sizeof(Pconst) == 8</span>
+  x <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+  y <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> Cconst <span class="pl-c"><span class="pl-c">#</span> sizeof(Cconst) == 12</span>
+  r <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+  g <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+  b <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+<span class="pl-k">end</span></pre></div>
+<p>and the mutable type <code>Vmutbl</code></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> Vmutbl <span class="pl-c"><span class="pl-c">#</span> sizeof(Vmutbl) == 20</span>
+  p <span class="pl-k">::</span> <span class="pl-c1">Pconst</span>
+  c <span class="pl-k">::</span> <span class="pl-c1">Cconst</span>
+<span class="pl-k">end</span></pre></div>
+<p>for</p>
+<div class="highlight highlight-source-julia"><pre>p <span class="pl-k">=</span> <span class="pl-c1">Pconst</span>(<span class="pl-c1">1</span>f0,<span class="pl-c1">2</span>f0)     <span class="pl-c"><span class="pl-c">#</span> Pconst(1.0f0, 2.0f0)</span>
+c <span class="pl-k">=</span> <span class="pl-c1">Cconst</span>(<span class="pl-c1">0</span>f0,<span class="pl-c1">1</span>f0,<span class="pl-c1">0</span>f0) <span class="pl-c"><span class="pl-c">#</span> Cconst(0.0f0, 1.0f0, 0.0f0)</span>
+v <span class="pl-k">=</span> <span class="pl-c1">Vmutbl</span>(p,c)         <span class="pl-c"><span class="pl-c">#</span> Vmutbl(Pconst(1.0f0, 2.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))</span></pre></div>
+<p>we can alter the top-level fields of <code>v</code></p>
+<div class="highlight highlight-source-julia"><pre>v<span class="pl-k">.</span>p <span class="pl-k">=</span> <span class="pl-c1">Pconst</span>(<span class="pl-c1">3</span>f0,<span class="pl-c1">2</span>f0)
+v <span class="pl-c"><span class="pl-c">#</span> Vmutbl(Pconst(3.0f0, 2.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))</span></pre></div>
+<p>but not the more nested ones, because they are immutable</p>
+<div class="highlight highlight-source-julia"><pre>v<span class="pl-k">.</span>p<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">5</span>f0
+<span class="pl-c"><span class="pl-c">#</span> ERROR: setfield! immutable struct of type Pconst cannot be change</span></pre></div>
+<p>since we assume that these immutables do not need to stay <em>constant</em>, we can replace them at their memory location</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@mem</span> v<span class="pl-k">.</span>p<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">5</span>f0
+v <span class="pl-c"><span class="pl-c">#</span> Vmutbl(Pconst(5.0f0, 3.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))</span></pre></div>
+<p>This currently also works for StaticArrays</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> A
+   data <span class="pl-k">::</span> <span class="pl-c1">SArray{Tuple{4,3,2},Float32,3,4*3*2}</span>
+<span class="pl-k">end</span>
+
+a <span class="pl-k">=</span> <span class="pl-c1">A</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">*</span><span class="pl-c1">3</span><span class="pl-k">*</span><span class="pl-c1">2</span>)
+<span class="pl-c"><span class="pl-c">#</span> A( Float32[1.0  5.0  9.0;  2.0  6.0  10.0; 3.0  7.0  11.0; 4.0  8.0  12.0]</span>
+<span class="pl-c"><span class="pl-c">#</span>    Float32[13.0 17.0 21.0; 14.0 18.0 22.0; 15.0 19.0 23.0; 16.0 20.0 24.0])</span>
+
+a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-c"><span class="pl-c">#</span> 13.0</span>
+<span class="pl-c1">@mem</span> a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-c1">77</span>f0 <span class="pl-c"><span class="pl-c">#</span> 77.0</span>
+a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-c"><span class="pl-c">#</span> 77.0</span>
+
+<span class="pl-k">for</span> I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndices</span>(a<span class="pl-k">.</span>data)
+  (x,y,z) <span class="pl-k">=</span> <span class="pl-c1">Tuple</span>(I)
+  <span class="pl-c1">@mem</span> a<span class="pl-k">.</span>data[x,y,z] <span class="pl-k">=</span> x<span class="pl-k">+</span>y<span class="pl-k">+</span>z
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> A( Float32[3.0 4.0 5.0; 4.0 5.0 6.0; 5.0 6.0 7.0; 6.0 7.0 8.0]</span>
+<span class="pl-c"><span class="pl-c">#</span>    Float32[4.0 5.0 6.0; 5.0 6.0 7.0; 6.0 7.0 8.0; 7.0 8.0 9.0])</span></pre></div>
+<p><em>More examples might be extracted from <a href="./test/mutate.jl">test/mutate.jl</a>.</em></p>
+<h2><a id="user-content-ptr-voidptr-ptrtyped" class="anchor" aria-hidden="true" href="#ptr-voidptr-ptrtyped"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>@ptr</code>, <code>@voidptr</code>, <code>@ptrtyped</code></h2>
+<p>These macros determine a memory address just like <code>@mem</code> where</p>
+<ul>
+<li><code>@ptr</code> returns a <code>Ptr{X}</code> where <code>X</code> is the type of the value at that memory location</li>
+<li><code>@voidptr</code> just reinterprets <code>@ptr</code> to <code>Ptr{Nothing}</code></li>
+<li><code>@ptrtyped</code> of <code>T</code> just reinterprets <code>@ptr</code> to <code>Ptr{T}</code></li>
+</ul>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StaticArrays
+
+m <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(<span class="pl-c1">SVector</span><span class="pl-c1">{8,UInt8}</span>(<span class="pl-c1">reverse</span>([<span class="pl-c1">0xde</span>, <span class="pl-c1">0xad</span>, <span class="pl-c1">0xbe</span>, <span class="pl-c1">0xef</span>, <span class="pl-c1">0xba</span>, <span class="pl-c1">0xad</span>, <span class="pl-c1">0xf0</span>, <span class="pl-c1">0x0d</span>])))
+<span class="pl-c1">unsafe_load</span>(<span class="pl-c1">@ptr</span> m[][<span class="pl-c1">8</span>]) <span class="pl-c"><span class="pl-c">#</span> 0xde</span>
+<span class="pl-c1">unsafe_load</span>(<span class="pl-c1">@ptr</span> m[][<span class="pl-c1">7</span>]) <span class="pl-c"><span class="pl-c">#</span> 0xad</span>
+<span class="pl-c1">unsafe_load</span>(<span class="pl-c1">@typedptr</span> UInt32 m[][<span class="pl-c1">3</span>]) <span class="pl-c"><span class="pl-c">#</span> 0xbeefbaad</span></pre></div>
+<p><em>More examples might be extracted from <a href="./test/mutate.jl">test/mutate.jl</a>.</em></p>
+<h2><a id="user-content-yolo" class="anchor" aria-hidden="true" href="#yolo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>@yolo</code></h2>
+<p><em>(experimental feature)</em></p>
+<p>There are some cases where <code>@mem</code> is set up to refuse writing to memory by assertions, that are enabled for <code>@yolo</code>.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> C <span class="pl-c"><span class="pl-c">#</span> mutable non-bitstype</span>
+  x <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+<span class="pl-k">end</span>
+<span class="pl-k">struct</span> B <span class="pl-c"><span class="pl-c">#</span> immmutable non-bitstype</span>
+  x <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
+  c <span class="pl-k">::</span> <span class="pl-c1">C</span>
+<span class="pl-k">end</span>
+<span class="pl-k">mutable struct</span> A <span class="pl-c"><span class="pl-c">#</span> mutable non-bitstype</span>
+  b <span class="pl-k">::</span> <span class="pl-c1">B</span>
+<span class="pl-k">end</span>
+
+c <span class="pl-k">=</span> <span class="pl-c1">C</span>(<span class="pl-c1">1</span>f0)
+b <span class="pl-k">=</span> <span class="pl-c1">B</span>(<span class="pl-c1">2</span>f0,c)
+a <span class="pl-k">=</span> <span class="pl-c1">A</span>(b)
+
+a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">3</span>f0 <span class="pl-c"><span class="pl-c">#</span> ↯ ERROR: setfield! immutable struct of type B cannot be changed</span>
+
+<span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, v<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> <span class="pl-c1">@mem</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> v
+
+<span class="pl-c1">f</span>(a,<span class="pl-c1">3</span>f0)
+<span class="pl-c"><span class="pl-c">#</span> ↯ ERROR: From type 'B' the field 'x' is of type 'Float32' and it is located in type 'B' at offset 0.</span>
+<span class="pl-c"><span class="pl-c">#</span>          The base type 'B' is immutable.</span></pre></div>
+<p>Since <code>C</code> is a non-bitstype, this make <code>B</code> also a non-bitstype but since <code>B</code> is immutable, <code>pointer_from_objref</code> won't work.
+To obtain the memory location of <code>b</code>, <code>@yolo</code> interprets <code>b</code> <em>inside</em> of <code>a</code> <a href="https://discourse.julialang.org/t/memory-layout-of-structs-with-mutable-fields/21400/13" rel="nofollow">as a pointer</a> to a <code>B</code> and uses that.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, v<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> <span class="pl-c1">@yolo</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> v
+<span class="pl-c1">f</span>(a,<span class="pl-c1">3</span>f0)
+a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-c"><span class="pl-c">#</span> 3.00</span></pre></div>
+<p>In the same example, suppose we wanted to change <code>a.b.c</code> <em>inside</em> of <code>a.b</code></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, c<span class="pl-k">::</span><span class="pl-c1">C</span>) <span class="pl-k">=</span> <span class="pl-c1">@yolo</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>c <span class="pl-k">=</span> c
+<span class="pl-c1">f</span>(a,<span class="pl-c1">C</span>(<span class="pl-c1">3</span>f0))</pre></div>
+<p>From type <code>B</code> the field <code>c</code> is of type <code>C</code> and it is located in type <code>B</code> at offset 8.
+Since <code>C</code> is a non-bitstype, <code>@yolo</code> will use <code>pointer_from_objref</code> on the right hand side to obtain a pointer to that and then replace the reference to <code>c</code> <em>inside</em> <code>a.b</code>.</p>
+<p><em>WARNING: this probably produces memory leaks!</em></p>
+<p>Finally, this right hand side <code>rhs</code> could be an immutable non-isbitstype, in which case <code>pointer_from_objref</code> does not work anymore.
+<code>@yolo</code> then uses <code>unsafe_load(reinterpret(Ptr{Ptr{Nothing}},pointer_from_objref(Ref(rhs))))</code> to obtain the pointer that will be assigned then.</p>
+<p><em>WARNING: this probably produces memory leaks!</em></p>
+<p><em>More examples might be extracted from <a href="./test/mutate.jl">test/mutate.jl</a>.</em></p>
+<h1><a id="user-content-implementation-status" class="anchor" aria-hidden="true" href="#implementation-status"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Implementation status</h1>
+<p>Already implemented features:</p>
+<ul>
+<li>written out <code>getfield</code> is considered, as in <code>getfield(a.b.c,:d).e =v</code></li>
+<li>written out dereferencing with <code>[]</code> is considered, as in <code>a.b.c[].d = v</code></li>
+<li>continuous array indexing <code>a[10] = v</code>, for StaticArrays</li>
+</ul>
+<p>To be done:</p>
+<ul>
+<li>currently we use <code>getfield</code> for <code>.</code> instead of <code>getproperty</code> (<code>getproperty</code> is what is called by <code>.</code>)</li>
+<li><code>+=</code> operations and similiar</li>
+<li>continuous array indexing <code>a[10] = v</code>, e.g. for <del>static</del> arrays</li>
+</ul>
+<p>Known bugs:</p>
+<ul>
+<li>a throwing <code>@mem</code> at repl-level produces <code>MethodError: Cannot 'convert' an object of type String to an object of type Symbol</code></li>
+</ul>
+<h1><a id="user-content-credits" class="anchor" aria-hidden="true" href="#credits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Credits</h1>
+<p>… go to <a href="https://github.com/andreasnoack">andreasnoack</a> for the instant advice, saving me a lot of time, <a href="https://github.com/pfitzseb">pfitzseb</a> for the elaborate discussion and the #internals slack channel for their approval.</p>
+</article></div>

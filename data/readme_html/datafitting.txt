@@ -1,0 +1,424 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-datafittingjl" class="anchor" aria-hidden="true" href="#datafittingjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DataFitting.jl</h1>
+<p><code>DataFitting</code> is a general purpose data-driven model fitting framework for Julia.</p>
+<p><a href="https://travis-ci.org/gcalderone/DataFitting.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/f4c0bd1b50535e457827f7bd72b904c07f2b172e/68747470733a2f2f7472617669732d63692e6f72672f6763616c6465726f6e652f4461746146697474696e672e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/gcalderone/DataFitting.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>It provides the basic tools to build, inspect and efficiently fit complex models against empirical data.</p>
+<p>The typical use case for <code>DataFitting</code> is as follows: you observe a physical phenomenon with one (or more) instrument(s) and wish to fit those data against a (possibly very complex) theoretical model, in order to extract the characterizing quantities represented by the model parameters.  <code>DataFitting</code> provides the following benefits:</p>
+<ul>
+<li>it handles data of any dimensionality;</li>
+<li>the fitting model is evaluated on a user provided (Cartesian or Linear) domain;</li>
+<li>the fitting model is built up by individual <em>components</em>, either provided by the companion package <a href="https://github.com/gcalderone/DataFittingBasics.jl"><code>DataFittingBasics.jl</code></a> or implemented by the user.  All components are combined to evaluate the final model with a standard Julia mathematical expression.  Component composition is also supported;</li>
+<li>all components results are cached, so that repeated evaluations with the same parameter values do not involve further calculations.  This is very important to speed up the fitting process when many components are involved;</li>
+<li>User provided components can pre-compute quantities based on the model domain, and store them in a private structure;</li>
+<li>Model parameters can be fixed to a specific value, limited in a interval, or be dynamically calculated using a mathematical expression involving the other parameters.  Fit of logarithmic values is also supported;</li>
+<li>multiple data sets can be fitted simultaneously;</li>
+<li>it allows to use different minimizers, and compare their results and performances (currently two minimizers are supported: <a href="https://github.com/JuliaNLSolvers/LsqFit.jl">LsqFit</a> and <a href="https://github.com/gcalderone/CMPFit.jl">CMPFit</a>);</li>
+<li>it provides several facilities for interactive fitting and results displaying.</li>
+</ul>
+<p>See below for a simple example and the <code>examples</code> directory for more complex ones.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<div class="highlight highlight-source-julia"><pre>] add DataFitting</pre></div>
+<h2><a id="user-content-simple-example" class="anchor" aria-hidden="true" href="#simple-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Simple example</h2>
+<p>Assume the model to be compared with empirical data has 5 parameters and the following analytical formula:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(x, p1, p2, p3, p4, p5) <span class="pl-k">=</span> <span class="pl-c1">@.</span> (p1  <span class="pl-k">+</span>  p2 <span class="pl-k">*</span> x  <span class="pl-k">+</span>  p3 <span class="pl-k">*</span> x<span class="pl-k">^</span><span class="pl-c1">2</span>  <span class="pl-k">+</span>  p4 <span class="pl-k">*</span> <span class="pl-c1">sin</span>(p5 <span class="pl-k">*</span> x))  <span class="pl-k">*</span>  <span class="pl-c1">cos</span>(x)</pre></div>
+<p>To simulate a measurement process we'll evaluate the model on a domain and add some random noise to a model realization:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Actual model parameters:</span>
+params <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">1.e-3</span>, <span class="pl-c1">1.e-6</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Domain for model evaluation</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1.</span>:<span class="pl-c1">50</span><span class="pl-k">:</span><span class="pl-c1">10000</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Evaluated model</span>
+y <span class="pl-k">=</span> <span class="pl-c1">f</span>(x, params<span class="pl-k">...</span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Random noise</span>
+<span class="pl-k">using</span> Random
+rng <span class="pl-k">=</span> <span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">0</span>);
+noise <span class="pl-k">=</span> <span class="pl-c1">randn</span>(rng, <span class="pl-c1">length</span>(x));</pre></div>
+<p>In order to use the <code>DataFitting</code> framework we must create a <code>Domain</code> and a <code>Measures</code> objects to encapsulate the model domain and empirical data:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> DataFitting
+dom <span class="pl-k">=</span> <span class="pl-c1">Domain</span>(x)
+data <span class="pl-k">=</span> <span class="pl-c1">Measures</span>(y <span class="pl-k">.+</span> noise, <span class="pl-c1">1.</span>)</pre></div>
+<p>The second argument to the <code>Measures</code> function is the (1 sigma Gaussian) uncertainty associated to each data sample.  It can either be an array with the same shape as the first argument or a scalar.  In the latter case all data samples are assumed to have the same uncertainty.</p>
+<p>Also, we must create a <code>Model</code> object containing a reference to the analytical formula, and prepare it for evaluation on the domain <code>dom</code></p>
+<div class="highlight highlight-source-julia"><pre>model1 <span class="pl-k">=</span> <span class="pl-c1">Model</span>(<span class="pl-c1">:comp1</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">FuncWrap</span>(f, params<span class="pl-k">...</span>))
+<span class="pl-c1">prepare!</span>(model1, dom, <span class="pl-c1">:comp1</span>)</pre></div>
+<p>The <code>comp1</code> symbol is the name we chose to identify the component in the model.  Any other valid symbol could have been used.</p>
+<p>The parameter initial values are those given in the component constructors.  Such values can be changed as follows:</p>
+<div class="highlight highlight-source-julia"><pre>model1[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">1</span>]<span class="pl-k">.</span>val <span class="pl-k">=</span> <span class="pl-c1">1</span>
+model1[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">2</span>]<span class="pl-k">.</span>val <span class="pl-k">=</span> <span class="pl-c1">1.e-3</span></pre></div>
+<p>etc.</p>
+<p>Finally, we are ready to fit the model against empirical data:</p>
+<div class="highlight highlight-source-julia"><pre>result1 <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model1, data)</pre></div>
+<p>Note that the <code>fit!</code> function modifies the <code>model1</code> objects as follows:</p>
+<ul>
+<li>it updates the model parameter with the best fit ones;</li>
+<li>it updates the internal cache of component evaluations with those resulting from best fit parameters;</li>
+<li>it updates the evaluation counter for each component (see below);</li>
+</ul>
+<p>The procedure outlined above may seem cumbersome at first, however it is key to define very complex models and to improve performances, as shown below.</p>
+<h2><a id="user-content-multiple-components" class="anchor" aria-hidden="true" href="#multiple-components"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Multiple components</h2>
+<p>A model is typically made up of many <em>components</em>, joined toghether with a standard mathematical expression.  The previous example can easily be re-implemented by splitting the analytical formula in 3 parts:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f1</span>(x, p1, p2, p3) <span class="pl-k">=</span> <span class="pl-c1">@.</span>  p1  <span class="pl-k">+</span>  p2 <span class="pl-k">*</span> x  <span class="pl-k">+</span>  p3 <span class="pl-k">*</span> x<span class="pl-k">^</span><span class="pl-c1">2</span>
+<span class="pl-en">f2</span>(x, p4, p5) <span class="pl-k">=</span> <span class="pl-c1">@.</span> p4 <span class="pl-k">*</span> <span class="pl-c1">sin</span>(p5 <span class="pl-k">*</span> x)
+<span class="pl-en">f3</span>(x) <span class="pl-k">=</span> <span class="pl-c1">cos</span>.(x)
+
+model2 <span class="pl-k">=</span> <span class="pl-c1">Model</span>(<span class="pl-c1">:comp1</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">FuncWrap</span>(f1, params[<span class="pl-c1">1</span>], params[<span class="pl-c1">2</span>], params[<span class="pl-c1">3</span>]),
+               <span class="pl-c1">:comp2</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">FuncWrap</span>(f2, params[<span class="pl-c1">4</span>], params[<span class="pl-c1">5</span>]),
+               <span class="pl-c1">:comp3</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">FuncWrap</span>(f3))
+<span class="pl-c1">prepare!</span>(model2, dom, :((comp1 <span class="pl-k">+</span> comp2) <span class="pl-k">*</span> comp3))
+result2 <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model2, data)</pre></div>
+<p>Now we used 3 components (named <code>comp1</code>, <code>comp2</code> and <code>comp3</code>) and combined them with the mathematical expression in the last argument of the call to <code>prepare!</code>. <strong>Any</strong> valid mathematical expression is allowed.</p>
+<p>Note that we obtained exactly the same result as before, but we <strong>gained a factor ~2</strong> in execution time.  Such perfromance improvement is due to the fact that the component evaluations are internally cached, and are re-evaluated only if necessary, i.e. when one of the parameter value is modified by the minimzer algorithm. In this particular case the <code>comp3</code> component, having no free parameter, is evaluated only once.</p>
+<p>To check how many time each component and the model are evaluated simply type the name of the <code>Model</code> object in the REPL or call the <code>show</code> method, i.e.: <code>show(model2)</code>, and look at the <code>Counter</code> column.  To reset the counters type:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">resetcounters!</span>(model2)</pre></div>
+<h2><a id="user-content-fitting-multiple-data-sets" class="anchor" aria-hidden="true" href="#fitting-multiple-data-sets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fitting multiple data sets</h2>
+<p><code>DataFitting</code> allows to fit multiple data sets simultaneously.</p>
+<p>Suppose you observe the same phenomenon with two different instruments and wish to use both data sets to constrain the model parameters.  Here we will simulate a second data sets by adding random noise to the previously calculated model, and creating a second <code>Measures</code> object:</p>
+<div class="highlight highlight-source-julia"><pre>noise <span class="pl-k">=</span> <span class="pl-c1">randn</span>(rng, <span class="pl-c1">length</span>(x));
+data2 <span class="pl-k">=</span> <span class="pl-c1">Measures</span>(<span class="pl-c1">1.3</span> <span class="pl-k">*</span> (y <span class="pl-k">+</span> noise), <span class="pl-c1">1.3</span>)</pre></div>
+<p>Note that we multiplied all data by a factor 1.3, to simulate a different calibration between the instruments.  To take into account such calibration we push a further component into the model, named <code>calib</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">push!</span>(model2, <span class="pl-c1">:calib</span>, <span class="pl-c1">SimpleParam</span>(<span class="pl-c1">1</span>))</pre></div>
+<p>and prepare the model to evaluate a second expression:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">prepare!</span>(model2, dom, :(calib <span class="pl-k">*</span> ((comp1 <span class="pl-k">+</span> comp2) <span class="pl-k">*</span> comp3)))</pre></div>
+<p>Note that a call to <code>prepare!</code> modifies the <code>Model</code> object by adding a new (possibly different) expression to be evaluated.  If needed, also the <code>Domain</code> object used for the second expression may be different from the first one.  The latter posssibility allows, for instance, to fit multiple data sets each observed with different instruments.</p>
+<p>Now we can fit both data sets as follows:</p>
+<div class="highlight highlight-source-julia"><pre>result2 <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model2, [data, data2])</pre></div>
+<h2><a id="user-content-retrieve-results" class="anchor" aria-hidden="true" href="#retrieve-results"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Retrieve results</h2>
+<p>The results of the fitting are available as a <code>FitResult</code> structure, as returned by the <code>fit!</code> fuction.  The structure dump for the <code>result2</code> in the example above is as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">dump</span>(result2)
+DataFitting<span class="pl-k">.</span>FitResult
+  fitter<span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>Minimizer DataFitting<span class="pl-k">.</span><span class="pl-c1">Minimizer</span>()
+  param<span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>HashVector{DataFitting<span class="pl-k">.</span>FitParameter}
+    keys<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{Symbol}</span>((<span class="pl-c1">6</span>,))
+      <span class="pl-c1">1</span><span class="pl-k">:</span> Symbol comp1__p1
+      <span class="pl-c1">2</span><span class="pl-k">:</span> Symbol comp1__p2
+      <span class="pl-c1">3</span><span class="pl-k">:</span> Symbol comp1__p3
+      <span class="pl-c1">4</span><span class="pl-k">:</span> Symbol comp2__p1
+      <span class="pl-c1">5</span><span class="pl-k">:</span> Symbol comp2__p2
+      <span class="pl-c1">6</span><span class="pl-k">:</span> Symbol calib__val
+    values<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{DataFitting.FitParameter}</span>((<span class="pl-c1">6</span>,))
+      <span class="pl-c1">1</span><span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>FitParameter
+        val<span class="pl-k">:</span> Float64 <span class="pl-c1">1.0034771773408524</span>
+        unc<span class="pl-k">:</span> Float64 <span class="pl-c1">0.0029174421450895533</span>
+      <span class="pl-c1">2</span><span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>FitParameter
+        val<span class="pl-k">:</span> Float64 <span class="pl-c1">0.0010022369285940917</span>
+        unc<span class="pl-k">:</span> Float64 <span class="pl-c1">1.3473265492873467e-6</span>
+      <span class="pl-c1">3</span><span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>FitParameter
+        val<span class="pl-k">:</span> Float64 <span class="pl-c1">9.996494571427457e-7</span>
+        unc<span class="pl-k">:</span> Float64 <span class="pl-c1">1.3148179368867407e-10</span>
+      <span class="pl-c1">4</span><span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>FitParameter
+        val<span class="pl-k">:</span> Float64 <span class="pl-c1">4.005022216534921</span>
+        unc<span class="pl-k">:</span> Float64 <span class="pl-c1">0.0013760967902191378</span>
+      <span class="pl-c1">5</span><span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>FitParameter
+        val<span class="pl-k">:</span> Float64 <span class="pl-c1">4.999999879104177</span>
+        unc<span class="pl-k">:</span> Float64 <span class="pl-c1">5.998373321161513e-8</span>
+      <span class="pl-c1">6</span><span class="pl-k">:</span> DataFitting<span class="pl-k">.</span>FitParameter
+        val<span class="pl-k">:</span> Float64 <span class="pl-c1">1.299996982192236</span>
+        unc<span class="pl-k">:</span> Float64 <span class="pl-c1">4.979637254678212e-5</span>
+  ndata<span class="pl-k">:</span> Int64 <span class="pl-c1">399962</span>
+  dof<span class="pl-k">:</span> Int64 <span class="pl-c1">399956</span>
+  cost<span class="pl-k">:</span> Float64 <span class="pl-c1">400117.9725389123</span>
+  status<span class="pl-k">:</span> Symbol Optimal
+  elapsed<span class="pl-k">:</span> Float64 <span class="pl-c1">1.736617397</span></pre></div>
+<p>From this structure the user can retrieve the parameter best fit values and uncertainties, the number of data samples, the number of degrees of freedom, the total chi-squared (<code>cost</code>) and the fitting elapsed time in seconds.</p>
+<p>In particular, the best fit value and uncertanty for <code>p1</code> can be retrieved as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">println</span>(result2<span class="pl-k">.</span>param[<span class="pl-c1">:comp1__p1</span>]<span class="pl-k">.</span>val)
+<span class="pl-c1">println</span>(result2<span class="pl-k">.</span>param[<span class="pl-c1">:comp1__p1</span>]<span class="pl-k">.</span>unc)</pre></div>
+<p>Note that the parameter is identified by using both the component name and parameter name, separated by a double underscore <code>__</code>.</p>
+<p>To plot the results use the following arrays:</p>
+<ul>
+<li>Abscissa: <code>dom[1]</code>.  For multi dimensional domains you can use <code>dom[2]</code>, <code>dom[3]</code>, etc.;</li>
+<li>Ordinate:
+<ul>
+<li>expression 1, i.e. <code>(comp1 + comp2) * comp3</code>: <code>model()</code> or <code>model2(1)</code>;</li>
+<li>expression 2, i.e. <code>calib * ((comp1 + comp2) * comp3)</code>: <code>model2(2)</code>;</li>
+<li><code>comp1</code> component: <code>model2(:comp1)</code>;</li>
+<li><code>comp2</code> component: <code>model2(:comp2)</code>;</li>
+<li><code>comp3</code> component: <code>model2(:comp3)</code>;</li>
+<li><code>calib</code> component: <code>model2(:calib)</code>;</li>
+</ul>
+</li>
+</ul>
+<p>In the following example I will use the <a href="https://github.com/gcalderone/Gnuplot.jl">Gnuplot.jl</a> package, but the user can choose any other package:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Gnuplot
+<span class="pl-c1">@gp</span> <span class="pl-s"><span class="pl-pds">"</span>set key left<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> dom[<span class="pl-c1">1</span>] data2<span class="pl-k">.</span>measure <span class="pl-s"><span class="pl-pds">"</span>w p tit 'Data'<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> dom[<span class="pl-c1">1</span>] <span class="pl-c1">model2</span>(<span class="pl-c1">:comp1</span>) <span class="pl-s"><span class="pl-pds">"</span>w l tit 'comp1'<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> dom[<span class="pl-c1">1</span>] <span class="pl-c1">model2</span>(<span class="pl-c1">:comp2</span>) <span class="pl-s"><span class="pl-pds">"</span>w l tit 'comp2'<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> dom[<span class="pl-c1">1</span>] <span class="pl-c1">model2</span>() <span class="pl-s"><span class="pl-pds">"</span>w lines tit 'Model' lw 3<span class="pl-pds">"</span></span></pre></div>
+<p>To evaluate the model with a different parameter value you can pass one (or more) <code>Pair{Symbol,Number}</code> to <code>model2()</code>,i.e.:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@gp</span> :<span class="pl-k">-</span> dom[<span class="pl-c1">1</span>] <span class="pl-c1">model2</span>(<span class="pl-c1">:comp2__p1</span><span class="pl-k">=&gt;</span><span class="pl-c1">0.</span>) <span class="pl-s"><span class="pl-pds">"</span>w lines tit 'p4=0' lw 3<span class="pl-pds">"</span></span></pre></div>
+<h2><a id="user-content-the-funcwrap-and-simpleparam-components" class="anchor" aria-hidden="true" href="#the-funcwrap-and-simpleparam-components"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The <code>FuncWrap</code> and <code>SimpleParam</code> components</h2>
+<p><code>FuncWrap</code> and <code>SimpleParam</code> are the only built-in components of the <code>DataFitting</code> package.  Further components are available in the <a href="https://github.com/gcalderone/DataFittingBasics.jl"><code>DataFittingBasics.jl</code></a> package.</p>
+<h3><a id="user-content-funcwrap" class="anchor" aria-hidden="true" href="#funcwrap"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>Funcwrap</code></h3>
+<p>The <code>FuncWrap</code> is simply a wrapper to a user defined function of the form <code>f(x, [y], [z], [further dimensions...], p1, p2, [further parameters...])</code>.  The <code>x</code>, <code>y</code>, <code>z</code> arguments will be <code>Vector{Float64}</code> with the same number of elements, while <code>p1</code>, <code>p2</code>, etc. will be scalar floats.  The function must return a <code>Vector{Float64}</code> (regardless of thenumber of dimensions) with the same number of elements as <code>x</code>.  This components works with domains of any dimensionality.</p>
+<p>The constructor is defined as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">FuncWrap</span>(func<span class="pl-k">::</span><span class="pl-c1">Function</span>, args<span class="pl-k">...</span>)</pre></div>
+<p>where <code>args...</code> is a list of numbers.</p>
+<p>The parameters are:</p>
+<ul>
+<li><code>p::Vector{Parameter}</code>: vector of parameters for the user defined function.</li>
+</ul>
+<h3><a id="user-content-simpleparam" class="anchor" aria-hidden="true" href="#simpleparam"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>SimpleParam</code></h3>
+<p>The <code>SimpleParam</code> represent a scalar component in the model, whose value is given by the <code>val</code> parameter.  This components works with domains of any dimensionality.</p>
+<p>The constructor is defined as follows:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">SimpleParam</span>(val<span class="pl-k">::</span><span class="pl-c1">Number</span>)</pre></div>
+<p>The parameters are:</p>
+<ul>
+<li><code>val::Parameter</code>: the scalar value.</li>
+</ul>
+<h2><a id="user-content-profile-a-component" class="anchor" aria-hidden="true" href="#profile-a-component"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Profile a component</h2>
+<p>The <code>DataFitting</code> framework provides an effective way to check a component performance by means of the <code>test_component</code> function.</p>
+<p>For instance, you may wonder if the <code>FuncWrap</code> component used in the previous example as a wrapper to the <code>f</code> function introduces any performance penalty.  With <code>test_component</code> you may simply compare the wrapper performance with that of a simple loop, i.e.:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">test_component</span>(dom, <span class="pl-c1">FuncWrap</span>(f, params<span class="pl-k">...</span>), <span class="pl-c1">1000</span>)
+<span class="pl-c1">@time</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>
+    dummy <span class="pl-k">=</span> <span class="pl-c1">f</span>(x, params<span class="pl-k">...</span>)
+<span class="pl-k">end</span></pre></div>
+<p>As you can see there is no significant difference in looping 1000 times on model evaluations or using a simple loop on <code>f</code>.</p>
+<h2><a id="user-content-using-the-cmpfit-minimizer" class="anchor" aria-hidden="true" href="#using-the-cmpfit-minimizer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Using the <code>CMPFit</code> minimizer</h2>
+<p>The <code>DataFitting</code> package uses the <a href="https://github.com/JuliaNLSolvers/LsqFit.jl">LsqFit</a> minimizer by default, but it allows to use the <a href="https://github.com/gcalderone/CMPFit.jl">CMPFit</a> as well.  The latter typically provides better performances with respect to the former, but since <code>CMPFit</code> is a wrapper to a C library it is not a pure-Julia solution.   The better performances are due to a different minimization strategy, not to C vs. Julia differences.</p>
+<p>To use the <code>CMPFit</code> minimzer (after having installed the package):</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> CMPFit
+result2 <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model2, [data, data2], minimizer<span class="pl-k">=</span>CMPFit<span class="pl-k">.</span><span class="pl-c1">Minimizer</span>())</pre></div>
+<h2><a id="user-content-multidimensional-domains" class="anchor" aria-hidden="true" href="#multidimensional-domains"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Multidimensional domains</h2>
+<p><strong>IMPORTANT NOTE</strong>: by default <code>the </code>DataFitting` package defines structure only for 1D and 2D fitting.  To handle higher dimensional cases you should generate the appropriate code with, e.g.:</p>
+<div class="highlight highlight-source-julia"><pre>DataFitting<span class="pl-k">.</span><span class="pl-c1">@code_ndim</span> <span class="pl-c1">3</span></pre></div>
+<p><code>N</code>-dimensional <code>Domain</code> objects comes in two flavours: linear and cartesian ones:</p>
+<ul>
+<li>Linear domain: contains a <code>N</code>-dimensional tuple of coordinates, one for each data sample.  It is analogous to <code>Vector{NTuple{N, Number}}</code>;</li>
+<li>Cartesian domain: contains <code>N</code> arrays of coordinates, one for each dimension. Optionally contains a 1D list of index to select a subset of all possible combinations of coordinates. It is analogous to <code>Vector{Vector{Number}}</code>, whose length of outer vector is <code>N</code>;</li>
+</ul>
+<p>Linear domains are created using the <code>Domain</code> function, providing as many arguments as the number of dimensions. Each argument can either be an integer (specifying how many samples are defined along each axis), or a vector of <code>float</code>s.  <strong>The length of all dimensions must be exactly the same.</strong>  Examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> 1D</span>
+dom <span class="pl-k">=</span> <span class="pl-c1">Domain</span>(<span class="pl-c1">5</span>)
+dom <span class="pl-k">=</span> <span class="pl-c1">Domain</span>(<span class="pl-c1">1.</span>:<span class="pl-c1">5</span>)
+dom <span class="pl-k">=</span> <span class="pl-c1">Domain</span>([<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5.</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> 2D</span>
+dom <span class="pl-k">=</span> <span class="pl-c1">Domain</span>(<span class="pl-c1">5</span>, <span class="pl-c1">5</span>)
+dom <span class="pl-k">=</span> <span class="pl-c1">Domain</span>(<span class="pl-c1">1.</span>:<span class="pl-c1">5</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5.</span>])</pre></div>
+<p>Note that the length of all the above domains is 5.</p>
+<p>Cartesian domains are created using the <code>CartesianDomain</code> function, providing as many arguments as the number of dimensions.  There is no 1-dimensional cartesian domain, hence <code>CartesianDomain</code> requires at least two arguments.  Each argument can either be an integer (specifying how many samples are defined along each axis), or a vector of <code>float</code>s.  <strong>The length of dimensions may be different.</strong>  Examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> 2D</span>
+dom <span class="pl-k">=</span> <span class="pl-c1">CartesianDomain</span>(<span class="pl-c1">5</span>, <span class="pl-c1">6</span>)
+dom <span class="pl-k">=</span> <span class="pl-c1">CartesianDomain</span>(<span class="pl-c1">1.</span>:<span class="pl-c1">5</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">6.</span>])</pre></div>
+<p>The length of all the above domains is 30, i.e. it is equal to the product of the lengths of all dimensions.</p>
+<p>Typically, the model can be evaluated over the cartesian product of all dimensions.  However, there can be specific locations of the domain for which there is not empirical data to compare with, making the model evaluation useless.  In these cases it is possible to select a subset of the cartesian domain using a 1D linear index, e.g.:</p>
+<div class="highlight highlight-source-julia"><pre>dom <span class="pl-k">=</span> <span class="pl-c1">CartesianDomain</span>(<span class="pl-c1">1.</span>:<span class="pl-c1">5</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">6.</span>], index<span class="pl-k">=</span><span class="pl-c1">collect</span>(<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">4</span>) <span class="pl-k">.*</span> <span class="pl-c1">6</span> <span class="pl-k">.+</span> <span class="pl-c1">1</span>)</pre></div>
+<p>The length of such domain is 5, equal to the length of the vector passed as <code>index</code> keyword.</p>
+<p>A cartesian domain can always be transformed into a linear domain, while the inverse is usually not possible.  To check how a "flattened" version of a cartesian domain looks like you can use the <code>DataFitting.flatten</code> function, i.e.:</p>
+<div class="highlight highlight-source-julia"><pre>dom <span class="pl-k">=</span> <span class="pl-c1">CartesianDomain</span>(<span class="pl-c1">1.</span>:<span class="pl-c1">5</span>, [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">6.</span>], index<span class="pl-k">=</span><span class="pl-c1">collect</span>(<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">4</span>) <span class="pl-k">.*</span> <span class="pl-c1">6</span> <span class="pl-k">.+</span> <span class="pl-c1">1</span>)
+lin <span class="pl-k">=</span> DataFitting<span class="pl-k">.</span><span class="pl-c1">flatten</span>(dom)</pre></div>
+<p>Actually, all models are always evaluated on "flattened", i.e. linear, domains.</p>
+<p>To get the vector of coordinates for dimensions 1, 2, etc. of the <code>dom</code> object use the <code>dom[1]</code>, <code>dom[2]</code>, etc. syntax.  For linear domains all such vectors have the same length, for cartesian domains the lengths may differ.</p>
+<h2><a id="user-content-multidimensional-fitting" class="anchor" aria-hidden="true" href="#multidimensional-fitting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Multidimensional fitting</h2>
+<p>As an example we will fit a 2D plane.  The analytic function will accept two vectors for coordinates x and y, and 2 parameters.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(x, y, p1, p2) <span class="pl-k">=</span> <span class="pl-c1">@.</span>  p1 <span class="pl-k">*</span> x  <span class="pl-k">+</span>  p2 <span class="pl-k">*</span> y</pre></div>
+<p>This function will be called during model evaluation, where only linear domains are involved, hence we are sure that both the <code>x</code> and <code>y</code> vectors will have the same lengths.</p>
+<p>To create a multidimensional <code>Measures</code> object we will populate a 2D array and use it as argument to the <code>Measures</code> function:</p>
+<div class="highlight highlight-source-julia"><pre>dom <span class="pl-k">=</span> <span class="pl-c1">CartesianDomain</span>(<span class="pl-c1">30</span>, <span class="pl-c1">40</span>)
+d <span class="pl-k">=</span> <span class="pl-c1">fill</span>(<span class="pl-c1">0.</span>, <span class="pl-c1">size</span>(dom));
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(dom[<span class="pl-c1">1</span>])
+    <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(dom[<span class="pl-c1">2</span>])
+        d[i,j] <span class="pl-k">=</span> <span class="pl-c1">f</span>(dom[<span class="pl-c1">1</span>][i], dom[<span class="pl-c1">2</span>][j], <span class="pl-c1">1.2</span>, <span class="pl-c1">2.4</span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+data <span class="pl-k">=</span> <span class="pl-c1">Measures</span>(d <span class="pl-k">+</span> <span class="pl-c1">randn</span>(rng, <span class="pl-c1">size</span>(d)), <span class="pl-c1">1.</span>)</pre></div>
+<p>To fit the model proceed in the usual way:</p>
+<div class="highlight highlight-source-julia"><pre>model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(<span class="pl-c1">:comp1</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">FuncWrap</span>(f, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>))
+<span class="pl-c1">prepare!</span>(model, dom, <span class="pl-c1">:comp1</span>)
+result <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model, data)</pre></div>
+<h2><a id="user-content-interactive-use" class="anchor" aria-hidden="true" href="#interactive-use"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Interactive Use</h2>
+<p><code>DataFitting.jl</code> provides several facilities for interactive use on the REPL:</p>
+<ul>
+<li>all the types (i.e. <code>Domain</code>, <code>Measures</code>, <code>Model</code> and <code>FitResult</code>) have a dedicated <code>show</code> method to quickly and easily inspect their contents.  Simply type the name of the object to run this method;</li>
+<li>To get the list of currently defined components in a model simply type <code>model[:&lt;TAB&gt;</code>;</li>
+<li>To get a list of parameter for a component simply type <code>model[:&lt;COMPONENT NAME&gt;]</code>, e.g. <code>model[:comp1]</code>.  Remember that the component parameter can either be scalar <code>Parameter</code> or <code>Vector{Parameter}</code>.  In the latter case the parameter name shown in the REPL has an integer index appended;</li>
+<li>To get the list of model parameter in a result simply type <code>result.param[:&lt;TAB&gt;</code>;</li>
+</ul>
+<h2><a id="user-content-parameter-settings" class="anchor" aria-hidden="true" href="#parameter-settings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Parameter settings</h2>
+<p>Each model parameter has a few settings that can be tweaked by the user before running the actual fit:</p>
+<ul>
+<li><code>.val</code> (float): guess initial value;</li>
+<li><code>.low</code> (float): lower limit for the value (default: <code>-Inf</code>);</li>
+<li><code>.high</code> (float): upper limit for the value (default: <code>+Inf</code>);</li>
+<li><code>.fixed</code> (bool): false for free parameters, true for fixed ones (default: <code>false</code>);</li>
+<li><code>.expr</code> (string): a mathematical expression to bind the parameter value to other parameters (default: <code>""</code>);</li>
+</ul>
+<p><strong>Important note</strong>: the default minimizer (<a href="https://github.com/JuliaNLSolvers/LsqFit.jl">LsqFit</a>) do not supports bounded parameters, while  <a href="https://github.com/gcalderone/CMPFit.jl">CMPFit</a> supports them.</p>
+<p>Considering the previous example we can limit the interval for <code>p1</code>, and fix the value for <code>p2</code> as follows:</p>
+<div class="highlight highlight-source-julia"><pre>model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">1</span>]<span class="pl-k">.</span>val  <span class="pl-k">=</span> <span class="pl-c1">1</span>   <span class="pl-c"><span class="pl-c">#</span> guess initial value</span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">1</span>]<span class="pl-k">.</span>low  <span class="pl-k">=</span> <span class="pl-c1">0.5</span> <span class="pl-c"><span class="pl-c">#</span> lower limit</span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">1</span>]<span class="pl-k">.</span>high <span class="pl-k">=</span> <span class="pl-c1">1.5</span> <span class="pl-c"><span class="pl-c">#</span> upper limit</span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">2</span>]<span class="pl-k">.</span>val  <span class="pl-k">=</span> <span class="pl-c1">2.4</span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">2</span>]<span class="pl-k">.</span>fixed <span class="pl-k">=</span> <span class="pl-c1">true</span>
+result <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model, data, minimizer<span class="pl-k">=</span>CMPFit<span class="pl-k">.</span><span class="pl-c1">Minimizer</span>())</pre></div>
+<p>To remove the limits on <code>p1</code> simply set their bounds to +/- Inf:</p>
+<div class="highlight highlight-source-julia"><pre>model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">1</span>]<span class="pl-k">.</span>low  <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">Inf</span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">1</span>]<span class="pl-k">.</span>high <span class="pl-k">=</span> <span class="pl-k">+</span><span class="pl-c1">Inf</span></pre></div>
+<p>As another example we may constrain <code>p2</code> to always be twice the value of <code>p1</code>:</p>
+<div class="highlight highlight-source-julia"><pre>model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">2</span>]<span class="pl-k">.</span>expr <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>comp1__p1 + comp1__p2<span class="pl-pds">"</span></span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p[<span class="pl-c1">2</span>]<span class="pl-k">.</span>fixed <span class="pl-k">=</span> <span class="pl-c1">false</span></pre></div>
+<p><strong>Important note:</strong> each time you change one (or more) parameter expression(s) you should call <code>prepare!</code> passing just the model as argument.  This is required to recompile the model:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">prepare!</span>(model)
+result <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model, data)</pre></div>
+<p>Note that in the example above we had to fix the <code>p2</code> parameter otherwise the minizer will try to find a best fit for a parameter which has no influence on the final model, since its value will always be overwritten by the expression.  The only situation where the parameter should be left free is when the expression involves the parameter itself, e.g.:</p>
+<div class="highlight highlight-source-julia"><pre>model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p2<span class="pl-k">.</span>expr <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>comp1__p1 + comp1__p2<span class="pl-pds">"</span></span>
+model<span class="pl-k">.</span>comp[<span class="pl-c1">:comp1</span>]<span class="pl-k">.</span>p2<span class="pl-k">.</span>fixed <span class="pl-k">=</span> <span class="pl-c1">false</span>
+<span class="pl-c1">prepare!</span>(model)
+result <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model, data)</pre></div>
+<h2><a id="user-content-component-settings" class="anchor" aria-hidden="true" href="#component-settings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Component settings</h2>
+<p>A model component can be disabled altoghether and its evaluation fixed to a specific value  by calling <code>setcompvalue!</code>, e.g.:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">setcompvalue!</span>(model, <span class="pl-c1">:comp1</span>, <span class="pl-c1">10</span>)</pre></div>
+<p>In further evaluation the <code>comp1</code> component will always evaluate to 10.  Note thet the component parameters are completely ignored in this case, so be sure to have at least one free parameter before running the fit.</p>
+<p>To restore the normal component behaviour simply set its value to <code>NaN</code>, i.e.:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">setcompvalue!</span>(model, <span class="pl-c1">:comp1</span>, <span class="pl-c1">NaN</span>)</pre></div>
+<h1><a id="user-content-built-in-components" class="anchor" aria-hidden="true" href="#built-in-components"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Built-in components</h1>
+<p>The following components are available in the <code>DataFitting.Components</code> module:</p>
+<ul>
+<li>OffsetSlope (1D and 2D): an offset and slope component;</li>
+<li>Polynomial (only 1D): a n-th degree polynomial function (n &gt; 1);</li>
+<li>Gaussian (1D and 2D): a Gaussian function;</li>
+<li>Lorentzian (1D and 2D): a Lorentzian function;</li>
+</ul>
+<h2><a id="user-content-offsetslope" class="anchor" aria-hidden="true" href="#offsetslope"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>OffsetSlope</h2>
+<p>An offset and slope component for 1D and 2D domains.  In 2D it represents a tilted plane.</p>
+<p>The constructors are defined as follows:</p>
+<ul>
+<li>1D: <code>DataFitting.Components.OffsetSlope(offset, x0, slope)</code>;</li>
+<li>2D: <code>DataFitting.Components.OffsetSlope(offset, x0, y0, slopeX, slopeY)</code>;</li>
+</ul>
+<p>The parameters are:</p>
+<ul>
+<li>1D:
+<ul>
+<li><code>offset::Parameter</code>: a global offset;</li>
+<li><code>x0::Parameter</code>: the X coordinate of the point where the component equals <code>offset</code>.  This parameter is fixed by default;</li>
+<li><code>slope::Parameter</code>: the slope of the linear function;</li>
+</ul>
+</li>
+<li>2D:
+<ul>
+<li><code>offset::Parameter</code>: a global offset;</li>
+<li><code>x0::Parameter</code>: the X coordinate of the point where the component equals <code>offset</code>.  This parameter is fixed by default;</li>
+<li><code>y0::Parameter</code>: the Y coordinate of the point where the component equals <code>offset</code>.  This parameter is fixed by default;</li>
+<li><code>slopeX::Parameter</code> (only 2D): the slope of the plane along the X direction;</li>
+<li><code>slopeY::Parameter</code> (only 2D): the slope of the plane along the Y direction;</li>
+</ul>
+</li>
+</ul>
+<h2><a id="user-content-polynomial" class="anchor" aria-hidden="true" href="#polynomial"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Polynomial</h2>
+<p>A n-th degree polynomial function (n &gt; 1) for 1D domains.</p>
+<p>The constructor is defined as follows:</p>
+<ul>
+<li><code>DataFitting.Components.Polynomial(args...)</code>;
+where <code>args...</code> is a list of numbers.</li>
+</ul>
+<p>The parameters are:</p>
+<ul>
+<li><code>coeff::Vector{Parameter}</code>: vector of polynomial coefficients.</li>
+</ul>
+<h2><a id="user-content-gaussian" class="anchor" aria-hidden="true" href="#gaussian"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Gaussian</h2>
+<p>A normalized Gaussian component for 1D and 2D domains.</p>
+<p>The constructors are defined as follows:</p>
+<ul>
+<li>1D: <code>DataFitting.Components.Gaussian(norm, center, sigma)</code>;</li>
+<li>2D: <code>DataFitting.Components.Gaussian(norm, centerX, centerY, sigma)</code> (implies <code>sigmaX=sigmaY</code>, <code>angle=0</code>);</li>
+<li>2D: <code>DataFitting.Components.Gaussian(norm, centerX, centerY, sigmaX, sigmaY, angle)</code>;</li>
+</ul>
+<p>The parameters are:</p>
+<ul>
+<li>
+<p>1D:</p>
+<ul>
+<li><code>norm::Parameter</code>: the area below the Gaussian function;</li>
+<li><code>center::Parameter</code>: the location of the center of the Gaussian;</li>
+<li><code>sigma::Parameter</code>: the width the Gaussian;</li>
+</ul>
+</li>
+<li>
+<p>2D:</p>
+<ul>
+<li><code>norm::Parameter</code>: the volume below the Gaussian function;</li>
+<li><code>centerX::Parameter</code>: the X coordinate of the center of the Gaussian;</li>
+<li><code>centerY::Parameter</code>: the Y coordinate of the center of the Gaussian;</li>
+<li><code>sigmaX::Parameter</code>: the width the Gaussian along the X direction (when <code>angle=0</code>);</li>
+<li><code>sigmaY::Parameter</code>: the width the Gaussian along the Y direction (when <code>angle=0</code>);</li>
+<li><code>angle::Parameter</code>: the rotation angle of the whole Gaussian function.</li>
+</ul>
+</li>
+</ul>
+<h2><a id="user-content-lorentzian" class="anchor" aria-hidden="true" href="#lorentzian"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Lorentzian</h2>
+<p>A Lorentzian component for 1D and 2D domains.</p>
+<p>The constructors are defined as follows:</p>
+<ul>
+<li>1D: <code>DataFitting.Components.Lorentzian(norm, center, fwhm)</code>;</li>
+<li>2D: <code>DataFitting.Components.Lorentzian(norm, centerX, centerY, fwhmX, fwhmY)</code>;</li>
+</ul>
+<p>The parameters are:</p>
+<ul>
+<li>
+<p>1D:</p>
+<ul>
+<li><code>norm::Parameter</code>: the area below the Lorentzian function;</li>
+<li><code>center::Parameter</code>: the location of the center of the Lorentzian;</li>
+<li><code>fwhm::Parameter</code>: the full-width at half maximum of the Lorentzian;</li>
+</ul>
+</li>
+<li>
+<p>2D:</p>
+<ul>
+<li><code>norm::Parameter</code>: the volume below the Lorentzian function;</li>
+<li><code>centerX::Parameter</code>: the X coordinate of the center of the Lorentzian;</li>
+<li><code>centerY::Parameter</code>: the Y coordinate of the center of the Lorentzian;</li>
+<li><code>fwhmX::Parameter</code>: the full-width at half maximum of the Lorentzian along the X direction (when <code>angle=0</code>);</li>
+<li><code>fwhmY::Parameter</code>: the full-width at half maximum of the Lorentzian along the Y direction (when <code>angle=0</code>).</li>
+</ul>
+</li>
+</ul>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples:</h2>
+<h3><a id="user-content-1d-offset--two-gaussian-profiles" class="anchor" aria-hidden="true" href="#1d-offset--two-gaussian-profiles"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>1D: offset + two Gaussian profiles</h3>
+<div class="highlight highlight-source-julia"><pre>x <span class="pl-k">=</span> <span class="pl-c1">Domain</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">10</span>)
+model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(
+    <span class="pl-c1">:offset</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">ScalarParam</span>(<span class="pl-c1">4</span>),
+    <span class="pl-c1">:line1</span>  <span class="pl-k">=&gt;</span> DataFitting<span class="pl-k">.</span>Components<span class="pl-k">.</span><span class="pl-c1">Gaussian</span>(<span class="pl-c1">1.1</span> , <span class="pl-c1">4.4</span>, <span class="pl-c1">0.51</span>),
+    <span class="pl-c1">:line2</span>  <span class="pl-k">=&gt;</span> DataFitting<span class="pl-k">.</span>Components<span class="pl-k">.</span><span class="pl-c1">Gaussian</span>(<span class="pl-c1">0.52</span>, <span class="pl-c1">5.5</span>, <span class="pl-c1">1.2</span> ))
+<span class="pl-c1">add_dom!</span>(model, x)
+<span class="pl-c1">add_expr!</span>(model, :(offset <span class="pl-k">+</span> line1 <span class="pl-k">+</span> line2))
+
+<span class="pl-k">using</span> Random
+rng <span class="pl-k">=</span> <span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">0</span>);
+noise <span class="pl-k">=</span> <span class="pl-c1">maximum</span>(<span class="pl-c1">model</span>()) <span class="pl-k">*</span> <span class="pl-c1">0.01</span>
+data <span class="pl-k">=</span> <span class="pl-c1">Measures</span>(<span class="pl-c1">model</span>() <span class="pl-k">+</span> noise <span class="pl-k">*</span> <span class="pl-c1">randn</span>(rng, <span class="pl-c1">length</span>(<span class="pl-c1">model</span>())), noise);
+ret1 <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model, data)</pre></div>
+<p>To produce the plots I will use the <a href="https://github.com/gcalderone/Gnuplot.jl">Gnuplot.jl</a> package, but the user can choose any other package:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Gnuplot
+<span class="pl-c1">@gp</span>    <span class="pl-s"><span class="pl-pds">"</span>set multi layout 2,1<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span>    <span class="pl-c1">domain</span>(model) data<span class="pl-k">.</span>val data<span class="pl-k">.</span>unc <span class="pl-s"><span class="pl-pds">"</span>w yerr tit 'Data'<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> <span class="pl-c1">domain</span>(model) <span class="pl-c1">model</span>(<span class="pl-c1">:line1</span>) <span class="pl-k">.+</span> <span class="pl-c1">model</span>(<span class="pl-c1">:offset</span>) <span class="pl-s"><span class="pl-pds">"</span>w l tit 'offset + line1'<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> <span class="pl-c1">domain</span>(model) <span class="pl-c1">model</span>(<span class="pl-c1">:line2</span>) <span class="pl-k">.+</span> <span class="pl-c1">model</span>(<span class="pl-c1">:offset</span>) <span class="pl-s"><span class="pl-pds">"</span>w l tit 'offset + line2'<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> <span class="pl-c1">domain</span>(model) <span class="pl-c1">model</span>() <span class="pl-s"><span class="pl-pds">"</span>w lines tit 'Model' lw 3<span class="pl-pds">"</span></span> :<span class="pl-k">-</span>
+<span class="pl-c1">@gp</span> :<span class="pl-k">-</span> <span class="pl-c1">2</span> x[<span class="pl-c1">1</span>] (data<span class="pl-k">.</span>val <span class="pl-k">-</span> <span class="pl-c1">model</span>()) <span class="pl-k">./</span> data<span class="pl-k">.</span>unc <span class="pl-c1">fill</span>(<span class="pl-c1">1.</span>, <span class="pl-c1">length</span>(data)) <span class="pl-s"><span class="pl-pds">"</span>w yerr tit 'Residuals'<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-2d-tilted-plane--2d-gaussian-profile" class="anchor" aria-hidden="true" href="#2d-tilted-plane--2d-gaussian-profile"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>2D: tilted plane + 2D Gaussian profile</h3>
+<div class="highlight highlight-source-julia"><pre>dom <span class="pl-k">=</span> <span class="pl-c1">CartesianDomain</span>(<span class="pl-k">-</span><span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">5</span>, <span class="pl-k">-</span><span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">4</span>)
+model <span class="pl-k">=</span> <span class="pl-c1">Model</span>()
+<span class="pl-c1">add_comp!</span>(model, <span class="pl-c1">:background</span><span class="pl-k">=&gt;</span>DataFitting<span class="pl-k">.</span>Components<span class="pl-k">.</span><span class="pl-c1">OffsetSlope</span>(<span class="pl-c1">0</span>, <span class="pl-c1">0</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">2.</span>, <span class="pl-c1">3.</span>))
+<span class="pl-c1">add_comp!</span>(model, <span class="pl-c1">:psf</span>       <span class="pl-k">=&gt;</span>DataFitting<span class="pl-k">.</span>Components<span class="pl-k">.</span><span class="pl-c1">Gaussian</span>(<span class="pl-c1">100.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">1</span>, <span class="pl-c1">0.3</span>, <span class="pl-c1">15</span>))
+<span class="pl-c1">add_dom!</span>(model, dom)
+<span class="pl-c1">add_expr!</span>(model, :(background <span class="pl-k">+</span> psf))
+
+noise <span class="pl-k">=</span> <span class="pl-c1">maximum</span>(<span class="pl-c1">model</span>()) <span class="pl-k">*</span> <span class="pl-c1">0.1</span>
+data <span class="pl-k">=</span> <span class="pl-c1">Measures</span>(<span class="pl-c1">model</span>() <span class="pl-k">.+</span> <span class="pl-c1">4</span> <span class="pl-k">.+</span> noise <span class="pl-k">.*</span> <span class="pl-c1">randn</span>(<span class="pl-c1">length</span>(<span class="pl-c1">model</span>())), noise);
+ret1 <span class="pl-k">=</span> <span class="pl-c1">fit!</span>(model, data)</pre></div>
+<p>To produce the plots I will use the <a href="https://github.com/gcalderone/Gnuplot.jl">Gnuplot.jl</a> package, but the user can choose any other package:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Gnuplot
+
+<span class="pl-c"><span class="pl-c">#</span> Plot the model...</span>
+<span class="pl-c1">@gsp</span> dom[<span class="pl-c1">1</span>] dom[<span class="pl-c1">2</span>] <span class="pl-c1">reshape</span>(<span class="pl-c1">model</span>(), <span class="pl-c1">size</span>(dom))
+
+<span class="pl-c"><span class="pl-c">#</span> ...and the residuals</span>
+<span class="pl-c1">@gsp</span> dom[<span class="pl-c1">1</span>] dom[<span class="pl-c1">2</span>] <span class="pl-c1">reshape</span>(data<span class="pl-k">.</span>val <span class="pl-k">-</span> <span class="pl-c1">model</span>(), <span class="pl-c1">size</span>(dom))
+
+<span class="pl-c"><span class="pl-c">#</span> Plot using pm3d style</span>
+<span class="pl-c1">@gsp</span> <span class="pl-s"><span class="pl-pds">"</span>set pm3d<span class="pl-pds">"</span></span> <span class="pl-s"><span class="pl-pds">"</span>set palette<span class="pl-pds">"</span></span> dom[<span class="pl-c1">1</span>] dom[<span class="pl-c1">2</span>] <span class="pl-c1">reshape</span>(<span class="pl-c1">model</span>(), <span class="pl-c1">size</span>(dom)) <span class="pl-s"><span class="pl-pds">"</span>w dots<span class="pl-pds">"</span></span></pre></div>
+</article></div>

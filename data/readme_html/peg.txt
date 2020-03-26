@@ -1,0 +1,139 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p><a href="https://travis-ci.org/wdebeaum/PEG.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/163d84233495509a80afa6fd5d5364a8650a6e86/68747470733a2f2f7472617669732d63692e6f72672f776465626561756d2f5045472e6a6c2e706e67" alt="Build Status" data-canonical-src="https://travis-ci.org/wdebeaum/PEG.jl.png" style="max-width:100%;"></a></p>
+<p><a href="http://pkg.julialang.org/?pkg=PEG&amp;ver=0.7" rel="nofollow"><img src="https://camo.githubusercontent.com/359f75ea42dc579591876159cbda4bab78aa4282/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f5045475f302e372e737667" alt="PEG" data-canonical-src="http://pkg.julialang.org/badges/PEG_0.7.svg" style="max-width:100%;"></a></p>
+<h1><a id="user-content-peg" class="anchor" aria-hidden="true" href="#peg"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>PEG</h1>
+<p>Define a
+<a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar" rel="nofollow">Parsing Expression Grammar</a>
+via a macro and abuse of Julia syntax.</p>
+<ul>
+<li>Rules: <code>@rule name = expression</code></li>
+<li>Choice: infix <code>,</code></li>
+<li>Sequence: infix <code>&amp;</code></li>
+<li>Positive lookahead: prefix <code>+</code></li>
+<li>Negative lookahead: prefix <code>-</code></li>
+<li>Option (zero or one time): postfix <code>[:?]</code> (≡ <code>[0:1]</code>)
+<ul>
+<li>(note that [?] won't work in Julia &gt;= 1.0 per JuliaLang/julia#22712)</li>
+</ul>
+</li>
+<li>Zero or more times: postfix <code>[*]</code> (≡ <code>[0:end]</code>)</li>
+<li>One or more times: postfix <code>[+]</code> (≡ <code>[1:end]</code>)</li>
+<li>Exactly <code>m</code> times: postfix <code>[m]</code> (≡ <code>[m:m]</code>) (where m is an integer)</li>
+<li>Between <code>m</code> and <code>n</code> times inclusive: postfix <code>[m:n]</code></li>
+<li>At most <code>n</code> times: postfix <code>[0:n]</code></li>
+<li>At least <code>m</code> times: postfix <code>[m:end]</code></li>
+<li>Terminals: <code>r"regex"</code>, <code>"string"</code>
+<ul>
+<li>Extra regex flags: <code>p</code> is for punctuation, and eats whitespace (<code>\s*</code>)
+after the match; <code>w</code> is for word, and implies <code>p</code>, but also makes sure
+match boundaries are word boundaries (<code>\b</code>); <code>h</code> modifies <code>p</code> and <code>w</code> to
+eat only horizontal whitespace (<code>\h</code>). Values passed to semantics functions
+exclude eaten whitespace.</li>
+</ul>
+</li>
+<li>Semantics: <code>expression |&gt; unary_function</code> (like ParserCombinator)
+<ul>
+<li>or <code>expression &gt; nary_function</code> to interpolate args.</li>
+<li>Returning the special singleton value <code>PEG.Failure()</code> from a semantics
+function causes the parsing expression it's attached to to fail (return
+<code>nothing</code> instead of a tuple). Returning <code>nothing</code> from a semantics
+function is not special; it just makes the first part of the tuple
+<code>nothing</code>. See the parsing function signature below.</li>
+</ul>
+</li>
+</ul>
+<p>Put another way:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> PEG
+<span class="pl-c1">@rule</span> grammar <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>using PEG<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> <span class="pl-k">&amp;</span> rule[<span class="pl-k">*</span>]
+<span class="pl-c1">@rule</span> rule <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span>@rule<span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> nonterminal <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span>=<span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> choice
+<span class="pl-c1">@rule</span> choice <span class="pl-k">=</span> seq <span class="pl-k">&amp;</span> (<span class="pl-sr"><span class="pl-pds">r"</span>,<span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> seq)[<span class="pl-k">*</span>]
+<span class="pl-c1">@rule</span> seq <span class="pl-k">=</span> item <span class="pl-k">&amp;</span> (<span class="pl-sr"><span class="pl-pds">r"</span>&amp;<span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> item)[<span class="pl-k">*</span>] <span class="pl-k">&amp;</span> (<span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\|</span>?&gt;<span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> julia_function)[:?]
+<span class="pl-c1">@rule</span> item <span class="pl-k">=</span> lookahead , counted
+<span class="pl-c1">@rule</span> lookahead <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\(</span><span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> (<span class="pl-sr"><span class="pl-pds">r"</span>[+-]<span class="pl-pds">"</span></span>p) <span class="pl-k">&amp;</span> seq <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\)</span><span class="pl-pds">"</span></span>p
+<span class="pl-c1">@rule</span> counted <span class="pl-k">=</span> single <span class="pl-k">&amp;</span> (count)[:?]
+<span class="pl-c1">@rule</span> count <span class="pl-k">=</span> range , <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\[</span><span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> (<span class="pl-s"><span class="pl-pds">"</span>:?<span class="pl-pds">"</span></span> , <span class="pl-sr"><span class="pl-pds">r"</span>[<span class="pl-cce">\*\+</span>]<span class="pl-pds">"</span></span>p) <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span>]<span class="pl-pds">"</span></span>p
+<span class="pl-c1">@rule</span> range <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\[</span><span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> integer <span class="pl-k">&amp;</span> (<span class="pl-sr"><span class="pl-pds">r"</span>:<span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> (integer , <span class="pl-sr"><span class="pl-pds">r"</span>end<span class="pl-pds">"</span></span>w))[:?] <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span>]<span class="pl-pds">"</span></span>p
+<span class="pl-c1">@rule</span> integer <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\d</span>+<span class="pl-pds">"</span></span>w
+<span class="pl-c1">@rule</span> single <span class="pl-k">=</span> parens , terminal , nonterminal
+<span class="pl-c1">@rule</span> parens <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\(</span><span class="pl-pds">"</span></span>p <span class="pl-k">&amp;</span> choice <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\)</span><span class="pl-pds">"</span></span>p
+<span class="pl-c1">@rule</span> nonterminal <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\p</span>L<span class="pl-cce">\w</span>+<span class="pl-pds">"</span></span>w
+<span class="pl-c1">@rule</span> terminal <span class="pl-k">=</span> regex , string <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\s</span>*<span class="pl-pds">"</span></span>
+<span class="pl-c1">@rule</span> regex <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\b</span>r<span class="pl-pds">"</span></span> <span class="pl-k">&amp;</span> string <span class="pl-k">&amp;</span> <span class="pl-sr"><span class="pl-pds">r"</span>[himpswx]*<span class="pl-cce">\s</span>*<span class="pl-pds">"</span></span>
+<span class="pl-c1">@rule</span> string <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\"</span>(<span class="pl-cce">\\</span>.|[^<span class="pl-cce">\"</span>])*<span class="pl-cce">\"</span><span class="pl-pds">"</span></span>
+<span class="pl-c1">@rule</span> julia_function <span class="pl-k">=</span> <span class="pl-c"><span class="pl-c">#</span> left as an exercise ;)</span></pre></div>
+<p>Each rule defines a parsing function with the following signature:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">nonterminal</span>(input<span class="pl-k">::</span><span class="pl-c1">T</span>, cache<span class="pl-k">=</span>PEG<span class="pl-k">.</span><span class="pl-c1">Cache</span>()) <span class="pl-k">where</span> T <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractString</span>
+  <span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Tuple{Any,SubString}}</span></pre></div>
+<p>The <code>Any</code> part of the return value is the abstract syntax tree, while the
+<code>SubString</code> is the remaining input after the parsed portion. If parsing fails,
+<code>nothing</code> is returned.</p>
+<p>While you can use rules defined in this way directly, it might be more
+convenient to use the functions <code>parse_next(rule, input; whole=false)</code> or
+<code>parse_whole(rule, input)</code>. See their documentation for more information.</p>
+<p>Call <code>PEG.setdebug!()</code> to have debugging information printed during parsing.
+Call <code>PEG.setdebug!(false)</code> to turn it off again.</p>
+<h2><a id="user-content-versus-parsercombinator" class="anchor" aria-hidden="true" href="#versus-parsercombinator"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Versus <a href="https://github.com/andrewcooke/ParserCombinator.jl">ParserCombinator</a></h2>
+<p>PEG...</p>
+<ul>
+<li>is simpler/less featureful. PEG does not:
+<ul>
+<li>backtrack, except within regexen and to try the next choice (<code>,</code>). That is,
+repetition <code>[]</code> is always greedy and possessive (to use PCRE terminology).</li>
+<li>have <code>Empty(x)</code>/<code>@e_str</code>. Use semantics functions to discard values.</li>
+<li>have <code>Dot()</code>. Use <code>r"."</code>.</li>
+<li>have <code>Eos()</code>. Use <code>parse_whole</code>.</li>
+<li>parse streams. Use <code>open(x-&gt;parse_whole(rule, read(x, String)), args...)</code>.</li>
+<li>include parsers for two random languages.</li>
+</ul>
+</li>
+<li>has nicer syntax:
+<ul>
+<li>Operator precedence makes sense. Tight to loose, the operators are: postfix
+<code>[]</code> (whatever is in the brackets), prefix <code>+</code>/<code>-</code>, infix <code>&amp;</code>, <code>|&gt;</code>/<code>&gt;</code>,
+<code>,</code>.</li>
+<li>PC's <code>Plus(x)</code> and <code>Star(x)</code> become actual plusses and stars: <code>x[+]</code> and
+<code>x[*]</code>. And PEG has <code>x[:?]</code> too.</li>
+<li><code>Equal</code>/<code>@e_str</code> and <code>Pattern</code>/<code>@p_str</code> are unneccessary, just use bare
+strings and regexen (with extra flags).</li>
+</ul>
+</li>
+<li>does not require mutual recursion loops to be broken with <code>Delayed()</code>.</li>
+<li>does not have special types for matchers/rules, and does not require a
+trampoline to "interpret" them. They're just plain functions you can call
+directly.</li>
+</ul>
+<h2><a id="user-content-migrating-from-peg-02-to-peg-10" class="anchor" aria-hidden="true" href="#migrating-from-peg-02-to-peg-10"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Migrating from PEG 0.2 to PEG 1.0</h2>
+<p>PEG 0.2 works with julia 0.6, while PEG 1.0 works with julia 1.0 (and julia
+0.7). Julia 1.0 has a number of differences from julia 0.7 that required some
+changes to PEG, which will in turn require some minor syntactic changes to any
+grammars written with PEG 0.2 if you want to use them with PEG 1.0/julia 1.0.</p>
+<ul>
+<li>change <code>&gt;&gt;</code> to <code>|&gt;</code></li>
+<li>change <code>&gt;&gt;&gt;</code> to <code>&gt;</code></li>
+<li>change <code>|</code> to <code>,</code>
+<ul>
+<li>Note that this also makes it so you don't have to put parens around your
+lambda expressions.</li>
+</ul>
+</li>
+<li>change <code>[?]</code> to <code>[:?]</code></li>
+</ul>
+<p>There are some other changes outside the grammar syntax as well:</p>
+<ul>
+<li>If you were doing this to parse a stream as previously suggested:
+<ul>
+<li><code>open(x-&gt;parse_whole(rule, readstring(x)), args...)</code></li>
+</ul>
+</li>
+<li>now you should do this instead:
+<ul>
+<li><code>open(x-&gt;parse_whole(rule, read(x, String)), args...)</code></li>
+</ul>
+</li>
+<li>change <code>Void</code> to <code>Nothing</code></li>
+<li>change <code>ParseError</code> to <code>Meta.ParseError</code></li>
+</ul>
+<p>Also note that <code>PEG.Failure</code> is now an immutable type (<code>struct</code>). That
+shouldn't really matter because it has no fields, but it is still technically a
+visible change; <code>isbits(PEG.Failure())</code> is now <code>true</code> where before it was
+<code>false</code>.</p>
+</article></div>

@@ -1,0 +1,504 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-sugarblas" class="anchor" aria-hidden="true" href="#sugarblas"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SugarBLAS</h1>
+<p><a href="https://codecov.io/gh/lopezm94/SugarBLAS.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/5dea68cef204ed288a08f56d350a940cbe442b39/68747470733a2f2f636f6465636f762e696f2f67682f6c6f70657a6d39342f5375676172424c41532e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov" data-canonical-src="https://codecov.io/gh/lopezm94/SugarBLAS.jl/coverage.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://travis-ci.org/lopezm94/SugarBLAS.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/168e30705c2d363c8591d5d9fc021b03ade54273/68747470733a2f2f7472617669732d63692e6f72672f6c6f70657a6d39342f5375676172424c41532e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/lopezm94/SugarBLAS.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><code>BLAS</code> functions are unaesthetic and annoying without good knowledge of the positional
+arguments. This package provides macros for <code>BLAS</code> functions representing polynomials.
+The main macro of the package is <code>@blas!</code> for most of the use cases: <code>copy!</code>, <code>scale!</code> and <code>axpy!</code>.
+Non mutable versions of this operator are already very easy to write so they are not included.</p>
+<p>The macros will output a function from <code>BASE</code> module, this allows defining
+new behavior for custom types. Note that the output won't necessarily belong to the
+julia <code>BLAS</code> API, e.g. <code>copy!</code> is used instead of <code>BASE.LinAlg.BLAS.blascopy!</code> for better performance.</p>
+<p>For now the package supports the most common BLAS functions from the internal API. The access for these functions is private since the official API is private aswell and may change in the future.</p>
+<p>This documentation offers great examples but is by no means super extensive, for more examples check the test folder of the repository.</p>
+<h2><a id="user-content-installing" class="anchor" aria-hidden="true" href="#installing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installing</h2>
+<p>To install the package, use the following command inside Julia's REPL:</p>
+<div class="highlight highlight-source-julia"><pre>Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>SugarBLAS<span class="pl-pds">"</span></span>)</pre></div>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p><code>@blas!</code> matches the expression and decides which function to call. As long as
+it is correctly parenthesized putting more variables won't be an issue.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">=</span> (a<span class="pl-k">*</span>b <span class="pl-k">+</span>c)<span class="pl-k">*</span>(X<span class="pl-k">*</span>Z) <span class="pl-k">+</span> Y))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span><span class="pl-c1">axpy!</span>(a <span class="pl-k">*</span> b <span class="pl-k">+</span> c,X <span class="pl-k">*</span> Z,Y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> X <span class="pl-k">=</span> (a<span class="pl-k">+</span>c)<span class="pl-k">*</span>X))
+:(<span class="pl-c1">scale!</span>(a <span class="pl-k">+</span> c,X))</pre></div>
+<p>When doing this just imagine the BLAS expression.</p>
+<div class="highlight highlight-source-julia"><pre>Y <span class="pl-k">=</span> a<span class="pl-k">*</span>X <span class="pl-k">+</span> Y
+<span class="pl-k">-&gt;</span>
+a <span class="pl-k">:=</span> (a<span class="pl-k">*</span>b <span class="pl-k">+</span>c); X <span class="pl-k">:=</span> (X<span class="pl-k">*</span>Z)
+<span class="pl-k">-&gt;</span>
+Y <span class="pl-k">=</span> (a<span class="pl-k">*</span>b <span class="pl-k">+</span>c)<span class="pl-k">*</span>(X<span class="pl-k">*</span>Z) <span class="pl-k">+</span> Y</pre></div>
+<h3><a id="user-content-updating-operators" class="anchor" aria-hidden="true" href="#updating-operators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Updating operators</h3>
+<p>Both <code>*=</code> and <code>+=</code> are supported. <code>*=</code> can only be used for scaling given that is pretty unambigous.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">+=</span> X)) <span class="pl-k">==</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">=</span> Y <span class="pl-k">+</span> X))
+<span class="pl-c1">true</span></pre></div>
+<h3><a id="user-content-commutativity" class="anchor" aria-hidden="true" href="#commutativity"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Commutativity</h3>
+<p><code>+</code> is assumed as the only commutative operator, it is important to note here
+that <code>*</code> is not treated as commutative and therefore some expressions will lead
+to errors.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> a <span class="pl-k">=</span> <span class="pl-c1">2.3</span>;
+
+julia<span class="pl-k">&gt;</span> X <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>,<span class="pl-c1">10</span>);
+
+julia<span class="pl-k">&gt;</span> Y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>,<span class="pl-c1">10</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@blas!</span> Y <span class="pl-k">+=</span> X<span class="pl-k">*</span>a
+ERROR<span class="pl-k">:</span> MethodError<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">`</span>axpy!<span class="pl-pds">`</span></span> has no method matching <span class="pl-c1">axpy!</span>(<span class="pl-k">::</span><span class="pl-c1">Array{Float64,2}</span>, <span class="pl-k">::</span><span class="pl-c1">Float64</span>, <span class="pl-k">::</span><span class="pl-c1">Array{Float64,2}</span>)</pre></div>
+<p>The package assumes types by its position in the multiplication, this doesn't happen
+with addition and that's why it conserves its property.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">=</span> X <span class="pl-k">+</span> Y)) <span class="pl-k">==</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">=</span> Y <span class="pl-k">+</span> X))
+<span class="pl-c1">true</span></pre></div>
+<h2><a id="user-content-macros" class="anchor" aria-hidden="true" href="#macros"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Macros</h2>
+<h3><a id="user-content-blas" class="anchor" aria-hidden="true" href="#blas"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><a href="#blas-1"><em>blas!</em></a></h3>
+<ul>
+<li><a href="#scale">scale!</a></li>
+<li><a href="#axpy">axpy!</a></li>
+<li><a href="#copy">copy!</a></li>
+</ul>
+<h3><a id="user-content-internal-api" class="anchor" aria-hidden="true" href="#internal-api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><a href="#internal-api-1"><em>Internal API</em></a></h3>
+<ul>
+<li><a href="#scale-1">scale!</a></li>
+<li><a href="#axpy-1">axpy!</a></li>
+<li><a href="#copy-1">copy!</a></li>
+<li><a href="#ger">ger!</a></li>
+<li><a href="#syr">syr!</a></li>
+<li><a href="#syrk">syrk</a></li>
+<li><a href="#syrk-1">syrk!</a></li>
+<li><a href="#her">her!</a></li>
+<li><a href="#herk">herk</a></li>
+<li><a href="#herk-1">herk!</a></li>
+<li><a href="#gbmv">gbmv</a></li>
+<li><a href="#gbmv-1">gbmv!</a></li>
+<li><a href="#sbmv">sbmv</a></li>
+<li><a href="#sbmv-1">sbmv!</a></li>
+<li><a href="#gemm">gemm</a></li>
+<li><a href="#gemm-1">gemm!</a></li>
+<li><a href="#gemv">gemv</a></li>
+<li><a href="#gemv-1">gemv!</a></li>
+<li><a href="#symm">symm</a></li>
+<li><a href="#symm-1">symm!</a></li>
+<li><a href="#symv">symv</a></li>
+<li><a href="#symv-1">symv!</a></li>
+</ul>
+<h2><a id="user-content-blas-1" class="anchor" aria-hidden="true" href="#blas-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>blas!</em></h2>
+<p>Macro for most of the use cases: <code>copy!</code>, <code>scale!</code> and <code>axpy!</code></p>
+<h3><a id="user-content-scale" class="anchor" aria-hidden="true" href="#scale"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>scale!</em></h3>
+<p>Scale an array <code>X</code> by a scalar <code>a</code> overwriting <code>X</code> in-place.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>X *= a</code></li>
+<li><code>X = a*X</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> X <span class="pl-k">*=</span> a))
+:(<span class="pl-c1">scale!</span>(a,X))</pre></div>
+<h3><a id="user-content-axpy" class="anchor" aria-hidden="true" href="#axpy"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>axpy!</em></h3>
+<p>Overwrite <code>Y</code> with <code>a*X + Y</code>. Return <code>Y</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>Y += X</code></li>
+<li><code>Y += a*X</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">+=</span> X))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span><span class="pl-c1">axpy!</span>(<span class="pl-c1">1.0</span>,X,Y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> Y <span class="pl-k">+=</span> a<span class="pl-k">*</span>X))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span><span class="pl-c1">axpy!</span>(a,X,Y))</pre></div>
+<h3><a id="user-content-copy" class="anchor" aria-hidden="true" href="#copy"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>copy!</em></h3>
+<p>Copy all elements from collection <code>Y</code> to array <code>X</code>. Return <code>X</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>X = Y</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(<span class="pl-c1">@blas!</span> X <span class="pl-k">=</span> Y))
+:(<span class="pl-c1">copy!</span>(X,Y))</pre></div>
+<h2><a id="user-content-internal-api-1" class="anchor" aria-hidden="true" href="#internal-api-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>Internal API</em></h2>
+<p>Macro for most of the functions available in the JuliaLang internal BLAS API.</p>
+<h3><a id="user-content-scale-1" class="anchor" aria-hidden="true" href="#scale-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>scale!</em></h3>
+<p>Scale an array <code>X</code> by a scalar <code>a</code> overwriting <code>X</code> in-place.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>X *= a</code></li>
+<li><code>X = a*X</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@scale!</span> X <span class="pl-k">*=</span> a))
+:(<span class="pl-c1">scale!</span>(a,X))</pre></div>
+<h3><a id="user-content-axpy-1" class="anchor" aria-hidden="true" href="#axpy-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>axpy!</em></h3>
+<p>Overwrite <code>Y</code> with <code>a*X + Y</code>. Return <code>Y</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>Y ±= X</code></li>
+<li><code>Y ±= a*X</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@axpy!</span> Y <span class="pl-k">+=</span> X))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span><span class="pl-c1">axpy!</span>(<span class="pl-c1">1.0</span>,X,Y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@axpy!</span> Y <span class="pl-k">+=</span> a<span class="pl-k">*</span>X))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span><span class="pl-c1">axpy!</span>(a,X,Y))</pre></div>
+<h3><a id="user-content-copy-1" class="anchor" aria-hidden="true" href="#copy-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>copy!</em></h3>
+<p>Copy all elements from collection <code>Y</code> to array <code>X</code>. Return <code>X</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>X = Y</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@copy!</span> X <span class="pl-k">=</span> Y))
+:(<span class="pl-c1">copy!</span>(X,Y))</pre></div>
+<h3><a id="user-content-ger" class="anchor" aria-hidden="true" href="#ger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>ger!</em></h3>
+<p>Rank-1 update of the matrix <code>A</code> with vectors <code>x</code> and <code>y</code> as <code>alpha*x*y' + A</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A ±= alpha*x*y'</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@ger!</span> A <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>y<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">ger!</span>(<span class="pl-k">-</span>alpha,x,y,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@ger!</span> A <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>y<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">ger!</span>(alpha,x,y,A))</pre></div>
+<h3><a id="user-content-syr" class="anchor" aria-hidden="true" href="#syr"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>syr!</em></h3>
+<p>Rank-1 update of the symmetric matrix <code>A</code> with vector <code>x</code> as <code>alpha*x*(x)ᵀ + A</code>.
+When left side has <code>A['U']</code> the upper triangle of <code>A</code> is updated (<code>'L'</code> for lower
+triangle). Return <code>A</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A[uplo] ±= alpha*x*(x)ᵀ</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syr!</span> A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>(x)ᵀ))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syr!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,x,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syr!</span> A[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>(x)ᵀ))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syr!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,alpha,x,A))</pre></div>
+<h3><a id="user-content-syrk" class="anchor" aria-hidden="true" href="#syrk"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>syrk</em></h3>
+<p>Return either the upper triangle or the lower triangle, depending on
+(<code>'U'</code> or <code>'L'</code>), of <code>alpha*A*(A)ᵀ</code> or <code>alpha*(A)ᵀ*A</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>alpha*A*(A)ᵀ uplo=ul</code></li>
+<li><code>alpha*(A)ᵀ*A uplo=ul</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syrk</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>(A)ᵀ uplo<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syrk</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syrk</span> alpha<span class="pl-k">*</span>(A)ᵀ<span class="pl-k">*</span>A uplo<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syrk</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,alpha,A))</pre></div>
+<h3><a id="user-content-syrk-1" class="anchor" aria-hidden="true" href="#syrk-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>syrk!</em></h3>
+<p>Rank-k update of the symmetric matrix <code>C</code> as <code>alpha*A*(A)ᵀ + beta*C</code> or
+<code>alpha*(A)ᵀ*A + beta*C</code>. When the left hand side is<code>C['U']</code> the upper triangle of <code>C</code>
+is updated (<code>'L'</code> for lower triangle). Return <code>C</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>C[uplo] ±= alpha*A*(A)ᵀ</code></li>
+<li><code>C[uplo] = beta*C ± alpha*(A)ᵀ*A</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syrk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>(A)ᵀ))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syrk!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syrk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">=</span> beta<span class="pl-k">*</span>C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>(A)ᵀ<span class="pl-k">*</span>A))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syrk!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,beta,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syrk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>(A)ᵀ))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syrk!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@syrk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">=</span> alpha<span class="pl-k">*</span>(A)ᵀ<span class="pl-k">*</span>A <span class="pl-k">+</span> beta<span class="pl-k">*</span>C))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">syrk!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,alpha,A,beta,C))</pre></div>
+<h3><a id="user-content-her" class="anchor" aria-hidden="true" href="#her"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>her!</em></h3>
+<p>Methods for complex arrays only. Rank-1 update of the Hermitian matrix <code>A</code>
+with vector <code>x</code> as <code>alpha*x*x' + A</code>. Whenthe left hand side is <code>A['U']</code>
+the upper triangle of <code>A</code> is updated (<code>'L'</code> for lower triangle). Return <code>A</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A[uplo] ±= alpha*x*x'</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@her!</span> A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>x<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">her!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,x,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@her!</span> A[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">=</span> A <span class="pl-k">-</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>x<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">her!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,x,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@her!</span> A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>x<span class="pl-k">*</span>x<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">her!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,alpha,x,A))</pre></div>
+<h3><a id="user-content-herk" class="anchor" aria-hidden="true" href="#herk"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>herk</em></h3>
+<p>Methods for complex arrays only. Returns either the upper triangle or the
+lower triangle, according to uplo ('U' or 'L'), of alpha<em>A</em>A' or alpha*A'*A,
+according to trans ('N' or 'T').</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>alpha*A*A' uplo=ul</code></li>
+<li><code>alpha*A'*A uplo=ul</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>A<span class="pl-k">'</span> uplo<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>A uplo<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,alpha,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>A<span class="pl-k">'</span> uplo<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>A uplo<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,alpha,A))</pre></div>
+<h3><a id="user-content-herk-1" class="anchor" aria-hidden="true" href="#herk-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>herk!</em></h3>
+<p>Methods for complex arrays only. Rank-k update of the Hermitian matrix <code>C</code> as
+<code>alpha*A*A' + beta*C</code> or <code>alpha*A'*A + beta*C</code>. When the left hand side is <code>C['U']</code>
+the upper triangle of <code>C</code> is updated (<code>'L'</code> for lower triangle). Return <code>C</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>C[uplo] ±= alpha*A*A'</code></li>
+<li><code>C[uplo] = beta*C ± alpha*A'*A</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>A))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">=</span> C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>A<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">=</span> beta<span class="pl-k">*</span>C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>A))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,beta,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>] <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>A<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@herk!</span> C[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>] <span class="pl-k">=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>A <span class="pl-k">+</span> beta<span class="pl-k">*</span>C))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">herk!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,alpha,A,beta,C))</pre></div>
+<h3><a id="user-content-gbmv" class="anchor" aria-hidden="true" href="#gbmv"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>gbmv</em></h3>
+<p>Return <code>alpha*A*x</code> or <code>alpha*A'*x</code>. The matrix <code>A</code> is a general band matrix
+of dimension <code>m</code> by <code>size(A,2)</code> with <code>kl</code> sub-diagonals and <code>ku</code> super-diagonals.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>alpha*A[kl:ku,h=m]*x</code></li>
+<li><code>alpha*A[h=m,kl:ku]'*x</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv</span> alpha<span class="pl-k">*</span>A[<span class="pl-c1">0</span><span class="pl-k">:</span>ku,h<span class="pl-k">=</span><span class="pl-c1">2</span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-c1">2</span>,<span class="pl-c1">0</span>,ku,alpha,A,x))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv</span> alpha<span class="pl-k">*</span>A[h<span class="pl-k">=</span>m,<span class="pl-k">-</span>kl<span class="pl-k">:</span>ku]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,m,kl,ku,alpha,A,x))</pre></div>
+<h3><a id="user-content-gbmv-1" class="anchor" aria-hidden="true" href="#gbmv-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>gbmv!</em></h3>
+<p>Update vector <code>y</code> as <code>alpha*A*x + beta*y</code> or <code>alpha*A'*x + beta*y</code>.
+The matrix <code>A</code> is a general band matrix of dimension <code>m</code> by <code>size(A,2)</code> with
+<code>kl</code> sub-diagonals and <code>ku</code> super-diagonals. Return the updated <code>y</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>y ±= alpha*A[kl:ku,h=m]*x</code></li>
+<li><code>y = beta*y ± alpha*A[h=m,kl:ku]'*x</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv!</span> y <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A[h<span class="pl-k">=</span>m,<span class="pl-k">-</span>kl<span class="pl-k">:</span>ku]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,m,kl,ku,<span class="pl-k">-</span>alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+<span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv!</span> y <span class="pl-k">=</span> beta<span class="pl-k">*</span>y <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A[h<span class="pl-k">=</span><span class="pl-c1">2</span>, <span class="pl-c1">0</span><span class="pl-k">:</span>ku]'<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-c1">2</span>,<span class="pl-c1">0</span>,ku,<span class="pl-k">-</span>alpha,A,x,beta,y))
+
+<span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv!</span> y <span class="pl-k">=</span> alpha<span class="pl-k">*</span>A[<span class="pl-c1">0</span><span class="pl-k">:</span>ku,h<span class="pl-k">=</span><span class="pl-c1">2</span>]<span class="pl-k">*</span>x <span class="pl-k">+</span> y))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-c1">2</span>,<span class="pl-c1">0</span>,ku,alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+<span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv!</span> y <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>A[h<span class="pl-k">=</span>m,<span class="pl-k">-</span>kl<span class="pl-k">:</span>ku]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,m,kl,ku,alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+<span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gbmv!</span> y <span class="pl-k">=</span> alpha<span class="pl-k">*</span>A[kl<span class="pl-k">:</span>ku, h<span class="pl-k">=</span>m]'<span class="pl-k">*</span>x <span class="pl-k">+</span> beta<span class="pl-k">*</span>y))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,m,<span class="pl-k">-</span>kl,ku,alpha,A,x,beta,y))</pre></div>
+<h3><a id="user-content-sbmv" class="anchor" aria-hidden="true" href="#sbmv"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>sbmv</em></h3>
+<p>Return <code>alpha*A*x</code> where <code>A</code> is a symmetric band matrix of order <code>size(A,2)</code> with
+<code>k</code> super-diagonals stored in the argument <code>A</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A[0:k,uplo]*xv</code></li>
+<li><code>alpha*A[0:k,uplo]*x</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv</span> A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-c1">0</span><span class="pl-k">:</span>k]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,k,A,x))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv</span> alpha<span class="pl-k">*</span>A[<span class="pl-c1">0</span><span class="pl-k">:</span>k,<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,k,alpha,A,x))</pre></div>
+<h3><a id="user-content-sbmv-1" class="anchor" aria-hidden="true" href="#sbmv-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>sbmv!</em></h3>
+<p>Update vector <code>y</code> as <code>alpha*A*x + beta*y</code> where <code>A</code> is a a symmetric band matrix
+of order <code>size(A,2)</code> with <code>k</code> super-diagonals stored in the argument <code>A</code>. If
+<code>A[...,'U']</code> is used multiplication is done with <code>A</code>'s upper triangle, <code>L</code> is for the
+lower triangle. Return updated <code>y</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>y ±= alpha*A[0:k,uplo]*x</code></li>
+<li><code>y = beta*y ± alpha*A[0:k,uplo]*x</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv!</span> y <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-c1">0</span><span class="pl-k">:</span>k]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,k,<span class="pl-k">-</span>alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv!</span> y <span class="pl-k">=</span> beta<span class="pl-k">*</span>y <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A[<span class="pl-c1">0</span><span class="pl-k">:</span>k,<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,k,<span class="pl-k">-</span>alpha,A,x,beta,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv!</span> y <span class="pl-k">=</span> beta<span class="pl-k">*</span>y <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A[<span class="pl-c1">0</span><span class="pl-k">:</span>k,<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,k,<span class="pl-k">-</span>alpha,A,x,beta,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv!</span> y <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>A[<span class="pl-c1">0</span><span class="pl-k">:</span>k,<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,k,alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@sbmv!</span> y <span class="pl-k">=</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-c1">0</span><span class="pl-k">:</span>k]<span class="pl-k">*</span>x <span class="pl-k">+</span> beta<span class="pl-k">*</span>y))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">sbmv!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,k,alpha,A,x,beta,y))</pre></div>
+<h3><a id="user-content-gemm" class="anchor" aria-hidden="true" href="#gemm"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>gemm</em></h3>
+<p>Return <code>alpha*A*B</code>, <code>alpha*A'*B</code>, <code>alpha*A*B'</code> or <code>alpha*A'*B'</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A*B</code></li>
+<li><code>A'*B</code></li>
+<li><code>A*B'</code></li>
+<li><code>A'*B'</code></li>
+<li><code>alpha*A*B</code></li>
+<li><code>alpha*A'*B</code></li>
+<li><code>alpha*A*B'</code></li>
+<li><code>alpha*A'*B'</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,B))
+
+<span class="pl-c1">@test</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm</span> A<span class="pl-k">*</span>B<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,A,B))</pre></div>
+<h3><a id="user-content-gemm-1" class="anchor" aria-hidden="true" href="#gemm-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>gemm!</em></h3>
+<p>Update <code>C</code> as <code>alpha*A*B + beta*C</code> or the other three variants according to the
+combination of transposes of <code>A</code> and <code>B</code>. Return updated C.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>C ±= alpha*A*B</code></li>
+<li><code>C ±= alpha*A'*B</code></li>
+<li><code>C ±= alpha*A*B'</code></li>
+<li><code>C ±= alpha*A'*B'</code></li>
+<li><code>C = beta*C ± alpha*A*B</code></li>
+<li><code>C = beta*C ± alpha*A'*B</code></li>
+<li><code>C = beta*C ± alpha*A*B'</code></li>
+<li><code>C = beta*C ± alpha*A'*B'</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm!</span> C <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,B,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm!</span> C <span class="pl-k">=</span> beta<span class="pl-k">*</span>C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,B,beta,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm!</span> C <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,B,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm!</span> C <span class="pl-k">=</span> <span class="pl-c1">3.4</span><span class="pl-k">*</span>C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>B<span class="pl-k">'</span>))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm!</span>(<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,B,<span class="pl-c1">3.4</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemm!</span> C <span class="pl-k">=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>B <span class="pl-k">+</span> beta<span class="pl-k">*</span>C))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemm!</span>(<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,B,beta,C))</pre></div>
+<h3><a id="user-content-gemv" class="anchor" aria-hidden="true" href="#gemv"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>gemv</em></h3>
+<p>Return <code>alpha*A*x</code> or <code>alpha*A'*x</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A*x</code></li>
+<li><code>A'*x</code></li>
+<li><code>alpha*A*x</code></li>
+<li><code>alpha*A'*x</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv</span> A<span class="pl-k">'</span><span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv</span>(<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,A,x))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,x))</pre></div>
+<h3><a id="user-content-gemv-1" class="anchor" aria-hidden="true" href="#gemv-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>gemv!</em></h3>
+<p>Update the vector <code>y</code> as <code>alpha*A*x + beta*y</code> or <code>alpha*A'*x + beta*y</code>.
+Return updated <code>y</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>y ±= alpha*A*x</code></li>
+<li><code>y ±= alpha*A'*x</code></li>
+<li><code>y = beta*y ± alpha*A*x</code></li>
+<li><code>y = beta*y ± alpha*A'*x</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv!</span> y <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv!</span> y <span class="pl-k">=</span> beta<span class="pl-k">*</span>y <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,x,beta,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv!</span> y <span class="pl-k">=</span> beta<span class="pl-k">*</span>y <span class="pl-k">-</span> <span class="pl-c1">1.5</span><span class="pl-k">*</span>A<span class="pl-k">'</span><span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv!</span>(<span class="pl-s"><span class="pl-pds">'</span>T<span class="pl-pds">'</span></span>,<span class="pl-k">-</span><span class="pl-c1">1.5</span>,A,x,beta,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv!</span> y <span class="pl-k">+=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@gemv!</span> y <span class="pl-k">=</span> alpha<span class="pl-k">*</span>A<span class="pl-k">*</span>x <span class="pl-k">+</span> beta<span class="pl-k">*</span>y))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">gemv!</span>(<span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span>,alpha,A,x,beta,y))</pre></div>
+<h3><a id="user-content-symm" class="anchor" aria-hidden="true" href="#symm"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>symm</em></h3>
+<p>Return <code>alpha*A*B</code> or <code>alpha*B*A</code> according to <code>"symm"</code>. <code>A</code> is assumed to be
+symmetric. Only the <code>uplo</code> triangle of <code>A</code> is used (<code>'L'</code> for lower and <code>'U'</code> for upper).</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A["symm", uplo]*B</code></li>
+<li><code>A*B["symm", uplo]</code></li>
+<li><code>alpha*A["symm", uplo]*B </code></li>
+<li><code>alpha*A*B["symm", uplo]</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symm</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">"</span>symm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symm</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,alpha,A,B))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symm</span> A<span class="pl-k">*</span>B[<span class="pl-s"><span class="pl-pds">"</span>symm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>]))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symm</span>(<span class="pl-s"><span class="pl-pds">'</span>R<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,A,B))</pre></div>
+<h3><a id="user-content-symm-1" class="anchor" aria-hidden="true" href="#symm-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>symm!</em></h3>
+<p>Update <code>C</code> as <code>alpha*A*B + beta*C</code> or <code>alpha*B*A + beta*C</code> according to <code>"symm"</code>.
+<code>A</code> is assumed to be symmetric. Only the <code>uplo</code> triangle of <code>A</code> is used
+(<code>'L'</code> for lower and <code>'U'</code> for upper). Return updated <code>C</code>.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>C = alpha*A["symm",uplo]*B</code></li>
+<li><code>C = alpha*A*B["symm",uplo]</code></li>
+<li><code>C = beta*C ± alpha*A["symm",uplo]*B</code></li>
+<li><code>C = beta*C ± alpha*A*B["symm",uplo]</code></li>
+</ul>
+<p><strong>Example</strong></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symm!</span> C <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">"</span>symm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symm!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,B,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symm!</span> C <span class="pl-k">=</span> C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">"</span>symm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symm!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,B,<span class="pl-c1">1.0</span>,C))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symm!</span> C <span class="pl-k">=</span> beta<span class="pl-k">*</span>C <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">"</span>symm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>B))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symm!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,B,beta,C))</pre></div>
+<h3><a id="user-content-symv" class="anchor" aria-hidden="true" href="#symv"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>symv</em></h3>
+<p>Return <code>alpha*A*x</code>. <code>A</code> is assumed to be symmetric. Only the <code>uplo</code> triangle of <code>A</code>
+is used (<code>'L'</code> for lower and <code>'U'</code> for upper).</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>A[uplo]*x</code></li>
+<li><code>alpha*A[uplo]*x</code></li>
+</ul>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symv</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symv</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,alpha,A,x))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symv</span> A[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symv</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,A,x))</pre></div>
+<h3><a id="user-content-symv-1" class="anchor" aria-hidden="true" href="#symv-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><em>symv!</em></h3>
+<p>Update the vector <code>y</code> as <code>alpha*A*x + beta*y</code>. <code>A</code> is assumed to be symmetric.
+Only the <code>uplo</code> triangle of <code>A</code> is used (<code>'L'</code> for lower and <code>'U'</code> for upper).
+Return updated y.</p>
+<p><strong>Polynomials</strong></p>
+<ul>
+<li><code>y ±= alpha*A[uplo]*x</code></li>
+<li><code>y = beta*y ± alpha*A[uplo]*x</code></li>
+</ul>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symv!</span> y <span class="pl-k">-=</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symv!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symv!</span> y <span class="pl-k">=</span> y <span class="pl-k">-</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symv!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,x,<span class="pl-c1">1.0</span>,y))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">macroexpand</span>(SugarBLAS, :(SugarBLAS<span class="pl-k">.</span><span class="pl-c1">@symv!</span> y <span class="pl-k">=</span> beta<span class="pl-k">*</span>y <span class="pl-k">+</span> alpha<span class="pl-k">*</span>A[<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>]<span class="pl-k">*</span>x))
+:(Base<span class="pl-k">.</span>LinAlg<span class="pl-k">.</span>BLAS<span class="pl-k">.</span><span class="pl-c1">symv!</span>(<span class="pl-s"><span class="pl-pds">'</span>U<span class="pl-pds">'</span></span>,<span class="pl-k">-</span>alpha,A,x,beta,y))</pre></div>
+</article></div>

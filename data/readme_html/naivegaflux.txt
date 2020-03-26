@@ -1,0 +1,590 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-naivegaflux" class="anchor" aria-hidden="true" href="#naivegaflux"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>NaiveGAflux</h1>
+<p><a href="https://travis-ci.com/DrChainsaw/NaiveGAflux.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/afb8eac6f99bd01940b2adcdcbbc2e21c8351df5/68747470733a2f2f7472617669732d63692e636f6d2f4472436861696e7361772f4e616976654741666c75782e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/DrChainsaw/NaiveGAflux.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://ci.appveyor.com/project/DrChainsaw/NaiveGAflux-jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6e2711e62ca8a77c8a852a16f5d853c54c1afaef/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6769746875622f4472436861696e7361772f4e616976654741666c75782e6a6c3f7376673d74727565" alt="Build Status" data-canonical-src="https://ci.appveyor.com/api/projects/status/github/DrChainsaw/NaiveGAflux.jl?svg=true" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/DrChainsaw/NaiveGAflux.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/23c9d8d1181c96590c1a6bfd700989f197bd4f1b/68747470733a2f2f636f6465636f762e696f2f67682f4472436861696e7361772f4e616976654741666c75782e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/DrChainsaw/NaiveGAflux.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>Neural architecture search for <a href="https://github.com/FluxML/Flux.jl">Flux</a> models using genetic algorithms.</p>
+<p>A marketing person might describe it as "practical proxyless NAS using an unrestricted search space".</p>
+<p>The more honest purpose is to serve as a pipe cleaner and example for <a href="https://github.com/DrChainsaw/NaiveNASflux.jl">NaiveNASflux</a> which is doing most of the heavy lifting.</p>
+<h2><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Basic Usage</h2>
+<div class="highlight highlight-source-julia"><pre>]add NaiveGAflux</pre></div>
+<p>The basic idea is to create not just one model, but a population of several candidate models with different hyperparameters. The whole population is then evolved while the models are being trained.</p>
+<table>
+<thead>
+<tr>
+<th align="center">MNIST</th>
+<th align="center">CIFAR10</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><a target="_blank" rel="noopener noreferrer" href="gif/MNIST.gif"><img src="gif/MNIST.gif" width="500" style="max-width:100%;"></a></td>
+<td align="center"><a target="_blank" rel="noopener noreferrer" href="gif/CIFAR10.gif"><img src="gif/CIFAR10.gif" width="500" style="max-width:100%;"></a></td>
+</tr>
+</tbody>
+</table>
+<p>More concretely, this means train each model for a number of iterations, evaluate the fitness of each model, select the ones with highest fitness, apply random mutations (e.g. add/remove neurons/layers) to some of them and repeat until a model with the desired fitness has been produced.</p>
+<p>By controlling the number of training iterations before evolving the population, it is possible tune the compromise between fully training each model at the cost of longer time to evolve versus the risk of discarding a model just because it trains slower than the other members.</p>
+<p>Like any self-respecting AutoML-type library, NaiveGAflux provides an application with a deceivingly simple API:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> NaiveGAflux<span class="pl-k">.</span>AutoFlux, MLDatasets
+
+models <span class="pl-k">=</span> <span class="pl-c1">fit</span>(CIFAR10<span class="pl-k">.</span><span class="pl-c1">traindata</span>())</pre></div>
+<p>It is possible (and strongly recommended) to supply a callback function which will receive the whole population of models as input after fitness for each generation has been calculated. A few useful functions are provided:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> NaiveGAflux, Plots
+<span class="pl-c"><span class="pl-c">#</span> Persist the whole population in directory models/CIFAR10 so that optimization can be resumed if aborted:</span>
+models <span class="pl-k">=</span> <span class="pl-c1">fit</span>(CIFAR10<span class="pl-k">.</span><span class="pl-c1">traindata</span>(), cb<span class="pl-k">=</span>persist, mdir<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>models/CIFAR10<span class="pl-pds">"</span></span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Plot best and average fitness for each generation</span>
+plotfitness <span class="pl-k">=</span> <span class="pl-c1">PlotFitness</span>(plot, <span class="pl-s"><span class="pl-pds">"</span>models/CIFAR10<span class="pl-pds">"</span></span>);
+<span class="pl-c"><span class="pl-c">#</span> Plot data will be serialized in a subdir of "models/CIFAR10" for later postprocessing and for resuming optimization.</span>
+models <span class="pl-k">=</span> <span class="pl-c1">fit</span>(CIFAR10<span class="pl-k">.</span><span class="pl-c1">traindata</span>(), cb<span class="pl-k">=</span>plotfitness, mdir<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>models/CIFAR10<span class="pl-pds">"</span></span>)
+
+
+<span class="pl-c"><span class="pl-c">#</span> Scatter plots from examples above:</span>
+scatterpop <span class="pl-k">=</span> <span class="pl-c1">ScatterPop</span>(scatter, <span class="pl-s"><span class="pl-pds">"</span>models/CIFAR10<span class="pl-pds">"</span></span>);
+scatteropt <span class="pl-k">=</span> <span class="pl-c1">ScatterOpt</span>(scatter, <span class="pl-s"><span class="pl-pds">"</span>models/CIFAR10<span class="pl-pds">"</span></span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Combine multiple plots in one figure:</span>
+multiplot <span class="pl-k">=</span> <span class="pl-c1">MultiPlot</span>(display <span class="pl-k">∘</span> plot, plotfitness, scatterpop, scatteropt)
+
+<span class="pl-c"><span class="pl-c">#</span> Combine multiple callbacks in one function:</span>
+callbacks <span class="pl-k">=</span> <span class="pl-c1">CbAll</span>(persist, multiplot)
+
+models <span class="pl-k">=</span> <span class="pl-c1">fit</span>(CIFAR10<span class="pl-k">.</span><span class="pl-c1">traindata</span>(), cb<span class="pl-k">=</span>callbacks, mdir<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>models/CIFAR10<span class="pl-pds">"</span></span>)</pre></div>
+<p>However, most non-toy uses cases will probably require a dedicated application. NaiveGAflux provides the components to make building it easy and fun!</p>
+<p>Tired of tuning hyperparameters? Once you've felt the rush from reasoning about hyper-hyperparameters there is no going back!</p>
+<p>This package has the following main components:</p>
+<ol>
+<li><a href="#search-spaces">Search spaces</a></li>
+<li><a href="#mutation">Mutation operations</a></li>
+<li><a href="#fitness-functions">Fitness functions</a></li>
+<li><a href="#candidate-utilities">Candidate utilities</a></li>
+<li><a href="#evolution-strategies">Evolution strategies</a></li>
+<li><a href="#iterators">Iterators</a></li>
+</ol>
+<p>Each component is described more in detail below.</p>
+<p>Here is a very basic example just to get a feeling for the package:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> NaiveGAflux, Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(NaiveGAflux<span class="pl-k">.</span>rng_default, <span class="pl-c1">0</span>)
+
+nlabels <span class="pl-k">=</span> <span class="pl-c1">3</span>
+ninputs <span class="pl-k">=</span> <span class="pl-c1">5</span>
+inshape <span class="pl-k">=</span> <span class="pl-c1">inputvertex</span>(<span class="pl-s"><span class="pl-pds">"</span>input<span class="pl-pds">"</span></span>, ninputs, <span class="pl-c1">FluxDense</span>())
+
+<span class="pl-c"><span class="pl-c">#</span> Step 1: Create initial models</span>
+layerspace <span class="pl-k">=</span> <span class="pl-c1">VertexSpace</span>(<span class="pl-c1">DenseSpace</span>(<span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">10</span>, [identity, relu, elu, selu]))
+initial_hidden <span class="pl-k">=</span> <span class="pl-c1">RepeatArchSpace</span>(layerspace, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+<span class="pl-c"><span class="pl-c">#</span> Output layer has fixed size and is shielded from mutation</span>
+outlayer <span class="pl-k">=</span> <span class="pl-c1">VertexSpace</span>(<span class="pl-c1">Shielded</span>(), <span class="pl-c1">DenseSpace</span>(nlabels, identity))
+initial_searchspace <span class="pl-k">=</span> <span class="pl-c1">ListArchSpace</span>(initial_hidden, outlayer)
+
+<span class="pl-c"><span class="pl-c">#</span> Sample 5 models from the initial search space</span>
+models <span class="pl-k">=</span> [<span class="pl-c1">CompGraph</span>(inshape, <span class="pl-c1">initial_searchspace</span>(inshape)) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>]
+<span class="pl-c1">@test</span> <span class="pl-c1">nv</span>.(models) <span class="pl-k">==</span> [<span class="pl-c1">3</span>, <span class="pl-c1">5</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">3</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Workaround as losses fail with Flux.OneHotMatrix on Appveyor x86</span>
+<span class="pl-en">onehot</span>(y) <span class="pl-k">=</span> <span class="pl-c1">Float32</span>.(Flux<span class="pl-k">.</span><span class="pl-c1">onehotbatch</span>(y, <span class="pl-c1">1</span><span class="pl-k">:</span>nlabels))
+
+<span class="pl-c"><span class="pl-c">#</span> Some dummy data just to make stuff run</span>
+batchsize <span class="pl-k">=</span> <span class="pl-c1">4</span>
+dataset <span class="pl-k">=</span> (<span class="pl-c1">randn</span>(ninputs, batchsize), <span class="pl-c1">onehot</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span>nlabels, batchsize)))
+
+<span class="pl-c"><span class="pl-c">#</span> Fitness function for evolution, loss function and optimizer for models</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Not recommended to measure fitness on the training data for real usage.</span>
+fitfun <span class="pl-k">=</span> <span class="pl-c1">AccuracyFitness</span>([dataset])
+opt <span class="pl-k">=</span> Flux<span class="pl-k">.</span><span class="pl-c1">Descent</span>(<span class="pl-c1">0.01</span>) <span class="pl-c"><span class="pl-c">#</span> All models use the same optimizer here. Would be a bad idea with a stateful optimizer!</span>
+loss <span class="pl-k">=</span> Flux<span class="pl-k">.</span>logitcrossentropy
+population <span class="pl-k">=</span> [<span class="pl-c1">CandidateModel</span>(model, opt, loss, fitfun) <span class="pl-k">for</span> model <span class="pl-k">in</span> models]
+
+<span class="pl-c"><span class="pl-c">#</span> Step 2: Train the models</span>
+<span class="pl-k">for</span> candidate <span class="pl-k">in</span> population
+    Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(candidate, dataset)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Step 3: Evolve the population</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Mutations</span>
+<span class="pl-en">mp</span>(m, p) <span class="pl-k">=</span> <span class="pl-c1">VertexMutation</span>(<span class="pl-c1">MutationProbability</span>(m, p))
+<span class="pl-c"><span class="pl-c">#</span> You probably want to use lower probabilities than this</span>
+addlayer <span class="pl-k">=</span> <span class="pl-c1">mp</span>(<span class="pl-c1">AddVertexMutation</span>(layerspace), <span class="pl-c1">0.4</span>)
+remlayer <span class="pl-k">=</span> <span class="pl-c1">mp</span>(<span class="pl-c1">RemoveVertexMutation</span>(), <span class="pl-c1">0.4</span>)
+
+mutation <span class="pl-k">=</span> <span class="pl-c1">MutationList</span>(remlayer, addlayer)
+
+<span class="pl-c"><span class="pl-c">#</span> Selection</span>
+elites <span class="pl-k">=</span> <span class="pl-c1">EliteSelection</span>(<span class="pl-c1">2</span>)
+mutate <span class="pl-k">=</span> <span class="pl-c1">SusSelection</span>(<span class="pl-c1">3</span>, <span class="pl-c1">EvolveCandidates</span>(<span class="pl-c1">evolvemodel</span>(mutation)))
+selection <span class="pl-k">=</span> <span class="pl-c1">CombinedEvolution</span>(elites, mutate)
+
+<span class="pl-c"><span class="pl-c">#</span> And evolve</span>
+newpopulation <span class="pl-k">=</span> <span class="pl-c1">evolve!</span>(selection, population)
+<span class="pl-c1">@test</span> newpopulation <span class="pl-k">!=</span> population
+
+<span class="pl-c"><span class="pl-c">#</span> Repeat steps 2 and 3 until a model with the desired fitness is found.</span></pre></div>
+<h3><a id="user-content-search-spaces" class="anchor" aria-hidden="true" href="#search-spaces"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Search Spaces</h3>
+<p>The search space is a set of possible architectures which the search policy may use to create initial candidates or to extend existing candidates. Search spaces are constructed from simple components which can be combined in multiple ways, giving a lot of flexibility.</p>
+<p>Lets start with the most simple search space, a <code>ParSpace</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Set seed of default random number generator for reproducible results</span>
+<span class="pl-k">using</span> NaiveGAflux, Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(NaiveGAflux<span class="pl-k">.</span>rng_default, <span class="pl-c1">123</span>)
+
+ps1d <span class="pl-k">=</span> <span class="pl-c1">ParSpace</span>([<span class="pl-c1">2</span>,<span class="pl-c1">4</span>,<span class="pl-c1">6</span>,<span class="pl-c1">10</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> Draw from the search space</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">ps1d</span>() <span class="pl-k">==</span> <span class="pl-c1">2</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">ps1d</span>() <span class="pl-k">==</span> <span class="pl-c1">6</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Possible to supply another rng than the default one</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">ps1d</span>(<span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">0</span>)) <span class="pl-k">==</span> <span class="pl-c1">2</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Can be of any dimension and type</span>
+ps2d <span class="pl-k">=</span> <span class="pl-c1">ParSpace</span>([<span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>2<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>3<span class="pl-pds">"</span></span>], [<span class="pl-s"><span class="pl-pds">"</span>4<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>5<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>6<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>7<span class="pl-pds">"</span></span>])
+
+<span class="pl-c1">@test</span> <span class="pl-c1">typeof</span>(ps1d) <span class="pl-k">==</span> ParSpace{<span class="pl-c1">1</span>, Int64}
+<span class="pl-c1">@test</span> <span class="pl-c1">typeof</span>(ps2d) <span class="pl-k">==</span> ParSpace{<span class="pl-c1">2</span>, String}
+
+<span class="pl-c1">@test</span> <span class="pl-c1">ps2d</span>() <span class="pl-k">==</span> (<span class="pl-s"><span class="pl-pds">"</span>3<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>6<span class="pl-pds">"</span></span>)</pre></div>
+<p>Lets have a look at an example of a search space for convolutional layers:</p>
+<div class="highlight highlight-source-julia"><pre>Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(NaiveGAflux<span class="pl-k">.</span>rng_default, <span class="pl-c1">1</span>)
+
+outsizes <span class="pl-k">=</span> <span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">32</span>
+kernelsizes <span class="pl-k">=</span> <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">9</span>
+cs <span class="pl-k">=</span> <span class="pl-c1">ConvSpace2D</span>(outsizes, [relu, elu, selu], kernelsizes)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">typeof</span>(cs) <span class="pl-k">==</span> ConvSpace{<span class="pl-c1">2</span>}
+
+inputsize <span class="pl-k">=</span> <span class="pl-c1">16</span>
+convlayer <span class="pl-k">=</span> <span class="pl-c1">cs</span>(inputsize)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">string</span>(convlayer) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Conv((5, 4), 16=&gt;18, elu)<span class="pl-pds">"</span></span></pre></div>
+<p>Lastly, lets look at how to construct a complex search space:</p>
+<div class="highlight highlight-source-julia"><pre>Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(NaiveGAflux<span class="pl-k">.</span>rng_default, <span class="pl-c1">0</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> VertexSpace creates a MutableVertex of layers generated by the wrapped search space</span>
+cs <span class="pl-k">=</span> <span class="pl-c1">VertexSpace</span>(<span class="pl-c1">ConvSpace2D</span>(<span class="pl-c1">8</span><span class="pl-k">:</span><span class="pl-c1">256</span>, [identity, relu, elu], <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">5</span>))
+bs <span class="pl-k">=</span> <span class="pl-c1">VertexSpace</span>(<span class="pl-c1">BatchNormSpace</span>([identity, relu]))
+
+<span class="pl-c"><span class="pl-c">#</span> Block of conv-&gt;bn and bn-conv respectively.</span>
+<span class="pl-c"><span class="pl-c">#</span> Need to make sure there is always at least one SizeAbsorb layer to make fork and res below play nice</span>
+csbs <span class="pl-k">=</span> <span class="pl-c1">ListArchSpace</span>(cs ,bs)
+bscs <span class="pl-k">=</span> <span class="pl-c1">ListArchSpace</span>(bs, cs)
+
+<span class="pl-c"><span class="pl-c">#</span> Randomly generates a conv-&gt;block:</span>
+cblock <span class="pl-k">=</span> <span class="pl-c1">ArchSpace</span>(<span class="pl-c1">ParSpace1D</span>(cs, csbs, bscs))
+
+<span class="pl-c"><span class="pl-c">#</span> Generates between 1 and 5 layers from csbs</span>
+rep <span class="pl-k">=</span> <span class="pl-c1">RepeatArchSpace</span>(cblock, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Generates between 2 and 4 parallel paths joined by concatenation (inception like-blocks) from rep</span>
+fork <span class="pl-k">=</span> <span class="pl-c1">ForkArchSpace</span>(rep, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">4</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Generates a residual connection around what is generated by rep</span>
+res <span class="pl-k">=</span> <span class="pl-c1">ResidualArchSpace</span>(rep)
+
+<span class="pl-c"><span class="pl-c">#</span> ... and a residual fork</span>
+resfork <span class="pl-k">=</span> <span class="pl-c1">ResidualArchSpace</span>(fork)
+
+<span class="pl-c"><span class="pl-c">#</span> Pick one of the above randomly...</span>
+repforkres <span class="pl-k">=</span> <span class="pl-c1">ArchSpace</span>(<span class="pl-c1">ParSpace1D</span>(rep, fork, res, resfork))
+
+<span class="pl-c"><span class="pl-c">#</span> ...1 to 3 times</span>
+blocks <span class="pl-k">=</span> <span class="pl-c1">RepeatArchSpace</span>(repforkres, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> End each block with subsamping through maxpooling</span>
+ms <span class="pl-k">=</span> <span class="pl-c1">VertexSpace</span>(<span class="pl-c1">MaxPoolSpace</span>(<span class="pl-c1">PoolSpace2D</span>([<span class="pl-c1">2</span>])))
+reduction <span class="pl-k">=</span> <span class="pl-c1">ListArchSpace</span>(blocks, ms)
+
+<span class="pl-c"><span class="pl-c">#</span> And lets do 2 to 4 reductions</span>
+featureextract <span class="pl-k">=</span> <span class="pl-c1">RepeatArchSpace</span>(reduction, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">4</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Adds 1 to 3 dense layers as outputs</span>
+dense <span class="pl-k">=</span> <span class="pl-c1">VertexSpace</span>(<span class="pl-c1">DenseSpace</span>(<span class="pl-c1">16</span><span class="pl-k">:</span><span class="pl-c1">512</span>, [relu, selu]))
+drep <span class="pl-k">=</span> <span class="pl-c1">RepeatArchSpace</span>(dense, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">2</span>)
+<span class="pl-c"><span class="pl-c">#</span> Last layer has fixed output size (number of labels)</span>
+dout<span class="pl-k">=</span><span class="pl-c1">VertexSpace</span>(<span class="pl-c1">Shielded</span>(), <span class="pl-c1">DenseSpace</span>(<span class="pl-c1">10</span>, identity))
+output <span class="pl-k">=</span> <span class="pl-c1">ListArchSpace</span>(drep, dout)
+
+<span class="pl-c"><span class="pl-c">#</span> Aaaand lets glue it together: Feature extracting conv+bn layers -&gt; global pooling -&gt; dense layers</span>
+archspace <span class="pl-k">=</span> <span class="pl-c1">ListArchSpace</span>(featureextract, <span class="pl-c1">GpVertex2D</span>(), output)
+
+<span class="pl-c"><span class="pl-c">#</span> Input is 3 channel image</span>
+inputshape <span class="pl-k">=</span> <span class="pl-c1">inputvertex</span>(<span class="pl-s"><span class="pl-pds">"</span>input<span class="pl-pds">"</span></span>, <span class="pl-c1">3</span>, <span class="pl-c1">FluxConv</span><span class="pl-c1">{2}</span>())
+
+<span class="pl-c"><span class="pl-c">#</span> Sample one architecture from the search space</span>
+graph1 <span class="pl-k">=</span> <span class="pl-c1">CompGraph</span>(inputshape, <span class="pl-c1">archspace</span>(inputshape))
+<span class="pl-c1">@test</span> <span class="pl-c1">nv</span>(graph1) <span class="pl-k">==</span> <span class="pl-c1">66</span>
+
+<span class="pl-c"><span class="pl-c">#</span> And one more...</span>
+graph2 <span class="pl-k">=</span> <span class="pl-c1">CompGraph</span>(inputshape, <span class="pl-c1">archspace</span>(inputshape))
+<span class="pl-c1">@test</span> <span class="pl-c1">nv</span>(graph2) <span class="pl-k">==</span> <span class="pl-c1">81</span></pre></div>
+<h3><a id="user-content-mutation" class="anchor" aria-hidden="true" href="#mutation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Mutation</h3>
+<p>Mutation is the way one existing candidate is transformed to a slightly different candidate. NaiveGAflux supports doing this while preserving weights and alignment between layers, thus reducing the impact of mutating an already trained candidate.</p>
+<p>The following basic mutation operations are currently supported:</p>
+<ol>
+<li>Change the output size of vertices using <code>NoutMutation</code>.</li>
+<li>Remove vertices using <code>RemoveVertexMutation</code>.</li>
+<li>Add vertices using <code>AddVertexMutation</code>.</li>
+<li>Remove edges between vertices using <code>RemoveEdgeMutation</code>.</li>
+<li>Add edges between vertices using <code>AddEdgeMutation</code>.</li>
+<li>Mutation of kernel size for conv layers using <code>KernelSizeMutation</code>.</li>
+<li>Change of activation function using <code>ActivationFunctionMutation</code>.</li>
+</ol>
+<p>It is also possible to implement mutation of learning rate and optimizer using <code>evolve_candidate</code>, but a convenient way to do this still TBA, see <code>AutoFlux.ImageClassification.evolvecandidate</code> in the meantime.</p>
+<p>In addition to the basic mutation operations, there are numerous utilities for adding behaviour and convenience. Here are a few examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> NaiveGAflux, Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(NaiveGAflux<span class="pl-k">.</span>rng_default, <span class="pl-c1">0</span>)
+
+invertex <span class="pl-k">=</span> <span class="pl-c1">inputvertex</span>(<span class="pl-s"><span class="pl-pds">"</span>in<span class="pl-pds">"</span></span>, <span class="pl-c1">3</span>, <span class="pl-c1">FluxDense</span>())
+layer1 <span class="pl-k">=</span> <span class="pl-c1">mutable</span>(<span class="pl-c1">Dense</span>(<span class="pl-c1">nout</span>(invertex), <span class="pl-c1">4</span>), invertex)
+layer2 <span class="pl-k">=</span> <span class="pl-c1">mutable</span>(<span class="pl-c1">Dense</span>(<span class="pl-c1">nout</span>(layer1), <span class="pl-c1">5</span>), layer1)
+graph <span class="pl-k">=</span> <span class="pl-c1">CompGraph</span>(invertex, layer2)
+
+mutation <span class="pl-k">=</span> <span class="pl-c1">NoutMutation</span>(<span class="pl-k">-</span><span class="pl-c1">0.5</span>, <span class="pl-c1">0.5</span>)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>(layer2) <span class="pl-k">==</span> <span class="pl-c1">5</span>
+
+<span class="pl-c1">mutation</span>(layer2)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>(layer2) <span class="pl-k">==</span> <span class="pl-c1">6</span>
+
+<span class="pl-c"><span class="pl-c">#</span> VertexMutation applies the wrapped mutation to all vertices in a CompGraph</span>
+mutation <span class="pl-k">=</span> <span class="pl-c1">VertexMutation</span>(mutation)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">6</span>]
+
+<span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c"><span class="pl-c">#</span> Input vertex is never mutated</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">5</span>,<span class="pl-c1">8</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Use the MutationShield trait to protect vertices from mutation</span>
+outlayer <span class="pl-k">=</span> <span class="pl-c1">mutable</span>(<span class="pl-c1">Dense</span>(<span class="pl-c1">nout</span>(layer2), <span class="pl-c1">10</span>), layer2, traitfun <span class="pl-k">=</span> MutationShield)
+graph <span class="pl-k">=</span> <span class="pl-c1">CompGraph</span>(invertex, outlayer)
+
+<span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">6</span>,<span class="pl-c1">5</span>,<span class="pl-c1">10</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> In most cases it makes sense to mutate with a certain probability</span>
+mutation <span class="pl-k">=</span> <span class="pl-c1">VertexMutation</span>(<span class="pl-c1">MutationProbability</span>(<span class="pl-c1">NoutMutation</span>(<span class="pl-k">-</span><span class="pl-c1">0.5</span>, <span class="pl-c1">0.5</span>), <span class="pl-c1">0.5</span>))
+
+<span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">7</span>,<span class="pl-c1">5</span>,<span class="pl-c1">10</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Or just chose to either mutate the whole graph or don't do anything</span>
+mutation <span class="pl-k">=</span> <span class="pl-c1">MutationProbability</span>(<span class="pl-c1">VertexMutation</span>(<span class="pl-c1">NoutMutation</span>(<span class="pl-k">-</span><span class="pl-c1">0.5</span>, <span class="pl-c1">0.5</span>)), <span class="pl-c1">0.5</span>)
+
+<span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">10</span>,<span class="pl-c1">6</span>,<span class="pl-c1">10</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Up until now, size changes have only been kept track of, but not actually applied</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">nout_org</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">5</span>,<span class="pl-c1">10</span>]
+
+Δ<span class="pl-c1">outputs</span>(graph, v <span class="pl-k">-&gt;</span> <span class="pl-c1">ones</span>(<span class="pl-c1">nout_org</span>(v)))
+<span class="pl-c1">apply_mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> <span class="pl-c1">nout_org</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">10</span>,<span class="pl-c1">6</span>,<span class="pl-c1">10</span>]
+<span class="pl-c1">@test</span> <span class="pl-c1">size</span>(<span class="pl-c1">graph</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))) <span class="pl-k">==</span> (<span class="pl-c1">10</span>, <span class="pl-c1">1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> NeuronSelectMutation keeps track of changed vertices and performs the above steps when invoked</span>
+mutation <span class="pl-k">=</span> <span class="pl-c1">VertexMutation</span>(<span class="pl-c1">NeuronSelectMutation</span>(<span class="pl-c1">NoutMutation</span>(<span class="pl-k">-</span><span class="pl-c1">0.5</span>,<span class="pl-c1">0.5</span>)))
+
+<span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">11</span>,<span class="pl-c1">7</span>,<span class="pl-c1">10</span>]
+<span class="pl-c1">@test</span> <span class="pl-c1">nout_org</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">10</span>,<span class="pl-c1">6</span>,<span class="pl-c1">10</span>]
+
+<span class="pl-c1">select</span>(mutation<span class="pl-k">.</span>m)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout_org</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">11</span>,<span class="pl-c1">7</span>,<span class="pl-c1">10</span>]
+<span class="pl-c1">@test</span> <span class="pl-c1">size</span>(<span class="pl-c1">graph</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))) <span class="pl-k">==</span> (<span class="pl-c1">10</span>, <span class="pl-c1">1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Mutation can also be conditioned:</span>
+mutation <span class="pl-k">=</span> <span class="pl-c1">VertexMutation</span>(<span class="pl-c1">MutationFilter</span>(v <span class="pl-k">-&gt;</span> <span class="pl-c1">nout</span>(v) <span class="pl-k">&lt;</span> <span class="pl-c1">8</span>, <span class="pl-c1">RemoveVertexMutation</span>()))
+
+<span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">11</span>,<span class="pl-c1">10</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> When adding vertices it is probably a good idea to try to initialize them as identity mappings</span>
+addmut <span class="pl-k">=</span> <span class="pl-c1">AddVertexMutation</span>(<span class="pl-c1">VertexSpace</span>(<span class="pl-c1">DenseSpace</span>(<span class="pl-c1">5</span>, identity)), <span class="pl-c1">IdentityWeightInit</span>())
+
+<span class="pl-c"><span class="pl-c">#</span> Chaining mutations is also useful:</span>
+noutmut <span class="pl-k">=</span> <span class="pl-c1">NeuronSelectMutation</span>(<span class="pl-c1">NoutMutation</span>(<span class="pl-k">-</span><span class="pl-c1">0.8</span>, <span class="pl-c1">0.8</span>))
+mutation <span class="pl-k">=</span> <span class="pl-c1">VertexMutation</span>(<span class="pl-c1">MutationList</span>(addmut, noutmut))
+<span class="pl-c"><span class="pl-c">#</span> For deeply composed blobs like this, it can be cumbersome to "dig up" the NeuronSelectMutation.</span>
+<span class="pl-c"><span class="pl-c">#</span> NeuronSelect helps finding NeuronSelectMutations in the compositional hierarchy</span>
+neuronselect <span class="pl-k">=</span> <span class="pl-c1">NeuronSelect</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> PostMutation lets us add actions to perform after a mutation is done</span>
+<span class="pl-en">logselect</span>(m, g) <span class="pl-k">=</span> <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Selecting parameters...<span class="pl-pds">"</span></span>
+mutation <span class="pl-k">=</span> <span class="pl-c1">PostMutation</span>(mutation, logselect, neuronselect)
+
+<span class="pl-c1">@test_logs</span> (<span class="pl-c1">:info</span>, <span class="pl-s"><span class="pl-pds">"</span>Selecting parameters...<span class="pl-pds">"</span></span>) <span class="pl-c1">mutation</span>(graph)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">nout</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> <span class="pl-c1">nout_org</span>.(<span class="pl-c1">vertices</span>(graph)) <span class="pl-k">==</span> [<span class="pl-c1">3</span>,<span class="pl-c1">8</span>,<span class="pl-c1">11</span>,<span class="pl-c1">10</span>]</pre></div>
+<h3><a id="user-content-fitness-functions" class="anchor" aria-hidden="true" href="#fitness-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Fitness functions</h3>
+<p>A handful of ways to compute the fitness of a model are supplied. Apart from the obvious accuracy on some (typically held out) data set, it is also possible to measure fitness as how many (few) parameters a model has and how long it takes on average to perform a forward/backward pass. Fitness metrics can of course be combined to create objectives which balance several factors.</p>
+<p>As seen below, some fitness functions are not trivial to use. <a href="#candidate-utilities">Candidate utilities</a> helps managing this complexity behind a much simpler API.</p>
+<p>Examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Function to compute fitness for does not have to be a CompGraph, or even a neural network</span>
+candidate1 <span class="pl-k">=</span> x <span class="pl-k">-&gt;</span> <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>
+candidate2 <span class="pl-k">=</span> <span class="pl-c1">Dense</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">3</span>), <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Fitness is accuracy on the provided data set</span>
+accfitness <span class="pl-k">=</span> <span class="pl-c1">AccuracyFitness</span>([(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>, <span class="pl-c1">1</span>), <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)])
+
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(accfitness, candidate1) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(accfitness, candidate2) <span class="pl-k">==</span> <span class="pl-c1">1</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Measure how long time it takes to train the function</span>
+<span class="pl-k">import</span> NaiveGAflux<span class="pl-k">:</span> Train, Validate
+timetotrain <span class="pl-k">=</span> <span class="pl-c1">TimeFitness</span>(<span class="pl-c1">Train</span>())
+
+<span class="pl-c"><span class="pl-c">#</span> No training done yet...</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timetotrain, candidate1) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timetotrain, candidate2) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> There is no magic involved here, we need to "instrument" the function to measure</span>
+candidate2_timed <span class="pl-k">=</span> <span class="pl-c1">instrument</span>(<span class="pl-c1">Train</span>(), timetotrain, candidate2)
+
+<span class="pl-c"><span class="pl-c">#</span> Instrumented function produces same result as the original function...</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">candidate2_timed</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">candidate2</span>((<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)))
+<span class="pl-c"><span class="pl-c">#</span> ... and TimeFitness measures time elapsed in the background</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timetotrain, candidate2) <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Just beware that it is not very clever, it just stores the time when a function it instrumented was run...</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timetotrain, x <span class="pl-k">-&gt;</span> <span class="pl-c1">sleep</span>(<span class="pl-c1">0.2</span>)) <span class="pl-k">==</span> <span class="pl-c1">fitness</span>(timetotrain, x <span class="pl-k">-&gt;</span> <span class="pl-c1">sleep</span>(<span class="pl-c1">10</span>))
+
+<span class="pl-c"><span class="pl-c">#</span> ... and it needs to be reset before being used for another candidate</span>
+<span class="pl-c"><span class="pl-c">#</span> In practice you probably want to create one instance per candidate</span>
+<span class="pl-c1">reset!</span>(timetotrain)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timetotrain, candidate1) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> One typically wants to map short time to high fitness.</span>
+timefitness <span class="pl-k">=</span> <span class="pl-c1">MapFitness</span>(x <span class="pl-k">-&gt;</span> x <span class="pl-k">==</span> <span class="pl-c1">0</span> ? <span class="pl-c1">0</span> : <span class="pl-c1">1</span><span class="pl-k">/</span>(x<span class="pl-k">*</span><span class="pl-c1">1e6</span>), timetotrain)
+
+<span class="pl-c"><span class="pl-c">#</span> Will see to it so that timetotrain gets to instrument the function</span>
+candidate2_timed <span class="pl-k">=</span> <span class="pl-c1">instrument</span>(<span class="pl-c1">Train</span>(), timefitness, candidate2)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">candidate2_timed</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">candidate2</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timefitness, candidate2) <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> This also propagates ofc</span>
+<span class="pl-c1">reset!</span>(timefitness)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(timefitness, candidate2) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Use the number of parameters to compute fitness</span>
+nparams <span class="pl-k">=</span> <span class="pl-c1">SizeFitness</span>()
+
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(nparams, candidate2) <span class="pl-k">==</span> <span class="pl-c1">12</span>
+
+<span class="pl-c"><span class="pl-c">#</span> This does not work unfortunately, and it tends to happen when combining fitness functions due to instrumentation</span>
+<span class="pl-c1">@test</span> (<span class="pl-c1">@test_logs</span> (<span class="pl-c1">:warn</span>, <span class="pl-s"><span class="pl-pds">"</span>SizeFitness got zero parameters! Check your fitness function!<span class="pl-pds">"</span></span>) <span class="pl-c1">fitness</span>(nparams, candidate2_timed)) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> The mitigation for this is to "abuse" the instrumentation API</span>
+<span class="pl-c1">instrument</span>(<span class="pl-c1">Validate</span>(), nparams, candidate2)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(nparams, candidate2_timed) <span class="pl-k">==</span> <span class="pl-c1">12</span>
+
+<span class="pl-c"><span class="pl-c">#</span> This however adds state which needs to be reset shall the function be used for something else</span>
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(nparams, sum) <span class="pl-k">==</span> <span class="pl-c1">12</span>
+<span class="pl-c1">reset!</span>(nparams)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(nparams, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-c1">3</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Combining fitness is straight forward</span>
+<span class="pl-c"><span class="pl-c">#</span> Note that one typically wants to map low number of parameters to high fitness (omitted here for brevity)</span>
+combined <span class="pl-k">=</span> <span class="pl-c1">AggFitness</span>(<span class="pl-k">+</span>, accfitness, nparams, timefitness)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(combined, candidate2) <span class="pl-k">==</span> <span class="pl-c1">13</span>
+
+<span class="pl-c"><span class="pl-c">#</span> instrumentation will be aggregated as well</span>
+candidate2_timed <span class="pl-k">=</span> <span class="pl-c1">instrument</span>(<span class="pl-c1">Train</span>(), combined, candidate2)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">candidate2_timed</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">candidate2</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(combined, candidate2) <span class="pl-k">&gt;</span> <span class="pl-c1">13</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Special mention goes to NanGuard.</span>
+<span class="pl-c"><span class="pl-c">#</span> It is hard to ensure that evolution does not produce a model which outputs NaN or Inf.</span>
+<span class="pl-c"><span class="pl-c">#</span> However, Flux typically throws an exception if it sees NaN or Inf.</span>
+<span class="pl-c"><span class="pl-c">#</span> NanGuard keeps the show going and assigns fitness 0 so that the model will not be selected.</span>
+nanguard <span class="pl-k">=</span> <span class="pl-c1">NanGuard</span>(combined)
+
+training_guarded <span class="pl-k">=</span> <span class="pl-c1">instrument</span>(<span class="pl-c1">Train</span>(), nanguard, candidate2)
+validation_guarded <span class="pl-k">=</span> <span class="pl-c1">instrument</span>(<span class="pl-c1">Validate</span>(), nanguard, candidate2)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">training_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">validation_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">candidate2</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))
+
+<span class="pl-c"><span class="pl-c">#</span> Now the model gets corrupted somehow...</span>
+candidate2<span class="pl-k">.</span>W[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">NaN</span>
+
+<span class="pl-c1">@test</span> <span class="pl-c1">any</span>(isnan, <span class="pl-c1">candidate2</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)))
+
+<span class="pl-c1">@test</span> (<span class="pl-c1">@test_logs</span> (<span class="pl-c1">:warn</span>, <span class="pl-sr"><span class="pl-pds">r"</span>NaN detected for function with label Train()<span class="pl-pds">"</span></span>) <span class="pl-c1">training_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))) <span class="pl-k">==</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)
+
+<span class="pl-c1">@test</span> (<span class="pl-c1">@test_logs</span> (<span class="pl-c1">:warn</span>, <span class="pl-sr"><span class="pl-pds">r"</span>NaN detected for function with label Validate()<span class="pl-pds">"</span></span>) <span class="pl-c1">validation_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))) <span class="pl-k">==</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)
+
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(nanguard, candidate2) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> After a Nan is detected the function will no longer be evaluated until reset</span>
+candidate2<span class="pl-k">.</span>W[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">1</span>
+
+<span class="pl-c1">@test</span> <span class="pl-k">!</span><span class="pl-c1">any</span>(isnan, <span class="pl-c1">candidate2</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)))
+<span class="pl-c1">@test</span> <span class="pl-c1">training_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)
+<span class="pl-c1">@test</span> <span class="pl-c1">validation_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(nanguard, candidate2) <span class="pl-k">==</span> <span class="pl-c1">0</span>
+
+<span class="pl-c1">reset!</span>(nanguard)
+<span class="pl-c1">@test</span> <span class="pl-c1">training_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">validation_guarded</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>)) <span class="pl-k">==</span> <span class="pl-c1">candidate2</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>,<span class="pl-c1">1</span>))</pre></div>
+<h3><a id="user-content-candidate-utilities" class="anchor" aria-hidden="true" href="#candidate-utilities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Candidate utilities</h3>
+<p>The main component of a candidate is the model itself of course. There are however a few convenience utilities around candidate handling which may be useful.</p>
+<p>As seen in the previous section, some fitness functions are not straight forward to use. By wrapping a model, a fitness function, a loss function and an optimizer in a <code>CandidateModel</code>, NaiveGAflux will hide much of the complexity and reduce the API to the following:</p>
+<ul>
+<li><code>train!(candidate, data)</code></li>
+<li><code>fitness(candidate)</code></li>
+</ul>
+<p>Examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(NaiveGAflux<span class="pl-k">.</span>rng_default, <span class="pl-c1">0</span>)
+
+archspace <span class="pl-k">=</span> <span class="pl-c1">RepeatArchSpace</span>(<span class="pl-c1">VertexSpace</span>(<span class="pl-c1">DenseSpace</span>(<span class="pl-c1">3</span>, elu)), <span class="pl-c1">2</span>)
+inpt <span class="pl-k">=</span> <span class="pl-c1">inputvertex</span>(<span class="pl-s"><span class="pl-pds">"</span>in<span class="pl-pds">"</span></span>, <span class="pl-c1">3</span>)
+dataset <span class="pl-k">=</span> (<span class="pl-c1">ones</span>(Float32, <span class="pl-c1">3</span>, <span class="pl-c1">1</span>), Float32[<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">0</span>])
+
+graph <span class="pl-k">=</span> <span class="pl-c1">CompGraph</span>(inpt, <span class="pl-c1">archspace</span>(inpt))
+opt <span class="pl-k">=</span> Flux<span class="pl-k">.</span><span class="pl-c1">ADAM</span>(<span class="pl-c1">0.1</span>)
+loss <span class="pl-k">=</span> Flux<span class="pl-k">.</span>logitcrossentropy
+fitfun <span class="pl-k">=</span> <span class="pl-c1">NanGuard</span>(<span class="pl-c1">AccuracyFitness</span>([dataset]))
+
+<span class="pl-c"><span class="pl-c">#</span> CandidateModel is the most basic candidate and handles things like fitness instrumentation</span>
+candmodel <span class="pl-k">=</span> <span class="pl-c1">CandidateModel</span>(graph, opt, loss, fitfun)
+
+Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(candmodel, Iterators<span class="pl-k">.</span><span class="pl-c1">repeated</span>(dataset, <span class="pl-c1">20</span>))
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(candmodel) <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> HostCandidate moves the model to the GPU when training or evaluating fitness and moves it back afterwards</span>
+<span class="pl-c"><span class="pl-c">#</span> Useful for reducing GPU memory consumption (at the cost of longer time to train as cpu&lt;-&gt;gpu move takes some time).</span>
+<span class="pl-c"><span class="pl-c">#</span> Note, it does not move the data. GpuIterator can provide some assistance here...</span>
+dataset_gpu <span class="pl-k">=</span> <span class="pl-c1">GpuIterator</span>([dataset])
+fitfun_gpu <span class="pl-k">=</span> <span class="pl-c1">NanGuard</span>(<span class="pl-c1">AccuracyFitness</span>(dataset_gpu))
+hostcand <span class="pl-k">=</span> <span class="pl-c1">HostCandidate</span>(<span class="pl-c1">CandidateModel</span>(graph, Flux<span class="pl-k">.</span><span class="pl-c1">ADAM</span>(<span class="pl-c1">0.1</span>), loss, fitfun_gpu))
+
+Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(hostcand, dataset_gpu)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(hostcand) <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> CacheCandidate is a practical necessity if using AccuracyFitness.</span>
+<span class="pl-c"><span class="pl-c">#</span> It caches the last computed fitness value so it is not recomputed every time fitness is called</span>
+cachinghostcand <span class="pl-k">=</span> <span class="pl-c1">CacheCandidate</span>(hostcand)
+
+Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(cachinghostcand, dataset_gpu)
+<span class="pl-c1">@test</span> <span class="pl-c1">fitness</span>(cachinghostcand) <span class="pl-k">&gt;</span> <span class="pl-c1">0</span></pre></div>
+<h3><a id="user-content-evolution-strategies" class="anchor" aria-hidden="true" href="#evolution-strategies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Evolution Strategies</h3>
+<p>Evolution strategies are the functions used to evolve the population in the genetic algorithm from one generation to the next. The following is performed by evolution strategies:</p>
+<ul>
+<li>Select which candidates to use for the next generation</li>
+<li>Mutate the selected candidates</li>
+<li>Reset/clear state so that the population is prepared for the next generation</li>
+</ul>
+<p>Examples:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> For controlled randomness in the examples</span>
+<span class="pl-k">struct</span> FakeRng <span class="pl-k">end</span>
+Base<span class="pl-k">.</span><span class="pl-en">rand</span>(<span class="pl-k">::</span><span class="pl-c1">FakeRng</span>) <span class="pl-k">=</span> <span class="pl-c1">0.7</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Dummy candidate for brevity</span>
+<span class="pl-k">struct</span> Cand <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractCandidate</span>
+    fitness
+<span class="pl-k">end</span>
+NaiveGAflux<span class="pl-k">.</span><span class="pl-en">fitness</span>(d<span class="pl-k">::</span><span class="pl-c1">Cand</span>) <span class="pl-k">=</span> d<span class="pl-k">.</span>fitness
+
+<span class="pl-c"><span class="pl-c">#</span> EliteSelection selects the n best candidates</span>
+elitesel <span class="pl-k">=</span> <span class="pl-c1">EliteSelection</span>(<span class="pl-c1">2</span>)
+<span class="pl-c1">@test</span> <span class="pl-c1">evolve!</span>(elitesel, <span class="pl-c1">Cand</span>.(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)) <span class="pl-k">==</span> <span class="pl-c1">Cand</span>.([<span class="pl-c1">10</span>, <span class="pl-c1">9</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> EvolveCandidates maps candidates to new candidates (e.g. through mutation)</span>
+evocands <span class="pl-k">=</span> <span class="pl-c1">EvolveCandidates</span>(c <span class="pl-k">-&gt;</span> <span class="pl-c1">Cand</span>(<span class="pl-c1">fitness</span>(c) <span class="pl-k">+</span> <span class="pl-c1">0.1</span>))
+<span class="pl-c1">@test</span> <span class="pl-c1">evolve!</span>(evocands, <span class="pl-c1">Cand</span>.(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)) <span class="pl-k">==</span> <span class="pl-c1">Cand</span>.(<span class="pl-c1">1.1</span><span class="pl-k">:</span><span class="pl-c1">10.1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> SusSelection selects n random candidates using stochastic uniform sampling</span>
+<span class="pl-c"><span class="pl-c">#</span> Selected candidates will be forwarded to the wrapped evolution strategy before returned</span>
+sussel <span class="pl-k">=</span> <span class="pl-c1">SusSelection</span>(<span class="pl-c1">5</span>, evocands, <span class="pl-c1">FakeRng</span>())
+<span class="pl-c1">@test</span> <span class="pl-c1">evolve!</span>(sussel, <span class="pl-c1">Cand</span>.(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)) <span class="pl-k">==</span> <span class="pl-c1">Cand</span>.([<span class="pl-c1">4.1</span>, <span class="pl-c1">6.1</span>, <span class="pl-c1">8.1</span>, <span class="pl-c1">9.1</span>, <span class="pl-c1">10.1</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> CombinedEvolution combines the populations from several evolution strategies</span>
+comb <span class="pl-k">=</span> <span class="pl-c1">CombinedEvolution</span>(elitesel, sussel)
+<span class="pl-c1">@test</span> <span class="pl-c1">evolve!</span>(comb, <span class="pl-c1">Cand</span>.(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)) <span class="pl-k">==</span> <span class="pl-c1">Cand</span>.(Any[<span class="pl-c1">10</span>, <span class="pl-c1">9</span>, <span class="pl-c1">4.1</span>, <span class="pl-c1">6.1</span>, <span class="pl-c1">8.1</span>, <span class="pl-c1">9.1</span>, <span class="pl-c1">10.1</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> AfterEvolution calls a function after evolution is completed</span>
+<span class="pl-en">afterfun</span>(pop) <span class="pl-k">=</span> <span class="pl-c1">map</span>(c <span class="pl-k">-&gt;</span> <span class="pl-c1">Cand</span>(<span class="pl-c1">2</span><span class="pl-c1">fitness</span>(c)), pop)
+afterevo <span class="pl-k">=</span> <span class="pl-c1">AfterEvolution</span>(comb, afterfun)
+<span class="pl-c1">@test</span> <span class="pl-c1">evolve!</span>(afterevo, <span class="pl-c1">Cand</span>.(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)) <span class="pl-k">==</span> <span class="pl-c1">Cand</span>.(Any[<span class="pl-c1">20</span>, <span class="pl-c1">18</span>, <span class="pl-c1">8.2</span>, <span class="pl-c1">12.2</span>, <span class="pl-c1">16.2</span>, <span class="pl-c1">18.2</span>, <span class="pl-c1">20.2</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> Its mainly intended for resetting</span>
+ntest <span class="pl-k">=</span> <span class="pl-c1">0</span>
+NaiveGAflux<span class="pl-k">.</span><span class="pl-en">reset!</span>(<span class="pl-k">::</span><span class="pl-c1">Cand</span>) <span class="pl-k">=</span> ntest <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+
+resetafter <span class="pl-k">=</span> <span class="pl-c1">ResetAfterEvolution</span>(comb)
+<span class="pl-c1">@test</span> <span class="pl-c1">evolve!</span>(resetafter, <span class="pl-c1">Cand</span>.(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)) <span class="pl-k">==</span> <span class="pl-c1">Cand</span>.(Any[<span class="pl-c1">10</span>, <span class="pl-c1">9</span>, <span class="pl-c1">4.1</span>, <span class="pl-c1">6.1</span>, <span class="pl-c1">8.1</span>, <span class="pl-c1">9.1</span>, <span class="pl-c1">10.1</span>])
+<span class="pl-c1">@test</span> ntest <span class="pl-k">==</span> <span class="pl-c1">7</span></pre></div>
+<h3><a id="user-content-iterators" class="anchor" aria-hidden="true" href="#iterators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Iterators</h3>
+<p>While not part of the scope of this package, some simple utilities for iterating over data sets is provided.</p>
+<p>The only iterator which is in some sense special for this package is <code>RepeatPartitionIterator</code> which produces iterators over a subset of its wrapped iterator. This is useful when there is a non-negligible cost of "switching" models, for example if <code>HostCandidate</code> is used as it allows training one model on the whole data subset before moving on to the next model.</p>
+<p>Examples:</p>
+<div class="highlight highlight-source-julia"><pre>data <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(<span class="pl-c1">collect</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">*</span><span class="pl-c1">5</span>), <span class="pl-c1">4</span>,<span class="pl-c1">5</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> mini-batching</span>
+biter <span class="pl-k">=</span> <span class="pl-c1">BatchIterator</span>(data, <span class="pl-c1">2</span>)
+<span class="pl-c1">@test</span> <span class="pl-c1">size</span>(<span class="pl-c1">first</span>(biter)) <span class="pl-k">==</span> (<span class="pl-c1">4</span>, <span class="pl-c1">2</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> shuffle data before mini-batching</span>
+<span class="pl-c"><span class="pl-c">#</span> Warning 1: Data will be shuffled inplace!</span>
+<span class="pl-c"><span class="pl-c">#</span> Warning 2: Must use different rng instances with the same seed for features and labels!</span>
+siter <span class="pl-k">=</span> <span class="pl-c1">ShuffleIterator</span>(<span class="pl-c1">copy</span>(data), <span class="pl-c1">2</span>, <span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">123</span>))
+<span class="pl-c1">@test</span> <span class="pl-c1">size</span>(<span class="pl-c1">first</span>(siter)) <span class="pl-k">==</span> <span class="pl-c1">size</span>(<span class="pl-c1">first</span>(biter))
+<span class="pl-c1">@test</span> <span class="pl-c1">first</span>(siter) <span class="pl-k">!=</span> <span class="pl-c1">first</span>(biter)
+
+<span class="pl-c"><span class="pl-c">#</span> Flip data along a dimension with a certain probability</span>
+probability <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+dimension <span class="pl-k">=</span> <span class="pl-c1">1</span>
+fiter <span class="pl-k">=</span> <span class="pl-c1">FlipIterator</span>(biter, probability, dimension)
+<span class="pl-c1">@test</span> <span class="pl-c1">first</span>(fiter) <span class="pl-k">==</span> <span class="pl-c1">reverse</span>(<span class="pl-c1">first</span>(biter), dims<span class="pl-k">=</span>dimension)
+
+<span class="pl-c"><span class="pl-c">#</span> Randomly shift the data while cropping and padding to keep the same size</span>
+maxshiftdim1 <span class="pl-k">=</span> <span class="pl-c1">2</span>
+maxshiftdim2 <span class="pl-k">=</span> <span class="pl-c1">0</span>
+siter <span class="pl-k">=</span> <span class="pl-c1">ShiftIterator</span>(biter, maxshiftdim1,maxshiftdim2; rng <span class="pl-k">=</span> <span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">12</span>))
+sdata <span class="pl-k">=</span> <span class="pl-c1">first</span>(siter)
+<span class="pl-c1">@test</span> sdata[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>,:] <span class="pl-k">==</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">1</span>,<span class="pl-c1">2</span>)
+<span class="pl-c1">@test</span> sdata[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">4</span>,:] <span class="pl-k">==</span> <span class="pl-c1">first</span>(biter)[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>,:]
+
+<span class="pl-c"><span class="pl-c">#</span> Apply a function to each batch</span>
+miter <span class="pl-k">=</span> <span class="pl-c1">MapIterator</span>(x <span class="pl-k">-&gt;</span> <span class="pl-c1">2</span> <span class="pl-k">.*</span> x, biter)
+<span class="pl-c1">@test</span> <span class="pl-c1">first</span>(miter) <span class="pl-k">==</span> <span class="pl-c1">2</span> <span class="pl-k">.*</span> <span class="pl-c1">first</span>(biter)
+
+<span class="pl-c"><span class="pl-c">#</span> Move data to gpu</span>
+giter <span class="pl-k">=</span> <span class="pl-c1">GpuIterator</span>(miter)
+<span class="pl-c1">@test</span> <span class="pl-c1">first</span>(giter) <span class="pl-k">==</span> <span class="pl-c1">first</span>(miter)
+
+labels <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Possible to use Flux.onehotbatch for many iterators</span>
+biter_labels <span class="pl-k">=</span> Flux<span class="pl-k">.</span><span class="pl-c1">onehotbatch</span>(<span class="pl-c1">BatchIterator</span>(labels, <span class="pl-c1">2</span>), <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+<span class="pl-c1">@test</span> <span class="pl-c1">first</span>(biter_labels) <span class="pl-k">==</span> Flux<span class="pl-k">.</span><span class="pl-c1">onehotbatch</span>(<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> This is the only iterator which is "special" for this package:</span>
+rpiter <span class="pl-k">=</span> <span class="pl-c1">RepeatPartitionIterator</span>(<span class="pl-c1">zip</span>(biter, biter_labels), <span class="pl-c1">2</span>)
+<span class="pl-c"><span class="pl-c">#</span> It produces iterators over a subset of the wrapped iterator (2 batches in this case)</span>
+piter <span class="pl-k">=</span> <span class="pl-c1">first</span>(rpiter)
+<span class="pl-c1">@test</span> <span class="pl-c1">length</span>(piter) <span class="pl-k">==</span> <span class="pl-c1">2</span>
+<span class="pl-c"><span class="pl-c">#</span> This allows for easily training several models on the same subset of the data</span>
+expiter <span class="pl-k">=</span> <span class="pl-c1">zip</span>(biter, biter_labels)
+<span class="pl-k">for</span> modeli <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>
+    <span class="pl-k">for</span> ((feature, label), (expf, expl)) <span class="pl-k">in</span> <span class="pl-c1">zip</span>(piter, expiter)
+        <span class="pl-c1">@test</span> feature <span class="pl-k">==</span> expf
+        <span class="pl-c1">@test</span> label <span class="pl-k">==</span> expl
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+</pre></div>
+<h2><a id="user-content-contributing" class="anchor" aria-hidden="true" href="#contributing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Contributing</h2>
+<p>All contributions are welcome. Please file an issue before creating a PR.</p>
+</article></div>

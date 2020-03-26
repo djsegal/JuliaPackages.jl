@@ -1,0 +1,160 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-parametron" class="anchor" aria-hidden="true" href="#parametron"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Parametron</h1>
+<p><a href="https://travis-ci.org/tkoolen/Parametron.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6c65b7a78c972a21b5922cf94c6ceb4c407484c8/68747470733a2f2f7472617669732d63692e6f72672f746b6f6f6c656e2f506172616d6574726f6e2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/tkoolen/Parametron.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/tkoolen/Parametron.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/bea5f4e1696d4082ed0a75dc6768863e9ea5bef8/687474703a2f2f636f6465636f762e696f2f6769746875622f746b6f6f6c656e2f506172616d6574726f6e2e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/tkoolen/Parametron.jl/coverage.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://tkoolen.github.io/Parametron.jl/latest" rel="nofollow"><img src="https://camo.githubusercontent.com/57bae07ecd50a99519ad0516d91f4ec8f0f48e12/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6c61746573742d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-latest-blue.svg" style="max-width:100%;"></a>
+<a href="https://tkoolen.github.io/Parametron.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/f7b92a177c912c1cc007fc9b40f17ff3ee3bb414/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a></p>
+<p>Parametron makes it easy to set up and efficiently (ideally, with <em>zero</em> allocation) solve instances of a <strong>parameterized family</strong> of optimization problems.</p>
+<h2><a id="user-content-example-1" class="anchor" aria-hidden="true" href="#example-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example 1</h2>
+<p>As an example, we'll use the <a href="https://github.com/oxfordcontrol/OSQP.jl">OSQP</a> solver to solve the following quadratic program:</p>
+<pre><code>Minimize ||A x - b||^2
+subject to C x = d
+</code></pre>
+<p>with decision variable vector <code>x</code>, and where <code>A</code>, <code>b</code>, <code>C</code>, and <code>d</code> are parameters with random values, to be re-sampled each time the problem is re-solved.</p>
+<p>Here's the basic problem setup:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> create a MathOptInterface optimizer instance</span>
+<span class="pl-k">using</span> OSQP
+optimizer <span class="pl-k">=</span> OSQP<span class="pl-k">.</span><span class="pl-c1">Optimizer</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> create a Parametron.Model, which holds problem information</span>
+<span class="pl-k">using</span> Parametron
+<span class="pl-k">using</span> Random, LinearAlgebra
+model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(optimizer)
+
+<span class="pl-c"><span class="pl-c">#</span> create decision variables and parameters</span>
+n <span class="pl-k">=</span> <span class="pl-c1">8</span>; m <span class="pl-k">=</span> <span class="pl-c1">2</span>
+x <span class="pl-k">=</span> [<span class="pl-c1">Variable</span>(model) <span class="pl-k">for</span> _ <span class="pl-k">=</span> <span class="pl-c1">1</span> : n]
+A <span class="pl-k">=</span> <span class="pl-c1">Parameter</span>(rand!, <span class="pl-c1">zeros</span>(n, n), model)
+b <span class="pl-k">=</span> <span class="pl-c1">Parameter</span>(rand!, <span class="pl-c1">zeros</span>(n), model)
+C <span class="pl-k">=</span> <span class="pl-c1">Parameter</span>(rand!, <span class="pl-c1">zeros</span>(m, n), model)
+d <span class="pl-k">=</span> <span class="pl-c1">Parameter</span>(<span class="pl-c1">zeros</span>(m), model) <span class="pl-k">do</span> d
+    <span class="pl-c"><span class="pl-c">#</span> do syntax makes it easy to create custom Parameters</span>
+    <span class="pl-c1">rand!</span>(d)
+    d <span class="pl-k">.*=</span> <span class="pl-c1">2</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> the @expression macro can be used to create 'lazy' expressions,</span>
+<span class="pl-c"><span class="pl-c">#</span> which can be used in constraints or the objective function, and</span>
+<span class="pl-c"><span class="pl-c">#</span> can be evaluated at a later time, automatically updating the</span>
+<span class="pl-c"><span class="pl-c">#</span> Parameters in the process (if needed).</span>
+residual <span class="pl-k">=</span> <span class="pl-c1">@expression</span> A <span class="pl-k">*</span> x <span class="pl-k">-</span> b
+
+<span class="pl-c"><span class="pl-c">#</span> set the objective function</span>
+<span class="pl-c1">@objective</span>(model, Minimize, residual <span class="pl-k">⋅</span> residual)
+
+<span class="pl-c"><span class="pl-c">#</span> add the constraints. You could have multiple @constraint calls</span>
+<span class="pl-c"><span class="pl-c">#</span> as well. ==, &lt;=, and &gt;= are supported.</span>
+<span class="pl-c1">@constraint</span>(model, C <span class="pl-k">*</span> x <span class="pl-k">==</span> d)</pre></div>
+<p>Now that the problem is set up, we can solve and obtain the solution as follows:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">solve!</span>(model)
+<span class="pl-k">-----------------------------------------------------------------</span>
+           OSQP v0<span class="pl-c1">.3.0</span>  <span class="pl-k">-</span>  Operator Splitting QP Solver
+              (c) Bartolomeo Stellato,  Goran Banjac
+        University of Oxford  <span class="pl-k">-</span>  Stanford University <span class="pl-c1">2017</span>
+<span class="pl-k">-----------------------------------------------------------------</span>
+problem<span class="pl-k">:</span>  variables n <span class="pl-k">=</span> <span class="pl-c1">8</span>, constraints m <span class="pl-k">=</span> <span class="pl-c1">2</span>
+          <span class="pl-en">nnz</span>(P) <span class="pl-k">+</span> <span class="pl-en">nnz</span>(A) <span class="pl-k">=</span> <span class="pl-c1">88</span>
+settings<span class="pl-k">:</span> linear system solver <span class="pl-k">=</span> suitesparse ldl,
+          eps_abs <span class="pl-k">=</span> <span class="pl-c1">1.0e-03</span>, eps_rel <span class="pl-k">=</span> <span class="pl-c1">1.0e-03</span>,
+          eps_prim_inf <span class="pl-k">=</span> <span class="pl-c1">1.0e-04</span>, eps_dual_inf <span class="pl-k">=</span> <span class="pl-c1">1.0e-04</span>,
+          rho <span class="pl-k">=</span> <span class="pl-c1">1.00e-01</span> (adaptive),
+          sigma <span class="pl-k">=</span> <span class="pl-c1">1.00e-06</span>, alpha <span class="pl-k">=</span> <span class="pl-c1">1.60</span>, max_iter <span class="pl-k">=</span> <span class="pl-c1">4000</span>
+          check_termination<span class="pl-k">:</span> on (interval <span class="pl-c1">25</span>),
+          scaling<span class="pl-k">:</span> on, scaled_termination<span class="pl-k">:</span> off
+          warm start<span class="pl-k">:</span> on, polish<span class="pl-k">:</span> off
+
+iter   objective    pri res    dua res    rho        time
+   <span class="pl-c1">1</span>  <span class="pl-k">-</span><span class="pl-c1">7.8949e-01</span>   <span class="pl-c1">9.57e-01</span>   <span class="pl-c1">1.02e+03</span>   <span class="pl-c1">1.00e-01</span>   <span class="pl-c1">1.34e-04</span>s
+  <span class="pl-c1">25</span>  <span class="pl-k">-</span><span class="pl-c1">2.0032e+00</span>   <span class="pl-c1">2.87e-04</span>   <span class="pl-c1">4.82e-03</span>   <span class="pl-c1">1.00e-01</span>   <span class="pl-c1">1.76e-04</span>s
+
+status<span class="pl-k">:</span>               solved
+number of iterations<span class="pl-k">:</span> <span class="pl-c1">25</span>
+optimal objective<span class="pl-k">:</span>    <span class="pl-k">-</span><span class="pl-c1">2.0032</span>
+run time<span class="pl-k">:</span>             <span class="pl-c1">1.81e-04</span>s
+optimal rho estimate<span class="pl-k">:</span> <span class="pl-c1">5.16e-02</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">value</span>.(model, x)
+<span class="pl-c1">8</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.365181</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.119036</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.267222</span>
+  <span class="pl-c1">1.41655</span>
+  <span class="pl-c1">0.69472</span>
+  <span class="pl-c1">0.993475</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.631194</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.02733</span></pre></div>
+<p>Note that the next time <code>solve!</code> is called, the update functions of our parameters (<code>A</code>, <code>b</code>, <code>C</code>, and <code>d</code>) will be called again (<em>once</em> for each parameter), resulting in a different optimum:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">solve!</span>(model)
+iter   objective    pri res    dua res    rho        time
+   <span class="pl-c1">1</span>  <span class="pl-k">-</span><span class="pl-c1">1.4419e+00</span>   <span class="pl-c1">2.57e-01</span>   <span class="pl-c1">5.79e+02</span>   <span class="pl-c1">1.00e-01</span>   <span class="pl-c1">1.53e-05</span>s
+  <span class="pl-c1">25</span>  <span class="pl-k">-</span><span class="pl-c1">3.2498e+00</span>   <span class="pl-c1">1.34e-04</span>   <span class="pl-c1">2.74e-03</span>   <span class="pl-c1">1.00e-01</span>   <span class="pl-c1">3.10e-05</span>s
+
+status<span class="pl-k">:</span>               solved
+number of iterations<span class="pl-k">:</span> <span class="pl-c1">25</span>
+optimal objective<span class="pl-k">:</span>    <span class="pl-k">-</span><span class="pl-c1">3.2498</span>
+run time<span class="pl-k">:</span>             <span class="pl-c1">3.63e-05</span>s
+optimal rho estimate<span class="pl-k">:</span> <span class="pl-c1">7.79e-02</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">value</span>.(model, x)
+<span class="pl-c1">8</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">0.220836</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.462071</span>
+  <span class="pl-c1">0.509146</span>
+  <span class="pl-c1">0.667908</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.850638</span>
+  <span class="pl-c1">0.7877</span>
+  <span class="pl-c1">1.01581</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.992135</span></pre></div>
+<p>Note that the solver is warm-started. Also note that updating the parameters and solving a new QP instance is quite fast:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> MathOptInterface; <span class="pl-k">using</span> OSQP<span class="pl-k">.</span>MathOptInterfaceOSQP<span class="pl-k">:</span> OSQPSettings; MathOptInterface<span class="pl-k">.</span><span class="pl-c1">set</span>(optimizer, OSQPSettings<span class="pl-k">.</span><span class="pl-c1">Verbose</span>(), <span class="pl-c1">false</span>) <span class="pl-c"><span class="pl-c">#</span> silence the optimizer</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> BenchmarkTools
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">solve!</span>(<span class="pl-k">$</span>model)
+  <span class="pl-c1">51.863</span> μs (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)</pre></div>
+<p>The performance and lack of allocations stems from the fact that the 'lazy expressions' used for the constraints and objective function are automatically optimized to calls to in-place functions.</p>
+<h2><a id="user-content-example-2" class="anchor" aria-hidden="true" href="#example-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example 2</h2>
+<p>Of course, in many real-world problems you are unlikely to update your parameters with random values.
+Here's an illustration showing how you might control these values more directly, fitting a vector
+<code>g</code> in a model</p>
+<div class="highlight highlight-source-julia"><pre>g<span class="pl-k">'</span> <span class="pl-k">*</span> X[:,i] <span class="pl-k">≈</span> p[i]</pre></div>
+<p>for a set of vectors in columns of <code>X</code>.</p>
+<p>This example also demonstrates a different style of updating parameters. Whereas in the previous example we
+supplied an 'update function' (e.g., <code>rand!</code>) that is automatically called when <code>solve!</code> is
+called, in this example we use the syntax</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">Parameter</span>(model, val<span class="pl-k">=</span>some_manually_updated_mutable_object)</pre></div>
+<p>to create a <code>Parameter</code> whose value may be updated manually between calls to the <code>solve!</code> function.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Parametron, OSQP<span class="pl-k">.</span>MathOptInterfaceOSQP
+<span class="pl-k">using</span> Random
+
+n, m <span class="pl-k">=</span> <span class="pl-c1">5</span>, <span class="pl-c1">15</span>
+Xdata <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n, m)
+pdata <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Float64}</span>(undef, m);
+model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(OSQP<span class="pl-k">.</span><span class="pl-c1">Optimizer</span>())
+X <span class="pl-k">=</span> <span class="pl-c1">Parameter</span>(model, val<span class="pl-k">=</span>Xdata)
+p <span class="pl-k">=</span> <span class="pl-c1">Parameter</span>(model, val<span class="pl-k">=</span>pdata)
+g <span class="pl-k">=</span> [<span class="pl-c1">Variable</span>(model) <span class="pl-k">for</span> _ <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]
+resid <span class="pl-k">=</span> <span class="pl-c1">@expression</span> X<span class="pl-k">'</span><span class="pl-k">*</span>g <span class="pl-k">-</span> p
+<span class="pl-c1">@objective</span>(model, Minimize, resid<span class="pl-k">'</span><span class="pl-k">*</span>resid)
+
+<span class="pl-c"><span class="pl-c">#</span> Try with a specific ground-truth `g`</span>
+ggt <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n)
+pdata <span class="pl-k">.=</span> Xdata<span class="pl-k">'</span><span class="pl-k">*</span>ggt  <span class="pl-c"><span class="pl-c">#</span> set the values in-place using `.=`</span>
+<span class="pl-c1">solve!</span>(model)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">value</span>.(model, g)
+<span class="pl-c1">5</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">0.6710700783457044</span>
+  <span class="pl-c1">1.3999896266657308</span>
+  <span class="pl-c1">0.5666247642146109</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.018123491138979</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.7464853233374451</span>
+
+julia<span class="pl-k">&gt;</span> ggt
+<span class="pl-c1">5</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">0.671068170731507</span>
+  <span class="pl-c1">1.399985646860983</span>
+  <span class="pl-c1">0.5666231534233734</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.0181205969900424</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.7464832010803155</span></pre></div>
+<p>You can re-fit the model after updating <code>pdata</code> and/or <code>Xdata</code> in-place.</p>
+</article></div>

@@ -1,0 +1,54 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h2><a id="user-content-juml" class="anchor" aria-hidden="true" href="#juml"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>JuML</h2>
+<p>JuML is a machine learning package written in pure Julia. This is still very much work in progress so the package is not registered yet and you will need to clone this repo to try it.</p>
+<p>At the moment JuML contains a custom built <em>DataFrame</em> with associated types (<em>Factor</em>, <em>Covariate</em> etc) and an independent XGBoost implementation (logistic only). The XGBoost part around 600 lines of Julia code and has speed similar to the original C++ implementation with smaller memory footprint.</p>
+<h3><a id="user-content-example-usage-airline-dataset-with-1m-obs" class="anchor" aria-hidden="true" href="#example-usage-airline-dataset-with-1m-obs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example usage: Airline dataset with 1M obs</h3>
+<p>The datasets can be downloaded from here:</p>
+<p><a href="https://s3.amazonaws.com/benchm-ml--main/train-1m.csv" rel="nofollow">https://s3.amazonaws.com/benchm-ml--main/train-1m.csv</a></p>
+<p><a href="https://s3.amazonaws.com/benchm-ml--main/test.csv" rel="nofollow">https://s3.amazonaws.com/benchm-ml--main/test.csv</a></p>
+<p>Let's rename the datasets into <em>airlinetrain</em> and <em>airlinetest</em>.
+First we have to import the csv datasets into a special binary format.
+We will import both datasets into 1 <em>airlinetraintest</em> dataframe with test data stacked under train data:</p>
+<pre><code>using JuML
+importcsv("your-path\\airlinetrain.csv"; path2 = "your-path\\airlinetest.csv", outname = "airlinetraintest")
+</code></pre>
+<p>The data will be converted into a special binary format and saved in a new folder named <em>airlinetraintest</em>. Each data column is stored in a separate binary file.</p>
+<p>We can now load the dataset into JuML DataFrame:</p>
+<pre><code>traintest_df = DataFrame("your-path\\airlinetraintest") # note we are passing a path to a folder
+</code></pre>
+<p>You should see a summary of the dataframe in your REPL. JuML DataFrame is just a collection of Factors and Covariates. Categorical data is stored in Factors and numeric data in Covariates.</p>
+<pre><code>factors = traintest_df.factors
+covariates = traintest_df.covariates
+</code></pre>
+<p>We can access each Factor or Covariate by name:</p>
+<pre><code>distance = traintest_df["Distance"]
+deptime = traintest_df["DepTime"]
+dep_delayed_15min = traintest_df["dep_delayed_15min"]
+</code></pre>
+<p>We can see a quick stat summary:</p>
+<pre><code>summary(distance)
+summary(deptime)
+summary(dep_delayed_15min)
+</code></pre>
+<p>JuML XGBoost expects label to be a Covariate and all features to be Factors. Our label is <em>dep_delayed_15min</em>, which is a Factor, and there are 2 Covariates in the data: <em>Distance</em> and <em>DepTime</em>. Fortunately we can easily convert between factors and covariates in JuML.</p>
+<p>Let's create a Covariate which is equal to 1 when <em>dep_delayed_15min</em> is Y and 0 otherwise:</p>
+<pre><code>label = covariate(traintest_df["dep_delayed_15min"], level -&gt; level == "Y" ? 1.0 : 0.0)
+</code></pre>
+<p>Covariates can be converted into factors by binning. We can bin on every possible value with function <em>factor</em>:</p>
+<pre><code>deptime = factor(traintest_df["DepTime"])
+distance = factor(traintest_df["Distance"])
+</code></pre>
+<p>We have stacked train and test data in 1 dataframe. We will need to define selectors for each part:</p>
+<pre><code>trainsel = BoolVariate("trainsel", (1:1100000) .&lt;= 1000000)
+validsel = BoolVariate("validsel", (1:1100000) .&gt; 1000000)
+</code></pre>
+<p>The last thing to do before we can run XGBoost is to create a vector of factors as features. We need to add <em>deptime</em> and <em>distance</em> factors to train dataframe factors (<em>dep_delayed_15min</em> will be excluded from the model features automatically):</p>
+<pre><code>factors = [traintest_df.factors; [deptime, distance]]
+</code></pre>
+<p>We are now ready to run XGBoost:</p>
+<pre><code>model = xgblogit(label, factors; trainselector = trainsel, validselector = validsel, η = 0.3, λ = 1.0, γ = 0.0, minchildweight = 1.0, nrounds = 2, maxdepth = 5, ordstumps = false, caching = true, usefloat64 = true, singlethread = true);
+</code></pre>
+<p>We can now calculate auc and logloss for both train and validation:</p>
+<pre><code>trainauc, testauc = getauc(model.pred, label, trainsel, validsel)
+trainlogloss, testlogloss = getlogloss(model.pred, label, trainsel, validsel)
+</code></pre>
+</article></div>

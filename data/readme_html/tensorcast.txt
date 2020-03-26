@@ -1,0 +1,74 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-tensorcastjl" class="anchor" aria-hidden="true" href="#tensorcastjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TensorCast.jl</h1>
+<p><a href="https://pkg.julialang.org/docs/TensorCast/" rel="nofollow"><img src="https://camo.githubusercontent.com/f7b92a177c912c1cc007fc9b40f17ff3ee3bb414/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable Docs" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://mcabbott.github.io/TensorCast.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/3e353c26ddfe819150acbc732248f4f2a37f5175/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Latest Docs" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a>
+<a href="https://travis-ci.org/mcabbott/TensorCast.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3b3d6b1890fed1560ec61e39ad1a286a2e7c628a/68747470733a2f2f7472617669732d63692e6f72672f6d636162626f74742f54656e736f72436173742e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/mcabbott/TensorCast.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html" rel="nofollow"><img src="https://camo.githubusercontent.com/228cae62d0f1417bdc6e7f98606244d2128e4611/68747470733a2f2f6a756c696163692e6769746875622e696f2f4e616e6f736f6c646965725265706f7274732f706b676576616c5f6261646765732f542f54656e736f72436173742e737667" alt="PkgEval" data-canonical-src="https://juliaci.github.io/NanosoldierReports/pkgeval_badges/T/TensorCast.svg" style="max-width:100%;"></a></p>
+<p>This package lets you write expressions involving many-dimensional arrays in index notation,
+by defining a few macros. The first is <code>@cast</code>, which deals both with "casting" into new shapes
+(including going to and from an array-of-arrays) and with broadcasting:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@cast</span> A[row][col] <span class="pl-k">:=</span> B[row, col]        <span class="pl-c"><span class="pl-c">#</span> slice a matrix B into its rows, also @cast A[r] := B[r,:]</span>
+
+<span class="pl-c1">@cast</span> C[(i,j), (k,ℓ)] <span class="pl-k">:=</span> D<span class="pl-k">.</span>x[i,j,k,ℓ]   <span class="pl-c"><span class="pl-c">#</span> reshape a 4-tensor D.x to give a matrix</span>
+
+<span class="pl-c1">@cast</span> E[φ,γ] <span class="pl-k">=</span> F[φ]<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">exp</span>(G[γ])       <span class="pl-c"><span class="pl-c">#</span> broadcast E .= F.^2 .* exp.(G') into existing E</span>
+
+<span class="pl-c1">@cast</span> T[x,y,n] <span class="pl-k">:=</span> <span class="pl-c1">outer</span>(M[:,n])[x,y]    <span class="pl-c"><span class="pl-c">#</span> generalised mapslices, vector -&gt; matrix function</span></pre></div>
+<p>Next, <code>@reduce</code> takes sums (or other reductions) over the indicated directions,
+but otherwise understands all the same things. Among such sums is matrix multiplication,
+which can be performed much more efficiently by using <code>@matmul</code> instead:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@reduce</span> K[_,b] <span class="pl-k">:=</span> <span class="pl-c1">prod</span>(a,c) L<span class="pl-k">.</span>field[a,b,c]           <span class="pl-c"><span class="pl-c">#</span> product over dims=(1,3), and drop dims=3</span>
+
+<span class="pl-c1">@reduce</span> S[i] <span class="pl-k">=</span> <span class="pl-c1">sum</span>(n) <span class="pl-k">-</span>P[i,n] <span class="pl-k">*</span> <span class="pl-c1">log</span>(P[i,n]<span class="pl-k">/</span>Q[n])     <span class="pl-c"><span class="pl-c">#</span> sum!(S, @. -P*log(P/Q')) into exising S</span>
+
+<span class="pl-c1">@matmul</span> M[i,j] <span class="pl-k">:=</span> <span class="pl-c1">sum</span>(k,k′) U[i,k,k′] <span class="pl-k">*</span> V[(k,k′),j]  <span class="pl-c"><span class="pl-c">#</span> matrix multiplication, plus reshape</span>
+
+<span class="pl-c1">@reduce</span> W[μ,ν,_,J] <span class="pl-k">:=</span> <span class="pl-c1">maximum</span>(i<span class="pl-k">:</span><span class="pl-c1">4</span>) X[(i,J)][μ,ν]     <span class="pl-c"><span class="pl-c">#</span> elementwise maxima across sets of 4 matrices</span></pre></div>
+<p>The main goal is to allow you to write complicated expressions very close to how you would
+on paper (or in LaTeX), and avoiding having to write elaborate comments that
+"dimensions 4,5 of this tensor are μ,ν" etc.</p>
+<p>The notation used is very similar to that of some existing packages,
+although all of them use an implicit sum over repeated indices.
+<a href="https://github.com/Jutho/TensorOperations.jl">TensorOperations.jl</a>
+performs Einstein-convention contractions and traces:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@tensor</span> A[i] <span class="pl-k">:=</span> B[i,j] <span class="pl-k">*</span> C[j,k] <span class="pl-k">*</span> D[k]      <span class="pl-c"><span class="pl-c">#</span> matrix multiplication, A = B * C * D</span>
+<span class="pl-c1">@tensor</span> D[i] <span class="pl-k">:=</span> <span class="pl-c1">2</span> <span class="pl-k">*</span> E[i] <span class="pl-k">+</span> F[i,k,k]         <span class="pl-c"><span class="pl-c">#</span> partial trace of F only, Dᵢ = 2Eᵢ + Σⱼ Fᵢⱼⱼ</span></pre></div>
+<p>More general contractions are allowed by
+<a href="https://github.com/under-Peter/OMEinsum.jl">OMEinsum.jl</a>, but only one term:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@ein</span> W[i,j,k] <span class="pl-k">:=</span> X[i,ξ] <span class="pl-k">*</span> Y[j,ξ] <span class="pl-k">*</span> Z[k,ξ]   <span class="pl-c"><span class="pl-c">#</span> star contraction</span>
+W <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">ein</span>"</span> iξ,jξ,kξ -&gt; ijk <span class="pl-pds">"</span></span>(X,Y,Z)           <span class="pl-c"><span class="pl-c">#</span> numpy-style notation</span></pre></div>
+<p>Instead <a href="https://github.com/ahwillia/Einsum.jl">Einsum.jl</a> sums the entire right hand side,
+but also allows arbitrary (element-wise) functions:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@einsum</span> S[i] <span class="pl-k">:=</span> <span class="pl-k">-</span>P[i,n] <span class="pl-k">*</span> <span class="pl-c1">log</span>(P[i,n]<span class="pl-k">/</span>Q[n])  <span class="pl-c"><span class="pl-c">#</span> sum over n, for each i (also with @reduce above)</span>
+<span class="pl-c1">@einsum</span> G[i] <span class="pl-k">:=</span> <span class="pl-c1">2</span> <span class="pl-k">*</span> E[i] <span class="pl-k">+</span> F[i,k,k]         <span class="pl-c"><span class="pl-c">#</span> the sum includes everyting:  Gᵢ = Σⱼ (2Eᵢ + Fᵢⱼⱼ)</span></pre></div>
+<p>There is some overlap of operations which can be done with several of these packages,
+but they produce very different code for actually doing what you request.
+The original <code>@einsum</code> simply writes the necessary set of nested loops,
+while <code>@tensor</code> and <code>@ein</code> work out a sequence of basic operations (like contraction and traces).</p>
+<p>The macros from this package aim instead to produce simple Julia array commands:
+often just a string of <code>reshape</code> and <code>permutedims</code> and <code>eachslice</code> and so on,
+plus a native <a href="https://julialang.org/blog/2017/01/moredots" rel="nofollow">broadcasting expression</a> if needed,
+and <code>sum</code> /  <code>sum!</code>, or <code>*</code> / <code>mul!</code>.
+This means that they are very generic, and will (mostly) work well
+with small <a href="https://github.com/JuliaArrays/StaticArrays.jl">StaticArrays</a>,
+with <a href="https://github.com/FluxML/Flux.jl">Flux</a>'s TrackedArrays,
+on the GPU via <a href="https://github.com/JuliaGPU/CuArrays.jl">CuArrays</a>,
+and on almost anything else. To see what is generated, insert <code>@pretty</code> before any command.</p>
+<p>These commands are usually what you would write anyway, with zero runtime penalty.
+However some operations can sometime be very slow -- for instance using <code>@reduce</code> for matrix
+multiplication will broadcast out a complete 3-tensor, while <code>@matmul</code> calls <code>*</code> instead.
+And some operations can be much faster, particularly when replacing <code>mapslices</code> with
+explicit slicing.</p>
+<p>For those who speak Python, <code>@cast</code> and <code>@reduce</code> allow similar operations to
+<a href="https://github.com/arogozhnikov/einops"><code>einops</code></a> (minus the cool video, but plus broadcasting)
+while Einsum / TensorOperations map very roughly to <a href="http://numpy-discussion.10968.n7.nabble.com/einsum-td11810.html" rel="nofollow"><code>einsum</code></a>
+/ <a href="https://github.com/dgasmith/opt_einsum"><code>opt_einsum</code></a>.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<p>You need <a href="https://julialang.org/downloads/" rel="nofollow">Julia</a> 1.0 or later:</p>
+<div class="highlight highlight-source-julia"><pre>] add TensorCast</pre></div>
+<p>Version 0.2 has substantially re-worked logic, and <a href="https://mcabbott.github.io/TensorCast.jl/dev" rel="nofollow">new docs</a>.
+See <a href="https://github.com/mcabbott/TensorCast.jl/releases/tag/v0.2.0">tag page</a> for what's changed.</p>
+
+<h2><a id="user-content-about" class="anchor" aria-hidden="true" href="#about"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>About</h2>
+<p>This was a holiday project to learn a bit of metaprogramming, originally <code>TensorSlice.jl</code>.
+But it suffered a little scope creep.</p>
+</article></div>

@@ -1,0 +1,48 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-googlecodesearchjl" class="anchor" aria-hidden="true" href="#googlecodesearchjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>GoogleCodeSearch.jl</h1>
+<p>A Julia wrapper over <a href="https://github.com/google/codesearch">Google Code Search</a>.</p>
+<p><a href="https://travis-ci.org/tanmaykm/GoogleCodeSearch.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/655400b40763116b953c38fb6827f6951cafc507/68747470733a2f2f7472617669732d63692e6f72672f74616e6d61796b6d2f476f6f676c65436f64655365617263682e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/tanmaykm/GoogleCodeSearch.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>A context (<code>Ctx</code>) instance encapsulates the index location and provides a useful way to split indexing across multiple indices. It also holds a lock to handle it being called across tasks.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> A resolver method is used to determine which index a path should be indexed in.</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Useful to split indexing across multiple files for performance.</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> By default only a single index will be created.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">my_index_resolver</span>(ctx<span class="pl-k">::</span><span class="pl-c1">Ctx</span>, inpath<span class="pl-k">::</span><span class="pl-c1">String</span>) <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(ctx<span class="pl-k">.</span>store, <span class="pl-s"><span class="pl-pds">"</span>myindex<span class="pl-pds">"</span></span>)
+my_index_resolver (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> storedir is where all indices are kept (`$HOME/.googlecodesearchjl` by default)</span>
+
+julia<span class="pl-k">&gt;</span> storedir<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>/tmp/store/<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds">"</span>/tmp/store/<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> ctx <span class="pl-k">=</span> <span class="pl-c1">Ctx</span>(store<span class="pl-k">=</span>storedir, resolver<span class="pl-k">=</span>my_index_resolver)
+GoogleCodeSearch<span class="pl-k">.</span><span class="pl-c1">Ctx</span>(store<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>/tmp/store/<span class="pl-pds">"</span></span>)</pre></div>
+<p>Index paths by calling the index method. While indexing, ensure paths are sorted such that paths appearing later are not substrings of those earlier. Otherwise, the earlier indexed entries are erased (strange behavior of <code>cindex</code>).</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">index</span>(ctx, <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir1<span class="pl-pds">"</span></span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">index</span>(ctx, [<span class="pl-s"><span class="pl-pds">"</span>/tmp/dir2<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir3<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir4<span class="pl-pds">"</span></span>]);</pre></div>
+<p>Search by calling the search method with a regex pattern to search for. Optionally pass the following parameters:</p>
+<ul>
+<li><code>ignorecase</code>: boolean, whether to ignore case during search (default false)</li>
+<li><code>pathfilter</code>: a regular expression string to restrict search only to matching paths</li>
+</ul>
+<p>The search method returns a vector of named tuples, each describing a match.</p>
+<ul>
+<li><code>file</code>: path that matched</li>
+<li><code>line</code>: line number therein that matched</li>
+<li><code>text</code>: text that matched</li>
+</ul>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">search</span>(ctx, <span class="pl-s"><span class="pl-pds">"</span>Include<span class="pl-pds">"</span></span>; ignorecase<span class="pl-k">=</span><span class="pl-c1">true</span>, pathfilter<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>.*dir1.*<span class="pl-pds">"</span></span>)
+<span class="pl-c1">17</span><span class="pl-k">-</span>element Array{NamedTuple{(<span class="pl-c1">:file</span>, <span class="pl-c1">:line</span>, <span class="pl-c1">:text</span>),Tuple{String,Int64,String}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ (file <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir1/plugin/resolve.jl<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">5</span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span># At the end it walks through the dependency tree and outputs include statements in the correct order.<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)                              
+ (file <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir1/plugin/resolve.jl<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">110</span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>function genincludes(folder::String)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)                                                                                              
+ (file <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir1/plugin/resolve.jl<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">115</span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>    open(fullsrcpath(folder, <span class="pl-cce">\"</span>modelincludes.jl<span class="pl-cce">\"</span>), <span class="pl-cce">\"</span>w<span class="pl-cce">\"</span>) do inclfile<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)                                                            
+ (file <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir1/plugin/src/main/resources/julia/client.mustache<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">13</span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>include(<span class="pl-cce">\"</span>modelincludes.jl<span class="pl-cce">\"</span>)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)                                                                        
+ (file <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>/tmp/dir1/plugin/src/main/resources/julia/client.mustache<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">15</span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>include(<span class="pl-cce">\"</span>api_{{classname}}.jl<span class="pl-cce">\"</span>){{/apis}}{{/apiInfo}}<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)                                               
+ <span class="pl-k">...</span></pre></div>
+<p>A HTTP service with JSON interface can be brought up with the <code>run_http</code> method. Use optional parameter <code>ops</code> to sepcify the operations that should be exposed. Additional keywords, identical to what <code>HTTP.serve</code> would accept can also be passed to this method to enable other features e.g. SSL, port reuse.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> GoogleCodeSearch
+
+julia<span class="pl-k">&gt;</span> ctx <span class="pl-k">=</span> <span class="pl-c1">Ctx</span>();
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">run_http</span>(ctx; host<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">ip</span>"</span>0.0.0.0<span class="pl-pds">"</span></span>, port<span class="pl-k">=</span><span class="pl-c1">5555</span>, ops<span class="pl-k">=</span>(<span class="pl-c1">:index</span>, <span class="pl-c1">:search</span>))</pre></div>
+</article></div>

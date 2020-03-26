@@ -1,0 +1,328 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h2><a id="user-content-simdpiratesjl" class="anchor" aria-hidden="true" href="#simdpiratesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SIMDPirates.jl</h2>
+<p><a href="https://travis-ci.com/chriselrod/SIMDPirates.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/993b5bf896b20d2adaaa76d23313a56addac924a/68747470733a2f2f7472617669732d63692e636f6d2f6368726973656c726f642f53494d44506972617465732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/chriselrod/SIMDPirates.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/chriselrod/SIMDPirates.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/50074a51f5f37893a1d2cbd69c4b98a1f82cda11/68747470733a2f2f636f6465636f762e696f2f67682f6368726973656c726f642f53494d44506972617465732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/chriselrod/SIMDPirates.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>This library serves two primary purposes:</p>
+<ol>
+<li>Letting users write explicit SIMD code.</li>
+<li>Serving as a code-gen backend for other libraries, such as <a href="https://github.com/chriselrod/LoopVectorization.jl">LoopVectorization.jl</a>.</li>
+</ol>
+<p>The second point has been a major driving factor behind the API divergence between <a href="https://github.com/eschnett/SIMD.jl">SIMD.jl</a> and <code>SIMDPirates.jl</code>. That is, code-gen is a lot easier if multiple dispatch does the heavy lifting so that the same code does the correct thing based on type information.</p>
+<p>The major differences are with the <code>vload</code> and <code>vstore!</code> API. They use zero-based indexing, and the behavior is a function of the input types:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SIMDPirates
+
+julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">100</span>,<span class="pl-c1">100</span>); ptrA <span class="pl-k">=</span> <span class="pl-c1">stridedpointer</span>(A); <span class="pl-c"><span class="pl-c">#</span> WARNING: don't let A get garbage collected</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (<span class="pl-c1">0</span>,<span class="pl-c1">0</span>)), A[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>]
+(<span class="pl-c1">0.7977634555508373</span>, <span class="pl-c1">0.7977634555508373</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (<span class="pl-c1">1</span>,)), A[<span class="pl-c1">2</span>]
+(<span class="pl-c1">0.13579836748463214</span>, <span class="pl-c1">0.13579836748463214</span>)</pre></div>
+<p>The type <code>_MM{W}(i)</code> represents indexing a vector.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (<span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">8</span>),))
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.6145530413966958</span>, <span class="pl-c1">0.13905050452534073</span>, <span class="pl-c1">0.8536024612786386</span>, <span class="pl-c1">0.13206059984056195</span>, <span class="pl-c1">0.5746515798950431</span>, <span class="pl-c1">0.035588186094294816</span>, <span class="pl-c1">0.9061808924885322</span>, <span class="pl-c1">0.0761514370503289</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">16</span>,<span class="pl-c1">1</span>]'
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">8</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,Array{Float64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">0.614553</span>  <span class="pl-c1">0.139051</span>  <span class="pl-c1">0.853602</span>  <span class="pl-c1">0.132061</span>  <span class="pl-c1">0.574652</span>  <span class="pl-c1">0.0355882</span>  <span class="pl-c1">0.906181</span>  <span class="pl-c1">0.0761514</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (<span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">16</span>),<span class="pl-c1">2</span>))
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.9345847434764896</span>, <span class="pl-c1">0.8778295861820791</span>, <span class="pl-c1">0.3882306993294067</span>, <span class="pl-c1">0.029132949582947543</span>, <span class="pl-c1">0.13643548789260773</span>, <span class="pl-c1">0.22573385104528088</span>, <span class="pl-c1">0.16953827538934285</span>, <span class="pl-c1">0.09210510294056884</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">17</span><span class="pl-k">:</span><span class="pl-c1">24</span>,<span class="pl-c1">3</span>]'
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">8</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,Array{Float64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">0.934585</span>  <span class="pl-c1">0.87783</span>  <span class="pl-c1">0.388231</span>  <span class="pl-c1">0.0291329</span>  <span class="pl-c1">0.136435</span>  <span class="pl-c1">0.225734</span>  <span class="pl-c1">0.169538</span>  <span class="pl-c1">0.0921051</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (<span class="pl-c1">2</span>,<span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">24</span>)))
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.4586224341251526</span>, <span class="pl-c1">0.21030061931083033</span>, <span class="pl-c1">0.12676185033224674</span>, <span class="pl-c1">0.03418338751245442</span>, <span class="pl-c1">0.1415585905885226</span>, <span class="pl-c1">0.5599978264570737</span>, <span class="pl-c1">0.8694201302322504</span>, <span class="pl-c1">0.5101382821233793</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">3</span>,<span class="pl-c1">25</span><span class="pl-k">:</span><span class="pl-c1">32</span>]'
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">8</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,Array{Float64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">0.458622</span>  <span class="pl-c1">0.210301</span>  <span class="pl-c1">0.126762</span>  <span class="pl-c1">0.0341834</span>  <span class="pl-c1">0.141559</span>  <span class="pl-c1">0.559998</span>  <span class="pl-c1">0.86942</span>  <span class="pl-c1">0.510138</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (<span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">24</span>),<span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">24</span>)))
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.41258101001567926</span>, <span class="pl-c1">0.7681445910047522</span>, <span class="pl-c1">0.49408560799133205</span>, <span class="pl-c1">0.8683185123046988</span>, <span class="pl-c1">0.0988985046194395</span>, <span class="pl-c1">0.382843770190751</span>, <span class="pl-c1">0.47204194244896036</span>, <span class="pl-c1">0.4655638468723473</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">getindex</span>.(<span class="pl-c1">Ref</span>(A), <span class="pl-c1">25</span><span class="pl-k">:</span><span class="pl-c1">32</span>, <span class="pl-c1">25</span><span class="pl-k">:</span><span class="pl-c1">32</span>)<span class="pl-k">'</span>
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">8</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,Array{Float64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">0.412581</span>  <span class="pl-c1">0.768145</span>  <span class="pl-c1">0.494086</span>  <span class="pl-c1">0.868319</span>  <span class="pl-c1">0.0988985</span>  <span class="pl-c1">0.382844</span>  <span class="pl-c1">0.472042</span>  <span class="pl-c1">0.465564</span></pre></div>
+<p>You can also index using vectors:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> si <span class="pl-k">=</span> <span class="pl-c1">SVec</span>(<span class="pl-c1">ntuple</span>(i <span class="pl-k">-&gt;</span> Core<span class="pl-k">.</span><span class="pl-c1">VecElement</span>(<span class="pl-c1">3</span>i), <span class="pl-c1">Val</span>(<span class="pl-c1">8</span>)));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(ptrA, (si,<span class="pl-c1">4</span>))
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.420209298966957</span>, <span class="pl-c1">0.09396816626228843</span>, <span class="pl-c1">0.4879807535620213</span>, <span class="pl-c1">0.7244630379947636</span>, <span class="pl-c1">0.7657242973977998</span>, <span class="pl-c1">0.37856664034180176</span>, <span class="pl-c1">0.14493820968814353</span>, <span class="pl-c1">0.26933496073958674</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">27</span>,<span class="pl-c1">5</span>]'
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">8</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,Array{Float64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">0.420209</span>  <span class="pl-c1">0.0939682</span>  <span class="pl-c1">0.487981</span>  <span class="pl-c1">0.724463</span>  <span class="pl-c1">0.765724</span>  <span class="pl-c1">0.378567</span>  <span class="pl-c1">0.144938</span>  <span class="pl-c1">0.269335</span></pre></div>
+<p>The api for <code>vstore!(::AbstractStridedPointer, v, i)</code> is similar. The index determines the elements to which <code>v</code> is stored. If <code>v</code> is a scalar, it will be stored to each of the implied elements.
+However, you should manually reduce a vector to store at a scalar location, because whether you'd want <code>sum</code>, <code>prod</code>, or some other operation is not assumed.</p>
+<p>The operations also take bitmasks (placed affter the index tuple) to perform masked loads/stores. This is useful for dealing with the ends of arrays, for example.</p>
+<p>Using a single API where types determing behavior simplifies SIMD code geneartion in macros or generated functions: you only need a single version of the code producing expressions, and it can handle various contingencies. The more work we can move from meta programming to multiple dispatch, the better.</p>
+<p>The <code>_MM{W}</code> type is represents indexing into an <code>AbstractArray</code> at locations <code>_MM{W}.i + j</code> for <code>j ∈ 1:W</code>, which is reflected in arithmetic operations:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">0</span>) <span class="pl-k">+</span> <span class="pl-c1">36</span>
+<span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">36</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">_MM</span><span class="pl-c1">{8}</span>(<span class="pl-c1">36</span>) <span class="pl-k">*</span> <span class="pl-c1">5</span>
+SVec{<span class="pl-c1">8</span>,Int64}<span class="pl-k">&lt;</span><span class="pl-c1">180</span>, <span class="pl-c1">185</span>, <span class="pl-c1">190</span>, <span class="pl-c1">195</span>, <span class="pl-c1">200</span>, <span class="pl-c1">205</span>, <span class="pl-c1">210</span>, <span class="pl-c1">215</span><span class="pl-k">&gt;</span></pre></div>
+<p>Offseting by 36 increments the index by 36, but multiplying by 5 must also multiply the step by <code>5</code>.
+This allows one to implement cartesian indexing as simply the dot product between the cartesian indices and strides of the array.
+However, care must be taken to avoid multiplying <code>_MM</code> instances by <code>1</code> whenever possible as this will convert the <code>_MM</code> into an <code>SVec</code> with equivalent behavior (loads/stores to the same elements), but the inferior performance of a discontiguous memory accesses.
+Whenever a stride is known to equal <code>1</code> at compile time, as is commonly the case for the first stride, this should be exploited.</p>
+<hr>
+<p>Older documenation begins here.</p>
+<p><code>SIMDPirates.jl</code> is a library for <code>SIMD</code> intrinsics. The code was stolen from  , whose authors and maintainers deserve credit for most of the good work here. Aside from pirating code, <code>SIMDPirates</code> also provides an <code>@pirate</code> macro that lets you imagine you're commiting type piracy:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@macroexpand</span> <span class="pl-c1">@pirate</span> v1 <span class="pl-k">*</span> v2 <span class="pl-k">+</span> v3 <span class="pl-k">*</span> v4
+:(SIMDPirates<span class="pl-k">.</span><span class="pl-c1">vmuladd</span>(v1, v2, SIMDPirates<span class="pl-k">.</span><span class="pl-c1">vmul</span>(v3, v4)))</pre></div>
+<p>The functions <code>SIMDPirates.vmuladd</code> and <code>SIMDPirates.vmul</code> have methods defined on <code>NTuple{W,Core.VecElement{&lt;:Union{Float64,Float32}}}</code>. By substituting base functions for methods with appropriate definitions, you can thus use base types without actual piracy. In general, the recomended approach however is to use <code>SVec</code>, a <code>struct</code>-wrapped vector which has overloads.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">vbroadcast</span>(<span class="pl-c1">Val</span>(<span class="pl-c1">8</span>), <span class="pl-c1">0.0</span>) <span class="pl-k">+</span> <span class="pl-c1">2</span>
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">2.0</span><span class="pl-k">&gt;</span></pre></div>
+<p>Anyone is more than welcome to take any of the code or changes I've made to this library and submit them to <a href="https://github.com/eschnett/SIMD.jl">SIMD.jl</a>.</p>
+<h3><a id="user-content-highlights" class="anchor" aria-hidden="true" href="#highlights"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Highlights</h3>
+<p>First, generating a few random vectors (if you're interested in the SIMD generation of random numbers, please see <a href="https://github.com/chriselrod/VectorizedRNG.jl">VectorizedRNG.jl</a>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">SVec</span>(<span class="pl-c1">ntuple</span>(<span class="pl-c1">Val</span>(<span class="pl-c1">8</span>)) <span class="pl-k">do</span> w Core<span class="pl-k">.</span><span class="pl-c1">VecElement</span>(<span class="pl-c1">rand</span>()) <span class="pl-k">end</span>)
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.5692277987210761</span>, <span class="pl-c1">0.33665348761817304</span>, <span class="pl-c1">0.03954926738748976</span>, <span class="pl-c1">0.3213190689556804</span>, <span class="pl-c1">0.8088511245418579</span>, <span class="pl-c1">0.35544805303664107</span>, <span class="pl-c1">0.3677375589109022</span>, <span class="pl-c1">0.4651001170793463</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> y <span class="pl-k">=</span> <span class="pl-c1">SVec</span>(<span class="pl-c1">ntuple</span>(<span class="pl-c1">Val</span>(<span class="pl-c1">8</span>)) <span class="pl-k">do</span> w Core<span class="pl-k">.</span><span class="pl-c1">VecElement</span>(<span class="pl-c1">rand</span>()) <span class="pl-k">end</span>)
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.4777741139597824</span>, <span class="pl-c1">0.06049602694925049</span>, <span class="pl-c1">0.3872217501123736</span>, <span class="pl-c1">0.486269129542215</span>, <span class="pl-c1">0.7425786365371663</span>, <span class="pl-c1">0.5857635301041568</span>, <span class="pl-c1">0.3686591983067562</span>, <span class="pl-c1">0.2412057239643277</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> z <span class="pl-k">=</span> <span class="pl-c1">SVec</span>(<span class="pl-c1">ntuple</span>(<span class="pl-c1">Val</span>(<span class="pl-c1">8</span>)) <span class="pl-k">do</span> w Core<span class="pl-k">.</span><span class="pl-c1">VecElement</span>(<span class="pl-c1">rand</span>()) <span class="pl-k">end</span>)
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.7913560950516021</span>, <span class="pl-c1">0.04884861331731183</span>, <span class="pl-c1">0.7385341388346818</span>, <span class="pl-c1">0.5228028153085258</span>, <span class="pl-c1">0.21908962866195014</span>, <span class="pl-c1">0.41415395968234314</span>, <span class="pl-c1">0.2655341712486954</span>, <span class="pl-c1">0.16997469510081653</span><span class="pl-k">&gt;</span></pre></div>
+<p>Fast flags on common operators, to allow for contractions:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">foo</span>(x,y,z) <span class="pl-k">=</span> x <span class="pl-k">*</span> y <span class="pl-k">-</span> z
+foo (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">foo</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">foo</span>(x,y,<span class="pl-c1">0.0</span>)
+foo (generic <span class="pl-k">function</span> with <span class="pl-c1">2</span> methods)</pre></div>
+<p>This results in the following asm:</p>
+<div class="highlight highlight-source-assembly"><pre><span class="pl-en">#julia&gt; @code_native debuginfo=:none foo(x</span><span class="pl-s1">,</span><span class="pl-en">y</span><span class="pl-s1">,</span><span class="pl-en">z)</span>
+<span class="pl-en">	.text</span>
+<span class="pl-en">	</span><span class="pl-k">vmovupd</span><span class="pl-en">	(%</span><span class="pl-v">rsi</span><span class="pl-en">)</span><span class="pl-s1">,</span><span class="pl-en"> %zmm0</span>
+<span class="pl-en">	</span><span class="pl-k">vmovupd</span><span class="pl-en">	(%</span><span class="pl-v">rdx</span><span class="pl-en">)</span><span class="pl-s1">,</span><span class="pl-en"> %zmm1</span>
+<span class="pl-en">	vfmsub213pd	(%</span><span class="pl-v">rcx</span><span class="pl-en">)</span><span class="pl-s1">,</span><span class="pl-en"> %zmm0</span><span class="pl-s1">,</span><span class="pl-en"> %zmm1</span>
+<span class="pl-en">	</span><span class="pl-k">vmovapd</span><span class="pl-en">	%zmm1</span><span class="pl-s1">,</span><span class="pl-en"> (%</span><span class="pl-v">rdi</span><span class="pl-en">)</span>
+<span class="pl-en">	</span><span class="pl-k">movq</span><span class="pl-en">	%</span><span class="pl-v">rdi</span><span class="pl-s1">,</span><span class="pl-en"> %</span><span class="pl-v">rax</span>
+<span class="pl-en">	</span><span class="pl-k">vzeroupper</span>
+<span class="pl-en">	retq</span>
+<span class="pl-en">	</span><span class="pl-k">nop</span>
+
+<span class="pl-en">#julia&gt; @code_native debuginfo=:none foo(x</span><span class="pl-s1">,</span><span class="pl-en">y)</span>
+<span class="pl-en">	.text</span>
+<span class="pl-en">	</span><span class="pl-k">vmovupd</span><span class="pl-en">	(%</span><span class="pl-v">rsi</span><span class="pl-en">)</span><span class="pl-s1">,</span><span class="pl-en"> %zmm0</span>
+<span class="pl-en">	</span><span class="pl-k">vmulpd</span><span class="pl-en">	(%</span><span class="pl-v">rdx</span><span class="pl-en">)</span><span class="pl-s1">,</span><span class="pl-en"> %zmm0</span><span class="pl-s1">,</span><span class="pl-en"> %zmm0</span>
+<span class="pl-en">	</span><span class="pl-k">vmovapd</span><span class="pl-en">	%zmm0</span><span class="pl-s1">,</span><span class="pl-en"> (%</span><span class="pl-v">rdi</span><span class="pl-en">)</span>
+<span class="pl-en">	</span><span class="pl-k">movq</span><span class="pl-en">	%</span><span class="pl-v">rdi</span><span class="pl-s1">,</span><span class="pl-en"> %</span><span class="pl-v">rax</span>
+<span class="pl-en">	</span><span class="pl-k">vzeroupper</span>
+<span class="pl-en">	retq</span>
+<span class="pl-en">	nopl	(%</span><span class="pl-v">rax</span><span class="pl-en">)</span></pre></div>
+<p>The arithmetic of the three argument <code>foo</code> was reduced to a single <code>vfmsub213pd</code> instruction (vectorized fused multiplication and subtraction of packed double precision numbers), while the two argument version dropped the <code>0.0</code> producing a <code>vmulpd</code> (vectorized multiplication of packed doubles).</p>
+<p>For implementing <a href="https://github.com/JuliaMath/AccurateArithmetic.jl">compensated algorithms</a>, <code>SIMDPirates</code> provides functions that prevent these optimizations:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">efoo</span>(x,y,z) <span class="pl-k">=</span> SIMDPirates<span class="pl-k">.</span><span class="pl-c1">evsub</span>(SIMDPirates<span class="pl-k">.</span><span class="pl-c1">evmul</span>(x, y), z)
+efoo (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">efoo</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">efoo</span>(x, y, x <span class="pl-k">-</span> x)
+efoo (generic <span class="pl-k">function</span> with <span class="pl-c1">2</span> methods)
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_native</span> debuginfo<span class="pl-k">=</span><span class="pl-c1">:none</span> <span class="pl-c1">efoo</span>(x,y,z)
+	<span class="pl-k">.</span>text
+	vmovupd	(<span class="pl-k">%</span>rsi), <span class="pl-k">%</span>zmm0
+	vmulpd	(<span class="pl-k">%</span>rdx), <span class="pl-k">%</span>zmm0, <span class="pl-k">%</span>zmm0
+	vsubpd	(<span class="pl-k">%</span>rcx), <span class="pl-k">%</span>zmm0, <span class="pl-k">%</span>zmm0
+	vmovapd	<span class="pl-k">%</span>zmm0, (<span class="pl-k">%</span>rdi)
+	movq	<span class="pl-k">%</span>rdi, <span class="pl-k">%</span>rax
+	vzeroupper
+	retq
+	nop
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_native</span> debuginfo<span class="pl-k">=</span><span class="pl-c1">:none</span> <span class="pl-c1">efoo</span>(x,y)
+	<span class="pl-k">.</span>text
+	vmovupd	(<span class="pl-k">%</span>rsi), <span class="pl-k">%</span>zmm0
+	vmulpd	(<span class="pl-k">%</span>rdx), <span class="pl-k">%</span>zmm0, <span class="pl-k">%</span>zmm0
+	vmovapd	<span class="pl-k">%</span>zmm0, (<span class="pl-k">%</span>rdi)
+	movq	<span class="pl-k">%</span>rdi, <span class="pl-k">%</span>rax
+	vzeroupper
+	retq
+	nopl	(<span class="pl-k">%</span>rax)</pre></div>
+<p>Although it still allides subtracting (<code>x-x</code>), the multiplication and subtraction haven't contracted.</p>
+<p>Most of the more interesting additions and changes are related to memory management.
+The prefered means of masking is to use bitmasks instead of <code>NTuple{W,Core.VecElement{Bool}}</code>.
+This is in large part because working with bitmasks is extremely efficient on avx512 architectures.
+Note that each <code>Bool</code> is a byte, an <code>i8</code> rather than an <code>i1</code>.
+Note that the zero extensions and truncations to convert back and fourth between them would almost
+certainly be ellided by the compiler. The advantage of the bit representation is that it can
+be convenient to generate masks by means other than a vectorized comparison. For example, if you
+have a loop of length <code>N = 141</code>, and are using vectors of width 8:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">141</span> <span class="pl-k">&amp;</span> <span class="pl-c1">7</span>
+<span class="pl-c1">5</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">one</span>(UInt8) <span class="pl-k">&lt;&lt;</span> ans <span class="pl-k">-</span> <span class="pl-c1">one</span>(UInt8)
+<span class="pl-c1">0x1f</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">bitstring</span>(ans)
+<span class="pl-s"><span class="pl-pds">"</span>00011111<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">5</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(<span class="pl-c1">Val</span>(<span class="pl-c1">8</span>), <span class="pl-c1">pointer</span>(x), <span class="pl-c1">0x1f</span>)
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.9883925090112797</span>, <span class="pl-c1">0.5963333776815305</span>, <span class="pl-c1">0.39507716254066527</span>, <span class="pl-c1">0.20452877630045485</span>, <span class="pl-c1">0.11416439490499686</span>, <span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span><span class="pl-k">&gt;</span></pre></div>
+<p>This can be an efficient means of safely calculating the remaining iterations of a loop without segfaulting by going out of bounds.</p>
+<p>This library also provides cartesian indexing, uses <a href="https://github.com/chriselrod/VectorizationBase.jl">VectorizationBase.jl</a>'s stridedpointer.
+Note that because these are pointers (rather than arrays), 0-based indices seemed more appropriate.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">8</span>,<span class="pl-c1">8</span>,<span class="pl-c1">8</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> VectorizationBase
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vload</span>(<span class="pl-c1">Val</span>(<span class="pl-c1">8</span>), <span class="pl-c1">stridedpointer</span>(A), (<span class="pl-c1">0</span>,<span class="pl-c1">2</span>,<span class="pl-c1">4</span>))
+SVec{<span class="pl-c1">8</span>,Float64}<span class="pl-k">&lt;</span><span class="pl-c1">0.5652101029566953</span>, <span class="pl-c1">0.3735600961400492</span>, <span class="pl-k">-</span><span class="pl-c1">0.46186341442110324</span>, <span class="pl-k">-</span><span class="pl-c1">0.023470374325385516</span>, <span class="pl-k">-</span><span class="pl-c1">0.05667600480551983</span>, <span class="pl-k">-</span><span class="pl-c1">0.5376619417499121</span>, <span class="pl-k">-</span><span class="pl-c1">0.660267667473099</span>, <span class="pl-c1">0.4155986530326794</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> A[:,<span class="pl-c1">3</span>,<span class="pl-c1">5</span>]'
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">8</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,Array{Float64,<span class="pl-c1">1</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">0.56521</span>  <span class="pl-c1">0.37356</span>  <span class="pl-k">-</span><span class="pl-c1">0.461863</span>  <span class="pl-k">-</span><span class="pl-c1">0.0234704</span>  <span class="pl-k">-</span><span class="pl-c1">0.056676</span>  <span class="pl-k">-</span><span class="pl-c1">0.537662</span>  <span class="pl-k">-</span><span class="pl-c1">0.660268</span>  <span class="pl-c1">0.415599</span></pre></div>
+<p>The strided pointer can also handle non-unit strides i nthe first axis:</p>
+<pre><code>julia&gt; A = randn(8,8,8);
+
+julia&gt; vload(Val(8), stridedpointer(@view(A[3,:,:])), (0,4))
+SVec{8,Float64}&lt;-0.6981645894507432, -0.21264670662945478, -0.46186341442110324, 1.0916967467999321, 0.0676744641262481, 1.6641946624495672, -0.36650334364272646, -0.20951071047318678&gt;
+
+julia&gt; @view(A[3,:,:])[:,5]'
+1×8 LinearAlgebra.Adjoint{Float64,Array{Float64,1}}:
+ -0.698165  -0.212647  -0.461863  1.0917  0.0676745  1.66419  -0.366503  -0.209511
+
+julia&gt; 
+
+julia&gt; @code_native debuginfo=:none vload(Val(8), stridedpointer(@view(A[3,:,:])), (0,4))
+	.text
+	movq	8(%rsi), %rax
+	movq	16(%rsi), %rcx
+	leaq	(,%rax,8), %r8
+	imulq	(%rdx), %rax
+	imulq	8(%rdx), %rcx
+	addq	%rax, %rcx
+	shlq	$3, %rcx
+	addq	(%rsi), %rcx
+	vpbroadcastq	%r8, %zmm0
+	vpbroadcastq	%rcx, %zmm1
+	movabsq	$139856148733824, %rax  # imm = 0x7F32CC109F80
+	vpmullq	(%rax), %zmm0, %zmm0
+	vpaddq	%zmm0, %zmm1, %zmm0
+	kxnorw	%k0, %k0, %k1
+   	vgatherqpd	(,%zmm0), %zmm1 {%k1}
+	vmovapd	%zmm1, (%rdi)
+	movq	%rdi, %rax
+	vzeroupper
+	retq
+	nopw	%cs:(%rax,%rax)
+</code></pre>
+<p>It used a <code>vgatherqpd</code> instruction to load the unevenly spaced data. Note that this is much less efficient than a <code>vmov(a/u)pd</code>, but importantly this means that
+if you write a function taking arrays as arguments, and someone passes in a view where <code>stride(A,1) != 1</code>, your function should still produce the correct answer.</p>
+<p>Something else fun:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@inline</span> <span class="pl-k">function</span> <span class="pl-en">testcore!</span>(ptrai<span class="pl-k">::</span><span class="pl-c1">Ptr{T}</span>,ptrbi<span class="pl-k">::</span><span class="pl-c1">Ptr{T}</span>,ptrci<span class="pl-k">::</span><span class="pl-c1">Ptr{T}</span>,<span class="pl-k">::</span><span class="pl-c1">Val{L}</span>) <span class="pl-k">where</span> {T,L}
+    ptrb <span class="pl-k">=</span> ptrbi
+    ptrc <span class="pl-k">=</span> ptrci
+    ptra <span class="pl-k">=</span> ptrai
+    SIMDPirates<span class="pl-k">.</span><span class="pl-c1">lifetime_start!</span>(ptrai, <span class="pl-c1">Val</span>(L))
+    V <span class="pl-k">=</span> VectorizationBase<span class="pl-k">.</span><span class="pl-c1">pick_vector</span>(T)
+    W, Wshift <span class="pl-k">=</span> VectorizationBase<span class="pl-k">.</span><span class="pl-c1">pick_vector_width_shift</span>(T)
+    incr <span class="pl-k">=</span> <span class="pl-c1">sizeof</span>(T) <span class="pl-k">&lt;&lt;</span> Wshift
+    <span class="pl-k">for</span> _ <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span>(L<span class="pl-k">&gt;&gt;&gt;</span>Wshift)
+        vb <span class="pl-k">=</span> <span class="pl-c1">vload</span>(V, ptrb)
+        vc <span class="pl-k">=</span> <span class="pl-c1">vload</span>(V, ptrc)
+        <span class="pl-c1">vstore!</span>(ptra, <span class="pl-c1">vmul</span>(vb, vc))
+        ptra <span class="pl-k">+=</span> incr
+        ptrb <span class="pl-k">+=</span> incr
+        ptrc <span class="pl-k">+=</span> incr
+    <span class="pl-k">end</span>
+    ptra <span class="pl-k">=</span> ptrai
+    out <span class="pl-k">=</span> <span class="pl-c1">vbroadcast</span>(V, <span class="pl-c1">zero</span>(T))
+    <span class="pl-k">for</span> _ <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span>(L<span class="pl-k">&gt;&gt;&gt;</span>Wshift)
+        out <span class="pl-k">=</span> <span class="pl-c1">vadd</span>(out, <span class="pl-c1">vload</span>(V, ptra))
+        ptra <span class="pl-k">+=</span> incr
+    <span class="pl-k">end</span>
+    SIMDPirates<span class="pl-k">.</span><span class="pl-c1">lifetime_end!</span>(ptrai, <span class="pl-c1">Val</span>(L))
+    <span class="pl-c1">vsum</span>(out)
+<span class="pl-k">end</span>
+<span class="pl-en">testsplit</span>(d) <span class="pl-k">=</span> (pd <span class="pl-k">=</span> <span class="pl-c1">pointer</span>(d); <span class="pl-c1">testcore!</span>(pd, pd <span class="pl-k">+</span> <span class="pl-c1">256</span>, pd <span class="pl-k">+</span> <span class="pl-c1">512</span>, <span class="pl-c1">Val</span>(<span class="pl-c1">32</span>)))</pre></div>
+<p>This function takes a dot product of <code>b</code> and <code>c</code> in a stupid way:
+it multiplies them elementwise, storing the results in preallocated storage <code>a</code>, before
+summing up the elements of <code>a</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">32</span>, <span class="pl-c1">3</span>);
+
+julia<span class="pl-k">&gt;</span> buff <span class="pl-k">=</span> <span class="pl-c1">@view</span>(A[:,<span class="pl-c1">1</span>]);
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">@view</span>(A[:,<span class="pl-c1">2</span>]);
+
+julia<span class="pl-k">&gt;</span> c <span class="pl-k">=</span> <span class="pl-c1">@view</span>(A[:,<span class="pl-c1">3</span>]);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Random
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">rand!</span>(b); <span class="pl-c1">rand!</span>(c); <span class="pl-c1">fill!</span>(buff, <span class="pl-c1">999.9</span>);
+
+julia<span class="pl-k">&gt;</span> b<span class="pl-k">'</span> <span class="pl-k">*</span> c
+<span class="pl-c1">9.017807879336804</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">testsplit</span>(A)
+<span class="pl-c1">9.017807879336804</span>
+
+julia<span class="pl-k">&gt;</span> buff<span class="pl-k">'</span>
+<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">32</span> LinearAlgebra<span class="pl-k">.</span>Adjoint{Float64,SubArray{Float64,<span class="pl-c1">1</span>,Array{Float64,<span class="pl-c1">2</span>},Tuple{Base<span class="pl-k">.</span>Slice{Base<span class="pl-k">.</span>OneTo{Int64}},Int64},<span class="pl-c1">true</span>}}<span class="pl-k">:</span>
+ <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span>  <span class="pl-c1">999.9</span></pre></div>
+<p>However, the contents of <code>buff</code> are unchanged! It seems that we did not actually store into it.</p>
+<div class="highlight highlight-source-llvm"><pre><span class="pl-c">;; julia&gt; @code_llvm debuginfo=:none testsplit(A)</span>
+
+<span class="pl-k">define</span> <span class="pl-k">double</span> <span class="pl-c1">@julia_testsplit_17617</span>(<span class="pl-c1">%jl_value_t</span> <span class="pl-k">addrspace</span>(<span class="pl-c1">10</span>)* <span class="pl-k">nonnull</span> <span class="pl-k">align</span> <span class="pl-c1">16</span> <span class="pl-k">dereferenceable</span>(<span class="pl-c1">40</span>)) {
+top:
+  <span class="pl-c1">%1</span> = addrspacecast <span class="pl-c1">%jl_value_t</span> <span class="pl-k">addrspace</span>(<span class="pl-c1">10</span>)* <span class="pl-c1">%0</span> <span class="pl-k">to</span> <span class="pl-c1">%jl_value_t</span> <span class="pl-k">addrspace</span>(<span class="pl-c1">11</span>)*
+  <span class="pl-c1">%2</span> = addrspacecast <span class="pl-c1">%jl_value_t</span> <span class="pl-k">addrspace</span>(<span class="pl-c1">11</span>)* <span class="pl-c1">%1</span> <span class="pl-k">to</span> <span class="pl-k">%jl_value_t*</span>
+  <span class="pl-c1">%3</span> = <span class="pl-k">bitcast</span> <span class="pl-k">%jl_value_t*</span> <span class="pl-c1">%2</span> <span class="pl-k">to</span> <span class="pl-k">i8**</span>
+  <span class="pl-c1">%4</span> = <span class="pl-k">load</span> <span class="pl-k">i8*</span>, <span class="pl-k">i8**</span> <span class="pl-c1">%3</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%5</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">256</span>
+  <span class="pl-c1">%6</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">512</span>
+  <span class="pl-k">call</span> <span class="pl-k">void</span> <span class="pl-c1">@llvm.lifetime.start.p0i8</span>(<span class="pl-k">i64</span> <span class="pl-c1">256</span>, <span class="pl-k">i8*</span> <span class="pl-k">nonnull</span> <span class="pl-c1">%4</span>)
+  <span class="pl-c1">%ptr.i1825</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%5</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i1926</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i1825</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%ptr.i1627</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%6</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i1728</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i1627</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%res.i1529</span> = <span class="pl-k">fmul</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i1926</span>, <span class="pl-c1">%res.i1728</span>
+  <span class="pl-c1">%7</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">576</span>
+  <span class="pl-c1">%8</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">320</span>
+  <span class="pl-c1">%ptr.i18</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%8</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i19</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i18</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%ptr.i16</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%7</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i17</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i16</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%res.i15</span> = <span class="pl-k">fmul</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i19</span>, <span class="pl-c1">%res.i17</span>
+  <span class="pl-c1">%9</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">640</span>
+  <span class="pl-c1">%10</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">384</span>
+  <span class="pl-c1">%ptr.i18.1</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%10</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i19.1</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i18.1</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%ptr.i16.1</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%9</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i17.1</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i16.1</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%res.i15.1</span> = <span class="pl-k">fmul</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i19.1</span>, <span class="pl-c1">%res.i17.1</span>
+  <span class="pl-c1">%11</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">704</span>
+  <span class="pl-c1">%12</span> = <span class="pl-k">getelementptr</span> <span class="pl-k">i8</span>, <span class="pl-k">i8*</span> <span class="pl-c1">%4</span>, <span class="pl-k">i64</span> <span class="pl-c1">448</span>
+  <span class="pl-c1">%ptr.i18.2</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%12</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i19.2</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i18.2</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%ptr.i16.2</span> = <span class="pl-k">bitcast</span> <span class="pl-k">i8*</span> <span class="pl-c1">%11</span> <span class="pl-k">to</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;*
+  <span class="pl-c1">%res.i17.2</span> = <span class="pl-k">load</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt;* <span class="pl-c1">%ptr.i16.2</span>, <span class="pl-k">align</span> <span class="pl-c1">8</span>
+  <span class="pl-c1">%res.i15.2</span> = <span class="pl-k">fmul</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i19.2</span>, <span class="pl-c1">%res.i17.2</span>
+  <span class="pl-c1">%res.i12</span> = <span class="pl-k">fadd</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i1529</span>, <span class="pl-c1">%res.i15</span>
+  <span class="pl-c1">%res.i12.1</span> = <span class="pl-k">fadd</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i12</span>, <span class="pl-c1">%res.i15.1</span>
+  <span class="pl-c1">%res.i12.2</span> = <span class="pl-k">fadd</span> reassoc nnan ninf nsz arcp contract &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i12.1</span>, <span class="pl-c1">%res.i15.2</span>
+  <span class="pl-k">call</span> <span class="pl-k">void</span> <span class="pl-c1">@llvm.lifetime.end.p0i8</span>(<span class="pl-k">i64</span> <span class="pl-c1">256</span>, <span class="pl-k">i8*</span> <span class="pl-k">nonnull</span> <span class="pl-c1">%4</span>)
+  <span class="pl-c1">%vec_4_1.i</span> = <span class="pl-k">shufflevector</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i12.2</span>, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-k">undef</span>, &lt;<span class="pl-c1">4</span> x <span class="pl-k">i32</span>&gt; &lt;<span class="pl-k">i32</span> <span class="pl-c1">0</span>, <span class="pl-k">i32</span> <span class="pl-c1">1</span>, <span class="pl-k">i32</span> <span class="pl-c1">2</span>, <span class="pl-k">i32</span> <span class="pl-c1">3</span>&gt;
+  <span class="pl-c1">%vec_4_2.i</span> = <span class="pl-k">shufflevector</span> &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%res.i12.2</span>, &lt;<span class="pl-c1">8</span> x <span class="pl-k">double</span>&gt; <span class="pl-k">undef</span>, &lt;<span class="pl-c1">4</span> x <span class="pl-k">i32</span>&gt; &lt;<span class="pl-k">i32</span> <span class="pl-c1">4</span>, <span class="pl-k">i32</span> <span class="pl-c1">5</span>, <span class="pl-k">i32</span> <span class="pl-c1">6</span>, <span class="pl-k">i32</span> <span class="pl-c1">7</span>&gt;
+  <span class="pl-c1">%vec_4.i</span> = <span class="pl-k">fadd</span> &lt;<span class="pl-c1">4</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_4_1.i</span>, <span class="pl-c1">%vec_4_2.i</span>
+  <span class="pl-c1">%vec_2_1.i</span> = <span class="pl-k">shufflevector</span> &lt;<span class="pl-c1">4</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_4.i</span>, &lt;<span class="pl-c1">4</span> x <span class="pl-k">double</span>&gt; <span class="pl-k">undef</span>, &lt;<span class="pl-c1">2</span> x <span class="pl-k">i32</span>&gt; &lt;<span class="pl-k">i32</span> <span class="pl-c1">0</span>, <span class="pl-k">i32</span> <span class="pl-c1">1</span>&gt;
+  <span class="pl-c1">%vec_2_2.i</span> = <span class="pl-k">shufflevector</span> &lt;<span class="pl-c1">4</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_4.i</span>, &lt;<span class="pl-c1">4</span> x <span class="pl-k">double</span>&gt; <span class="pl-k">undef</span>, &lt;<span class="pl-c1">2</span> x <span class="pl-k">i32</span>&gt; &lt;<span class="pl-k">i32</span> <span class="pl-c1">2</span>, <span class="pl-k">i32</span> <span class="pl-c1">3</span>&gt;
+  <span class="pl-c1">%vec_2.i</span> = <span class="pl-k">fadd</span> &lt;<span class="pl-c1">2</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_2_1.i</span>, <span class="pl-c1">%vec_2_2.i</span>
+  <span class="pl-c1">%vec_1_1.i</span> = <span class="pl-k">shufflevector</span> &lt;<span class="pl-c1">2</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_2.i</span>, &lt;<span class="pl-c1">2</span> x <span class="pl-k">double</span>&gt; <span class="pl-k">undef</span>, &lt;<span class="pl-c1">1</span> x <span class="pl-k">i32</span>&gt; <span class="pl-k">zeroinitializer</span>
+  <span class="pl-c1">%vec_1_2.i</span> = <span class="pl-k">shufflevector</span> &lt;<span class="pl-c1">2</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_2.i</span>, &lt;<span class="pl-c1">2</span> x <span class="pl-k">double</span>&gt; <span class="pl-k">undef</span>, &lt;<span class="pl-c1">1</span> x <span class="pl-k">i32</span>&gt; &lt;<span class="pl-k">i32</span> <span class="pl-c1">1</span>&gt;
+  <span class="pl-c1">%vec_1.i</span> = <span class="pl-k">fadd</span> &lt;<span class="pl-c1">1</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_1_1.i</span>, <span class="pl-c1">%vec_1_2.i</span>
+  <span class="pl-c1">%res.i</span> = <span class="pl-k">extractelement</span> &lt;<span class="pl-c1">1</span> x <span class="pl-k">double</span>&gt; <span class="pl-c1">%vec_1.i</span>, <span class="pl-k">i32</span> <span class="pl-c1">0</span>
+  <span class="pl-k">ret</span> <span class="pl-k">double</span> <span class="pl-c1">%res.i</span>
+}</pre></div>
+<p>Indeed, there are no stores. Because of the <code>lifetime.end</code>, we declared that the contents are
+undefined once the function expires, therefore it does not have to write.</p>
+<p>Unfortunately, this optimization is extremely brittle / hard to take advantage of. If there
+is any possibility of aliasing, for example, it will not trigger (here, by calculating constant
+offsets from a base pointer, LLVM could figure out that there was no aliasing).</p>
+</article></div>

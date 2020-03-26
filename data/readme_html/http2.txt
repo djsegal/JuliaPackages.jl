@@ -1,0 +1,123 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-http2" class="anchor" aria-hidden="true" href="#http2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>HTTP2</h1>
+<p><a href="https://travis-ci.org/sorpaas/HTTP2.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/e12b704016269ed723a9724240b6fd9bd1bb1038/68747470733a2f2f7472617669732d63692e6f72672f736f72706161732f48545450322e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/sorpaas/HTTP2.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="http://pkg.julialang.org/?pkg=HTTP2&amp;ver=0.4" rel="nofollow"><img src="https://camo.githubusercontent.com/bce3952b224e34f5d27a009058187c8841042565/687474703a2f2f706b672e6a756c69616c616e672e6f72672f6261646765732f48545450325f302e342e737667" alt="HTTPClient" data-canonical-src="http://pkg.julialang.org/badges/HTTP2_0.4.svg" style="max-width:100%;"></a></p>
+<p>A HTTP2 support library that handles frames, streams and connections.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>HTTP2<span class="pl-pds">"</span></span>)
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> HTTP2</pre></div>
+<h2><a id="user-content-simple-servers-and-clients" class="anchor" aria-hidden="true" href="#simple-servers-and-clients"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Simple Servers and Clients</h2>
+<p>The library can directly create simple servers and clients. For full support of
+HTTP/2 Upgrade and HTTPS, use <code>HttpServer.jl</code> and <code>Requests.jl</code>.</p>
+<p>You only use this library directly if you need low-level functionality. An
+example for the server is as follows. The code will be explained in the next
+section.</p>
+<div class="highlight highlight-source-julia"><pre>server <span class="pl-k">=</span> <span class="pl-c1">listen</span>(port)
+
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Server started.<span class="pl-pds">"</span></span>)
+<span class="pl-c1">while</span>(<span class="pl-c1">true</span>)
+    buffer <span class="pl-k">=</span> <span class="pl-c1">accept</span>(server)
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Processing a connection ...<span class="pl-pds">"</span></span>)
+
+    connection <span class="pl-k">=</span> Session<span class="pl-k">.</span><span class="pl-c1">new_connection</span>(buffer; isclient<span class="pl-k">=</span><span class="pl-c1">false</span>)
+    <span class="pl-c"><span class="pl-c">#</span># Recv the client preface, and send an empty SETTING frame.</span>
+
+    headers_evt <span class="pl-k">=</span> Session<span class="pl-k">.</span><span class="pl-c1">take_evt!</span>(connection)
+    stream_identifier <span class="pl-k">=</span> headers_evt<span class="pl-k">.</span>stream_identifier
+
+    sending_headers <span class="pl-k">=</span> <span class="pl-c1">Headers</span>(<span class="pl-s"><span class="pl-pds">"</span>:status<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>200<span class="pl-pds">"</span></span>,
+                              <span class="pl-s"><span class="pl-pds">"</span>server<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>HTTP2.jl<span class="pl-pds">"</span></span>,
+                              <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> Dates<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-c1">now</span>(Dates<span class="pl-k">.</span>UTC), Dates<span class="pl-k">.</span>RFC1123Format),
+                              <span class="pl-s"><span class="pl-pds">"</span>content-type<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>text/html; charset=UTF-8<span class="pl-pds">"</span></span>)
+
+    Session<span class="pl-k">.</span><span class="pl-c1">put_act!</span>(connection, Session<span class="pl-k">.</span><span class="pl-c1">ActSendHeaders</span>(stream_identifier, sending_headers, <span class="pl-c1">false</span>))
+    Session<span class="pl-k">.</span><span class="pl-c1">put_act!</span>(connection, Session<span class="pl-k">.</span><span class="pl-c1">ActSendData</span>(stream_identifier, body, <span class="pl-c1">true</span>))
+
+    <span class="pl-c"><span class="pl-c">#</span># We are done!</span>
+<span class="pl-k">end</span></pre></div>
+<p>A client can be started in a similar way. Again the code will be explained in
+the next section.</p>
+<div class="highlight highlight-source-julia"><pre>buffer <span class="pl-k">=</span> <span class="pl-c1">connect</span>(dest, port)
+
+<span class="pl-c"><span class="pl-c">#</span># Create a HTTPConnection object</span>
+connection <span class="pl-k">=</span> Session<span class="pl-k">.</span><span class="pl-c1">new_connection</span>(buffer; isclient<span class="pl-k">=</span><span class="pl-c1">true</span>)
+
+<span class="pl-c"><span class="pl-c">#</span># Create a request with headers</span>
+headers <span class="pl-k">=</span> <span class="pl-c1">Headers</span>(<span class="pl-s"><span class="pl-pds">"</span>:method<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>GET<span class="pl-pds">"</span></span>,
+                  <span class="pl-s"><span class="pl-pds">"</span>:path<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> url,
+                  <span class="pl-s"><span class="pl-pds">"</span>:scheme<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>http<span class="pl-pds">"</span></span>,
+                  <span class="pl-s"><span class="pl-pds">"</span>:authority<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>127.0.0.1:9000<span class="pl-pds">"</span></span>,
+                  <span class="pl-s"><span class="pl-pds">"</span>accept<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>*/*<span class="pl-pds">"</span></span>,
+                  <span class="pl-s"><span class="pl-pds">"</span>accept-encoding<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>gzip, deflate<span class="pl-pds">"</span></span>,
+                  <span class="pl-s"><span class="pl-pds">"</span>user-agent<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>HTTP2.jl<span class="pl-pds">"</span></span>)
+
+Session<span class="pl-k">.</span><span class="pl-c1">put_act!</span>(connection, Session<span class="pl-k">.</span><span class="pl-c1">ActSendHeaders</span>(Session<span class="pl-k">.</span><span class="pl-c1">next_free_stream_identifier</span>(connection), headers, <span class="pl-c1">true</span>))
+
+<span class="pl-k">return</span> (Session<span class="pl-k">.</span><span class="pl-c1">take_evt!</span>(connection)<span class="pl-k">.</span>headers, Session<span class="pl-k">.</span><span class="pl-c1">take_evt!</span>(connection)<span class="pl-k">.</span>data)</pre></div>
+<h2><a id="user-content-connection-lifecycle" class="anchor" aria-hidden="true" href="#connection-lifecycle"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Connection Lifecycle</h2>
+<p>HTTP/2 is a binary protocol, and can handle multiple requests and responses in
+one connection. As a result, you cannot read and write directly in the stream
+like HTTP/1.1. Instead, you talk with the connection through channels. The main
+interface of low-level HTTP/2 support resides in <code>HTTP2.Session</code> module.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> HTTP2<span class="pl-k">.</span>Session</pre></div>
+<h3><a id="user-content-create-a-buffer" class="anchor" aria-hidden="true" href="#create-a-buffer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Create a Buffer</h3>
+<p>First you need to create a <code>buffer</code> that the connection can read and write. A
+normal TCP connection from a client is usually like this:</p>
+<div class="highlight highlight-source-julia"><pre>buffer <span class="pl-k">=</span> <span class="pl-c1">connect</span>(dest, port)</pre></div>
+<p>While for server, it usually looks like this:</p>
+<div class="highlight highlight-source-julia"><pre>server <span class="pl-k">=</span> <span class="pl-c1">listen</span>(port)
+buffer <span class="pl-k">=</span> <span class="pl-c1">accept</span>(server)</pre></div>
+<p>You can also use <code>MbedTLS.jl</code> or other TLS library to get a buffer over TLS and
+initialize a HTTPS connection.</p>
+<h3><a id="user-content-initialize-the-connection" class="anchor" aria-hidden="true" href="#initialize-the-connection"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Initialize the Connection</h3>
+<p>After getting the buffer, we can start to initialize the connection.</p>
+<div class="highlight highlight-source-julia"><pre>connection <span class="pl-k">=</span> Session<span class="pl-k">.</span><span class="pl-c1">new_connection</span>(buffer; isclient<span class="pl-k">=</span><span class="pl-c1">true</span>)</pre></div>
+<p><code>isclient</code> key indicates whether you are a server or a client. This is needed
+because the server and client uses different stream identifiers.</p>
+<p>Another important key to note is <code>skip_preface</code>. For a normal HTTP/2 connection,
+this is usually set to false. However, if you are doing HTTP/2 protocol upgrade
+(in which case the HTTP/2 preface should be skipped), you should set this key to
+true.</p>
+<h3><a id="user-content-initialize-a-new-stream" class="anchor" aria-hidden="true" href="#initialize-a-new-stream"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Initialize a New Stream</h3>
+<p>You don't need to do anything in particular to initialize a new stream, because
+they are solely identified by its identifier. To get a new stream identifier,
+call the <code>next_free_stream_identifier(connection)</code> function.</p>
+<h3><a id="user-content-send-and-receive-headers-and-data" class="anchor" aria-hidden="true" href="#send-and-receive-headers-and-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Send and Receive Headers and Data</h3>
+<p>The connection is then alive, and you can start to send or receive headers and
+data through the connection. Those are done by the <code>take_evt!</code> and <code>put_act!</code>
+functions. <code>take_evt!(connection)</code> waits and return an event struct from the
+connection. <code>put_act!(connection, action)</code> put a new action to the connection
+and returns immediately.</p>
+<h4><a id="user-content-actions" class="anchor" aria-hidden="true" href="#actions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Actions</h4>
+<ul>
+<li><code>ActPromise(stream_identifier, promised_stream_identifier, headers)</code>: This is
+usually sent from a server which sends a push promise. <code>stream_identifier</code>
+is the main stream identifier, <code>promised_stream_identifier</code> is the promised
+stream identifier that is going to be pushed, and <code>headers</code> are a <code>Headers</code>
+struct that sends the requests.</li>
+<li><code>ActSendHeaders(stream_identifier, headers, is_end_stream)</code>: This can be used
+to send request headers, response headers, or other headers specified in the
+HTTP specification. If there's no more headers or data to be sent in the
+stream, <code>is_end_stream</code> should set to true.</li>
+<li><code>ActSendData(stream_identifier, data, is_end_stream)</code>: This can be used to
+send request body, response body, or if a protocol switch is initialized, other
+specified protocol data. If there's no more headers or data to be sent in the
+stream, <code>is_end_stream</code> should set to true.</li>
+</ul>
+<h4><a id="user-content-events" class="anchor" aria-hidden="true" href="#events"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Events</h4>
+<ul>
+<li><code>EvtPromise(stream_identifier, promised_stream_identifier, headers)</code>: This
+event is triggered when a push promise is received. The struct is similar to
+<code>ActPromise</code>.</li>
+<li><code>EvtRecvHeaders(stream_identifier, headers, is_end_stream)</code>: This event is
+triggered when a header is received. The struct is similar to
+<code>ActSendHeaders</code>.</li>
+<li><code>EvtRecvData(stream_identifier, data, is_end_stream)</code>: This event is triggered
+when data is received in a stream. The struct is similar to <code>ActSendData</code>.</li>
+<li><code>EvtGoaway()</code>: This event is triggered when the whole connection is about to
+be closed.</li>
+</ul>
+<h3><a id="user-content-close-the-connection" class="anchor" aria-hidden="true" href="#close-the-connection"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Close the Connection</h3>
+<p>The connection can be closed using <code>close(connection)</code>.</p>
+<h2><a id="user-content-frame" class="anchor" aria-hidden="true" href="#frame"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Frame</h2>
+<p>You can do <code>using HTTP2.Frame</code> to import the library. After that, a <code>encode</code> function and a <code>decode</code> function are available. The <code>encode</code> function takes a typed frame into its binary form. The <code>decode</code> function takes an IO buffer, and returns a typed frame.</p>
+<p>For details about frames, see the <a href="http://httpwg.org/specs/rfc7540.html" rel="nofollow">HTTP2 Specification</a>.</p>
+</article></div>

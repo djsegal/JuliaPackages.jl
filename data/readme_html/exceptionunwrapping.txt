@@ -1,0 +1,146 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-exceptionunwrappingjl" class="anchor" aria-hidden="true" href="#exceptionunwrappingjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ExceptionUnwrapping.jl</h1>
+<p><a href="https://travis-ci.com/nhdaly/ExceptionUnwrapping.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/77da648b13f1207f00bb7752a7986cdd9f253cec/68747470733a2f2f7472617669732d63692e636f6d2f6e6864616c792f457863657074696f6e556e7772617070696e672e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/nhdaly/ExceptionUnwrapping.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><code>ExceptionUnwrapping.jl</code> provides exception handling utilities to allow inspecting and
+unwrapping "wrapped exceptions," by which we mean any Exception type that itself embeds
+another Exception.</p>
+<p>The most common example is a <code>TaskFailedException</code>, which wraps a <code>Task</code> and the exception
+that caused that Task to fail. Another example is the exception types in
+<a href="https://github.com/RelationalAI-oss/Salsa.jl">Salsa.jl</a>.</p>
+<h2><a id="user-content-api" class="anchor" aria-hidden="true" href="#api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>API</h2>
+<ul>
+<li>
+<p><code>has_wrapped_exception(e, ExceptionType)::Bool</code></p>
+</li>
+<li>
+<p><code>unwrap_exception(exception_wrapper) -&gt; wrapped_exception</code></p>
+</li>
+<li>
+<p><code>unwrap_exception(normal_exception) -&gt; normal_exception</code></p>
+</li>
+<li>
+<p><code>unwrap_exception_until(e, ExceptionType)::ExceptionType</code></p>
+</li>
+<li>
+<p><code>unwrap_exception_to_root(exception_wrapper) -&gt; wrapped_exception</code></p>
+</li>
+<li>
+<p><code>unwrap_exception_to_root(normal_exception) -&gt; normal_exception</code></p>
+</li>
+</ul>
+<h2><a id="user-content-motivating-example-stable-exception-handling" class="anchor" aria-hidden="true" href="#motivating-example-stable-exception-handling"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Motivating Example: Stable Exception Handling</h2>
+<h3><a id="user-content-a-problem-adding-concurrency-to-a-library-can-break-users-exception-handling" class="anchor" aria-hidden="true" href="#a-problem-adding-concurrency-to-a-library-can-break-users-exception-handling"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>A Problem: Adding Concurrency to a Library Can Break Users' Exception Handling</h3>
+<p>As we all start using concurrency more, exception handling can get a bit weird. Julia's
+cooperative multithreading is designed to be <em>composable</em> as a fundamental principle, but
+changing syncronous code to run concurrently in a <code>Task</code> <strong>changes the types of Exceptions
+that code will throw!</strong></p>
+<p>Consider for example this silly program, which wants to handle a certain type of Exception
+(<code>BoundsError</code>s) in order to take meaningful action (ask the user to try again):</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">get_and_sort_names_by_first_letter</span>(n)
+    <span class="pl-k">try</span>
+        names <span class="pl-k">=</span> [<span class="pl-c1">readline</span>() <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]
+        <span class="pl-c"><span class="pl-c">#</span> Use this libary's sort function because it's supposed to be wicked fast 🤘</span>
+        <span class="pl-k">return</span> <span class="pl-c1">library_sort</span>(names, by<span class="pl-k">=</span>a<span class="pl-k">-&gt;</span>a[<span class="pl-c1">1</span>])
+    <span class="pl-k">catch</span> e
+        <span class="pl-k">if</span> e <span class="pl-k">isa</span> BoundsError
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Oops! You entered an empty name. Please try again!<span class="pl-pds">"</span></span>)
+            <span class="pl-c"><span class="pl-c">#</span> Give the user another shot</span>
+            <span class="pl-k">return</span> <span class="pl-c1">get_and_sort_names_by_first_letter</span>(n)
+        <span class="pl-k">else</span>
+            <span class="pl-c1">rethrow</span>()  <span class="pl-c"><span class="pl-c">#</span> Unknown error</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p>All is well and good:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">get_and_sort_names_by_first_letter</span>(<span class="pl-c1">2</span>)
+
+Valentin
+Oops! You entered an empty name. Please <span class="pl-k">try</span> again!
+Valentin
+Jane
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{String,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-s"><span class="pl-pds">"</span>Jane<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>Valentin<span class="pl-pds">"</span></span></pre></div>
+<p>But what happens if that library decides to <em>parallelize its sorting function</em>, so now its
+even wicked faster? (<g-emoji class="g-emoji" alias="metal" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f918.png">🤘</g-emoji><g-emoji class="g-emoji" alias="metal" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f918.png">🤘</g-emoji>?)</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> lol, well, this won't make it any faster, but it demonstrates the point.</span>
+<span class="pl-en">library_sort</span>(args<span class="pl-k">...</span>; kwargs<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">fetch</span>(Threads<span class="pl-k">.</span><span class="pl-c1">@spawn</span> <span class="pl-c1">sort</span>(args<span class="pl-k">...</span>; kwargs<span class="pl-k">...</span>))</pre></div>
+<p><em>What happens</em> is the library has inadvertently broken its caller:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">get_and_sort_names_by_first_letter</span>(<span class="pl-c1">2</span>)
+
+Nathan
+ERROR<span class="pl-k">:</span> TaskFailedException<span class="pl-k">:</span>
+BoundsError<span class="pl-k">:</span> attempt to access String
+  at index [<span class="pl-c1">1</span>]
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] checkbounds at <span class="pl-k">./</span>strings<span class="pl-k">/</span>basic<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">193</span> [inlined]
+ [<span class="pl-c1">2</span>] codeunit at <span class="pl-k">./</span>strings<span class="pl-k">/</span>string<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">89</span> [inlined]
+ [<span class="pl-c1">3</span>] getindex at <span class="pl-k">./</span>strings<span class="pl-k">/</span>string<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">210</span> [inlined]
+ [<span class="pl-c1">4</span>] <span class="pl-c"><span class="pl-c">#</span>10 at /Users/nathan.daly/.julia/dev/ExceptionUnwrapping/src/ExceptionUnwrapping.jl:125 [inlined]</span>
+ [<span class="pl-c1">5</span>] <span class="pl-c1">lt</span>(<span class="pl-k">::</span><span class="pl-c1">Base.Order.By{var"#10#12"}</span>, <span class="pl-k">::</span><span class="pl-c1">String</span>, <span class="pl-k">::</span><span class="pl-c1">String</span>) at <span class="pl-k">./</span>ordering<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">51</span>
+ [<span class="pl-c1">6</span>] <span class="pl-c1">sort!</span>(<span class="pl-k">::</span><span class="pl-c1">Array{String,1}</span>, <span class="pl-k">::</span><span class="pl-c1">Int64</span>, <span class="pl-k">::</span><span class="pl-c1">Int64</span>, <span class="pl-k">::</span><span class="pl-c1">Base.Sort.InsertionSortAlg</span>, <span class="pl-k">::</span><span class="pl-c1">Base.Order.By{var"#10#12"}</span>) at <span class="pl-k">./</span>sort<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">468</span>
+ [<span class="pl-c1">7</span>] <span class="pl-c1">sort!</span>(<span class="pl-k">::</span><span class="pl-c1">Array{String,1}</span>, <span class="pl-k">::</span><span class="pl-c1">Int64</span>, <span class="pl-k">::</span><span class="pl-c1">Int64</span>, <span class="pl-k">::</span><span class="pl-c1">Base.Sort.MergeSortAlg</span>, <span class="pl-k">::</span><span class="pl-c1">Base.Order.By{var"#10#12"}</span>, <span class="pl-k">::</span><span class="pl-c1">Array{String,1}</span>) at .</pre></div>
+<p>The library never promised to return a <code>BoundsError</code>, so it can't know it's supposed to
+handle and unwrap any TaskFailedException it encounters; maybe the user <em>would want to see</em>
+the TaskFailedException. And the user's code felt comfortable depending on the
+<code>BoundsError</code>, since it's coming from the lambda it provided directly, so it thought it
+would know what kind of exceptions could be produced.</p>
+<p>And since this code path is <em>error handling</em>, it's quite possibly it's poorly tested!</p>
+<p>What a conundrum! And so, we present here a solution: <code>ExceptionUnwrapping.jl</code></p>
+<h3><a id="user-content-the-solution-exceptionunwrappingjl" class="anchor" aria-hidden="true" href="#the-solution-exceptionunwrappingjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>The Solution: ExceptionUnwrapping.jl</h3>
+<p>If the user always structures their execption checks using ExceptionUnwrapping, then it will
+continue working despite any changes to the underlying concurrency model:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">get_and_sort_names_by_first_letter</span>(n)
+    <span class="pl-k">try</span>
+        names <span class="pl-k">=</span> [<span class="pl-c1">readline</span>() <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]
+        <span class="pl-c"><span class="pl-c">#</span> Use this libary's sort function because it's supposed to be wicked fast 🤘</span>
+        <span class="pl-k">return</span> <span class="pl-c1">library_sort</span>(names, by<span class="pl-k">=</span>a<span class="pl-k">-&gt;</span>a[<span class="pl-c1">1</span>])
+    <span class="pl-k">catch</span> e
+      <span class="pl-c"><span class="pl-c">#</span> Use ExceptionUnwrapping's check to see whether `e` either _is_ a BoundsError _or_</span>
+      <span class="pl-c"><span class="pl-c">#</span> if it is _wrapping_ a BoundsError.</span>
+      <span class="pl-k">if</span> <span class="pl-c1">has_wrapped_exception</span>(e, BoundsError)
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Oops! You entered an empty name. Please try again!<span class="pl-pds">"</span></span>)
+            <span class="pl-c"><span class="pl-c">#</span> Give the user another shot</span>
+            <span class="pl-k">return</span> <span class="pl-c1">get_and_sort_names_by_first_letter</span>(n)
+        <span class="pl-k">else</span>
+            <span class="pl-c1">rethrow</span>()  <span class="pl-c"><span class="pl-c">#</span> Unknown error</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p>Now it will work again, regardless of whether <code>library_sort</code> is using Tasks internally or
+not, which is exactly what we want from composable multithreading! :)</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">get_and_sort_names_by_first_letter</span>(<span class="pl-c1">2</span>)
+
+Nathan
+Oops! You entered an empty name. Please <span class="pl-k">try</span> again!
+Nathan
+Martin
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{String,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-s"><span class="pl-pds">"</span>Martin<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>Nathan<span class="pl-pds">"</span></span></pre></div>
+<hr>
+<h2><a id="user-content-terminology" class="anchor" aria-hidden="true" href="#terminology"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Terminology:</h2>
+<h3><a id="user-content-wrapped-exceptions-vs-exception-causes" class="anchor" aria-hidden="true" href="#wrapped-exceptions-vs-exception-causes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>"Wrapped Exceptions" vs "Exception Causes"</h3>
+<p>In julia, one exception can be "caused by" another exception, if a new exception is thrown
+from within an <code>catch</code>-block (or <code>finally</code>-block). This is <em>not</em> the situation that this
+package is addressing.</p>
+<p>For example:</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">try</span>
+           <span class="pl-c1">throw</span>(<span class="pl-c1">ErrorException</span>(<span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>))
+       <span class="pl-k">catch</span> e
+           <span class="pl-c1">throw</span>(<span class="pl-c1">ErrorException</span>(<span class="pl-s"><span class="pl-pds">"</span>2<span class="pl-pds">"</span></span>))
+       <span class="pl-k">end</span>
+ERROR<span class="pl-k">:</span> <span class="pl-c1">2</span>
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] top<span class="pl-k">-</span>level scope at REPL[<span class="pl-c1">1</span>]<span class="pl-k">:</span><span class="pl-c1">4</span>
+caused by [exception <span class="pl-c1">1</span>]
+<span class="pl-c1">1</span>
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] top<span class="pl-k">-</span>level scope at REPL[<span class="pl-c1">1</span>]<span class="pl-k">:</span><span class="pl-c1">2</span></pre></div>
+<p>This is situation already well covered by Julia's standard library, which has functions like
+<code>Base.catch_stack()</code> which will return the above stack of exceptions that were thrown (and
+is used to print the <code>caused by</code> display above).</p>
+<p>Instead, this package is for dealing with <em>"wrapped exceptions"</em>, which is a term we are
+coining to refer to Exceptions that embed another Exception inside of them, either to add
+information or context, or because the exception mechanism cannot cross the boundary between
+Tasks.</p>
+</article></div>
