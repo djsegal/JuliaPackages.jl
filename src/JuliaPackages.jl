@@ -13,24 +13,27 @@ module JuliaPackages
   using JSON
 
   using Gumbo
+  using Cascadia
+  using AbstractTrees
+
+  using Dates
   using Languages
   using TextAnalysis
-  using AbstractTrees
-  using Dates
 
-  export general_db, decibans_db, packages_db
+  export general_db, decibans_db
+  export packages_db, trending_db
 
   include("scrape_general_packages.jl")
   include("scrape_decibans_packages.jl")
+  include("scrape_trending_packages.jl")
 
   include("package_paths.jl")
   include("robust_relabel.jl")
-
   include("combine_datasets.jl")
-  include("custom_get_database.jl")
 
-  include("custom_make_url.jl")
   include("custom_text.jl")
+  include("custom_make_url.jl")
+  include("custom_get_database.jl")
 
   include("hit_repo_api.jl")
   include("hit_readme_api.jl")
@@ -57,5 +60,7 @@ module JuliaPackages
 
   CSV.write("../data/packages.csv", packages_db)
   hit_readme_api(good_paths)
+
+  trending_db = custom_get_database("trending")
 
 end
