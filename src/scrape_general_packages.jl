@@ -5,7 +5,7 @@ function scrape_general_packages()
 
   cur_packages = []
   cur_owners = []
-  cur_shallow = []
+  cur_shallow_depending = []
 
   gitlab_packages = []
 
@@ -44,7 +44,7 @@ function scrape_general_packages()
       push!(cur_owners, cur_owner)
 
       if !isfile("../tmp/General/$(cur_char)/$(cur_package)/Deps.toml")
-        push!(cur_shallow, Set())
+        push!(cur_shallow_depending, Set())
         continue
       end
 
@@ -53,7 +53,7 @@ function scrape_general_packages()
       )
 
       push!(
-        cur_shallow, Set(Base.Iterators.flatten(map(keys,values(deps_dict))))
+        cur_shallow_depending, Set(Base.Iterators.flatten(map(keys,values(deps_dict))))
       )
     end
   end
@@ -73,14 +73,14 @@ function scrape_general_packages()
     push!(other_list, cur_item["name"])
   end
 
-  for cur_set in cur_shallow
+  for cur_set in cur_shallow_depending
     for cur_value in other_list
       ( cur_value in cur_set ) || continue
       delete!(cur_set, cur_value)
     end
   end
 
-  cur_dict = OrderedDict(zip(cur_packages, cur_shallow))
+  cur_dict = OrderedDict(zip(cur_packages, cur_shallow_depending))
 
   while true
     has_added = false
@@ -103,22 +103,57 @@ function scrape_general_packages()
     has_added || break
   end
 
-  cur_deep = collect(map(
+  cur_deep_depending = collect(map(
     cur_tuple -> Set(setdiff(cur_tuple...)),
-    zip(values(cur_dict), cur_shallow)
+    zip(values(cur_dict), cur_shallow_depending)
   ))
 
-  for (cur_package, cur_set) in zip(cur_packages, cur_deep)
+  for (cur_package, cur_set) in zip(cur_packages, cur_deep_depending)
     ( cur_package in cur_set ) || continue
     delete!(cur_set, cur_package)
   end
 
-  cur_shallow = map(cur_entry -> keys(cur_entry.dict), cur_shallow)
-  cur_deep = map(cur_entry -> keys(cur_entry.dict), cur_deep)
+  cur_shallow_depending = map(cur_entry -> keys(cur_entry.dict), cur_shallow_depending)
+  cur_deep_depending = map(cur_entry -> keys(cur_entry.dict), cur_deep_depending)
+
+  cur_shallow_dependents = [ Set() for _ in 1:length(cur_packages) ]
+  cur_deep_dependents = [ Set() for _ in 1:length(cur_packages) ]
+
+  dependents_list = [
+    (cur_shallow_depending, cur_shallow_dependents),
+    (cur_deep_depending, cur_deep_dependents)
+  ]
+
+  for (cur_depending_list, cur_dependents_list) in dependents_list
+    for (cur_package, cur_depending) in zip(cur_packages, cur_depending_list)
+      for cur_depender in cur_depending
+        cur_index = findfirst(tmp_package -> tmp_package == cur_depender, cur_packages)
+        @assert !isnothing(cur_index)
+
+        push!(cur_dependents_list[cur_index], cur_package)
+      end
+    end
+  end
+
+  for cur_index in 1:length(cur_packages)
+    this_length_1 = length(cur_shallow_dependents[cur_index])
+    this_length_2 = length(cur_deep_dependents[cur_index])
+
+    that_length = length(unique([
+          cur_shallow_dependents[cur_index]...,
+          cur_deep_dependents[cur_index]...
+    ]))
+
+    @assert this_length_1 + this_length_2 == that_length
+  end
+
+  cur_shallow_dependents = map(cur_entry -> keys(cur_entry.dict), cur_shallow_dependents)
+  cur_deep_dependents = map(cur_entry -> keys(cur_entry.dict), cur_deep_dependents)
 
   general_db = DataFrame(
     package=cur_packages, owner=cur_owners,
-    shallow=cur_shallow, deep=cur_deep
+    shallow_depending=cur_shallow_depending, deep_depending=cur_deep_depending,
+    shallow_dependents=cur_shallow_dependents, deep_dependents=cur_deep_dependents
   )
 
   return general_db
