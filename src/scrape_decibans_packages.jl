@@ -46,8 +46,15 @@ function scrape_decibans_packages()
 
   custom_rename!(decibans_db)
 
+  cur_categories = unique(decibans_db.category)
+
   for sub_category in unique(decibans_db.sub_category)
     sub_category == "" && continue
+
+    if sub_category in cur_categories
+      decibans_db[decibans_db.sub_category .== sub_category, :sub_category] .= ""
+      continue
+    end
 
     count_dict = countmap(decibans_db[decibans_db.sub_category .== sub_category, :category])
     length(count_dict) == 1 && continue
