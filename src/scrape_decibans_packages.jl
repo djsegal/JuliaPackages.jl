@@ -110,6 +110,7 @@ function custom_rename!(decibans_db)
     "ControlFlow" => "Control Flow",
     "DataFormats" => "Data Formats",
     "DataScience" => "Data Science",
+    "DataType" => "Data Type",
     "Debian-Ubuntu" => "Debian-Ubuntu",
     "DimensionReduction" => "Dimension Reduction",
     "DistributedComputing" => "Distributed Computing",
