@@ -8,6 +8,7 @@ function scrape_general_packages()
   cur_shallow_depending = []
 
   gitlab_packages = []
+  renamed_packages = []
 
   for cur_char in 'A':'Z'
     for cur_package in readdir("../tmp/General/$(cur_char)")
@@ -34,10 +35,14 @@ function scrape_general_packages()
         replace(package_url, ".jl" => ""), "/"
       )[end-1:end]
 
-      if package_name == "StatPlots"
-        cur_package = "StatPlots"
-      else
-        @assert lowercase(package_name) == lowercase(cur_package)
+      if lowercase(package_name) != lowercase(cur_package)
+        if package_name == "StatPlots"
+          cur_package = "StatPlots"
+        else
+          push!(renamed_packages, package_name)
+          push!(renamed_packages, cur_package)
+          continue
+        end
       end
 
       push!(cur_packages, package_name)
@@ -64,6 +69,7 @@ function scrape_general_packages()
 
   other_list = [
     gitlab_packages...,
+    renamed_packages...,
     "Pkg",
     "Statistics"
   ]
