@@ -27,8 +27,8 @@ module JuliaPackages
   include("scrape_decibans_packages.jl")
   include("scrape_trending_packages.jl")
 
+  include("init.jl")
   include("package_paths.jl")
-  include("robust_relabel.jl")
   include("combine_datasets.jl")
 
   include("custom_text.jl")
@@ -37,7 +37,5 @@ module JuliaPackages
 
   include("hit_repo_api.jl")
   include("hit_readme_api.jl")
-
-  include("init.jl")
 
 end

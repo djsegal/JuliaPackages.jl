@@ -46,6 +46,19 @@ function scrape_decibans_packages()
 
   custom_rename!(decibans_db)
 
+  for sub_category in unique(decibans_db.sub_category)
+    sub_category == "" && continue
+
+    count_dict = countmap(decibans_db[decibans_db.sub_category .== sub_category, :category])
+    length(count_dict) == 1 && continue
+
+    used_category = collect(keys(count_dict))[
+      findmax(collect(values(count_dict)) .* map(cur_key -> length(decibans_db[decibans_db.category .== cur_key, :category]), collect(keys(count_dict))))[2]
+    ]
+
+    decibans_db[decibans_db.sub_category .== sub_category, :category] .= used_category
+  end
+
   return decibans_db
 end
 

@@ -8,8 +8,6 @@ function __init__()
   decibans_file, decibans_db = custom_get_database("decibans")
 
   general_db, decibans_db = combine_datasets(general_db, decibans_db)
-  decibans_db = robust_relabel(decibans_db)
-
   general_csv = deepcopy(general_db)
 
   select!(general_csv, Not(:shallow_depending))
