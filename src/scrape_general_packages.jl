@@ -3,6 +3,10 @@ function scrape_general_packages()
     `git clone "https://github.com/JuliaRegistries/General" ../tmp/General`
   )
 
+  run(`git -C ../tmp/General pull`)
+  run(`git -C ../tmp/General fetch --all`)
+  run(`git -C ../tmp/General reset origin --hard`)
+
   cur_packages = []
   cur_owners = []
   cur_shallow_depending = []
