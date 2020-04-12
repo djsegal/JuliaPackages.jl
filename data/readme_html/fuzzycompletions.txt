@@ -1,0 +1,44 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-fuzzycompletionsjl" class="anchor" aria-hidden="true" href="#fuzzycompletionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>FuzzyCompletions.jl</h1>
+<p><code>FuzzyCompletions</code> provides fuzzy completions for a Julia runtime session.</p>
+<p>Its API is totally compatible with the standard library module <a href="https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/REPLCompletions.jl"><code>REPL.REPLCompletions</code></a>;
+so this package can be used as a drop-in replacement for your completion provider.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>example</h2>
+<p>You can make your REPL complete fuzzily with the following code:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> REPL
+<span class="pl-k">using</span> REPL<span class="pl-k">.</span>LineEdit
+<span class="pl-k">using</span> FuzzyCompletions
+
+<span class="pl-k">struct</span> FuzzyCompletionProvider <span class="pl-k">&lt;:</span> <span class="pl-c1">REPL.CompletionProvider</span>
+    mod<span class="pl-k">::</span><span class="pl-c1">Module</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> LineEdit<span class="pl-k">.</span><span class="pl-en">complete_line</span>(c<span class="pl-k">::</span><span class="pl-c1">FuzzyCompletionProvider</span>, s)
+  partial <span class="pl-k">=</span> REPL<span class="pl-k">.</span><span class="pl-c1">beforecursor</span>(s<span class="pl-k">.</span>input_buffer)
+  full <span class="pl-k">=</span> LineEdit<span class="pl-k">.</span><span class="pl-c1">input_string</span>(s)
+
+  <span class="pl-c"><span class="pl-c">#</span> module-aware repl backend completions</span>
+  comps, range, should_complete <span class="pl-k">=</span> <span class="pl-c1">completions</span>(full, <span class="pl-c1">lastindex</span>(partial), c<span class="pl-k">.</span>mod)
+  <span class="pl-c1">filter!</span>(c<span class="pl-k">-&gt;</span><span class="pl-c1">score</span>(c)<span class="pl-k">≥</span><span class="pl-c1">0</span>, comps)
+  <span class="pl-k">return</span> <span class="pl-c1">unique!</span>(FuzzyCompletions<span class="pl-k">.</span><span class="pl-c1">completion_text</span>.(comps)), partial[range], should_complete
+<span class="pl-k">end</span>
+
+Base<span class="pl-k">.</span>active_repl<span class="pl-k">.</span>interface<span class="pl-k">.</span>modes[<span class="pl-c1">1</span>]<span class="pl-k">.</span>complete <span class="pl-k">=</span> <span class="pl-c1">FuzzyCompletionProvider</span>(Main) <span class="pl-c"><span class="pl-c">#</span> or whatever module where you want to get completes from</span></pre></div>
+<p>Then, your REPL will work like</p>
+<pre lang="julia-repl"><code>julia&gt; sthing
+isnothing something # fuzzy completions
+
+julia&gt; regex&lt;tab&gt;
+Regex      RegexMatch # cases doesn't need to match
+</code></pre>
+<p>But I'm sure you will dislike this behavior;
+we usually want CLI to complete eagerly, not to be an indecisive boy.</p>
+<h2><a id="user-content-consumers" class="anchor" aria-hidden="true" href="#consumers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>consumers</h2>
+<p>Fuzzy completions can be useful within IDE or somewhere some richer UI for showing/selecting completion suggestions is available:</p>
+<ul>
+<li><a href="https://junolab.org/" rel="nofollow">Juno</a>: <a href="https://github.com/JunoLab/Atom.jl/pull/308">https://github.com/JunoLab/Atom.jl/pull/308</a></li>
+</ul>
+<h2><a id="user-content-acknowledgment" class="anchor" aria-hidden="true" href="#acknowledgment"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>acknowledgment</h2>
+<p>The original idea of the implementation came from <a href="https://github.com/pfitzseb/julia/commit/740dd16843c16cb0b87264911f43abf8485652fe">this patch by @pfitzseb</a>.</p>
+<h2><a id="user-content-license" class="anchor" aria-hidden="true" href="#license"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>license</h2>
+<p>This package is under <a href="LICENSE.md">MIT License</a>.</p>
+</article></div>
