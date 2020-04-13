@@ -1,4 +1,5 @@
 function __init__()
+
   global general_db = nothing
   global decibans_db = nothing
   global packages_db = nothing
@@ -44,4 +45,5 @@ function __init__()
 
   trending_file, trending_db = custom_get_database("trending")
   CSV.write(trending_file, trending_db)
+
 end
