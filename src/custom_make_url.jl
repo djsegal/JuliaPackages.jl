@@ -1,6 +1,6 @@
 function custom_make_url(cur_path, includes_jl=true, append_string="")
   if includes_jl
-    endswith(cur_path, ".jl") || ( cur_path += ".jl" )
+    endswith(cur_path, ".jl") || ( cur_path *= ".jl" )
   else
     cur_path = replace(cur_path, ".jl" => "")
   end
