@@ -81,8 +81,8 @@ such as <code>B = A(:left)</code> where the key is a Symbol.</p>
 </tr>
 <tr>
 <td>mixture</td>
-<td><code>A[1, 2, end]</code></td>
-<td><code>A(:left, Index[2], Index[end])</code></td>
+<td><code>B[1, Key(33)]</code></td>
+<td><code>B(Index[1], 33)</code></td>
 <td>scalar</td>
 </tr>
 <tr>
@@ -101,19 +101,22 @@ An interval or a function always selects via <code>findall</code>,
 i.e. it does not drop a dimension, even if there is exactly one match.</p>
 <p>By default lookup returns a view, while indexing returns a copy unless you add <code>@views</code>.
 This means that you can write into the array with <code>B(time = &lt;=(18)) .= 0</code>.
-For scalar output, you cannot of course write <code>B(13.0, 'α') = 0</code>
-as this parsed as a function definition, but you can write <code>B(13.0, 'α', :) .= 0</code>
+For scalar output, you cannot of course write <code>B(13.0, 33) = 0</code>
+as this parsed as a function definition, but you can write <code>B(13.0, 33, :) .= 0</code>
 as a trailing colon makes a zero-dimensional view.</p>
-<p>(Possibly selectors should be made to work in square brackets too,
-allowing mixed indexing <code>B[1, Key('β')] == B(Index[1], 'β')</code>
-and <code>setkey!</code> via <code>B[Key(13.0), Key('α')] = 0</code>. But they don't right now,
-see <a href="https://github.com/mcabbott/AxisKeys.jl/pull/5">PR#5</a> for an attempt.)</p>
+<p>The selectors <code>Index[i]</code> and <code>Key(k)</code> allow mixing of indexing &amp; lookup,
+and <code>setindex!</code> via <code>B[Key(13.0), Key(33)] = 0</code>.
+Any selectors can now be used within indexing, for instance <code>B[time = &gt;(17)]</code>,
+but they will not select dimension based on type, i.e. <code>A[Key(:left)]</code> is an error.
+You may also write <code>Index[end]</code> but not <code>Index[end-1]</code> sadly.</p>
 <h3><a id="user-content-construction" class="anchor" aria-hidden="true" href="#construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Construction</h3>
 <div class="highlight highlight-source-julia"><pre><span class="pl-c1">KeyedArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>), ([<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>], <span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>)) <span class="pl-c"><span class="pl-c">#</span> AbstractArray, Tuple{AbstractVector, ...}</span></pre></div>
 <p>A nested pair with names can be constructed with keywords for names,
 and (apart from a few bugs) everything should work the same way in either order:</p>
 <div class="highlight highlight-source-julia"><pre><span class="pl-c1">KeyedArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>), row<span class="pl-k">=</span>[<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>], col<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>)     <span class="pl-c"><span class="pl-c">#</span> KeyedArray(NamedDimsArray(...))</span>
 <span class="pl-c1">NamedDimsArray</span>(<span class="pl-c1">rand</span>(Int8, <span class="pl-c1">2</span>,<span class="pl-c1">10</span>), row<span class="pl-k">=</span>[<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>], col<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">100</span>) <span class="pl-c"><span class="pl-c">#</span> NamedDimsArray(KeyedArray(...))</span></pre></div>
+<p>Calling <code>AxisKeys.keyless(A)</code> removes the <code>KeyedArray</code> wrapper, if any,
+and <code>NamedDims.unname(A)</code> similarly removes the names. These work in either order.</p>
 <p>The function <code>wrapdims</code> does a bit more checking and fixing, but is not type-stable.
 It will adjust the length of ranges of keys if it can,
 and will fix indexing offsets if needed to match the array.
@@ -145,6 +148,10 @@ Note that the keys along the glued direction may not be unique afterwards.</p>
 <li>
 <p>Reductions like <code>sum(A; dims=:channel)</code> can use dimension names.
 Likewise <code>prod</code>, <code>mean</code> etc., and <code>dropdims</code>.</p>
+</li>
+<li>
+<p>Sorting: <code>sortslices</code> permutes keys &amp; data by the array,
+while <code>sortkeys</code> goes by the keys.</p>
 </li>
 <li>
 <p>Some linear algebra functions like <code>*</code> and <code>\</code> will work.</p>

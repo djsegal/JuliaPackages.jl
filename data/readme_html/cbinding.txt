@@ -27,7 +27,7 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">@ctypedef</span> MySecon
            <span class="pl-c1">@cunion</span> {                                        <span class="pl-c"><span class="pl-c">#</span>     union {</span>
                w<span class="pl-k">::</span><span class="pl-c1">Cuchar</span>[<span class="pl-c1">sizeof</span>(Cint)<span class="pl-k">÷</span><span class="pl-c1">sizeof</span>(Cuchar)]       <span class="pl-c"><span class="pl-c">#</span>         unsigned char w[sizeof(int)/sizeof(unsigned char)];</span>
                x<span class="pl-k">::</span><span class="pl-c1">Cint</span>                                      <span class="pl-c"><span class="pl-c">#</span>         int x;</span>
-               (y<span class="pl-k">:</span>:{}[<span class="pl-c1">4</span>])<span class="pl-k">:</span>:<span class="pl-c1">@cstruct</span> {                       <span class="pl-c"><span class="pl-c">#</span>         struct {</span>
+               (y<span class="pl-k">::</span><span class="pl-c1">_</span>[<span class="pl-c1">4</span>])<span class="pl-k">:</span>:<span class="pl-c1">@cstruct</span> {                        <span class="pl-c"><span class="pl-c">#</span>         struct {</span>
                    c<span class="pl-k">::</span><span class="pl-c1">Cuchar</span>                                <span class="pl-c"><span class="pl-c">#</span>             unsigned char c;</span>
                }                                            <span class="pl-c"><span class="pl-c">#</span>         } y[4];</span>
                z<span class="pl-k">::</span><span class="pl-c1">MyFirstCStruct</span>[<span class="pl-c1">1</span>]                         <span class="pl-c"><span class="pl-c">#</span>         struct MyFirstCStruct z[1];</span>
@@ -39,7 +39,7 @@ There are a few syntax differences to note though:</p>
 <ul>
 <li>a <code>@ctypedef</code> is specified with the type name before the definition rather than after (as is done in C)</li>
 <li>likewise, an aggregate field is specified in the Julia <code>fieldName::FieldType</code> syntax rather than the C style of <code>FieldType fieldName</code></li>
-<li>in C a single line can specified multiple types (like <code>SomeType a, *b, c[4]</code>), but with our syntax these are expressed as a tuple (<code>(a, b::Ptr{}, c::{}[4])::SomeType</code>) with the empty curly braces <code>{}</code> meaning "plug in type here"</li>
+<li>in C a single line can specified multiple types (like <code>SomeType a, *b, c[4]</code>), but with our syntax these are expressed as a tuple (<code>(a, b::Ptr{_}, c::_[4])::SomeType</code>) with the use of an underscore <code>_</code> to mean "plug in type here"</li>
 <li>Julia does not support forward declarations, so CBinding.jl uses some very dubious methods to simulate the capability which may cause grief and confusion for users when types don't appear as they should</li>
 </ul>
 <p>The generic constructor provided by CBinding.jl allows you to create an aggregate with uninitialized values, zero-initialized values, or from existing an existing aggregate object.
@@ -336,31 +336,10 @@ Ptr{tm} @<span class="pl-c1">0x00007f4afa08b300</span>
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">unsafe_load</span>(p)   <span class="pl-c"><span class="pl-c">#</span> dereference p</span>
 <span class="pl-c1">tm</span>(sec<span class="pl-k">=</span><span class="pl-c1">59</span>, min<span class="pl-k">=</span><span class="pl-c1">5</span>, hour<span class="pl-k">=</span><span class="pl-c1">14</span>, mday<span class="pl-k">=</span><span class="pl-c1">16</span>, mon<span class="pl-k">=</span><span class="pl-c1">5</span>, year<span class="pl-k">=</span><span class="pl-c1">119</span>, wday<span class="pl-k">=</span><span class="pl-c1">0</span>, yday<span class="pl-k">=</span><span class="pl-c1">166</span>, isdst<span class="pl-k">=</span><span class="pl-c1">1</span>)</pre></div>
-<p>The new <code>@cextern</code> macro is the recommended method of binding C functions with Julia.
-Its intended use is for creating optimized function bindings that will simply be called from Julia without being used as function pointers.
-It provides a more concise Julian representation that closely mirrors the C syntax.
-This macro also includes the ability to use anonymous types in the definition of function.</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-c1">time</span>(ptr<span class="pl-k">::</span><span class="pl-c1">Ptr{Clong}</span>)<span class="pl-k">::</span><span class="pl-c1">Clong</span>    lib
-time (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
-
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-c1">localtime</span>(ptr<span class="pl-k">::</span><span class="pl-c1">Ptr{Clong}</span>)<span class="pl-k">::</span><span class="pl-c1">Ptr{tm}</span>    lib
-localtime (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
-
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">time</span>(t)
-<span class="pl-c1">1560708359</span>
-
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">unsafe_load</span>(<span class="pl-c1">localtime</span>(t))
-<span class="pl-c1">tm</span>(sec<span class="pl-k">=</span><span class="pl-c1">59</span>, min<span class="pl-k">=</span><span class="pl-c1">5</span>, hour<span class="pl-k">=</span><span class="pl-c1">14</span>, mday<span class="pl-k">=</span><span class="pl-c1">16</span>, mon<span class="pl-k">=</span><span class="pl-c1">5</span>, year<span class="pl-k">=</span><span class="pl-c1">119</span>, wday<span class="pl-k">=</span><span class="pl-c1">0</span>, yday<span class="pl-k">=</span><span class="pl-c1">166</span>, isdst<span class="pl-k">=</span><span class="pl-c1">1</span>)
-</pre></div>
-<p>Even interfacing the C functions of the Julia API is simple!</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-en">jl_gc_total_bytes</span>()<span class="pl-k">::</span><span class="pl-c1">Clong</span>    lib    <span class="pl-c"><span class="pl-c">#</span> long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");</span>
-jl_gc_total_bytes (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
-
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">jl_gc_total_bytes</span>()
-<span class="pl-c1">160117962</span></pre></div>
 <p>It is also possible to create type-safe function pointers to Julia functions for use in C code.
 A closure is automatically created for the wrapped function and returned along with the C function pointer, so a reference to the closure (<code>Base.CFunction</code>) must be kept to keep the function pointer valid.
-One important thing to note is that the Julia function used is not (yet) guarded, so the argument and return types of the Julia function must match that of the Cfunction signature.</p>
+One important thing to note is that the Julia function used is not (yet) guarded, so the argument and return types of the Julia function must match that of the Cfunction signature.
+The new <code>@ccallback</code> macro is now the recommended method of creating function pointers from Julia functions.</p>
 <div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> (Cadd, add) <span class="pl-k">=</span> <span class="pl-c1">Cfunction</span><span class="pl-c1">{Cint, Tuple{Cint, Cint}}</span>() <span class="pl-k">do</span> x<span class="pl-k">::</span><span class="pl-c1">Cint</span>, y<span class="pl-k">::</span><span class="pl-c1">Cint</span>
            <span class="pl-k">return</span> <span class="pl-c1">Cint</span>(x <span class="pl-k">+</span> y)
        <span class="pl-k">end</span>
@@ -370,7 +349,11 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">Cadd</span>(<span class=
 <span class="pl-c1">5</span>
 
 julia<span class="pl-k">&gt;</span> add<span class="pl-k">.</span><span class="pl-c1">f</span>(<span class="pl-c1">Cint</span>(<span class="pl-c1">2</span>), <span class="pl-c1">Cint</span>(<span class="pl-c1">3</span>))  <span class="pl-c"><span class="pl-c">#</span> directly call the Julia function</span>
-<span class="pl-c1">5</span></pre></div>
+<span class="pl-c1">5</span>
+
+julia<span class="pl-k">&gt;</span> Cadd <span class="pl-k">=</span> <span class="pl-c1">@ccallback</span> <span class="pl-k">function</span> <span class="pl-en">add</span>(x<span class="pl-k">::</span><span class="pl-c1">Cint</span>, y<span class="pl-k">::</span><span class="pl-c1">Cint</span>)<span class="pl-k">::</span><span class="pl-c1">Cint</span>
+           <span class="pl-k">return</span> x <span class="pl-k">+</span> y
+       <span class="pl-k">end</span></pre></div>
 <h2><a id="user-content-c-variadic-functions" class="anchor" aria-hidden="true" href="#c-variadic-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>C Variadic Functions</h2>
 <p>Declaring a variadic function pointer can be done using a <code>Vararg</code> argument type (which must be the last argument).
 The variadic function calling capability provided with CBinding.jl is not limited in the ways that native Julia ccall usage is.
@@ -380,52 +363,53 @@ Ptr{Cfunction{Int32,Tuple{Cstring,Vararg{Any,N} <span class="pl-k">where</span> 
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">func</span>(<span class="pl-s"><span class="pl-pds">"</span>%s i%c %ld great demo of CBinding.jl v%3.1lf%c<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>this<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>s<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-c1">0.1</span>, <span class="pl-s"><span class="pl-pds">'</span>!<span class="pl-pds">'</span></span>)
 this is <span class="pl-c1">1</span> great demo of CBinding<span class="pl-k">.</span>jl v0<span class="pl-c1">.1</span>!
-<span class="pl-c1">42</span>
+<span class="pl-c1">42</span></pre></div>
+<h2><a id="user-content-binding-julia-with-a-c-library" class="anchor" aria-hidden="true" href="#binding-julia-with-a-c-library"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Binding Julia with a C library</h2>
+<p>The new <code>@cbindings</code> and <code>@cextern</code> macros provide the recommended method of binding C functions with Julia.
+Its intended use is for creating optimized function bindings rather than loading function pointers.
+It provides a more concise Julian representation that closely mirrors the C syntax.
+The <code>@cextern</code> macro also includes the ability to use anonymous types in the definition of function.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-c1">time</span>(ptr<span class="pl-k">::</span><span class="pl-c1">Ptr{Clong}</span>)<span class="pl-k">::</span><span class="pl-c1">Clong</span>
+time (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
 
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-c1">printf</span>(format<span class="pl-k">::</span><span class="pl-c1">Cstring</span>, vals<span class="pl-k">...</span>)<span class="pl-k">::</span><span class="pl-c1">Cint</span>    lib
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-c1">localtime</span>(ptr<span class="pl-k">::</span><span class="pl-c1">Ptr{Clong}</span>)<span class="pl-k">::</span><span class="pl-c1">Ptr{tm}</span>
+localtime (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@cextern</span> <span class="pl-c1">printf</span>(format<span class="pl-k">::</span><span class="pl-c1">Cstring</span>, vals<span class="pl-k">...</span>)<span class="pl-k">::</span><span class="pl-c1">Cint</span>
 printf (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">time</span>(t)
+<span class="pl-c1">1560708359</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">unsafe_load</span>(<span class="pl-c1">localtime</span>(t))
+<span class="pl-c1">tm</span>(sec<span class="pl-k">=</span><span class="pl-c1">59</span>, min<span class="pl-k">=</span><span class="pl-c1">5</span>, hour<span class="pl-k">=</span><span class="pl-c1">14</span>, mday<span class="pl-k">=</span><span class="pl-c1">16</span>, mon<span class="pl-k">=</span><span class="pl-c1">5</span>, year<span class="pl-k">=</span><span class="pl-c1">119</span>, wday<span class="pl-k">=</span><span class="pl-c1">0</span>, yday<span class="pl-k">=</span><span class="pl-c1">166</span>, isdst<span class="pl-k">=</span><span class="pl-c1">1</span>)
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">printf</span>(<span class="pl-s"><span class="pl-pds">"</span>%s i%c %ld great demo of CBinding.jl v%3.1lf%c<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>this<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>s<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-c1">0.1</span>, <span class="pl-s"><span class="pl-pds">'</span>!<span class="pl-pds">'</span></span>)
 this is <span class="pl-c1">1</span> great demo of CBinding<span class="pl-k">.</span>jl v0<span class="pl-c1">.1</span>!
 <span class="pl-c1">42</span></pre></div>
-<h2><a id="user-content-binding-julia-with-a-c-library" class="anchor" aria-hidden="true" href="#binding-julia-with-a-c-library"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Binding Julia with a C library</h2>
-<p>When creating modules for binding Julia with a C library the use of the <code>__init__()</code> function is necessary.
-Performing the bindings in the global scope causes pointer addresses to be baked in due to the precompilation capabilities of Julia.
-That usually causes Julia to crash because at run-time the baked-in function pointer is invalid when it is actually being used.
-Placing the bindings in a module's <code>__init__()</code> function means the bindings are not made when the module is compiled and are made at run-time when it is loaded.</p>
-<p>Therefore, we have added the <code>@cbindings</code> macro to help users streamline their creation of Julia bindings with C libraries.
-The macro automatically provides the list of libraries to the <code>@cextern</code> macros to eliminate redundancy and remove noise from the code.
-It also generates the bindings at the module scope, so technically any <code>@ctypedef</code>, <code>@cstruct</code>, etc. macro usage can be placed within a <code>@cbindings</code> macro as well.
-Lastly, it can be used from within functions, most importantly, the <code>__init__()</code> function.</p>
+<p>The <code>@cbindings</code> macro can be used to cleanly group and target bindings to a particular library.
+Any <code>@ctypedef</code>, <code>@cstruct</code>, <code>@cextern</code>, etc. macro usage can be placed within a <code>@cbindings</code> macro as well.</p>
 <div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> CJulia
   <span class="pl-k">using</span> CBinding
   
-  <span class="pl-k">function</span> <span class="pl-en">__init__</span>()
-    lib <span class="pl-k">=</span> <span class="pl-c1">Clibrary</span>()
-    <span class="pl-c1">@cbindings</span> lib <span class="pl-k">begin</span>
-      <span class="pl-c1">@ctypedef</span> jl_nullable_float64_t <span class="pl-c1">@cstruct</span> {
-        hasvalue<span class="pl-k">::</span><span class="pl-c1">UInt8</span>
-        value<span class="pl-k">::</span><span class="pl-c1">Cdouble</span>
-      }
-      
-      <span class="pl-c1">@ctypedef</span> jl_value_t <span class="pl-c1">@cstruct</span> _jl_value_t
-      
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_enable</span>(on<span class="pl-k">::</span><span class="pl-c1">Cint</span>)<span class="pl-k">::</span><span class="pl-c1">Cint</span>
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_is_enabled</span>()<span class="pl-k">::</span><span class="pl-c1">Cint</span>
-      
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_0w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_1w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_2w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_3w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
-      <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_allocobj</span>(sz<span class="pl-k">::</span><span class="pl-c1">Csize_t</span>)<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
-      
-      <span class="pl-c1">@cextern</span> jl_base_module<span class="pl-k">::</span><span class="pl-c1">Ptr{@cstruct jl_module_t}</span>
-    <span class="pl-k">end</span>
+  <span class="pl-c1">@cbindings</span> <span class="pl-s"><span class="pl-pds">"</span>./path/to/libjulia.so<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
+    <span class="pl-c1">@ctypedef</span> jl_nullable_float64_t <span class="pl-c1">@cstruct</span> {
+      hasvalue<span class="pl-k">::</span><span class="pl-c1">UInt8</span>
+      value<span class="pl-k">::</span><span class="pl-c1">Cdouble</span>
+    }
+    
+    <span class="pl-c1">@ctypedef</span> jl_value_t <span class="pl-c1">@cstruct</span> _jl_value_t
+    
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_enable</span>(on<span class="pl-k">::</span><span class="pl-c1">Cint</span>)<span class="pl-k">::</span><span class="pl-c1">Cint</span>
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_is_enabled</span>()<span class="pl-k">::</span><span class="pl-c1">Cint</span>
+    
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_0w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_1w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_2w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_alloc_3w</span>()<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
+    <span class="pl-c1">@cextern</span> <span class="pl-c1">jl_gc_allocobj</span>(sz<span class="pl-k">::</span><span class="pl-c1">Csize_t</span>)<span class="pl-k">::</span><span class="pl-c1">Ptr{jl_value_t}</span>
+    
+    <span class="pl-c1">@cextern</span> jl_base_module<span class="pl-k">::</span><span class="pl-c1">Ptr{@cstruct jl_module_t}</span>
   <span class="pl-k">end</span>
 <span class="pl-k">end</span></pre></div>
-<p>The last argument to the macro should be a begin-end block of <code>@cextern</code>, <code>@ctypedef</code>, <code>@cstruct</code>, etc. expressions.
-Arbitrary code can be placed in the code block, but beware, it will be evaluated at module scope.
-All expressions before the begin-end block will be used as <code>Clibrary</code> arguments for loading the bindings from.</p>
-<p>Occasionally a C library will contain a type, variable, or function with a name that is a reserved word in Julia, like <code>global</code> or <code>end</code>.
-They are not yet supported by CBinding.jl <a href="https://github.com/analytech-solutions/CBinding.jl/issues/18">#18</a>, but future package development will address this feature.</p>
 </article></div>

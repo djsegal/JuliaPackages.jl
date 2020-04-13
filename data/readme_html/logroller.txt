@@ -25,6 +25,17 @@
 <li>...</li>
 <li><code>&lt;filename&gt;_n.gz</code> : last rotated file is discarded when rotated</li>
 </ul>
+<h2><a id="user-content-rollingfilewritertee" class="anchor" aria-hidden="true" href="#rollingfilewritertee"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>RollingFileWriterTee</code></h2>
+<p>Tees raw log entries made a RollingFileWriter on to a Julia <code>AbstractLogger</code>.</p>
+<p>Each line of text is taken as a single log message.</p>
+<p>All log entries are made with the same log level, which can be provided during construction. It leaves
+further examination/parsing of log messages (to extract parameters, or detect exact log levels) to the
+downstream logger.</p>
+<p>Constructor parameters in addition to those for <code>RollingFileWriter</code>:</p>
+<ul>
+<li><code>logger</code>: instance of AbstractLogger to tee log entries to</li>
+<li><code>assumed_level</code>: level of the log messages to assume (default Info)</li>
+</ul>
 <h2><a id="user-content-rollinglogger" class="anchor" aria-hidden="true" href="#rollinglogger"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>RollingLogger</code></h2>
 <p>A logger that implements <code>AbstractLogger</code> interface and uses a <code>RollingFileWriter</code> to provide log rotation.</p>
 <p>Construction parameters:</p>
@@ -53,6 +64,12 @@ hello world</pre></div>
 julia<span class="pl-k">&gt;</span> io <span class="pl-k">=</span> <span class="pl-c1">RollingFileWriter</span>(<span class="pl-s"><span class="pl-pds">"</span>/tmp/mylog.log<span class="pl-pds">"</span></span>, <span class="pl-c1">1000</span>, <span class="pl-c1">3</span>);
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">run</span>(<span class="pl-c1">pipeline</span>(<span class="pl-s"><span class="pl-pds">`</span>myshellscript.sh<span class="pl-pds">`</span></span>; stdout<span class="pl-k">=</span>io, stderr<span class="pl-k">=</span>io));</pre></div>
+<p>Using <code>RollingFileWriterTee</code></p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> LogRoller, Logging
+
+julia<span class="pl-k">&gt;</span> io <span class="pl-k">=</span> <span class="pl-c1">RollingFileWriterTee</span>(<span class="pl-s"><span class="pl-pds">"</span>/tmp/mylog.log<span class="pl-pds">"</span></span>, <span class="pl-c1">1000</span>, <span class="pl-c1">3</span>, <span class="pl-c1">ConsoleLogger</span>(stderr));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">run</span>(<span class="pl-c1">pipeline</span>(<span class="pl-s"><span class="pl-pds">`</span>myshellscript.sh<span class="pl-pds">`</span></span>; stdout<span class="pl-k">=</span>io, stderr<span class="pl-k">=</span>io));</pre></div>
 <p>Using <code>RollingLogger</code></p>
 <div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Logging, LogRoller
 
@@ -72,4 +89,28 @@ hello roller
 hello world
 ┌ Info<span class="pl-k">:</span> <span class="pl-c1">2019</span><span class="pl-k">-</span><span class="pl-c1">12</span><span class="pl-k">-</span><span class="pl-c1">03</span>T09<span class="pl-k">:</span><span class="pl-c1">26</span><span class="pl-k">:</span><span class="pl-c1">33.694</span><span class="pl-k">:</span> Hello RollingLogger
 └ @ Main REPL[<span class="pl-c1">11</span>]<span class="pl-k">:</span><span class="pl-c1">2</span></pre></div>
+<p>RollingLogger automatically adds the current timestamp to the log line. A timestamp can also be optionally provided in the log message keywords. By default, RollingLogger considers a keyword arg with a name <code>time</code> to indicate the timestamp of the log message. It uses the value specified in that as the timestamp if it is found to be either a <code>DateTime</code> or <code>Float64</code> (UNIX time). If a timestamp is detected in the keywords, it is used as the timestamp for the message and removed from the keywords.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Logging, LogRoller, Dates
+
+julia<span class="pl-k">&gt;</span> logger <span class="pl-k">=</span> <span class="pl-c1">RollingLogger</span>(<span class="pl-s"><span class="pl-pds">"</span>/tmp/mylog.log<span class="pl-pds">"</span></span>, <span class="pl-c1">1000</span>, <span class="pl-c1">3</span>, Logging<span class="pl-k">.</span>Debug);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">with_logger</span>(logger) <span class="pl-k">do</span>
+       <span class="pl-c1">@info</span>(<span class="pl-s"><span class="pl-pds">"</span>log with timestamp<span class="pl-pds">"</span></span>, time<span class="pl-k">=</span><span class="pl-c1">DateTime</span>(<span class="pl-c1">2010</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>))
+       <span class="pl-k">end</span>
+
+shell<span class="pl-k">&gt;</span> cat <span class="pl-k">/</span>tmp<span class="pl-k">/</span>mylog<span class="pl-k">.</span>log
+┌ Info<span class="pl-k">:</span> <span class="pl-c1">2010</span><span class="pl-k">-</span><span class="pl-c1">01</span><span class="pl-k">-</span><span class="pl-c1">01</span>T01<span class="pl-k">:</span><span class="pl-c1">01</span><span class="pl-k">:</span><span class="pl-c1">01</span><span class="pl-k">:</span> log with timestamp
+└ @ Main REPL[<span class="pl-c1">8</span>]<span class="pl-k">:</span><span class="pl-c1">2</span></pre></div>
+<p>The name of keyword argument to use as timestamp can be set while initializing a RollingLogger.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Logging, LogRoller, Dates
+
+julia<span class="pl-k">&gt;</span> logger <span class="pl-k">=</span> <span class="pl-c1">RollingLogger</span>(<span class="pl-s"><span class="pl-pds">"</span>/tmp/mylog.log<span class="pl-pds">"</span></span>, <span class="pl-c1">1000</span>, <span class="pl-c1">3</span>, Logging<span class="pl-k">.</span>Debug, timestamp_identifier<span class="pl-k">=</span><span class="pl-c1">:clock</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">with_logger</span>(logger) <span class="pl-k">do</span>
+       <span class="pl-c1">@info</span>(<span class="pl-s"><span class="pl-pds">"</span>log with timestamp<span class="pl-pds">"</span></span>, clock<span class="pl-k">=</span><span class="pl-c1">DateTime</span>(<span class="pl-c1">2010</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>))
+       <span class="pl-k">end</span>
+
+shell<span class="pl-k">&gt;</span> cat <span class="pl-k">/</span>tmp<span class="pl-k">/</span>mylog<span class="pl-k">.</span>log
+┌ Info<span class="pl-k">:</span> <span class="pl-c1">2010</span><span class="pl-k">-</span><span class="pl-c1">01</span><span class="pl-k">-</span><span class="pl-c1">01</span>T01<span class="pl-k">:</span><span class="pl-c1">01</span><span class="pl-k">:</span><span class="pl-c1">01</span><span class="pl-k">:</span> log with timestamp
+└ @ Main REPL[<span class="pl-c1">3</span>]<span class="pl-k">:</span><span class="pl-c1">2</span></pre></div>
 </article></div>

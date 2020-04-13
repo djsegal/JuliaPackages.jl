@@ -1,109 +1,88 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-cbindinggenjl" class="anchor" aria-hidden="true" href="#cbindinggenjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>CBindingGen.jl</h1>
-<p>Automatically generate Julia bindings to C API's!</p>
+<p><a href="https://travis-ci.com/analytech-solutions/CBindingGen.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/1d85ee477e5c70f9f1fa5d4606998462ea785655/68747470733a2f2f7472617669732d63692e636f6d2f616e616c79746563682d736f6c7574696f6e732f4342696e64696e6747656e2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Linux" data-canonical-src="https://travis-ci.com/analytech-solutions/CBindingGen.jl.svg?branch=master" style="max-width:100%;"></a> <a href="https://ci.appveyor.com/project/krrutkow/cbindinggen-jl/branch/master" rel="nofollow"><img src="https://camo.githubusercontent.com/5b65c53d9d319d958b17955167b4df0db6057b53/68747470733a2f2f63692e6170707665796f722e636f6d2f6170692f70726f6a656374732f7374617475732f6c7375646f706e6467616d38637261372f6272616e63682f6d61737465723f7376673d74727565" alt="Windows" data-canonical-src="https://ci.appveyor.com/api/projects/status/lsudopndgam8cra7/branch/master?svg=true" style="max-width:100%;"></a></p>
+<p>Automatically generate Julia bindings to C API's!
+We are developing CBindingGen.jl and CBinding.jl to support the use of arbitrary local C libraries, such as those provided by your Linux distribution, from Julia.</p>
 <h1><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h1>
-<p>CBindingGen.jl builds upon some of the processing capabilities of Clang.jl.
-Our approach also utilizes the components provided by the CBinding.jl package to more precisely and more completely interface with C API's.</p>
-<p>This package is primarily used at package build time when you wish to generate bindings to a C library on the system or one installed at build time.
-There are several important details about the process to point out.</p>
-<p>First, a filtering function must be defined to provide a means to limit the amount of material interfaced with the bindings.
-Remember that C <code>#include</code> statements insert files into the AST (and then every file they include gets inserted as well), so it is important to have an effective and accurate filter function.</p>
-<p>Second, the proper compile flags must be specified.
-If you expect a C user's code to rely on <code>pkg-config</code> to get what flags are needed to include and link against your library, then those flags must also be provided to the <code>ConverterContext</code>.</p>
-<p>The last detail required is to accurately and completely specify the library (or libraries) you want the bindings to link to as well as the list of header files to use to start the wrapping process (NOTICE: bindings are generated according to the filter function, so this list of header files only ensures that they are seen by the parser).
-An example of the process for generating bindings is shown below.</p>
+<p>CBindingGen.jl seeks to be a comprehensive and automatic C bindings generation framework.
+The bindings utilize the CBinding.jl capabilities to precisely interface Julia with C.</p>
+<p>This package should only be used at package build time when you wish to generate bindings to a particular C library on the system or one built and installed at build time.
+The generated bindings file can then be included from your package code.
+Bindings files created by this package should <em>not</em> be committed with your package and they are <em>not</em> meant for editing by lowly humans once generated.
+Se let's get started with an example!</p>
+<h2><a id="user-content-generating" class="anchor" aria-hidden="true" href="#generating"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Generating</h2>
+<p>To start, you must add <code>CBinding.jl = "^0.8.1"</code> as a dependency to your package, and <code>CBindingGen.jl = "^0.2"</code> as a build dependency.
+CBindingGen.jl relies on the artifacts distributed with <code>LLVM_jll</code> for providing a <code>libclang.so</code> library and header files for your system, so we will use those to demonstrate.
+The following code shows what is necessary to generate bindings to <code>libclang.so</code>, and something like it would normally be placed in your package's <code>deps/build.jl</code> file.</p>
 <div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> CBindingGen
-<span class="pl-k">using</span> CBindingGen<span class="pl-k">.</span>Clang
+<span class="pl-k">import</span> LLVM_jll
 
-<span class="pl-k">const</span> hdrs <span class="pl-k">=</span> [
-	<span class="pl-s"><span class="pl-pds">"</span>hdr1.h<span class="pl-pds">"</span></span>,
-	<span class="pl-s"><span class="pl-pds">"</span>hdr2.h<span class="pl-pds">"</span></span>,
-	<span class="pl-s"><span class="pl-pds">"</span>hdr3.h<span class="pl-pds">"</span></span>,
-]
+incdir <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(<span class="pl-c1">dirname</span>(<span class="pl-c1">dirname</span>(LLVM_jll<span class="pl-k">.</span>libclang_path)), <span class="pl-s"><span class="pl-pds">"</span>include<span class="pl-pds">"</span></span>)
+hdrs <span class="pl-k">=</span> <span class="pl-c1">map</span>(hdr <span class="pl-k">-&gt;</span> <span class="pl-c1">joinpath</span>(<span class="pl-s"><span class="pl-pds">"</span>clang-c<span class="pl-pds">"</span></span>, hdr), <span class="pl-c1">readdir</span>(<span class="pl-c1">joinpath</span>(incdir, <span class="pl-s"><span class="pl-pds">"</span>clang-c<span class="pl-pds">"</span></span>)))
 
-ctx <span class="pl-k">=</span> <span class="pl-c1">ConverterContext</span>([<span class="pl-s"><span class="pl-pds">"</span>libexample<span class="pl-pds">"</span></span>]) <span class="pl-k">do</span> decl
-	header <span class="pl-k">=</span> <span class="pl-c1">filename</span>(decl)
-	name   <span class="pl-k">=</span> <span class="pl-c1">spelling</span>(decl)
+cvts <span class="pl-k">=</span> <span class="pl-c1">convert_headers</span>(hdrs, args <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>-I<span class="pl-pds">"</span></span>, incdir]) <span class="pl-k">do</span> cursor
+	header <span class="pl-k">=</span> <span class="pl-c1">CodeLocation</span>(cursor)<span class="pl-k">.</span>file
+	name   <span class="pl-k">=</span> <span class="pl-c1">string</span>(cursor)
 	
-	<span class="pl-c"><span class="pl-c">#</span> ignore anything not in the library's headers, e.g. "LibExample/hdr1.h"</span>
-	<span class="pl-c1">any</span>(hdr <span class="pl-k">-&gt;</span> <span class="pl-c1">endswith</span>(header, <span class="pl-c1">joinpath</span>(<span class="pl-s"><span class="pl-pds">"</span>LibExample<span class="pl-pds">"</span></span>, hdr)), hdrs) <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
+	<span class="pl-c"><span class="pl-c">#</span> only wrap the libclang headers</span>
+	<span class="pl-c1">startswith</span>(header, <span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$(incdir)</span>/<span class="pl-pds">"</span></span>) <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
 	
-	<span class="pl-c"><span class="pl-c">#</span> ignore the particular functions listed below (usually because they are in a header but not exposed with the library)</span>
-	decl <span class="pl-k">isa</span> CLFunctionDecl <span class="pl-k">&amp;&amp;</span> name <span class="pl-k">in</span> (
-		<span class="pl-s"><span class="pl-pds">"</span>missing1<span class="pl-pds">"</span></span>,
-		<span class="pl-s"><span class="pl-pds">"</span>missing2<span class="pl-pds">"</span></span>,
-	) <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
-	
-	<span class="pl-c"><span class="pl-c">#</span> ignore functions, variables, and macros starting with double-underscore</span>
-	<span class="pl-c1">startswith</span>(name, <span class="pl-s"><span class="pl-pds">"</span>__<span class="pl-pds">"</span></span>) <span class="pl-k">&amp;&amp;</span> (decl <span class="pl-k">isa</span> CLFunctionDecl <span class="pl-k">||</span> decl <span class="pl-k">isa</span> CLVarDecl <span class="pl-k">||</span> decl <span class="pl-k">isa</span> CLMacroDefinition) <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
+	<span class="pl-c"><span class="pl-c">#</span> ignore function that uses time_t since we don't know what time_t is yet</span>
+	name <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>clang_getFileTime<span class="pl-pds">"</span></span> <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
 	
 	<span class="pl-k">return</span> <span class="pl-c1">true</span>
 <span class="pl-k">end</span>
 
-<span class="pl-c1">parse_headers!</span>(ctx, hdrs, args <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>-std=gnu99<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>-DUSE_DEF=1])</span>
-<span class="pl-s">generate(ctx, joinpath(dirname(@__DIR__), <span class="pl-pds">"</span></span>g<span class="pl-s"><span class="pl-pds"><span class="pl-c1">en</span>"</span>), <span class="pl-pds">"example</span></span>")</pre></div>
-<p>The call to <code>generate(...)</code> in the example above will create several files in the package's "gen" directory which are prefixed with "example".
-Suffixes on the files help to indicate when each file can be included into a package.
-In a use case where the bindings are generated at build-time and the package is precompiled, the following example represents a template for providing the bindings as a Julia package.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> ExampleBindings
-	<span class="pl-c"><span class="pl-c">#</span> bring in dependencies</span>
-	<span class="pl-k">using</span> DepPkg1, DepPkg2
-	
-	<span class="pl-c"><span class="pl-c">#</span> CBinding is required by the CBindingGen-generated files</span>
-	<span class="pl-k">import</span> CBinding
-	
-	<span class="pl-c"><span class="pl-c">#</span> define opaque types (currently needs to be explicitly done)</span>
-	CBinding<span class="pl-k">.</span><span class="pl-c1">@cstruct</span> MyOpaqueType
-	
-	<span class="pl-c"><span class="pl-c">#</span> use of fully qualified names is a must if the bindings define a symbol from Base!</span>
-	Base<span class="pl-k">.</span><span class="pl-c1">include</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__MODULE__</span>, Base<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(Base<span class="pl-k">.</span><span class="pl-c1">dirname</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__DIR__</span>), <span class="pl-s"><span class="pl-pds">"</span>gen<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>example-atdevelopop.jl<span class="pl-pds">"</span></span>))
-	Base<span class="pl-k">.</span><span class="pl-c1">include</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__MODULE__</span>, Base<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(Base<span class="pl-k">.</span><span class="pl-c1">dirname</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__DIR__</span>), <span class="pl-s"><span class="pl-pds">"</span>gen<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>example-atcompile.jl<span class="pl-pds">"</span></span>))
-	Base<span class="pl-k">.</span><span class="pl-c1">include</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__MODULE__</span>, Base<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(Base<span class="pl-k">.</span><span class="pl-c1">dirname</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__DIR__</span>), <span class="pl-s"><span class="pl-pds">"</span>gen<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>example-atcompile_typedefs.jl<span class="pl-pds">"</span></span>))
-	Base<span class="pl-k">.</span><span class="pl-c1">include</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__MODULE__</span>, Base<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(Base<span class="pl-k">.</span><span class="pl-c1">dirname</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__DIR__</span>), <span class="pl-s"><span class="pl-pds">"</span>gen<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>example-atcompile_bindings.jl<span class="pl-pds">"</span></span>))
-	
-	<span class="pl-k">function</span> <span class="pl-en">__init__</span>()
-		Base<span class="pl-k">.</span><span class="pl-c1">include</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__MODULE__</span>, Base<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(Base<span class="pl-k">.</span><span class="pl-c1">dirname</span>(Base<span class="pl-k">.</span><span class="pl-c1">@__DIR__</span>), <span class="pl-s"><span class="pl-pds">"</span>gen<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>example-atload.jl<span class="pl-pds">"</span></span>))
+<span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>bindings.jl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>w+<span class="pl-pds">"</span></span>) <span class="pl-k">do</span> io
+	<span class="pl-c1">generate</span>(io, LLVM_jll<span class="pl-k">.</span>libclang_path <span class="pl-k">=&gt;</span> cvts)
+<span class="pl-k">end</span>
+</pre></div>
+<p>The <code>convert_headers</code> function takes an array of header files and the command line arguments, <code>args</code>.
+Any include directories, compiler options, or preprocessor definitions would be provided in <code>args</code> in the same way they would be used in your <code>clang</code> command line.
+An important detail of <code>convert_headers</code> is the filter function provided, here provided with the <code>do</code> syntax.
+The filter function allows you fine-grained control over what is converted to Julia as the C AST is traversed.
+In our example, we filter out any C constructs not defined within the header files we are interested in.</p>
+<p>We use <code>CodeLocation(cursor)</code> to get the <code>file</code>, <code>line</code>, and <code>col</code> for the start of the C expression, while <code>CodeRange(cursor)</code> can be used to get the <code>start</code> and <code>stop</code> locations of the expression.
+Additionally, <code>string(cursor)</code> will get the "spelling" of the expression if you wish to filter particular C symbols.</p>
+<p>The result of <code>convert_headers</code> is an array of <code>Converted</code> objects.
+<code>Converted</code> objects contain the Julia expression strings, as <code>expr</code>, and <code>comments</code> for storing exportable symbols an their comments ported from C.</p>
+<p>Finally, the <code>generate</code> function is used to write the converted expressions for one or more libraries into a bindings file.</p>
+<h2><a id="user-content-loading" class="anchor" aria-hidden="true" href="#loading"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Loading</h2>
+<p>In order to load the bindings file within your package, it is best to define a <code>baremodule</code> within your package module to encapsulate the bindings.
+The namespace within the <code>baremodule</code> will have only a very few symbols that could conflict with those from C.
+We rely on macro usage within Julia to carefully avoid introducing any more conflicting symbols.
+CBinding provides <code>@macros</code> to define macros for many of the C-types in Julia, and it also defines <code>@CBinding()</code> to allow for unrestrained, but less-concise, access to Julia symbols.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> MyModule
+	<span class="pl-k">baremodule</span> LibClang
+		<span class="pl-k">using</span> CBinding<span class="pl-k">:</span> <span class="pl-c1">@macros</span>
+		<span class="pl-c1">@macros</span>
+		
+		<span class="pl-k">const</span> size_t <span class="pl-k">=</span> <span class="pl-c1">@Csize_t</span>
+		<span class="pl-c1">@include</span>(<span class="pl-s"><span class="pl-pds">"</span>bindings-deps.jl<span class="pl-pds">"</span></span>))
+		
+		<span class="pl-c1">@include</span>(<span class="pl-c1">@CBinding</span>()<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(<span class="pl-c1">@CBinding</span>()<span class="pl-k">.</span><span class="pl-c1">dirname</span>(<span class="pl-c1">@CBinding</span>()<span class="pl-k">.</span><span class="pl-c1">@__DIR__</span>), <span class="pl-s"><span class="pl-pds">"</span>deps<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>bindings.jl<span class="pl-pds">"</span></span>))
 	<span class="pl-k">end</span>
+	
+	<span class="pl-c"><span class="pl-c">#</span> other module code, such as high-level Julian code wrapping the bindings...</span>
 <span class="pl-k">end</span></pre></div>
-<p>It is also possible, completely at package load-time, to generate bindings and load them dynamically.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> ExampleBindings
-	<span class="pl-c"><span class="pl-c">#</span> bring in dependencies</span>
-	<span class="pl-k">using</span> DepPkg1, DepPkg2
-	
-	<span class="pl-c"><span class="pl-c">#</span> CBinding is required by the CBindingGen-generated files</span>
-	<span class="pl-k">import</span> CBinding, CBindingGen
-	
-	<span class="pl-c"><span class="pl-c">#</span> define opaque types (currently needs to be explicitly done)</span>
-	CBinding<span class="pl-k">.</span><span class="pl-c1">@cstruct</span> MyOpaqueType
-	
-	<span class="pl-k">function</span> <span class="pl-en">__init__</span>()
-		hdrs <span class="pl-k">=</span> [
-			<span class="pl-s"><span class="pl-pds">"</span>hdr1.h<span class="pl-pds">"</span></span>,
-			<span class="pl-s"><span class="pl-pds">"</span>hdr2.h<span class="pl-pds">"</span></span>,
-			<span class="pl-s"><span class="pl-pds">"</span>hdr3.h<span class="pl-pds">"</span></span>,
-		]
-		
-		ctx <span class="pl-k">=</span> CBindingGen<span class="pl-k">.</span><span class="pl-c1">ConverterContext</span>([<span class="pl-s"><span class="pl-pds">"</span>libexample<span class="pl-pds">"</span></span>]) <span class="pl-k">do</span> decl
-			header <span class="pl-k">=</span> CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span><span class="pl-c1">filename</span>(decl)
-			name   <span class="pl-k">=</span> CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span><span class="pl-c1">spelling</span>(decl)
-			
-			<span class="pl-c"><span class="pl-c">#</span> ignore anything not in the library's headers, e.g. "LibExample/hdr1.h"</span>
-			Base<span class="pl-k">.</span><span class="pl-c1">any</span>(hdr <span class="pl-k">-&gt;</span> Base<span class="pl-k">.</span><span class="pl-c1">endswith</span>(header, Base<span class="pl-k">.</span><span class="pl-c1">joinpath</span>(<span class="pl-s"><span class="pl-pds">"</span>LibExample<span class="pl-pds">"</span></span>, hdr)), hdrs) <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
-			
-			<span class="pl-c"><span class="pl-c">#</span> ignore the particular functions listed below (usually because they are in a header but not exposed with the library)</span>
-			decl <span class="pl-k">isa</span> CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span>CLFunctionDecl <span class="pl-k">&amp;&amp;</span> name <span class="pl-k">in</span> (
-				<span class="pl-s"><span class="pl-pds">"</span>missing1<span class="pl-pds">"</span></span>,
-				<span class="pl-s"><span class="pl-pds">"</span>missing2<span class="pl-pds">"</span></span>,
-			) <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
-			
-			<span class="pl-c"><span class="pl-c">#</span> ignore functions, variables, and macros starting with double-underscore</span>
-			Base<span class="pl-k">.</span><span class="pl-c1">startswith</span>(name, <span class="pl-s"><span class="pl-pds">"</span>__<span class="pl-pds">"</span></span>) <span class="pl-k">&amp;&amp;</span> (decl <span class="pl-k">isa</span> CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span>CLFunctionDecl <span class="pl-k">||</span> decl <span class="pl-k">isa</span> CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span>CLVarDecl <span class="pl-k">||</span> decl <span class="pl-k">isa</span> CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span>CLMacroDefinition) <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">false</span>
-			
-			<span class="pl-k">return</span> <span class="pl-c1">true</span>
-		<span class="pl-k">end</span>
-		
-		CBindingGen<span class="pl-k">.</span>Clang<span class="pl-k">.</span><span class="pl-c1">parse_headers!</span>(ctx, hdrs, args <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>-std=gnu99<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>-DUSE_DEF=1])</span>
-<span class="pl-s">		@eval <span class="pl-v">$(CBindingGen<span class="pl-k">.</span><span class="pl-c1">generate</span>(ctx))</span></span>
-<span class="pl-s">	end</span>
-<span class="pl-s">end</span></pre></div>
-<p>Once the bindings are generated, your next step would be to provide some higher-level Julia constructs to wrap the bindings with.</p>
+<p>Next is a section defining dependencies of the bindings and should be composed of hand-written code or imported packages that export the required symbols.
+Finishing the bindings module is the inclusion of the bindings file generated at build-time.</p>
+<h2><a id="user-content-helpcomments" class="anchor" aria-hidden="true" href="#helpcomments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Help/Comments</h2>
+<p>CBindingGen.jl automatically imports comments from the C header files, but it does not yet transform the syntax to Julia's <code>@doc</code> strings though.
+If you find that C header comments are not imported, you should try adding <code>-fparse-all-comments</code> to the list of <code>args</code> in your call to <code>convert_headers</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> MyModule
+
+help?<span class="pl-k">&gt;</span> MyModule<span class="pl-k">.</span>LibClang<span class="pl-k">.</span>clang_getClangVersion
+  Return a version string, suitable <span class="pl-k">for</span> showing to a user, but not intended to be parsed (the format is not guaranteed to be stable).
+
+  C Reference (<span class="pl-k">~</span><span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>artifacts<span class="pl-k">/</span><span class="pl-c1">24</span>cf82e3b0e1edd69d7399a3912c9dcd5ba0f55d<span class="pl-k">/</span>include<span class="pl-k">/</span>clang<span class="pl-k">-</span>c<span class="pl-k">/</span>Index<span class="pl-k">.</span>h<span class="pl-k">:</span><span class="pl-c1">5828</span><span class="pl-k">:</span><span class="pl-c1">25</span>)</pre></div>
+<h2><a id="user-content-using" class="anchor" aria-hidden="true" href="#using"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Using</h2>
+<p>Use the generated bindings as you would any hand-written or generated <code>ccall</code> and <code>cglobal</code> wrappers.
+Remember, this is <em>very</em> low-level interfacing, and segmentation faults can result from misuse.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> cxstr <span class="pl-k">=</span> MyModule<span class="pl-k">.</span>LibClang<span class="pl-k">.</span><span class="pl-c1">clang_getClangVersion</span>();
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">unsafe_string</span>(MyModule<span class="pl-k">.</span>LibClang<span class="pl-k">.</span><span class="pl-c1">clang_getCString</span>(cxstr))
+<span class="pl-s"><span class="pl-pds">"</span>clang version 8.0.1 <span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> MyModule<span class="pl-k">.</span>LibClang<span class="pl-k">.</span><span class="pl-c1">clang_disposeString</span>(cxstr)
+</pre></div>
 </article></div>

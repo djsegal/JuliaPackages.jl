@@ -11,6 +11,34 @@
 
 model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(<span class="pl-c1">with_optimizer</span>(Gurobi<span class="pl-k">.</span>Optimizer, Presolve<span class="pl-k">=</span><span class="pl-c1">0</span>, OutputFlag<span class="pl-k">=</span><span class="pl-c1">0</span>))</pre></div>
 <p>See the <a href="https://www.gurobi.com/documentation/8.1/refman/parameters.html" rel="nofollow">Gurobi Documentation</a> for a list and description of allowable parameters.</p>
+<h3><a id="user-content-common-performance-pitfall-with-jump" class="anchor" aria-hidden="true" href="#common-performance-pitfall-with-jump"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Common Performance Pitfall with JuMP</h3>
+<p>Gurobi API works differently than most solvers. Any changes to the model are not applied immediately, but instead go sit in a internal buffer (making any modifications appear to be instantaneous) waiting for a call to <code>update_model!</code> (where the work is  done). If Gurobi.jl is used directly, it is the user responsability to call <code>update_model!</code> when necessary (for example, before solving the model), as it would be if the user was using the official C interface. However, if Gurobi.jl is used with JuMP, it becomes Gurobi.jl responsibility to call <code>update_model!</code> when necessary, as a valid JuMP program should work for solvers with and without such lazy update semantics (i.e., with and without a <code>update_model!</code>-like method).</p>
+<p>This leads to a common performance pitfall that has the following message as its main symptom: <code>Warning: excessive time spent in model updates. Consider calling update less frequently.</code> This often means the JuMP program was structured in such a way that Gurobi.jl ends up calling <code>update_model!</code> each iteration of a loop. Usually, it is possible (and easy) to restructure the JuMP program in a way it stays solver-agnostic and has a close-to-ideal performance with Gurobi. To guide such restructuring it is good to keep in mind the following bits of information:</p>
+<ol>
+<li><code>update_model!</code> is only called if changes were done since last <code>update_model!</code> (i.e., the internal buffer is not empty).</li>
+<li><code>update_model!</code> is called when <code>JuMP.optimize!</code> is called, but this often is not the source of the problem.</li>
+<li><code>update_model!</code> <em>may</em> be called when <em>ANY</em> model attribute is queried <em>even if that specific attribute was not changed</em>, and this often the source of the problem.</li>
+<li>The worst-case scenario is, therefore, a loop of modify-query-modify-query, even if what is being modified and what is being queried are two completely distinct things.</li>
+</ol>
+<p>Finally, for an example, prefer:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> GOOD</span>
+model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(Gurobi<span class="pl-k">.</span>Optimizer)
+<span class="pl-c1">@variable</span>(model, x[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>] <span class="pl-k">&gt;=</span> <span class="pl-c1">0</span>)
+<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>  <span class="pl-c"><span class="pl-c">#</span> all modifications are done before any queries</span>
+    <span class="pl-c1">set_upper_bound</span>(x[i], i)
+<span class="pl-k">end</span>
+<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span> <span class="pl-c"><span class="pl-c">#</span> only the first `lower_bound` query may trigger an `update_model!` </span>
+    <span class="pl-c1">println</span>(<span class="pl-c1">lower_bound</span>(x[i]))
+<span class="pl-k">end</span></pre></div>
+<p>to:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> BAD</span>
+model <span class="pl-k">=</span> <span class="pl-c1">Model</span>(Gurobi<span class="pl-k">.</span>Optimizer)
+<span class="pl-c1">@variable</span>(model, x[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>] <span class="pl-k">&gt;=</span> <span class="pl-c1">0</span>)
+<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>
+    <span class="pl-c1">set_upper_bound</span>(x[i], i)
+    <span class="pl-c"><span class="pl-c">#</span> there is a potential `update_model!` each iteration of this loop</span>
+    <span class="pl-c1">println</span>(<span class="pl-c1">lower_bound</span>(x[i]))
+<span class="pl-k">end</span></pre></div>
 <h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
 <p>Here is the procedure to setup this package:</p>
 <ol>
