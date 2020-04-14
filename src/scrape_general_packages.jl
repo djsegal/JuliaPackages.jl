@@ -123,8 +123,8 @@ function scrape_general_packages()
     delete!(cur_set, cur_package)
   end
 
-  cur_shallow_depending = map(cur_entry -> keys(cur_entry.dict), cur_shallow_depending)
-  cur_deep_depending = map(cur_entry -> keys(cur_entry.dict), cur_deep_depending)
+  cur_shallow_depending = map(_custom_sort_keys, cur_shallow_depending)
+  cur_deep_depending = map(_custom_sort_keys, cur_deep_depending)
 
   cur_shallow_dependents = [ Set() for _ in 1:length(cur_packages) ]
   cur_deep_dependents = [ Set() for _ in 1:length(cur_packages) ]
@@ -157,8 +157,8 @@ function scrape_general_packages()
     @assert this_length_1 + this_length_2 == that_length
   end
 
-  cur_shallow_dependents = map(cur_entry -> keys(cur_entry.dict), cur_shallow_dependents)
-  cur_deep_dependents = map(cur_entry -> keys(cur_entry.dict), cur_deep_dependents)
+  cur_shallow_dependents = map(_custom_sort_keys, cur_shallow_dependents)
+  cur_deep_dependents = map(_custom_sort_keys, cur_deep_dependents)
 
   general_db = DataFrame(
     package=cur_packages, owner=cur_owners,
@@ -168,3 +168,5 @@ function scrape_general_packages()
 
   return general_db
 end
+
+_custom_sort_keys(cur_entry) = sort(collect(keys(cur_entry.dict)))
