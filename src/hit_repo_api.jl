@@ -2,7 +2,7 @@ function hit_repo_api(general_db, decibans_db)
   cur_paths = package_paths(general_db, decibans_db)
 
   good_paths = _hit_repo_start(cur_paths)
-  packages_db = _hit_repo_finish(good_paths)
+  packages_db = _hit_repo_finish(good_paths, general_db)
 
   return good_paths, packages_db
 end
@@ -68,7 +68,7 @@ function _hit_repo_start(cur_paths)
   return good_paths
 end
 
-function _hit_repo_finish(cur_paths)
+function _hit_repo_finish(cur_paths, general_db)
   cur_data_dict = OrderedDict(
     "package" => [],
     "owner" => [],
@@ -78,8 +78,11 @@ function _hit_repo_finish(cur_paths)
     "pushed_at" => [],
     "updated_at" => [],
     "created_at" => [],
-    "html_url" => []
+    "html_url" => [],
+    "registered" => []
   )
+
+  skip_keys = ["owner", "package", "registered"]
 
   for (cur_package, cur_path) in cur_paths
     package_file = "../tmp/packages/$(lowercase(cur_package)).json"
@@ -88,10 +91,12 @@ function _hit_repo_finish(cur_paths)
     push!(cur_data_dict["package"], cur_package)
     push!(cur_data_dict["owner"], split(cur_path, "/")[1])
 
+    push!(cur_data_dict["registered"], cur_package in general_db.package)
+
     cur_json = JSON.parse(open(f->read(f, String), package_file))
 
     for (cur_key, cur_value) in cur_data_dict
-      ( cur_key in ["owner", "package"] ) && continue
+      ( cur_key in skip_keys ) && continue
 
       if endswith(cur_key, "_at")
         push!(cur_value, DateTime(chop(cur_json[cur_key])))

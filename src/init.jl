@@ -31,7 +31,7 @@ function __init__()
     paths_db = CSV.read("../data/paths.csv")
     good_paths = collect(zip(paths_db.package, paths_db.path))
 
-    packages_db = _hit_repo_finish(good_paths)
+    packages_db = _hit_repo_finish(good_paths, general_db)
   else
     good_paths, packages_db = hit_repo_api(general_db, decibans_db)
 
