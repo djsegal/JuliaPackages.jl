@@ -26,6 +26,11 @@ function __init__()
   CSV.write(general_file, general_csv)
   CSV.write(decibans_file, decibans_db)
 
+  searched_paths = hit_search_api()
+
+  trending_file, trending_db = custom_get_database("trending")
+  CSV.write(trending_file, trending_db)
+
   if isfile("../data/packages.csv")
     @assert isfile("../data/paths.csv")
     paths_db = CSV.read("../data/paths.csv")
@@ -41,9 +46,7 @@ function __init__()
   end
 
   CSV.write("../data/packages.csv", packages_db)
-  hit_readme_api(good_paths)
 
-  trending_file, trending_db = custom_get_database("trending")
-  CSV.write(trending_file, trending_db)
+  hit_readme_api([good_paths..., searched_paths...])
 
 end

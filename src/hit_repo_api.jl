@@ -68,7 +68,9 @@ function _hit_repo_start(cur_paths)
   return good_paths
 end
 
-function _hit_repo_finish(cur_paths, general_db)
+function _hit_repo_finish(good_paths, general_db)
+  cur_paths = deepcopy(good_paths)
+
   cur_data_dict = OrderedDict(
     "package" => [],
     "owner" => [],
@@ -82,10 +84,34 @@ function _hit_repo_finish(cur_paths, general_db)
     "registered" => []
   )
 
+  if isfile("../data/searched_paths.csv")
+    searched_paths_db = CSV.read("../data/searched_paths.csv")
+
+    searched_paths = collect(
+      zip(searched_paths_db.package, searched_paths_db.path)
+    )
+
+    standard_packages = map(lowercase, map(first, cur_paths))
+    for i in length(searched_paths):-1:1
+      ( lowercase(searched_paths[i][1]) in standard_packages ) || continue
+      deleteat!(searched_paths, i)
+    end
+    append!(cur_paths, searched_paths)
+
+    cur_paths = sort(
+      cur_paths, by = (cur_path) -> lowercase(first(cur_path))
+    )
+  end
+
   skip_keys = ["owner", "package", "registered"]
 
   for (cur_package, cur_path) in cur_paths
     package_file = "../tmp/packages/$(lowercase(cur_package)).json"
+
+    if !isfile(package_file)
+      package_file = "../tmp/searched/$(lowercase(cur_package)).json"
+    end
+
     @assert isfile(package_file)
 
     push!(cur_data_dict["package"], cur_package)

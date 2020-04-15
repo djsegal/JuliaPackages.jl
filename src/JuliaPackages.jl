@@ -37,5 +37,6 @@ module JuliaPackages
 
   include("hit_repo_api.jl")
   include("hit_readme_api.jl")
+  include("hit_search_api.jl")
 
 end
