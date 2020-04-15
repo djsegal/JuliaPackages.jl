@@ -65,6 +65,9 @@ function _hit_readme_api_start(cur_paths)
 end
 
 function _hit_readme_api_finish(cur_paths)
+  foreach(rm, readdir("../data/readme_search", join=true))
+  foreach(rm, readdir("../data/readme_nlp", join=true))
+
   @showprogress for cur_tuple in cur_paths
     cur_package, cur_path = cur_tuple
 
