@@ -1,0 +1,187 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-imagetracking" class="anchor" aria-hidden="true" href="#imagetracking"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ImageTracking</h1>
+<p>Julia package for optical flow and object tracking algorithms.</p>
+<p>The package currently implements optical flow estimation using the following methods:</p>
+<ol>
+<li>Lucas-Kanade (for sparse optical flow)</li>
+<li>Farneback (for dense optical flow)</li>
+</ol>
+<h2><a id="user-content-usage-examples" class="anchor" aria-hidden="true" href="#usage-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage Examples</h2>
+<p>The following sections summarise the key API with the aid of concrete examples.</p>
+<h3><a id="user-content-farneback-algorithm" class="anchor" aria-hidden="true" href="#farneback-algorithm"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Farneback Algorithm</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    Farneback(Args...)    </span>
+<span class="pl-s"></span>
+<span class="pl-s">A method for dense optical flow estimation developed by Gunnar Farneback. It</span>
+<span class="pl-s">computes the optical flow for all the points in the frame using the polynomial</span>
+<span class="pl-s">representation of the images. The idea of polynomial expansion is to approximate</span>
+<span class="pl-s">the neighbourhood of a point in a 2D function with a polynomial. Displacement</span>
+<span class="pl-s">fields are estimated from the polynomial coefficients depending on how the</span>
+<span class="pl-s">polynomial transforms under translation.</span>
+<span class="pl-s"></span>
+<span class="pl-s"># Options</span>
+<span class="pl-s">Various options for the fields of this type are described in more detail</span>
+<span class="pl-s">below.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `iterations`</span>
+<span class="pl-s"></span>
+<span class="pl-s">Number of iterations the displacement estimation algorithm is run at each point.</span>
+<span class="pl-s">If left unspecified a default value of seven iterations is assumed.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `estimation_window`</span>
+<span class="pl-s"></span>
+<span class="pl-s">Determines the neighbourhood size over which information will be intergrated</span>
+<span class="pl-s">when determining the displacement of a pixel. The total size equals</span>
+<span class="pl-s">`2*estimation_window + 1`.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `σ_estimation_window`</span>
+<span class="pl-s"></span>
+<span class="pl-s">Standard deviation of a Gaussian weighting filter used to weigh the contribution</span>
+<span class="pl-s">of a pixel's neighbourhood when determining the displacement of a pixel.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `expansion_window`</span>
+<span class="pl-s"></span>
+<span class="pl-s">Determines the size of the pixel neighbourhood used to find polynomial expansion</span>
+<span class="pl-s">for each pixel; larger values mean that the image will be approximated with</span>
+<span class="pl-s">smoother surfaces, yielding more robust algorithm and more blurred motion field.</span>
+<span class="pl-s">The total size equals `2*expansion_window + 1`.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `σ_expansion_window`</span>
+<span class="pl-s"></span>
+<span class="pl-s">Standard deviation of the Gaussian that is used to smooth the image for the purpose</span>
+<span class="pl-s">of approximating it with a polynomial expansion.</span>
+<span class="pl-s"></span>
+<span class="pl-s"># References</span>
+<span class="pl-s"></span>
+<span class="pl-s">Farnebäck G. (2003) Two-Frame Motion Estimation Based on Polynomial Expansion. In: Bigun J.,</span>
+<span class="pl-s">Gustavsson T. (eds) Image Analysis. SCIA 2003. Lecture Notes in Computer Science, vol 2749. Springer, Berlin,</span>
+<span class="pl-s">Heidelberg</span>
+<span class="pl-s"></span>
+<span class="pl-s">Farnebäck, G.: Polynomial Expansion for Orientation and Motion Estimation. PhD thesis, Linköping University,</span>
+<span class="pl-s">Sweden, SE-581 83 Linköping, Sweden (2002) Dissertation No 790, ISBN 91-7373-475-6.</span>
+<span class="pl-s"></span>
+<span class="pl-s"><span class="pl-pds">"""</span></span></pre></div>
+<p>An example of dense optical flow estimation using the Farneback algorithm.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Images, TestImages, StaticArrays, ImageTracking, ImageView, LinearAlgebra, CoordinateTransformations, Gtk<span class="pl-k">.</span>ShortNames
+
+<span class="pl-c"><span class="pl-c">#=</span>Image Credit:  C. Liu. Beyond Pixels: Exploring New Representations and</span>
+<span class="pl-c">#Applications for Motion Analysis. Doctoral Thesis. Massachusetts Institute of</span>
+<span class="pl-c">#Technology. May 2009. <span class="pl-c">=#</span></span>
+img1 <span class="pl-k">=</span> <span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>demo/car2.jpg<span class="pl-pds">"</span></span>)
+img2 <span class="pl-k">=</span> <span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>demo/car1.jpg<span class="pl-pds">"</span></span>)
+
+algorithm <span class="pl-k">=</span> <span class="pl-c1">Farneback</span>(<span class="pl-c1">50</span>, estimation_window <span class="pl-k">=</span> <span class="pl-c1">11</span>,
+                         σ_estimation_window <span class="pl-k">=</span> <span class="pl-c1">9.0</span>,
+                         expansion_window <span class="pl-k">=</span> <span class="pl-c1">6</span>,
+                         σ_expansion_window <span class="pl-k">=</span> <span class="pl-c1">5.0</span>)
+flow <span class="pl-k">=</span> <span class="pl-c1">optical_flow</span>(<span class="pl-c1">Gray</span><span class="pl-c1">{Float32}</span>.(img1), <span class="pl-c1">Gray</span><span class="pl-c1">{Float32}</span>.(img2), algorithm)
+
+<span class="pl-c"><span class="pl-c">#</span> Convert from (row,column) to (x,y) convention.</span>
+<span class="pl-c1">map!</span>(x<span class="pl-k">-&gt;</span> <span class="pl-c1">SVector</span>(<span class="pl-c1">last</span>(x),<span class="pl-c1">first</span>(x)), flow, flow)
+
+<span class="pl-c"><span class="pl-c">#</span> Display optical flow as an image, with hue encoding the orientation and</span>
+<span class="pl-c"><span class="pl-c">#</span> saturation encoding the relative magnitude.</span>
+max_norm <span class="pl-k">=</span> <span class="pl-c1">maximum</span>(<span class="pl-c1">map</span>(norm,flow))
+normalised_flow <span class="pl-k">=</span> <span class="pl-c1">map</span>(<span class="pl-c1">PolarFromCartesian</span>(),flow <span class="pl-k">/</span> max_norm)
+hsv <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(HSV{Float32},<span class="pl-c1">size</span>(img1))
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">eachindex</span>(flow)
+    hsv[i] <span class="pl-k">=</span> <span class="pl-c1">HSV</span>((normalised_flow[i]<span class="pl-k">.</span>θ <span class="pl-k">+</span> pi) <span class="pl-k">*</span> <span class="pl-c1">180</span> <span class="pl-k">/</span> pi, normalised_flow[i]<span class="pl-k">.</span>r, <span class="pl-c1">1</span>)
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> Visualize the optical flow and save it to disk.</span>
+<span class="pl-c1">imshow</span>(<span class="pl-c1">RGB</span>.(hsv))
+<span class="pl-c1">save</span>(<span class="pl-s"><span class="pl-pds">"</span>./demo/optical_flow_farneback.jpg<span class="pl-pds">"</span></span>, hsv)</pre></div>
+<div>
+  <div>
+   <a target="_blank" rel="noopener noreferrer" href="https://github.com/JuliaImages/ImageTracking.jl/blob/master/demo/car_input.gif"><img src="https://github.com/JuliaImages/ImageTracking.jl/raw/master/demo/car_input.gif" width="320" height="240" style="max-width:100%;"></a>
+  </div>
+  <div>
+    <a target="_blank" rel="noopener noreferrer" href="https://github.com/JuliaImages/ImageTracking.jl/blob/master/demo/optical_flow_farneback.jpg"><img src="https://github.com/JuliaImages/ImageTracking.jl/raw/master/demo/optical_flow_farneback.jpg" width="320" height="240" style="max-width:100%;"></a>
+  </div>
+</div>
+<h3><a id="user-content-lucas-kanade-algorithm" class="anchor" aria-hidden="true" href="#lucas-kanade-algorithm"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Lucas-Kanade Algorithm</h3>
+<div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    LucasKanade(Args...)</span>
+<span class="pl-s"></span>
+<span class="pl-s">A differential method for optical flow estimation developed by Bruce D. Lucas</span>
+<span class="pl-s">and Takeo Kanade. It assumes that the flow is essentially constant in a local</span>
+<span class="pl-s">neighbourhood of the pixel under consideration, and solves the basic optical flow</span>
+<span class="pl-s">equations for all the pixels in that neighbourhood by the least squares criterion.</span>
+<span class="pl-s"></span>
+<span class="pl-s"># Options</span>
+<span class="pl-s">Various options for the fields of this type are described in more detail</span>
+<span class="pl-s">below.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `iterations`</span>
+<span class="pl-s"></span>
+<span class="pl-s">The termination criteria of the iterative search algorithm, that is, the number of</span>
+<span class="pl-s">iterations.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `window_size`</span>
+<span class="pl-s"></span>
+<span class="pl-s">Size of the search window at each pyramid level; the total size of the</span>
+<span class="pl-s">window used is 2*window_size + 1.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `pyramid_levels`</span>
+<span class="pl-s"></span>
+<span class="pl-s">0-based maximal pyramid level number; if set to 0, pyramids are not used</span>
+<span class="pl-s">(single level), if set to 1, two levels are used, and so on.</span>
+<span class="pl-s"></span>
+<span class="pl-s">## Choices for `eigenvalue_threshold`</span>
+<span class="pl-s"></span>
+<span class="pl-s">The algorithm calculates the minimum eigenvalue of a (2 x 2) normal matrix of</span>
+<span class="pl-s">optical flow equations, divided by number of pixels in a window; if this value</span>
+<span class="pl-s">is less than `eigenvalue_threshold`, then a corresponding feature is filtered</span>
+<span class="pl-s">out and its flow is not processed (Default value is 10^-6).</span>
+<span class="pl-s"></span>
+<span class="pl-s">## References</span>
+<span class="pl-s"></span>
+<span class="pl-s">B. D. Lucas, &amp; Kanade. "An Interative Image Registration Technique with an Application to Stereo Vision,"</span>
+<span class="pl-s">DARPA Image Understanding Workshop, pp 121-130, 1981.</span>
+<span class="pl-s"></span>
+<span class="pl-s">J.-Y. Bouguet, “Pyramidal implementation of the afﬁne lucas-kanade feature tracker description of the</span>
+<span class="pl-s">algorithm,” Intel Corporation, vol. 5,no. 1-10, p. 4, 2001.</span>
+<span class="pl-s"><span class="pl-pds">"""</span></span></pre></div>
+<p>An example using the Lucas-Kanade algorithm to determine the optical flow.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Images, TestImages, StaticArrays, ImageTracking, ImageView, LinearAlgebra, CoordinateTransformations, Gtk<span class="pl-k">.</span>ShortNames
+
+<span class="pl-c"><span class="pl-c">#=</span>Image Credit:  C. Liu. Beyond Pixels: Exploring New Representations and</span>
+<span class="pl-c">#Applications for Motion Analysis. Doctoral Thesis. Massachusetts Institute of</span>
+<span class="pl-c">#Technology. May 2009. <span class="pl-c">=#</span></span>
+img1 <span class="pl-k">=</span> <span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>demo/table1.jpg<span class="pl-pds">"</span></span>)
+img2 <span class="pl-k">=</span> <span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>demo/table2.jpg<span class="pl-pds">"</span></span>)
+
+corners <span class="pl-k">=</span> <span class="pl-c1">imcorner</span>(img1, method<span class="pl-k">=</span>shi_tomasi)
+I <span class="pl-k">=</span> <span class="pl-c1">findall</span>(<span class="pl-k">!</span>iszero, corners)
+r, c <span class="pl-k">=</span> (<span class="pl-c1">getindex</span>.(I, <span class="pl-c1">1</span>), <span class="pl-c1">getindex</span>.(I, <span class="pl-c1">2</span>))
+points <span class="pl-k">=</span> <span class="pl-c1">map</span>((ri, ci) <span class="pl-k">-&gt;</span> <span class="pl-c1">SVector</span><span class="pl-c1">{2}</span>(<span class="pl-c1">Float64</span>(ri), <span class="pl-c1">Float64</span>(ci)), r, c)
+
+
+algorithm <span class="pl-k">=</span> <span class="pl-c1">LucasKanade</span>(<span class="pl-c1">20</span>, window_size <span class="pl-k">=</span> <span class="pl-c1">11</span>,
+                            pyramid_levels <span class="pl-k">=</span> <span class="pl-c1">4</span>,
+                            eigenvalue_threshold <span class="pl-k">=</span> <span class="pl-c1">0.000001</span>)
+flow, indicator <span class="pl-k">=</span> <span class="pl-c1">optical_flow</span>(<span class="pl-c1">Gray</span><span class="pl-c1">{Float32}</span>.(img1), <span class="pl-c1">Gray</span><span class="pl-c1">{Float32}</span>.(img2),points, algorithm)
+
+<span class="pl-c"><span class="pl-c">#</span> Keep the subset of points that were succesfully tracked and determine</span>
+<span class="pl-c"><span class="pl-c">#</span> correspondences.</span>
+valid_points <span class="pl-k">=</span> points[indicator]
+valid_flow <span class="pl-k">=</span> flow[indicator]
+valid_correspondence <span class="pl-k">=</span> <span class="pl-c1">map</span>((x,Δx)<span class="pl-k">-&gt;</span> x<span class="pl-k">+</span>Δx, valid_points, valid_flow)
+
+<span class="pl-c"><span class="pl-c">#</span> Convert (row,columns) to (x,y) convention and round to nearest integer.</span>
+pts0 <span class="pl-k">=</span> <span class="pl-c1">map</span>(x<span class="pl-k">-&gt;</span> <span class="pl-c1">round</span>.(Int,(<span class="pl-c1">last</span>(x),<span class="pl-c1">first</span>(x))), points)
+pts1 <span class="pl-k">=</span> <span class="pl-c1">map</span>(x<span class="pl-k">-&gt;</span> <span class="pl-c1">round</span>.(Int,(<span class="pl-c1">last</span>(x),<span class="pl-c1">first</span>(x))), valid_points)
+pts2 <span class="pl-k">=</span> <span class="pl-c1">map</span>(x<span class="pl-k">-&gt;</span> <span class="pl-c1">round</span>.(Int,(<span class="pl-c1">last</span>(x),<span class="pl-c1">first</span>(x))), valid_correspondence)
+lines <span class="pl-k">=</span> <span class="pl-c1">map</span>((p1, p2) <span class="pl-k">-&gt;</span> (p1,p2), pts1, pts2)
+
+<span class="pl-c"><span class="pl-c">#</span> Visualise the optical flow. Red lines demarcate optical flow on the keypoints</span>
+<span class="pl-c"><span class="pl-c">#</span> that were succesfully tracked.</span>
+guidict <span class="pl-k">=</span> <span class="pl-c1">imshow</span>(img1)
+idx2 <span class="pl-k">=</span> <span class="pl-c1">annotate!</span>(guidict, <span class="pl-c1">AnnotationLines</span>(lines, linewidth<span class="pl-k">=</span><span class="pl-c1">2.0</span>, color<span class="pl-k">=</span><span class="pl-c1">RGB</span>(<span class="pl-c1">1</span>,<span class="pl-c1">0</span>,<span class="pl-c1">0</span>), coord_order<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>xyxy<span class="pl-pds">"</span></span>))</pre></div>
+<div>
+  <div>
+   <a target="_blank" rel="noopener noreferrer" href="https://github.com/JuliaImages/ImageTracking.jl/blob/master/demo/table_input.gif"><img src="https://github.com/JuliaImages/ImageTracking.jl/raw/master/demo/table_input.gif" width="320" height="240" style="max-width:100%;"></a>
+  </div>
+  <div>
+    <a target="_blank" rel="noopener noreferrer" href="https://github.com/JuliaImages/ImageTracking.jl/blob/master/demo/optical_flow_lucaskanade.jpg"><img src="https://github.com/JuliaImages/ImageTracking.jl/raw/master/demo/optical_flow_lucaskanade.jpg" width="320" height="240" style="max-width:100%;"></a>
+  </div>
+</div>
+</article></div>

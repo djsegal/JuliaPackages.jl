@@ -1,0 +1,93 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-itensorsgpu-intelligent-tensors-with-gpu-acceleration" class="anchor" aria-hidden="true" href="#itensorsgpu-intelligent-tensors-with-gpu-acceleration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ITensorsGPU: Intelligent Tensors with GPU acceleration</h1>
+<p>This package is meant to extend the functionality of <a href="https://github.com/ITensor/ITensors.jl">ITensors.jl</a> to make use of CUDA-enabled GPUs in a way that's simple enough that any user of ITensors.jl can take advantage of. It sits on top of the wonderful <a href="https://github.com/JuliaGPU/CuArrays.jl">CuArrays.jl</a> package and uses NVIDIA's CUTENSOR library for high-performance tensor operations. It includes a GPU-enabled implementation of the <a href="https://arxiv.org/abs/1908.08833" rel="nofollow">DMRG-PEPS algorithm</a>.</p>
+<h2><a id="user-content-getting-itensorsgpujl-and-peps-up-and-running" class="anchor" aria-hidden="true" href="#getting-itensorsgpujl-and-peps-up-and-running"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Getting ITensorsGPU.jl and PEPS up and running</h2>
+<p>What you'll need:</p>
+<ul>
+<li>
+<p>Julia 1.x -- I use 1.4-dev but anything 1.1 or after should work</p>
+</li>
+<li>
+<p>CUDA 10.1</p>
+</li>
+<li>
+<p>CUTENSOR v1.0.0 -- <code>libcutensor.so</code> needs to be on your <code>LD_LIBRARY_PATH</code> so that <code>CuArrays.jl</code> will be able to find it.</p>
+</li>
+<li>
+<p>A copy of this repo that is available to Julia. <code>ITensors.jl</code> and <code>ITensorsGPU.jl</code> are presently <em>not</em> registered in the main Julia package registry. The easiest way to acquire them is to do an <code>add</code> or <code>dev</code> using their URLs:</p>
+<pre><code>julia&gt; ]
+
+pkg&gt; add https://github.com/ITensor/ITensorsGPU.jl.git#master
+
+pkg&gt; dev https://github.com/ITensor/ITensorsGPU.jl.git
+</code></pre>
+<p>For a bit more explanation of what's going on here, check out the <a href="https://docs.julialang.org/en/v1/stdlib/Pkg/" rel="nofollow">Julia Pkg docs</a>.</p>
+</li>
+<li>
+<p>You need a specific version of some dependencies, because updates to <code>CuArrays.jl</code> and friends aren't playing nicely with <code>ITensorsGPU.jl</code> yet:</p>
+<pre><code>julia&gt; cd("YOUR_PATH_HERE/ITensorsGPU.jl")
+
+julia&gt; ]
+
+pkg&gt; activate .
+...
+
+ITensors&gt; add CuArrays#4e73de2f1
+
+ITensors&gt; build
+</code></pre>
+</li>
+</ul>
+<p>To check if this has all worked, you can run the package tests using:</p>
+<pre><code>```
+julia&gt; cd("YOUR_PATH_HERE/ITensorsGPU.jl")
+
+julia&gt; ]
+
+pkg&gt; activate .
+
+pkg&gt; test
+```
+</code></pre>
+<p>Scripts included:</p>
+<ul>
+<li><code>prof/</code>: Really basic time profiling of algorithms that exist in "basic" <code>ITensors.jl</code>: 1-D and 2-D DMRG</li>
+<li><code>src/peps/</code>: Implementation of the PEPS algorithm in <a href="https://arxiv.org/abs/1908.08833" rel="nofollow">this article</a>, along with profiling and timing info.</li>
+</ul>
+<p>Probably the most interesting file in <code>peps/</code> is <code>full_peps_run.jl</code>. This runs identical (or, extremely similar) simulations on the CPU (using BLAS) and GPU (using CUTENSOR) and does time profiling of them.
+Because of the way Julia compilation works, only the "main" simulation is timed (this is the vast majority of the walltime) -- for more information on this, see <a href="https://docs.julialang.org/en/v1/manual/profile/" rel="nofollow">here</a>.
+There are two command line arguments you need to provide: the system size <code>L</code>, which creates an <code>L x L</code> lattice, and <code>chi</code>, which controls the internal matrix size. <code>chi</code> has the name "bond dimension" in tensor network
+algorithms, but essentially it sets the size of the <code>chi x chi x chi x chi x chi</code> tensors that make up the PEPS. Right now the C++ code handles <code>chi</code> in the range <code>[3 .. 7]</code>. You might see OOM issues if you try to run
+a big lattice with big <code>chi</code> on the GPU, even one with a lot of memory -- <code>CuArrays.jl</code> and the Julia GC are working "as intended" but maybe not as we might like, see <a href="https://github.com/JuliaGPU/CuArrays.jl/issues/323">here</a> for more.</p>
+<p>An example of running this file:</p>
+<p><code>julia-1.4 full_peps_run.jl 4 3</code></p>
+<p>Here, <code>L=4</code> and <code>chi=3</code>. If you find this annoying it's easy to hardcode these variables in the script itself, or load them from JSON files.</p>
+<p>Right now, the code is single GPU and single node only.
+I've checked that the CPU run (the first one in the file) involves no GPU activity (besides phoning it up to say "hi, I'm here!") using <code>nvprof</code>. There is a bit of transfer from the host to device
+in the GPU code, but last time I profiled the code with <code>nvprof</code> and Julia's inbuilt profiler it was not contributing significantly to runtime -- if you see something different, let me know, as I'm
+pretty sure I know where most of it's coming from and it could be fixed.</p>
+<p>The code outputs to <code>STDOUT</code> the energy at each sweep and, at the end of run, the total walltime needed to do ten sweeps. We found in the Julia and C++ simulations that 10 sweeps was realistic to get the
+energy to converge, and for larger systems with larger <code>chi</code> you will be waiting a <em>long</em> time for the CPU to finish (it's a big reason we're so excited about the GPU results!).</p>
+<p>All the simulations I've conducted were on the rusty cluster at the Simons Foundation. The nodes I ran the code on have 32GB V100 GPUs with 36 core Skylake CPUs (I can get more detailed information if it would be helpful).</p>
+<p>To use <code>nvprof</code> on the PEPS code, you can run <code>prof_run.jl</code> (and mess around with parameters in that file):</p>
+<p><code>nvprof julia-1.4 -e 'using Pkg; Pkg.activate("."); include("prof_run.jl")'</code></p>
+<h1><a id="user-content-dmrg" class="anchor" aria-hidden="true" href="#dmrg"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DMRG</h1>
+<p>The DMRG code can be found in the <code>prof/</code> folder. These two example DMRG codes were modified from CPU only ones in <code>benchmark/</code>. Examples of how to run them are in the <code>runner</code> scripts. For example, here is the output of the <code>2ddmrg_gpu_runner</code>
+on our cluster:</p>
+<pre><code>Activating environment at `~/projects/ITensors/Project.toml`
+After sweep 1 energy=-36.122895185750 maxLinkDim=4 time=8.241
+After sweep 2 energy=-41.011003343895 maxLinkDim=16 time=2.779
+After sweep 3 energy=-44.048843621536 maxLinkDim=64 time=17.389
+After sweep 4 energy=-44.484327192948 maxLinkDim=256 time=190.736
+After sweep 5 energy=-44.559161373677 maxLinkDim=400 time=764.369
+After sweep 6 energy=-44.563240537317 maxLinkDim=500 time=1144.768
+Time to do DMRG on CPU: 2147.086442509
+After sweep 1 energy=-40.552049646455 maxLinkDim=10 time=40.198
+After sweep 2 energy=-44.208348798560 maxLinkDim=100 time=8.371
+After sweep 3 energy=-44.484373071219 maxLinkDim=200 time=20.851
+After sweep 4 energy=-44.549936218533 maxLinkDim=300 time=62.029
+After sweep 5 energy=-44.560654498554 maxLinkDim=400 time=116.575
+After sweep 6 energy=-44.563248632726 maxLinkDim=500 time=182.301
+Time to do DMRG on GPU: 434.903995371
+</code></pre>
+<p>We can see that the GPU gets good energies <em>and</em> is much faster. This <code>maxLinkDim</code> is another name for <code>chi</code> from the PEPS code.</p>
+</article></div>

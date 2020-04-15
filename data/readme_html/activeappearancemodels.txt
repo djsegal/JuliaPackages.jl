@@ -1,0 +1,53 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/b0e473b4430bc643f6d2e2485fdd4098cc858718/68747470733a2f2f7472617669732d63692e6f72672f646664782f416374697665417070656172616e63654d6f64656c732e6a6c2e737667"><img src="https://camo.githubusercontent.com/b0e473b4430bc643f6d2e2485fdd4098cc858718/68747470733a2f2f7472617669732d63692e6f72672f646664782f416374697665417070656172616e63654d6f64656c732e6a6c2e737667" alt="travis" data-canonical-src="https://travis-ci.org/dfdx/ActiveAppearanceModels.jl.svg" style="max-width:100%;"></a></p>
+<h1><a id="user-content-active-appearance-models" class="anchor" aria-hidden="true" href="#active-appearance-models"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Active Appearance Models</h1>
+<p>Port of Luca Vezzaro's <a href="http://www.mathworks.com/matlabcentral/fileexchange/32704-icaam-inverse-compositional-active-appearance-models" rel="nofollow">ICAAM</a>.</p>
+<h2><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Introduction</h2>
+<p>Active appearance models provide a way to find a set of related points on an image. AAMs are based on 2 main concepts: shape and appearance.</p>
+<p><strong>Shape</strong> consists of a fixed number of points (so-called landmarks) that describe configuration of some object on an image. For example, here's a shape describing some human's face:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_shape.png"><img src="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_shape.png" alt="Shape" style="max-width:100%;"></a></p>
+<p><strong>Appearance</strong> is made of all pixels on the image inside the shape. E.g. appearance, corresponding to the shape above looks like this:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_app.png"><img src="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_app.png" alt="Appearance" style="max-width:100%;"></a></p>
+<p>Active appearance models are first trained on a bunch of <code>(image, shape)</code> pairs	and then, given a new image and initial guess for a shape, are fitted to this image to find exact location of landmarks. Let's take a concrete example.</p>
+<p>First, we need some data to train a model on. <code>FaceDatasets</code> package contains a simple dataset from original research by Tim Cootes et al. that fits our needs:</p>
+<pre><code>using FaceDatasets
+imgs = load_images(CootesDataset)
+shapes = load_shapes(CootesDataset)
+</code></pre>
+<p>We will use simple leave-one-one cross-validation to see how training and testing works:</p>
+<pre><code>tst = 6                                      # index of a test image
+all_but_tst = [1:tst-1, tst+1:length(imgs)]  # all other indexes
+</code></pre>
+<p><strong>Training</strong> is simple:</p>
+<pre><code>using ActiveAppearanceModels
+aam = AAModel()
+train(aam, imgs[all_but_tst], shapes[all_but_tst])
+</code></pre>
+<p>Fitting model to a new image requires 2 more parameters: initial shape and number of iterations:</p>
+<pre><code>init_shape = shapes[3]
+n_iter = 20
+</code></pre>
+<p>Before fitting let's see initial landmark position:</p>
+<pre><code>viewshape(imgs[tst], init_shape)    
+</code></pre>
+<p><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_init_shape.png"><img src="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_init_shape.png" alt="Init Shape" style="max-width:100%;"></a></p>
+<p><strong>Fitting</strong> itself is straightforward:</p>
+<pre><code>fitted_shape, fitted_app = fit(aam, imgs[tst], init_shape, n_iter)
+</code></pre>
+<p><code>fitted_shape</code> is what AAM believes is true position of landmarks, and <code>fitted_app</code> is corresponding appearance. Here's they are:</p>
+<pre><code>using ImageView
+viewshape(imgs[tst], fitted_shape)
+view(fitted_app)
+</code></pre>
+<p><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_fitted_shape.png"><img src="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_fitted_shape.png" alt="Fitted Shape" style="max-width:100%;"></a></p>
+<p align="center">
+   <a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_fitted_app.png"><img src="https://raw.githubusercontent.com/dfdx/ActiveAppearanceModels.jl/master/docs/data/readme_fitted_app.png" alt="Fitted App" style="max-width:100%;"></a>
+</p>
+<p>For interactive example of using AAMs see <a href="https://github.com/dfdx/ActiveAppearanceModels.jl/blob/master/examples/multi.jl"><code>multu.jl</code></a>.</p>
+<h2><a id="user-content-when-fitting-diverges" class="anchor" aria-hidden="true" href="#when-fitting-diverges"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>When fitting diverges</h2>
+<p>Active appearance models use a variant of Lucas-Kanade algorithm and thus expect relatively small difference between initial and target shape. If difference is too large, fitting process will diverge (most often ending with <code>BoundsError</code>). This is easy to overcome, though, by repeating fitting with several variants of init shape.</p>
+<h2><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>References</h2>
+<p>This package closely follows original code in <a href="http://www.mathworks.com/matlabcentral/fileexchange/32704-icaam-inverse-compositional-active-appearance-models" rel="nofollow">ICAAM</a> project. ICAAM, in its turn, implements inverse compositional approach to AAMs first described in:</p>
+<blockquote>
+<p>Matthews, I., Baker, S. Active appearance models revisited. International Journal of Computer Vision 60 (2004) 135 – 164</p>
+</blockquote>
+</article></div>

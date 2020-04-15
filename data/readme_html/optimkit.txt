@@ -1,0 +1,55 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-optimkitjl" class="anchor" aria-hidden="true" href="#optimkitjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>OptimKit.jl</h1>
+<p>A blisfully ignorant Julia package for gradient optimization.</p>
+<hr>
+<p>A package for gradient optimization that tries to know or assume as little as possible about your optimization problem. So far gradient descent, conjugate gradient and the L-BFGS method have been implemented. One starts by defining the algorithm that one wants to use by creating an instance <code>algorithm</code> of either</p>
+<ul>
+<li><code>GradientDescent(; params...)</code></li>
+<li><code>ConjugateGradient(; flavor = ..., params...)</code></li>
+<li><code>LBFGS(m::Int; params...)</code></li>
+</ul>
+<p>All of them take a number of parameters, namely</p>
+<ul>
+<li><code>maxiter</code>: number of iterations (defaults to <code>typemax(Int)</code>, so essentially unbounded)</li>
+<li><code>gradtol</code>: convergence criterion, stop when the 2-norm of the gradient is smaller than <code>gradtol</code> (default value = <code>gradtol = 1e-8</code>)</li>
+<li><code>linesearch</code>: which linesearch algorithm to be used, currently there is only one choice, namely <code>HagerZhangLineSearch(;...)</code> (see below).</li>
+<li><code>verbosity</code>: Verbosity level, the amount of information that will be printed, either <code>&lt;=0</code> (default value) for no information, <code>1</code> for a single STDOUT output at the end of the algorithm, or <code>&gt;=2</code> for a one-line summary after every iteration step.</li>
+</ul>
+<p>Furthermore, <code>LBFGS</code> takes a single positional argument <code>m::Int</code>, the number of previous steps to take into account in the construction of the approximate (inverse) Hessian. <code>ConjugateGradient</code> has an additional keyword argument, <code>flavor</code>, which can be any of the following:</p>
+<ul>
+<li><code>HagerZhang(; η::Real = 0.4, θ::Real = 1.0)</code>: default</li>
+<li><code>HestenesStiefel()</code></li>
+<li><code>PolakRibierePolyak()</code></li>
+<li><code>DaiYuan()</code></li>
+</ul>
+<p>The <code>linesearch</code> argument currently takes the value</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">HagerZhangLineSearch</span>(; δ<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">.1</span>, <span class="pl-c"><span class="pl-c">#</span> parameter for first Wolfe condition</span>
+                        σ<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">.9</span>, <span class="pl-c"><span class="pl-c">#</span> paremeter for second Wolfe condition</span>
+                        ϵ<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">1e-6</span>, <span class="pl-c"><span class="pl-c">#</span> parameter for approximate Wolfe condition, accept fluctation of ϵ on the function value</span>
+                        θ<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span>, <span class="pl-c"><span class="pl-c">#</span> used in bisection</span>
+                        γ<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">/</span><span class="pl-c1">3</span>, <span class="pl-c"><span class="pl-c">#</span> determines when a bisection step is performed</span>
+                        ρ<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">5.</span>, <span class="pl-c"><span class="pl-c">#</span> expansion parameter for initial bracket interval</span>
+                        verbosity<span class="pl-k">::</span><span class="pl-c1">Int</span> <span class="pl-k">=</span> <span class="pl-c1">0</span>)</pre></div>
+<p>The linesearch has an independent <code>verbosity</code> flag to control the output of information being printed to <code>STDOUT</code>, but by default its value is equal to <code>verbosity-2</code> of the optimization algorithm. So <code>ConjugateGradient(; verbosity = 3)</code> is equivalent to
+having <code>verbosity=1</code> in the linesearch algorithm.</p>
+<p>This optimization algorithm can then be applied by calling</p>
+<div class="highlight highlight-source-julia"><pre>x, fx, gx, normgradhistory <span class="pl-k">=</span> <span class="pl-c1">optimize</span>(fg, x₀, algorithm; kwargs<span class="pl-k">...</span>)</pre></div>
+<p>Here, the optimization problem (objective function) is specified as a function <code>fval, gval = fg(x)</code> that returns both the function value and its gradient at a given point <code>x</code>. The function value <code>fval</code> is assumed to be a real number of some type <code>T&lt;:Real</code>. Both <code>x</code> and the gradient <code>gval</code> can be of any type, including tuples and named tuples. As a user, you should then also specify the following functions via keyword arguments</p>
+<ul>
+<li><code>x, ξ = retract(x₀, η, α)</code>: take a step in direction <code>η</code> (same type as gradients) starting from point <code>x₀</code> and with step length <code>α</code>, returns the new <code>x(α) = Rₓ₀(α * η)</code> and the local tangent to this path at that position, i.e. <code>ξ = D Rₓ₀(α * η)[η]</code> (informally, <code>ξ = dx(α) / dα</code>).</li>
+<li><code>s = inner(x, ξ1, ξ2)</code>: compute the inner product between two gradients or similar objects at position <code>x</code>. The <code>x</code> dependence is useful for optimization on manifolds, where this function represents the metric; in particular it should be symmetric <code>inner(x, ξ1, ξ2) == inner(x, ξ2, ξ1)</code> and real-valued.</li>
+<li><code>η = scale!(η, β)</code>: compute the equivalent of <code>η*β</code>, possibly in place, but we always use the return value. This is mostly used as <code>scale!(g, -1)</code> to compute the negative gradient as part of the step direction.</li>
+<li><code>η = add!(η, ξ, β)</code>: compute the equivalent of <code>η + ξ*β</code>, possibly overwriting <code>η</code> in place, but we always use the return value</li>
+<li><code>ξ = transport!(ξ, x, η, α, x′)</code>: transport tangent vector <code>ξ</code> along the retraction of <code>x</code> in the direction <code>η</code> (same type as a gradient) with step length <code>α</code>, can be in place but the return value is used. Transport also receives <code>x′ = retract(x, η, α)[1]</code> as final argument, which has been computed before and can contain useful data that does not need to be recomputed</li>
+</ul>
+<p>Note that the gradient <code>g</code> of the objective function should satisfy <code>d f(x(α)) / d α  = inner(x(α), ξ(α), g(x(α)))</code>. There is a utility function <code>optimtest</code> to facilitate testing this compatibility relation for your given choice of <code>fg</code>, <code>retract</code> and <code>inner</code>.</p>
+<p>The <code>GradientDescent</code> algorithm only requires the first three, <code>ConjugateGradient</code> and <code>LBFGS</code> require all five functions. Default values are provided to make the optimization algorithms work with standard optimization problems where <code>x</code> is a vector or <code>Array</code>, i.e. they are given by</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-en">_retract</span>(x, η, α) <span class="pl-k">=</span> (x <span class="pl-k">+</span> α <span class="pl-k">*</span> η, η)
+<span class="pl-en">_inner</span>(x, ξ<span class="pl-c1">1</span>, ξ<span class="pl-c1">2</span>) <span class="pl-k">=</span> ξ<span class="pl-c1">1</span> <span class="pl-k">===</span> ξ<span class="pl-c1">2</span> ? LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">norm</span>(ξ<span class="pl-c1">1</span>)<span class="pl-k">^</span><span class="pl-c1">2</span> : LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">dot</span>(ξ<span class="pl-c1">1</span>, ξ<span class="pl-c1">2</span>)
+<span class="pl-en">_transport!</span>(ξ, x, η, α) <span class="pl-k">=</span> ξ
+<span class="pl-en">_add!</span>(η, ξ, β) <span class="pl-k">=</span> LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">axpy!</span>(β, ξ, η)
+<span class="pl-en">_scale!</span>(η, β) <span class="pl-k">=</span> LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">rmul!</span>(η, β)</pre></div>
+<p>Finally, there is one keyword argument <code>isometrictransport::Bool</code> to indicate whether the transport of vectors preserves their inner product, i.e. whether</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">inner</span>(x, ξ<span class="pl-c1">1</span>, ξ<span class="pl-c1">2</span>) <span class="pl-k">==</span> <span class="pl-c1">inner</span>(<span class="pl-c1">retract</span>(x, η, α), <span class="pl-c1">transport!</span>(ξ<span class="pl-c1">1</span>, x, η, α), <span class="pl-c1">transport!</span>(ξ<span class="pl-c1">2</span>, x, η, α))</pre></div>
+<p>The default value is false, unless the default transport (<code>_transport!</code>) and inner product (<code>_inner</code>) are used. However, convergence of conjugate gradient and LBFGS is more robust (or theoretically proven) in the case of isometric transport. Note that isometric transport might not be the same as retraction transport, and thus, in particular
+<code>ξ != transport(η, x, η, α, x′)</code>. However, when isometric transport is provided, we complement it with an isometric rotation such that <code>ξ = D Rₓ₀(α * η)[η]</code> and <code>transport(η, x, η, α)</code> are parallel. This is the so-called locking condition of <a href="https://doi.org/10.1137/140955483" rel="nofollow">Huang, Gallivan and Absil</a>, and the approach is described in section 4.1.</p>
+</article></div>

@@ -1,0 +1,70 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p>julia wrapper for linux's perf_event_open</p>
+<p>the kernel multiplexes event counter that requires limited hardware resources so some counters are only active for a fraction of the running time (% on the right).</p>
+<p>if you need to compare two quantities you must put them in the same event group so they are always scheduled at the same time (or not at all).</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> LinuxPerf<span class="pl-k">:</span> make_bench, enable!, disable!, reset!, reasonable_defaults, counters
+julia<span class="pl-k">&gt;</span> <span class="pl-k">const</span> bench <span class="pl-k">=</span> <span class="pl-c1">make_bench</span>(reasonable_defaults);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@noinline</span> <span class="pl-k">function</span> <span class="pl-en">g</span>(a)
+           <span class="pl-c1">enable!</span>(bench)
+           c <span class="pl-k">=</span> <span class="pl-c1">0</span>
+           <span class="pl-k">for</span> x <span class="pl-k">in</span> a
+               <span class="pl-k">if</span> x <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+                   c <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+               <span class="pl-k">end</span>
+           <span class="pl-k">end</span>
+           <span class="pl-c1">disable!</span>(bench)
+           c
+       <span class="pl-k">end</span>
+g (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">g</span>(<span class="pl-c1">zeros</span>(<span class="pl-c1">10000</span>))
+<span class="pl-c1">0</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">counters</span>(bench)
+hw<span class="pl-k">:</span>cycles : 
+	               <span class="pl-c1">52794</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>cache_access : 
+	                 <span class="pl-c1">881</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>cache_misses : 
+	                 <span class="pl-c1">579</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>branches : 
+	               <span class="pl-c1">31367</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>branch_mispredicts : 
+	                 <span class="pl-c1">107</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)      <span class="pl-c"><span class="pl-c">#</span> =)</span>
+hw<span class="pl-k">:</span>instructions : 
+	               <span class="pl-c1">96961</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>ctx_switches : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>page_faults : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>minor_page_faults : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>major_page_faults : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>cpu_migrations : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">reset!</span>(bench)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">g</span>(<span class="pl-c1">randn</span>(<span class="pl-c1">10000</span>))
+<span class="pl-c1">5023</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">counters</span>(bench)
+hw<span class="pl-k">:</span>cycles : 
+	              <span class="pl-c1">194454</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>cache_access : 
+	                 <span class="pl-c1">291</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>cache_misses : 
+	                 <span class="pl-c1">222</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>branches : 
+	               <span class="pl-c1">38050</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+hw<span class="pl-k">:</span>branch_mispredicts : 
+	                <span class="pl-c1">5131</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)      <span class="pl-c"><span class="pl-c">#</span> =(</span>
+hw<span class="pl-k">:</span>instructions : 
+	              <span class="pl-c1">129253</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>ctx_switches : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>page_faults : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>minor_page_faults : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>major_page_faults : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
+sw<span class="pl-k">:</span>cpu_migrations : 
+	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)</pre></div>
+</article></div>

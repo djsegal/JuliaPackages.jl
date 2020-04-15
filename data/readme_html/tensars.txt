@@ -1,0 +1,286 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-tensarsjl" class="anchor" aria-hidden="true" href="#tensarsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tensars.jl</h1>
+<p>This package exports a <code>Tensar</code> type, which can be identified with
+tensors in the mathematical sense, but represents them in a different
+way than mathematicians customarily define them.</p>
+<p>A <code>tensar</code> is a linear mapping from m-dimensional arrays to n-dimensional
+ones.  For example, let <code>D2</code> be an <code>5×5</code> matrix that discretises
+the second derivative operator, and <code>u</code> be a 5×5×5 matrix that
+samples a field on a 3-dimensional grid.  Then the Laplacian of the
+field can be computed as follows.</p>
+<pre><code>using Tensars, LinearAlgebra
+
+julia&gt; D2 = Tensar(D2)
+5-vector → 5-vector Tensar{Float64}
+
+julia&gt; E = Tensar(Float64.(Matrix(I,5,5)))
+5-vector → 5-vector Tensar{Float64}
+
+julia&gt; L = D2⊗E⊗E + E⊗D2⊗E + E⊗E⊗D2
+5×5×5 → 5×5×5 Tensar{Float64}
+
+julia&gt; Lu = L*u;
+
+julia&gt; typeof(Lu)
+Array{Float64,3}
+</code></pre>
+<p>The way to identify a <code>Tensar</code> with a mathematical tensor is specified
+below, in the section <em>Mathematical tensors and tensor products</em>.
+The motivation for defining it as a mapping of arrays is that those
+mappings are closed under composition.</p>
+<p>This is research software, and the hypothesis is that tensars will
+be widely useful generalisation of matrices.  Here is another
+example.</p>
+<pre><code>julia&gt; using ForwardDiff
+
+julia&gt; v = randn(2,3,4);
+
+julia&gt; f(u) = [sum(u)]
+
+julia&gt; J_matrix = ForwardDiff.jacobian(f, v);
+
+julia&gt; J = reshape(J_matrix, size(f(v)), size(v))
+2×3×4 → 1-vector Tensar{Float64}
+
+julia&gt; dv = ones(2,3,4);
+
+julia&gt; J*dv
+1-element Array{Float64,1}:
+ 24.0
+</code></pre>
+<p>This package could be regarded as a port of Sussman and Wisdom's up and
+down tuples, replacing the parentheses of Scheme with the brackets
+of Julia.  No doubt I have botched it, in which case I apologise
+for messing up their design.</p>
+<p>The current implementation is a proof of concept.  A production
+version would implement eltype promotion, and treat <code>I</code> as a
+broadcastable identity operator, avoiding the need to specify <code>E</code>:</p>
+<pre><code>julia&gt; L = D2⊗I⊗I + I⊗D2⊗I + I⊗I⊗D2
+</code></pre>
+<p>The storage required for a dense n-dimensional <code>Tensar</code> increases
+geometrically with n, so these will require special types for
+structured forms.  One use might be to accumulate one-dimensional
+convolutions into a multidimensional operator, in order to evaluate
+them a cache-efficient way with a machine learning library.  Another
+way to regard this package is as a refactoring of <code>DiffEqOperators</code>
+that went completely overboard.</p>
+<h2><a id="user-content-construction-and-linear-algebra" class="anchor" aria-hidden="true" href="#construction-and-linear-algebra"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Construction and linear algebra</h2>
+<p>The simplest way to construct a <code>Tensar</code> is to reshape an array
+with a column size and a row size.  Following the convention for
+vectors and matrices, <code>x</code> and <code>y</code> are arrays, while <code>A</code> and <code>B</code> are
+tensars.</p>
+<pre><code>julia&gt; A_matrix = rand(2*3*4, 5*6);
+
+julia&gt; A = reshape(A_matrix, (2,3,4), (5,6))
+5×6 → 2×3×4 Tensar{Float64}
+
+julia&gt; typeof(A)
+Tensar{Float64,3,2}
+
+julia&gt; Array(A)
+2×3×4×5×6 Array{Float64,5}:
+...
+</code></pre>
+<p>The linear mapping <code>A*x</code> is what anyone who works with 3D fields
+will expect it to be.</p>
+<pre><code>julia&gt; x = rand(5, 6);
+
+julia&gt; A*x ≈ reshape(A_matrix*x[:], (2,3,4))
+true
+</code></pre>
+<p>By convention, when a function that returns some property of an
+<code>Array</code> is also defined for for <code>Tensar</code>, it returns the same
+property of the arrays that form the column and row spaces of
+the <code>Tensar</code> as a 2-tuple.</p>
+<pre><code>julia&gt; colsize(A)
+(2, 3, 4)
+
+julia&gt; colsize(A,2)
+3
+
+julia&gt; rowsize(A)
+(5, 6)
+
+julia&gt; size(A)
+((2, 3, 4), (5, 6))
+
+julia&gt; ncols(A)
+3
+
+julia&gt; nrows(A)
+2
+
+julia&gt; ndims(A)
+(3, 2)
+</code></pre>
+<p>Following this convention, the <code>length</code> of a <code>Tensar</code> is the size
+of the matrix for the linear transformation that it represents.</p>
+<pre><code>julia&gt; length(A)
+(24, 30)
+
+julia&gt; ans == size(A_matrix)
+true
+</code></pre>
+<p>The constructor <code>Tensar(::AbstractArray)</code> usually constructs a
+column tensar, that maps a scalar to a scalar multiple of the array.</p>
+<pre><code>julia&gt; ket = Tensar(rand(2,3,4))
+scalar → 2×3×4 Tensar{Float64}
+</code></pre>
+<p>The exception is that <code>Matrix</code> is treated as a linear transformation.</p>
+<pre><code>julia&gt; M = rand(3,4);
+
+julia&gt; Tensar(M)
+4-vector → 3-vector Tensar{Float64}
+</code></pre>
+<p>So the general way to construct a column tensar is:</p>
+<pre><code>julia&gt; Tensar(M, ndims(M), 0)
+scalar → 3×4 Tensar{Float64}
+</code></pre>
+<p>The constructor also accepts <code>nrows</code> and <code>ncols</code>.</p>
+<pre><code>julia&gt; Tensar(rand(4,5,6), 1, 2)
+5×6 → 4-vector Tensar{Float64}
+</code></pre>
+<p>The adjoint of a column tensar is a row tensar, which maps arrays
+to scalars according to <code>LinearAlgebra.dot</code>.</p>
+<pre><code>julia&gt; bra = ket'
+2×3×4 → scalar Tensar{Float64}
+
+julia&gt; x = rand(2,3,4);
+
+julia&gt; bra*x ≈ Array(ket)⋅x
+true
+
+julia&gt; Tensar(rand(5)')
+5-vector → scalar Tensar{Float64}
+</code></pre>
+<p>There is no such thing as a 0,0-tensar: the constructor lowers
+these to scalars.  Similarly, row tensars map arrays to scalars,
+not to 0-dimensional arrays.</p>
+<p>For now, indexing tensars simply indexes into the array of their
+elements.  This is the simplest way to do it, but I'm not convinced
+it is the right way, and it might change.</p>
+<p>It is common to think of a matrix shape as “rows × columns”, but
+this becomes confusing when generalised to tensars.  A matrix maps
+its row space to its column space, and <code>Tensar{T,2,3}</code> maps
+3-dimensional arrays to 2-dimensional ones, so it has 3 row dimensions
+and 2 column ones.  It can be particularly confusing that <code>size(A) == ((2, 3, 4), (5, 6))</code>, while <code>A</code> displays as a <code>5×6 → 2×3×4</code> mapping,
+but the alternatives all seem worse.  Users are advised to toss
+“number of rows × number of columns” down the nearest memory hole,
+and start thinking “column length × row length”.</p>
+<p>Although the elements of a <code>Tensar</code> form an array, and <code>Array(Tensar(x)) == x</code> identically, <code>Tensar</code> is not a subtype of <code>AbstractArray</code>.
+Every matrix can be identified with a 1,1-dimensional tensar, but
+there are 2,0- and 0,2-dimensional tensars that have the same
+elements but represent different linear transformations.  Similarly,
+every vector can be identified with a column tensar, but there is
+a distinct row tensar with the same elements.</p>
+<p>There are two product operators that act on <code>Tensar</code>.  The tensor
+product <code>⊗</code> has its usual mathematical meaning, which will be
+discussed in the next section.  Note that <code>⊗</code> is not commutative.</p>
+<p>The operator product <code>*</code> is identical to the matrix product, when
+matrices and tensars are both identified with linear mappings.  The
+product <code>A*x</code> is the image of the array <code>x</code> under the linear mapping
+<code>A</code>.  The product <code>A*B</code> is the composition of the linear mappings
+<code>A</code> and <code>B</code>.  If <code>x</code> is a vector, then <code>x'*A</code> is the same as
+<code>x'*Array(A)</code>.</p>
+<p>Tensars form a linear algebra over their element type in exactly
+the same way that matrices do.  They can be added just like matrices,
+and both <code>*</code> and <code>⊗</code> reduce to the scalar product when one operand is a
+scalar.</p>
+<p>Tensars have adjoints, like any linear mappings over an
+inner product space.  Row and column <code>Tensars</code> have the same adjoint
+relationship as row and column vectors, or bras and kets in Dirac
+notation.</p>
+<pre><code>Tensar(A, n, 0)' == Tensar(conj.(A), 0, n)
+</code></pre>
+<p>In general, <code>A'</code> is the unique tensar that satisfies the identity</p>
+<pre><code>V'*A'*U' = conj(U*A*V)
+</code></pre>
+<p>where <code>U</code> is any appropiately shaped row tensar, and <code>V</code> any
+appropiately shaped column tensar.</p>
+<h2><a id="user-content-tensors-and-tensor-products" class="anchor" aria-hidden="true" href="#tensors-and-tensor-products"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Tensors and tensor products</h2>
+<p>It was mentioned at the beginning that tensars can be identified
+with tensors.  The time has come to describe this correspondence
+and the tensor product <code>⊗</code>, which acts on tensars the same way it acts
+on the corresponding tensors.</p>
+<p>Mathematicians (well, OK, physicists) conventionally define an
+m,n-tensor as a multilinear mapping from <code>m</code> dual vectors and <code>n</code>
+vectors to a scalar.  This will be identified with a certain
+m,n-dimensional tensar.  A symbol such as <code>A</code> could denote either
+of these, but the tensor mapping will be written as a function
+application <code>A(u1, ..., um; v1, ..., vn)</code> and the tensar mapping as <code>A*x</code>.</p>
+<p>The tensor product has a very simple definition in terms of tensors.
+Tensors are scalar valued, and <code>⊗</code> just multiplies those scalars.</p>
+<pre><code>(A⊗B)(u1, ..., um; v1, ..., vn) =
+    A(u1, ..., uj; v1, ..., vk) × B(u[j+1], ..., um; v[k+1], ..., vn)
+</code></pre>
+<p>The correspondence between tensors and tensars can be built up
+using the tensor product, starting from basis vectors, then progressing
+to row and column tensars, and finally to general tensars.</p>
+<p>A dual vector <code>v'</code> can be identified with a 0,1-tensor in an obvious
+way, as the mapping <code>u -&gt; v'⋅u</code>.  Similarly, a vector <code>u</code> can be
+identified with the 1,0-tensor <code>v -&gt; v⋅u</code>.  These tensors are
+identified with <code>Tensar(u)</code> and <code>Tensar(v')</code>.</p>
+<p>A vector is identified with a tensor that takes a dual vector
+argument, so a tensor product of vectors is a tensor with only dual
+vector arguments.  If <code>e[j]</code> is the usual basis vector, an array
+can be formed by tabulating</p>
+<pre><code>A[j, k, ...] = (e[j]⋅v1)×(e[k]⋅v2)×... = (e[j]⊗e[k]⊗...)(v1, v1, ...)
+</code></pre>
+<p>The tensor <code>e[j]⊗e[k]⊗...</code> corresponds to <code>Tensar(A)</code>.</p>
+<p>The product of 0,1-dimensional tensars can be written in terms of their
+1,0-dimensional adjoints:</p>
+<p>(v1'⊗v2'⊗...) = (v1⊗v2⊗...)'</p>
+<p>This is consistent with the definition of <code>⊗</code> in terms of tensors.
+We now have the machinery to identify a general <code>Tensar</code> with a
+tensor:</p>
+<pre><code>A(u₁, ..., u_m, v₁, ..., v_n) = (u₁⊗...⊗u_m)*A*(v₁⊗...⊗v_n)
+</code></pre>
+<p>The action of <code>⊗</code> on general tensars is now determined by identifying
+them with tensors.</p>
+<p>The trace of a <code>Tensar</code> is a tensor contraction.  It takes two
+arguments, the column and row dimensions to contract over.  These
+must have equal lengths.  Index raising works as follows.  When
+<code>permutedims</code> is implemented, it will be possible to shuffle the
+raised index into an appropriate place.</p>
+<pre><code>julia&gt; A = Tensar(rand(2,3,4,5,6,7), 3, 3)
+5×6×7 → 2×3×4 Tensar{Float64}
+
+julia&gt; g = Tensar(rand(6,6),2,0)
+scalar → 6×6 Tensar{Float64}
+
+julia&gt; g⊗A
+5×6×7 → 6×6×2×3×4 Tensar{Float64}
+
+julia&gt; tr(g⊗A,1,2)
+5×7 → 6×2×3×4 Tensar{Float64}
+</code></pre>
+<p>Contraction has always looked like a matrix product.  The <code>Tensar</code>
+formalism makes apparent how this corresponds to a composition of
+linear mappings (except that the implementation currently has a
+bug, so these don't come out equal):</p>
+<pre><code>julia&gt; M = Tensar(rand(4,5))
+5-vector → 4-vector Tensar{Float64}
+
+julia&gt; N = Tensar(rand(5,6))
+6-vector → 5-vector Tensar{Float64}
+
+julia&gt; M⊗N
+5×6 → 4×5 Tensar{Float64}
+
+julia&gt; tr(M⊗N, 2, 1)
+6-vector → 4-vector Tensar{Float64}
+
+julia&gt; M*N
+6-vector → 4-vector Tensar{Float64}
+</code></pre>
+<p>I'm not quite satisfied with this.  I think that, lurking somewhere on
+the edge of it, there are some interesting ideas about inner products
+of arrays and <code>g^{ij}</code> being the inverse of <code>g_{ij}</code>.  If you know
+enough multilinear algebra to see that clearly, please explain
+it to me.</p>
+<h2><a id="user-content-future-work" class="anchor" aria-hidden="true" href="#future-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Future work</h2>
+<p>Generalise <code>UniformScaling</code> to axis expansion.  These are the axes
+that the codimensions act along, these are the axes the contradimensions
+act along, all the other axes have unspecified length and the
+elements are diagonal along them.  When the kernel is a scalar, all
+other axes means all axes, and it reduces to uniform scaling.</p>
+</article></div>

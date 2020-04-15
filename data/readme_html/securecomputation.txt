@@ -1,0 +1,34 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-securecomputationjl" class="anchor" aria-hidden="true" href="#securecomputationjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SecureComputation.jl</h1>
+<p>Secure multiparty computation in Julia</p>
+<p>Implements Shamir's secret sharing scheme to distribute a number, and the BGW88 protocol for calculating + and * over the resulting numeric representation.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example</h2>
+<p>Example from <a href="https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing#Solution" rel="nofollow">Wikipedia</a></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> SecureComputation
+
+F <span class="pl-k">=</span> GF{Int,<span class="pl-c1">1613</span>} <span class="pl-c"><span class="pl-c">#</span>Galois field (finite field, integers mod 1613, perform compute in native Int)</span>
+
+secret <span class="pl-k">=</span> <span class="pl-c1">F</span>(<span class="pl-c1">1234</span>)
+x <span class="pl-k">=</span> <span class="pl-c1">shamir</span>(<span class="pl-c1">6</span>, secret, F[<span class="pl-c1">166</span>, <span class="pl-c1">94</span>]) <span class="pl-c"><span class="pl-c">#</span> == DistributedShares(1:6, F[1494, 329, 965, 176, 1188, 775])</span>
+
+<span class="pl-c1">unshamir</span>(x) <span class="pl-c"><span class="pl-c">#</span> == secret</span>
+
+<span class="pl-c"><span class="pl-c">#</span>With 2 random coefficients, you only need 2+1 = 3 pieces to reconstruct the secret</span>
+<span class="pl-c1">unshamir</span>(x[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>]) <span class="pl-c"><span class="pl-c">#</span> == secret</span></pre></div>
+<p>A more realistic example using the Intel hardware CSPRNG</p>
+<pre><code>F = GF{BigInt,1000000004191}
+secret = F(1234567890)
+x = shamir(RdRand(), 100, 39, secret)
+unshamir(x) # == secret
+
+#If I have just 39 pieces, I can also reconstruct the number
+unshamir(x[1:39])  # == secret
+</code></pre>
+<p>An example showing a simple matrix computation</p>
+<pre><code>using LinearAlgebra, SecureComputation
+F = GF{BigInt,1000000004191}
+M = rand(RdRand(), F, 3, 3)
+MM = shamir.(100, M)
+Z=lu(MM)
+istril(unshamir.(Z.L)) #true
+</code></pre>
+</article></div>

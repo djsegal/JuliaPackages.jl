@@ -4,15 +4,13 @@
 <a href="http://codecov.io/github/SciML/ModelingToolkit.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/fbb2e5f5945e8551764dfc690357dc268d19f94b/687474703a2f2f636f6465636f762e696f2f6769746875622f5363694d4c2f4d6f64656c696e67546f6f6c6b69742e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/SciML/ModelingToolkit.jl/coverage.svg?branch=master" style="max-width:100%;"></a>
 <a href="http://mtk.sciml.ai/stable/" rel="nofollow"><img src="https://camo.githubusercontent.com/f7b92a177c912c1cc007fc9b40f17ff3ee3bb414/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
 <a href="http://mtk.sciml.ai/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/3e353c26ddfe819150acbc732248f4f2a37f5175/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a></p>
-<p>ModelingToolkit.jl is an intermediate representation (IR) of computational graphs
-for scientific computing problems. Its purpose is to be a common target for
-modeling DSLs in order to allow for a common platform for model inspection and
-transformation. It uses a tagged variable IR in order to allow specification of
-complex models and allow for transformations of models. It has ways to plug into
-its function registration and derivative system so that way it can interact
-nicely with user-defined routines. Together, this is an abstract form of a
-scientific model that is easy for humans to generate but also easy for programs
-to manipulate.</p>
+<p>ModelingToolkit.jl is a modeling language for scientific computing problems.
+It allows for users to give a high-level description of a model for
+symbolic preprocessing to analyze and enhance the model. ModelingToolkit can
+automatically generate fast functions for model components like Jacobians
+and Hessians, along with automatically sparsifying and parallelizing the
+computations. Automatic transformations, such as index reduction, can be applied
+to the model to make it easier for numerical solvers to handle.</p>
 <p>For information on using the package,
 <a href="https://mtk.sciml.ai/stable/" rel="nofollow">see the stable documentation</a>. Use the
 <a href="https://mtk.sciml.ai/dev/" rel="nofollow">in-development documentation</a> for the version of
@@ -46,14 +44,16 @@ p  <span class="pl-k">=</span> [σ <span class="pl-k">=&gt;</span> <span class="
 tspan <span class="pl-k">=</span> (<span class="pl-c1">0.0</span>,<span class="pl-c1">100.0</span>)
 prob <span class="pl-k">=</span> <span class="pl-c1">ODEProblem</span>(sys,u0,tspan,p,jac<span class="pl-k">=</span><span class="pl-c1">true</span>)
 sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(prob,<span class="pl-c1">Tsit5</span>())
-<span class="pl-k">using</span> Plots; <span class="pl-c1">plot</span>(sol,vars<span class="pl-k">=</span>(<span class="pl-c1">:x</span>,<span class="pl-c1">:y</span>))</pre></div>
+<span class="pl-k">using</span> Plots; <span class="pl-c1">plot</span>(sol,vars<span class="pl-k">=</span>(x,y))</pre></div>
 <p><a target="_blank" rel="noopener noreferrer" href="https://user-images.githubusercontent.com/1814174/79118645-744eb580-7d5c-11ea-9c37-13c4efd585ca.png"><img src="https://user-images.githubusercontent.com/1814174/79118645-744eb580-7d5c-11ea-9c37-13c4efd585ca.png" alt="Lorenz2" style="max-width:100%;"></a></p>
 <p>This automatically will have generated fast Jacobian functions, making
 it more optimized than directly building a function. In addition, we can then
 use ModelingToolkit to compose multiple ODE subsystems. Now let's define two
 interacting Lorenz equations and simulate the resulting Differential-Algebriac
 Equation (DAE):</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@parameters</span> t σ ρ β
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> ModelingToolkit, OrdinaryDiffEq
+
+<span class="pl-c1">@parameters</span> t σ ρ β
 <span class="pl-c1">@variables</span> <span class="pl-c1">x</span>(t) <span class="pl-c1">y</span>(t) <span class="pl-c1">z</span>(t)
 <span class="pl-c1">@derivatives</span> D<span class="pl-k">'</span><span class="pl-k">~</span>t
 
@@ -64,10 +64,10 @@ eqs <span class="pl-k">=</span> [<span class="pl-c1">D</span>(x) <span class="pl
 lorenz1 <span class="pl-k">=</span> <span class="pl-c1">ODESystem</span>(eqs,name<span class="pl-k">=</span><span class="pl-c1">:lorenz1</span>)
 lorenz2 <span class="pl-k">=</span> <span class="pl-c1">ODESystem</span>(eqs,name<span class="pl-k">=</span><span class="pl-c1">:lorenz2</span>)
 
-<span class="pl-c1">@variables</span> α
+<span class="pl-c1">@variables</span> a
 <span class="pl-c1">@parameters</span> γ
-connections <span class="pl-k">=</span> [<span class="pl-c1">0</span> <span class="pl-k">~</span> lorenz1<span class="pl-k">.</span>x <span class="pl-k">+</span> lorenz2<span class="pl-k">.</span>y <span class="pl-k">+</span> α<span class="pl-k">*</span>γ]
-connected <span class="pl-k">=</span> <span class="pl-c1">ODESystem</span>(connections,t,[α],[γ],systems<span class="pl-k">=</span>[lorenz1,lorenz2])
+connections <span class="pl-k">=</span> [<span class="pl-c1">0</span> <span class="pl-k">~</span> lorenz1<span class="pl-k">.</span>x <span class="pl-k">+</span> lorenz2<span class="pl-k">.</span>y <span class="pl-k">+</span> a<span class="pl-k">*</span>γ]
+connected <span class="pl-k">=</span> <span class="pl-c1">ODESystem</span>(connections,t,[a],[γ],systems<span class="pl-k">=</span>[lorenz1,lorenz2])
 
 u0 <span class="pl-k">=</span> [lorenz1<span class="pl-k">.</span>x <span class="pl-k">=&gt;</span> <span class="pl-c1">1.0</span>,
       lorenz1<span class="pl-k">.</span>y <span class="pl-k">=&gt;</span> <span class="pl-c1">0.0</span>,
@@ -75,7 +75,7 @@ u0 <span class="pl-k">=</span> [lorenz1<span class="pl-k">.</span>x <span class=
       lorenz2<span class="pl-k">.</span>x <span class="pl-k">=&gt;</span> <span class="pl-c1">0.0</span>,
       lorenz2<span class="pl-k">.</span>y <span class="pl-k">=&gt;</span> <span class="pl-c1">1.0</span>,
       lorenz2<span class="pl-k">.</span>z <span class="pl-k">=&gt;</span> <span class="pl-c1">0.0</span>,
-      α <span class="pl-k">=&gt;</span> <span class="pl-c1">2.0</span>]
+      a <span class="pl-k">=&gt;</span> <span class="pl-c1">2.0</span>]
 
 p  <span class="pl-k">=</span> [lorenz1<span class="pl-k">.</span>σ <span class="pl-k">=&gt;</span> <span class="pl-c1">10.0</span>,
       lorenz1<span class="pl-k">.</span>ρ <span class="pl-k">=&gt;</span> <span class="pl-c1">28.0</span>,
@@ -89,6 +89,6 @@ tspan <span class="pl-k">=</span> (<span class="pl-c1">0.0</span>,<span class="p
 prob <span class="pl-k">=</span> <span class="pl-c1">ODEProblem</span>(connected,u0,tspan,p)
 sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(prob,<span class="pl-c1">Rodas5</span>())
 
-<span class="pl-k">using</span> Plots; <span class="pl-c1">plot</span>(sol,vars<span class="pl-k">=</span>(:α,<span class="pl-c1">Symbol</span>(lorenz1<span class="pl-k">.</span>x),<span class="pl-c1">Symbol</span>(lorenz2<span class="pl-k">.</span>y)))</pre></div>
-<p><a target="_blank" rel="noopener noreferrer" href="https://user-images.githubusercontent.com/1814174/79122361-6fdaca80-7d65-11ea-87fd-0f6c4a85cd0d.png"><img src="https://user-images.githubusercontent.com/1814174/79122361-6fdaca80-7d65-11ea-87fd-0f6c4a85cd0d.png" alt="" style="max-width:100%;"></a></p>
+<span class="pl-k">using</span> Plots; <span class="pl-c1">plot</span>(sol,vars<span class="pl-k">=</span>(a,lorenz1<span class="pl-k">.</span>x,lorenz2<span class="pl-k">.</span>z))</pre></div>
+<p><a target="_blank" rel="noopener noreferrer" href="https://user-images.githubusercontent.com/1814174/79229194-9e71a780-7e30-11ea-9f93-bfa762eb8dfb.png"><img src="https://user-images.githubusercontent.com/1814174/79229194-9e71a780-7e30-11ea-9f93-bfa762eb8dfb.png" alt="" style="max-width:100%;"></a></p>
 </article></div>

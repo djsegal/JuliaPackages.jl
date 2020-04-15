@@ -1,0 +1,82 @@
+<div id="readme" class="md" data-path="Readme.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-timeevomps" class="anchor" aria-hidden="true" href="#timeevomps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TimeEvoMPS</h1>
+<p><a href="https://travis-ci.org/orialb/TimeEvoMPS.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c93fcd6cea3eb2ad438721d8309dc2fa781745e8/68747470733a2f2f7472617669732d63692e6f72672f6f7269616c622f54696d6545766f4d50532e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/orialb/TimeEvoMPS.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/orialb/TimeEvoMPS.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4827da3e9f28d3ede86ea6cc91e665584eeef3ef/68747470733a2f2f636f6465636f762e696f2f67682f6f7269616c622f54696d6545766f4d50532e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/orialb/TimeEvoMPS.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>The goal of this package is to provide implementations of time-evolution algorithms for matrix-product states using
+<a href="https://github.com/ITensor/ITensors.jl">ITensors.jl</a>.</p>
+<p>The package is currently at an initial stage. Contributions and suggestions are very welcome.</p>
+<p>Algorithms currently implemented:</p>
+<ul>
+<li>TEBD (with 2nd and 4th order Trotter decomposition) [1]</li>
+<li>TDVP (two-site variant) [2]</li>
+</ul>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Installation</h2>
+<p>Since ITensors.jl is not yet a registered package you will have to make sure it is installed before installing TimeEvoMPS.jl.
+In the Julia REPL:</p>
+<pre><code>] add https://github.com/ITensor/ITensors.jl 
+</code></pre>
+<p>After you have installed ITensors.jl you can go ahead and install TimeEvoMPS:</p>
+<pre><code>] add https://github.com/orialb/TimeEvoMPS.jl
+</code></pre>
+<h1><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h1>
+<p>The following code example shows how to evolve an MPS for a spin-half chain with the transverse-field Ising Hamiltonian, starting from a fully polarized state (functionality to perform measurements during time evolution is still missing, but will be added very soon).</p>
+<p>First we setup the initial state</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> ITensors, TimeEvoMPS
+
+N<span class="pl-k">=</span><span class="pl-c1">10</span>
+J <span class="pl-k">=</span> <span class="pl-c1">1.</span>
+h <span class="pl-k">=</span> <span class="pl-c1">0.5</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Use ITensors to define initial fully-polarized MPS</span>
+sites <span class="pl-k">=</span> <span class="pl-c1">siteinds</span>(<span class="pl-s"><span class="pl-pds">"</span>S=1/2<span class="pl-pds">"</span></span>,N)
+psi <span class="pl-k">=</span> <span class="pl-c1">productMPS</span>(sites, <span class="pl-c1">fill</span>(<span class="pl-s"><span class="pl-pds">"</span>↑<span class="pl-pds">"</span></span>,N))</pre></div>
+<h2><a id="user-content-tebd" class="anchor" aria-hidden="true" href="#tebd"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TEBD</h2>
+<p>Define our Hamiltonian as a <code>BondOperator</code> which is an object that represents
+an operator composed of a sum of two-site gates H = Σᵢ h_{i,i+1} (calling <code>gates(bo::BondOperator)</code> builds
+the actual gates).</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Build Hamiltonian</span>
+H <span class="pl-k">=</span> <span class="pl-c1">BondOperator</span>(sites)
+<span class="pl-k">for</span> b <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>N<span class="pl-k">-</span><span class="pl-c1">1</span>
+    <span class="pl-c"><span class="pl-c">#</span>add two-site term at bond b</span>
+    <span class="pl-c1">add!</span>(H,<span class="pl-k">-</span>J,<span class="pl-s"><span class="pl-pds">"</span>Sz<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>Sz<span class="pl-pds">"</span></span>,b)
+    <span class="pl-c"><span class="pl-c">#</span>add single-site term at site b</span>
+    <span class="pl-c1">add!</span>(H,<span class="pl-k">-</span>h,<span class="pl-s"><span class="pl-pds">"</span>Sx<span class="pl-pds">"</span></span>,b)
+<span class="pl-k">end</span>
+<span class="pl-c1">add!</span>(H,<span class="pl-k">-</span>h,<span class="pl-s"><span class="pl-pds">"</span>Sx<span class="pl-pds">"</span></span>,N)</pre></div>
+<p>Now we can run TEBD, by default 2nd order Trotter decomposition is used.</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Set maximal bond dimension during evolution.</span>
+<span class="pl-c"><span class="pl-c">#</span> Other truncation parmeters supported by ITensors.jl are possible, see </span>
+<span class="pl-c"><span class="pl-c">#</span> documentation of `apply_gate!`</span>
+maxdim <span class="pl-k">=</span> <span class="pl-c1">10</span>
+<span class="pl-c"><span class="pl-c">#</span>time step and total evolution time </span>
+dt <span class="pl-k">=</span> <span class="pl-c1">0.01</span>
+tf <span class="pl-k">=</span><span class="pl-c1">1.</span>
+<span class="pl-c"><span class="pl-c">#</span>evolve</span>
+<span class="pl-c1">tebd!</span>(psi,H,dt,tf, maxdim<span class="pl-k">=</span>maxdim)</pre></div>
+<p>Alternatively we could use 4th order Trotter decomposition</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">tebd!</span>(psi,H,dt,tf,<span class="pl-c1">TEBD4</span>(), maxdim<span class="pl-k">=</span>maxdim)</pre></div>
+<h2><a id="user-content-tdvp" class="anchor" aria-hidden="true" href="#tdvp"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>TDVP</h2>
+<p>We could also use TDVP to evolve our state. For this we first need to build an MPO representation
+of the Hamiltonian. This is easily done using the AutoMPO functionality from ITensors.</p>
+<div class="highlight highlight-source-julia"><pre>ampo <span class="pl-k">=</span> <span class="pl-c1">AutoMPO</span>()
+<span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(sites)<span class="pl-k">-</span><span class="pl-c1">1</span>
+    <span class="pl-c1">add!</span>(ampo,<span class="pl-k">-</span>J,<span class="pl-s"><span class="pl-pds">"</span>Sz<span class="pl-pds">"</span></span>,j,<span class="pl-s"><span class="pl-pds">"</span>Sz<span class="pl-pds">"</span></span>,j<span class="pl-k">+</span><span class="pl-c1">1</span>)
+    <span class="pl-c1">add!</span>(ampo,<span class="pl-k">-</span>h,<span class="pl-s"><span class="pl-pds">"</span>Sx<span class="pl-pds">"</span></span>,j)
+<span class="pl-k">end</span>
+<span class="pl-c1">add!</span>(ampo,<span class="pl-k">-</span>h,<span class="pl-s"><span class="pl-pds">"</span>Sx<span class="pl-pds">"</span></span>,<span class="pl-c1">length</span>(sites))
+H<span class="pl-k">=</span> <span class="pl-c1">MPO</span>(ampo,sites)</pre></div>
+<p>Now we can run time-evolution using TDVP.</p>
+<div class="highlight highlight-source-julia"><pre>psi <span class="pl-k">=</span> <span class="pl-c1">complex!</span>(psi)
+<span class="pl-c1">tdvp!</span>(psi,H,dt,tf,maxdim<span class="pl-k">=</span>maxdim)</pre></div>
+<p>( Note that currently for real-time evolution the ITensors stored
+in the MPS <code>psi</code> must be of type <code>Complex</code> (this will hopefully not be necessary in the future).
+I couldn't find a way to initialize an ITensors.MPS with <code>ComplexF64</code> (probably this will be available in the future)
+so I wrote a quick hack (the <code>complex!</code> function) to convert a <code>Float</code> MPS to a <code>Complex</code> MPS just by multiplying each
+ITensor by complex unity. This is just a temporary thing.)</p>
+<h2><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>References</h2>
+<p>[1] Vidal, G. (2004). Efficient Simulation of One-Dimensional Quantum Many-Body
+Systems. Physical Review Letters, 93(4), 040502.
+<a href="https://doi.org/10.1103/PhysRevLett.93.040502" rel="nofollow">https://doi.org/10.1103/PhysRevLett.93.040502</a></p>
+<p>[2] Haegeman, J., Lubich, C., Oseledets, I., Vandereycken, B., &amp; Verstraete,
+F. (2016). Unifying time evolution and optimization with matrix product states.
+Physical Review B, 94(16). <a href="https://doi.org/10.1103/PhysRevB.94.165116" rel="nofollow">https://doi.org/10.1103/PhysRevB.94.165116</a></p>
+</article></div>

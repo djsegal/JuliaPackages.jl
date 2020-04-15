@@ -1,0 +1,599 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-gitlabjl" class="anchor" aria-hidden="true" href="#gitlabjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>GitLab.jl</h1>
+<h3><a id="user-content-note" class="anchor" aria-hidden="true" href="#note"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>NOTE:</h3>
+<p>This is a repo for providing API access to GitLab repos. Majority of the code from <a href="https://github.com/JuliaWeb/GitHub.jl">GitHub.jl</a> has been reused here. Also, the interfaces and terminologies have been retained to the extent possible.</p>
+<p>GitLab.jl provides a Julia interface to the <a href="http://docs.gitlab.com/ce/api/" rel="nofollow">GitLab API v3</a>. Using GitLab.jl, you can do things like:</p>
+<ul>
+<li>query for basic repository, organization, and user information</li>
+<li>programmatically take user-level actions (e.g. starring a repository, commenting on an issue, etc.)</li>
+<li>set up listeners that can detect and respond to repository events</li>
+<li>create and retrieve commit statuses (i.e. report CI pending/failure/success statuses to GitLab)</li>
+</ul>
+<p>Here's a table of contents for this rather lengthy README:</p>
+<p><a href="#response-types">1. Response Types</a></p>
+<p><a href="#rest-methods">2. REST Methods</a></p>
+<p><a href="#authentication">3. Authentication</a></p>
+<p><a href="#pagination">4. Pagination</a></p>
+<p><a href="#handling-webhook-events">5. Handling Webhook Events</a></p>
+<h2><a id="user-content-response-types" class="anchor" aria-hidden="true" href="#response-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Response Types</h2>
+<p>GitLab's JSON responses are parsed and returned to the caller as types of the form <code>G&lt;:GitLab.GitLabType</code>. Here's some useful information about these types:</p>
+<ul>
+<li>All fields are <code>Nullable</code>.</li>
+<li>Field names generally match the corresponding field in GitLab's JSON representation (the exception is <code>"type"</code>, which has the corresponding field name <code>typ</code> to avoid the obvious language conflict).</li>
+</ul>
+<p>Here's a table that matches up the provided <code>GitLabType</code>s with their corresponding API documentation, as well as alternative identifying values:</p>
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>alternative identifying property</th>
+<th>link(s) to documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Owner</code></td>
+<td>login, e.g. <code>"octocat"</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html" rel="nofollow">organizations</a>, <a href="http://docs.gitlab.com/ce/api/users.html" rel="nofollow">users</a></td>
+</tr>
+<tr>
+<td><code>Repo</code></td>
+<td>full_name, e.g. <code>"JuliaComputing/GitLab.jl"</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repositories.html" rel="nofollow">repositories</a></td>
+</tr>
+<tr>
+<td><code>Commit</code></td>
+<td>sha, e.g. <code>"d069993b320c57b2ba27336406f6ec3a9ae39375"</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html" rel="nofollow">repository commits</a></td>
+</tr>
+<tr>
+<td><code>Branch</code></td>
+<td>name, e.g. <code>master</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/branches.html" rel="nofollow">repository branches</a></td>
+</tr>
+<tr>
+<td><code>Content</code></td>
+<td>path, e.g. <code>"src/owners/owners.jl"</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html" rel="nofollow">repository contents</a></td>
+</tr>
+<tr>
+<td><code>Comment</code></td>
+<td>id, e.g. <code>162224613</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html" rel="nofollow">commit comments</a>, <a href="http://docs.gitlab.com/ce/api/issues.html#comments-on-issues" rel="nofollow">issue comments</a>, <a href="http://docs.gitlab.com/ce/api/merge_requests.html#comments-on-merge-requests" rel="nofollow">PR review comments</a></td>
+</tr>
+<tr>
+<td><code>Status</code></td>
+<td>id, e.g. <code>366961773</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#commit-status" rel="nofollow">commit statuses</a></td>
+</tr>
+<tr>
+<td><code>PullRequest</code></td>
+<td>number, e.g. <code>44</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/merge_requests.html" rel="nofollow">pull requests</a></td>
+</tr>
+<tr>
+<td><code>Issue</code></td>
+<td>number, e.g. <code>31</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/issues.html" rel="nofollow">issues</a></td>
+</tr>
+</tbody>
+</table>
+<p>You can inspect which fields are available for a type <code>G&lt;:GitLabType</code> by calling <code>fieldnames(G)</code>.</p>
+<h2><a id="user-content-rest-methods" class="anchor" aria-hidden="true" href="#rest-methods"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>REST Methods</h2>
+<p>GitLab.jl implements a bunch of methods that make REST requests to GitLab's API. The below sections list these methods (note that a return type of <code>Tuple{Vector{T}, Dict}</code> means the result is <a href="#pagination">paginated</a>).</p>
+<h4><a id="user-content-users-and-organizations" class="anchor" aria-hidden="true" href="#users-and-organizations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Users and Organizations</h4>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>return type</th>
+<th>documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>owner(owner[, isorg = false])</code></td>
+<td><code>Owner</code></td>
+<td>get <code>owner</code> as a <a href="http://docs.gitlab.com/ce/api/users.html#for-normal-users" rel="nofollow">user</a> or <a href="http://docs.gitlab.com/ce/api/projects.html#search-for-projects-by-name" rel="nofollow">organization</a></td>
+</tr>
+<tr>
+<td><code>repos(owner[, isorg = false])</code></td>
+<td><code>Tuple{Vector{Repo}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#list-owned-projects" rel="nofollow">get the <code>owner</code>'s repositories</a></td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-repositories" class="anchor" aria-hidden="true" href="#repositories"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Repositories</h4>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>return type</th>
+<th>documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>repo_by_name(repo)</code></td>
+<td><code>Repo</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#search-for-projects-by-name" rel="nofollow">get <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>create_fork(repo)</code></td>
+<td><code>Repo</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#fork-project" rel="nofollow">create a fork of <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>contributors(repo)</code></td>
+<td><code>Tuple{Vector{Dict}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repositories.html#contributors" rel="nofollow">get <code>repo</code>'s contributors</a></td>
+</tr>
+<tr>
+<td><code>collaborators(repo)</code></td>
+<td><code>Tuple{Vector{Owner}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#list-project-team-members" rel="nofollow">get <code>repo</code>'s collaborators</a></td>
+</tr>
+<tr>
+<td><code>iscollaborator(repo, user)</code></td>
+<td><code>Bool</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#list-project-team-members" rel="nofollow">check if <code>user</code> is a collaborator on <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>add_collaborator(repo, user)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#add-project-team-member" rel="nofollow">add <code>user</code> as a collaborator to <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>remove_collaborator(repo, user)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#remove-project-team-member" rel="nofollow">remove <code>user</code> as a collaborator from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>stats(repo, stat[, attempts = 3])</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/sidekiq_metrics.html" rel="nofollow">get information on <code>stat</code> (e.g. "queue_metrics", "process_metrics", "job_stats" &amp; "compound_metrics".)</a>  - This may require additional configuration</td>
+</tr>
+<tr>
+<td><code>commit(repo, sha)</code></td>
+<td><code>Commit</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#get-a-single-commit" rel="nofollow">get the commit specified by <code>sha</code></a></td>
+</tr>
+<tr>
+<td><code>commits(repo)</code></td>
+<td><code>Tuple{Vector{Commit}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#list-repository-commits" rel="nofollow">get <code>repo</code>'s commits</a></td>
+</tr>
+<tr>
+<td><code>branch(repo, branch)</code></td>
+<td><code>Branch</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/branches.html#get-single-repository-branch" rel="nofollow">get the branch specified by <code>branch</code></a></td>
+</tr>
+<tr>
+<td><code>branches(repo)</code></td>
+<td><code>Tuple{Vector{Branch}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/branches.html#list-repository-branches" rel="nofollow">get <code>repo</code>'s branches</a></td>
+</tr>
+<tr>
+<td><code>file(repo, path, ref)</code></td>
+<td><code>Content</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository" rel="nofollow">get the file specified by <code>path</code></a></td>
+</tr>
+<tr>
+<td><code>create_file(repo, path)</code></td>
+<td><code>Dict</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repository_files.html#create-new-file-in-repository" rel="nofollow">create a file at <code>path</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>update_file(repo, path)</code></td>
+<td><code>Dict</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repository_files.html#update-existing-file-in-repository" rel="nofollow">update a file at <code>path</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>delete_file(repo, path)</code></td>
+<td><code>Dict</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repository_files.html#delete-existing-file-in-repository" rel="nofollow">delete a file at <code>path</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>readme(repo)</code></td>
+<td><code>Content</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository" rel="nofollow">get <code>repo</code>'s README.md</a></td>
+</tr>
+<tr>
+<td><code>create_status(repo, sha)</code></td>
+<td><code>Status</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#commit-status" rel="nofollow">create a status for the commit specified by <code>sha</code></a></td>
+</tr>
+<tr>
+<td><code>statuses(repo, ref)</code></td>
+<td><code>Tuple{Vector{Status}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#commit-status" rel="nofollow">get the statuses posted to <code>ref</code></a></td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-pull-requests-and-issues" class="anchor" aria-hidden="true" href="#pull-requests-and-issues"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Pull Requests and Issues</h4>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>return type</th>
+<th>documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pull_request(repo, pr)</code></td>
+<td><code>PullRequest</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/merge_requests.html#get-single-mr" rel="nofollow">get the pull request specified by <code>pr</code></a></td>
+</tr>
+<tr>
+<td><code>pull_requests(repo)</code></td>
+<td><code>Tuple{Vector{PullRequest}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/merge_requests.html#list-merge-requests" rel="nofollow">get <code>repo</code>'s pull requests</a></td>
+</tr>
+<tr>
+<td><code>issue(repo, issue)</code></td>
+<td><code>Issue</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/issues.html#new-issue" rel="nofollow">get the issue specified by <code>issue</code></a></td>
+</tr>
+<tr>
+<td><code>issues(repo)</code></td>
+<td><code>Tuple{Vector{Issue}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/issues.html#list-issues" rel="nofollow">get <code>repo</code>'s issues</a></td>
+</tr>
+<tr>
+<td><code>create_issue(repo)</code></td>
+<td><code>Issue</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/issues.html#new-issue" rel="nofollow">create an issue in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>edit_issue(repo, issue)</code></td>
+<td><code>Issue</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/issues.html#edit-issue" rel="nofollow">edit <code>issue</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>delete_issue(repo, issue)</code></td>
+<td><code>Issue</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/issues.html#delete-an-issue" rel="nofollow">delete <code>issue</code> in <code>repo</code></a></td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-comments" class="anchor" aria-hidden="true" href="#comments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Comments</h4>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>return type</th>
+<th>documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>comment(repo, comment, :issue)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#get-single-issue-note" rel="nofollow">get an issue <code>comment</code> from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comment(repo, comment, :pr)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#get-single-merge-request-note" rel="nofollow">get a PR <code>comment</code> from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comment(repo, comment, :review)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#get-single-merge-request-note" rel="nofollow">get an review <code>comment</code> from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comment(repo, comment, :commit)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#get-the-comments-of-a-commit" rel="nofollow">get a commit <code>comment</code> from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comments(repo, issue, :issue)</code></td>
+<td><code>Tuple{Vector{Comment}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#list-project-issue-notes" rel="nofollow">get the comments on <code>issue</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comments(repo, pr, :pr)</code></td>
+<td><code>Tuple{Vector{Comment}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#list-all-merge-request-notes" rel="nofollow">get the comments on <code>pr</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comments(repo, pr, :review)</code></td>
+<td><code>Tuple{Vector{Comment}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#list-all-merge-request-notes" rel="nofollow">get the review comments on <code>pr</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>comments(repo, commit, :commit)</code></td>
+<td><code>Tuple{Vector{Comment}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#get-the-comments-of-a-commit" rel="nofollow">get the comments on <code>commit</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>create_comment(repo, issue, :issue)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#create-new-issue-note" rel="nofollow">create a comment on <code>issue</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>create_comment(repo, pr, :pr)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#create-new-merge-request-note" rel="nofollow">create a comment on <code>pr</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>create_comment(repo, pr, :review)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#create-new-merge-request-note" rel="nofollow">create a review comment on <code>pr</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>create_comment(repo, commit, :commit)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#post-comment-to-commit" rel="nofollow">create a comment on <code>commit</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>edit_comment(repo, comment, :issue)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#modify-existing-issue-note" rel="nofollow">edit the issue <code>comment</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>edit_comment(repo, comment, :pr)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#modify-existing-merge-request-note" rel="nofollow">edit the PR <code>comment</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>edit_comment(repo, comment, :review)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#modify-existing-merge-request-note" rel="nofollow">edit the review <code>comment</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>edit_comment(repo, comment, :commit)</code></td>
+<td><code>Comment</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/commits.html#post-comment-to-commit" rel="nofollow">edit the commit <code>comment</code> in <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>delete_comment(repo, comment, :issue)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#delete-an-issue-note" rel="nofollow">delete the issue <code>comment</code> from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>delete_comment(repo, comment, :pr)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#delete-a-merge-request-note" rel="nofollow">delete the PR <code>comment</code> from <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>delete_comment(repo, comment, :review)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/notes.html#delete-a-merge-request-note" rel="nofollow">delete the review <code>comment</code> from <code>repo</code></a></td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-social-activity" class="anchor" aria-hidden="true" href="#social-activity"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Social Activity</h4>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>return type</th>
+<th>documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>star(repo)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#star-a-project" rel="nofollow">star <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>unstar(repo)</code></td>
+<td><code>HttpCommon.Response</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#unstar-a-project" rel="nofollow">unstar <code>repo</code></a></td>
+</tr>
+<tr>
+<td><code>starred(user)</code></td>
+<td><code>Tuple{Vector{Repo}, Dict}</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/projects.html#list-starred-projects" rel="nofollow">get repositories starred by <code>user</code></a></td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-miscellaneous" class="anchor" aria-hidden="true" href="#miscellaneous"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Miscellaneous</h4>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>return type</th>
+<th>documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>authenticate(token)</code></td>
+<td><code>OAuth2</code></td>
+<td><a href="http://docs.gitlab.com/ce/api/README.html#authentication" rel="nofollow">validate <code>token</code> and return an authentication object</a></td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-keyword-arguments" class="anchor" aria-hidden="true" href="#keyword-arguments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Keyword Arguments</h4>
+<p>All REST methods accept the following keyword arguments:</p>
+<table>
+<thead>
+<tr>
+<th>keyword</th>
+<th>type</th>
+<th>default value</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auth</code></td>
+<td><code>GitLab.Authorization</code></td>
+<td><code>GitLab.AnonymousAuth()</code></td>
+<td>The request's authorization</td>
+</tr>
+<tr>
+<td><code>params</code></td>
+<td><code>Dict</code></td>
+<td><code>Dict()</code></td>
+<td>The request's query parameters</td>
+</tr>
+<tr>
+<td><code>headers</code></td>
+<td><code>Dict</code></td>
+<td><code>Dict()</code></td>
+<td>The request's headers. Note that these headers will be mutated by GitLab.jl request methods.</td>
+</tr>
+<tr>
+<td><code>handle_error</code></td>
+<td><code>Bool</code></td>
+<td><code>true</code></td>
+<td>If <code>true</code>, a Julia error will be thrown in the event that GitLab's response reports an error.</td>
+</tr>
+<tr>
+<td><code>page_limit</code></td>
+<td><code>Real</code></td>
+<td><code>Inf</code></td>
+<td>The number of pages to return (only applies to paginated results, obviously)</td>
+</tr>
+</tbody>
+</table>
+<h2><a id="user-content-authentication" class="anchor" aria-hidden="true" href="#authentication"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Authentication</h2>
+<p>To authenticate your requests to GitLab, you'll need to generate an appropriate <a href="http://docs.gitlab.com/ce/api/oauth2.html" rel="nofollow">access token</a>. Then, you can do stuff like the following (this example assumes that you set an environmental variable <code>GITLAB_AUTH</code> containing the access token):</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> GitLab
+
+myauth <span class="pl-k">=</span> GitLab<span class="pl-k">.</span><span class="pl-c1">authenticate</span>(ENV[<span class="pl-s"><span class="pl-pds">"</span>GITLAB_AUTH<span class="pl-pds">"</span></span>]) <span class="pl-c"><span class="pl-c">#</span> don't hardcode your access tokens!</span>
+
+GitLab<span class="pl-k">.</span><span class="pl-c1">star</span>(<span class="pl-s"><span class="pl-pds">"</span>JuliaComputing/GitLab.jl<span class="pl-pds">"</span></span>; auth <span class="pl-k">=</span> myauth)  <span class="pl-c"><span class="pl-c">#</span> star the GitLab.jl repo as the user identified by myauth</span></pre></div>
+<p>As you can see, you can propagate the identity/permissions of the <code>myauth</code> token to GitLab.jl's methods by passing <code>auth = myauth</code> as a keyword argument.</p>
+<h2><a id="user-content-handling-webhook-events" class="anchor" aria-hidden="true" href="#handling-webhook-events"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Handling Webhook Events</h2>
+<p>GitLab.jl comes with configurable <code>EventListener</code> and <code>CommentListener</code> types that can be used as basic servers for parsing and responding to events delivered by <a href="https://gitlab.com/gitlab-org/gitlab-ce/blob/master/doc/web_hooks/web_hooks.md" rel="nofollow">GitLab's repository Webhooks</a>.</p>
+<h4><a id="user-content-eventlistener" class="anchor" aria-hidden="true" href="#eventlistener"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>EventListener</code></h4>
+<p>When an <code>EventListener</code> receives an event, it performs some basic validation and wraps the event payload (and some other data) in <a href="https://github.com/JuliaComputing/GitLab.jl/blob/master/src/activity/events/events.jl">a <code>WebhookEvent</code> type</a>. This <code>WebhookEvent</code> instance, along with the provided <code>Authorization</code>, is then fed to the server's handler function, which the user defines to determine the server's response behavior. The handler function is expected to return an <code>HttpCommon.Response</code> that is then sent back to GitLab.</p>
+<p>The <code>EventListener</code> constructor takes the following keyword arguments:</p>
+<ul>
+<li><code>auth</code>: GitLab authorization (usually with repo-level permissions).</li>
+<li><code>secret</code>: A string used to verify the event source. If the event is from a GitLab Webhook, it's the Webhook's secret. If a secret is not provided, the server won't validate the secret signature of incoming requests.</li>
+<li><code>repos</code>: A vector of <code>Repo</code>s (or fully qualified repository names) listing all acceptable repositories. All repositories are whitelisted by default.</li>
+<li><code>events</code>: A vector of <a href="https://developer.gitlab.com/webhooks/#events" rel="nofollow">event names</a> listing all acceptable events (e.g. ["commit_comment", "pull_request"]). All events are whitelisted by default.</li>
+<li><code>forwards</code>: A vector of <code>HttpCommon.URI</code>s (or URI strings) to which any incoming requests should be forwarded (after being validated by the listener)</li>
+</ul>
+<p>Here's an example that demonstrates how to construct and run an <code>EventListener</code> that does benchmarking on every commit and PR:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> GitLab
+
+<span class="pl-c"><span class="pl-c">#</span> EventListener settings</span>
+myauth <span class="pl-k">=</span> GitLab<span class="pl-k">.</span><span class="pl-c1">authenticate</span>(ENV[<span class="pl-s"><span class="pl-pds">"</span>GITLAB_AUTH<span class="pl-pds">"</span></span>])
+options <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(<span class="pl-s"><span class="pl-pds">"</span>private_token<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> myauth<span class="pl-k">.</span>token)
+mysecret <span class="pl-k">=</span> ENV[<span class="pl-s"><span class="pl-pds">"</span>MY_SECRET<span class="pl-pds">"</span></span>]
+myevents <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Note Hook<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>MergeRequest<span class="pl-pds">"</span></span>]
+myrepos <span class="pl-k">=</span> [GitLab<span class="pl-k">.</span><span class="pl-c1">repo_by_name</span>(<span class="pl-s"><span class="pl-pds">"</span>MyTestProject1<span class="pl-pds">"</span></span>)]
+myforwards <span class="pl-k">=</span> [HttpCommon<span class="pl-k">.</span><span class="pl-c1">URI</span>(<span class="pl-s"><span class="pl-pds">"</span>http://myforward1.com<span class="pl-pds">"</span></span>), <span class="pl-s"><span class="pl-pds">"</span>http://myforward2.com<span class="pl-pds">"</span></span>] <span class="pl-c"><span class="pl-c">#</span> can be HttpCommon.URIs or URI strings</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Set up Status parameters</span>
+pending_params <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
+    <span class="pl-s"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>pending<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>context<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Benchmarker<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>description<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Running benchmarks...<span class="pl-pds">"</span></span>
+)
+
+success_params <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
+    <span class="pl-s"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>success<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>context<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Benchmarker<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>description<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Benchmarks complete!<span class="pl-pds">"</span></span>
+)
+
+<span class="pl-en">error_params</span>(err) <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
+    <span class="pl-s"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>error<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>context<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Benchmarker<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>description<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Error: <span class="pl-v">$err</span><span class="pl-pds">"</span></span>
+)
+
+<span class="pl-c"><span class="pl-c">#</span> We can use Julia's `do` notation to set up the listener's handler function</span>
+listener <span class="pl-k">=</span> GitLab<span class="pl-k">.</span><span class="pl-c1">EventListener</span>(auth <span class="pl-k">=</span> myauth,
+                                secret <span class="pl-k">=</span> mysecret,
+                                repos <span class="pl-k">=</span> myrepos,
+                                events <span class="pl-k">=</span> myevents,
+                                forwards <span class="pl-k">=</span> myforwards) <span class="pl-k">do</span> event
+    kind, payload, repo <span class="pl-k">=</span> event<span class="pl-k">.</span>kind, event<span class="pl-k">.</span>payload, event<span class="pl-k">.</span>repository
+
+    <span class="pl-k">if</span> kind <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>pull_request<span class="pl-pds">"</span></span> <span class="pl-k">&amp;&amp;</span> payload[<span class="pl-s"><span class="pl-pds">"</span>action<span class="pl-pds">"</span></span>] <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>closed<span class="pl-pds">"</span></span>
+        <span class="pl-k">return</span> HttpCommon<span class="pl-k">.</span><span class="pl-c1">Response</span>(<span class="pl-c1">200</span>)
+    <span class="pl-k">end</span>
+
+    <span class="pl-k">if</span> event<span class="pl-k">.</span>kind <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>push<span class="pl-pds">"</span></span>
+        sha <span class="pl-k">=</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>after<span class="pl-pds">"</span></span>]
+    <span class="pl-k">elseif</span> event<span class="pl-k">.</span>kind <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>pull_request<span class="pl-pds">"</span></span>
+        sha <span class="pl-k">=</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>pull_request<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>head<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>sha<span class="pl-pds">"</span></span>]
+    <span class="pl-k">end</span>
+
+    GitLab<span class="pl-k">.</span><span class="pl-c1">create_status</span>(repo, sha; auth <span class="pl-k">=</span> myauth, params <span class="pl-k">=</span> pending_params)
+
+    <span class="pl-k">try</span>
+        <span class="pl-c"><span class="pl-c">#</span> run_and_log_benchmarks isn't actually a defined function, but you get the point</span>
+        <span class="pl-c1">run_and_log_benchmarks</span>(event, <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\$</span>(sha)-benchmarks.csv<span class="pl-pds">"</span></span>)
+    <span class="pl-k">catch</span> err
+        GitLab<span class="pl-k">.</span><span class="pl-c1">create_status</span>(repo, sha; auth <span class="pl-k">=</span> myauth, params <span class="pl-k">=</span> <span class="pl-c1">error_params</span>(err))
+        <span class="pl-k">return</span> HttpCommon<span class="pl-k">.</span><span class="pl-c1">Response</span>(<span class="pl-c1">500</span>)
+    <span class="pl-k">end</span>
+
+    GitLab<span class="pl-k">.</span><span class="pl-c1">create_status</span>(repo, sha; auth <span class="pl-k">=</span> myauth, params <span class="pl-k">=</span> success_params)
+
+    <span class="pl-k">return</span> HttpCommon<span class="pl-k">.</span><span class="pl-c1">Response</span>(<span class="pl-c1">200</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Start the listener on localhost at port 8000</span>
+GitLab<span class="pl-k">.</span><span class="pl-c1">run</span>(listener, host<span class="pl-k">=</span><span class="pl-c1">IPv4</span>(<span class="pl-c1">127</span>,<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">1</span>), port<span class="pl-k">=</span><span class="pl-c1">8000</span>)</pre></div>
+<h4><a id="user-content-commentlistener" class="anchor" aria-hidden="true" href="#commentlistener"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a><code>CommentListener</code></h4>
+<p>A <code>CommentListener</code> is a special kind of <code>EventListener</code> that allows users to pass data to the listener's handler function via commenting. This is useful for triggering events on repositories that require configuration settings.</p>
+<p>A <code>CommentListener</code> automatically filters out all non-comment events, and then checks the body of each comment event against a trigger <code>Regex</code> supplied by the user. If a match is found in the comment, then the <code>CommentListener</code> calls its handler function, passing it the event and the corresponding <code>RegexMatch</code>.</p>
+<p>The <code>CommentListener</code> constructor takes the following keyword arguments:</p>
+<ul>
+<li><code>auth</code>: same as <code>EventListener</code></li>
+<li><code>secret</code>: same as <code>EventListener</code></li>
+<li><code>repos</code>: same as <code>EventListener</code></li>
+<li><code>forwards</code>: same as <code>EventListener</code></li>
+<li><code>check_collab</code>: If <code>true</code>, only acknowledge comments made by repository collaborators. Note that, if <code>check_collab</code> is <code>true</code>, <code>auth</code> must have the appropriate permissions to query the comment's repository for the collaborator status of the commenter. <code>check_collab</code> is <code>true</code> by default.</li>
+</ul>
+<p>For example, let's set up a silly <code>CommentListener</code> that responds to the commenter with a greeting. To give a demonstration of the desired behavior, if a collaborator makes a comment like:</p>
+<div class="highlight highlight-source-julia"><pre>Man, I really would like to be greeted today.
+
+<span class="pl-s"><span class="pl-pds">`</span>sayhello("Bob", "outgoing")<span class="pl-pds">`</span></span></pre></div>
+<p>We want the <code>CommentLister</code> to reply:</p>
+<div class="highlight highlight-source-julia"><pre>Hello, Bob, you look very outgoing today!</pre></div>
+<p>Here's the code that will make this happen:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> GitLab
+
+myauth <span class="pl-k">=</span> GitLab<span class="pl-k">.</span><span class="pl-c1">authenticate</span>(ENV[<span class="pl-s"><span class="pl-pds">"</span>GITLAB_AUTH<span class="pl-pds">"</span></span>]) <span class="pl-c"><span class="pl-c">#</span> don't hardcode your access tokens!</span>
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Authentication successful<span class="pl-pds">"</span></span>)
+options <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(<span class="pl-s"><span class="pl-pds">"</span>private_token<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> myauth<span class="pl-k">.</span>token)
+
+<span class="pl-c"><span class="pl-c">#</span> CommentListener settings</span>
+trigger <span class="pl-k">=</span> <span class="pl-sr"><span class="pl-pds">r"</span>`sayhello<span class="pl-cce">\(</span>.*?<span class="pl-cce">\)</span>`<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> We can use Julia's `do` notation to set up the listener's handler function.</span>
+<span class="pl-c"><span class="pl-c">#</span> Note that, in our example case, `phrase` will be "`sayhello(\"Bob\", \"outgoing\")`"</span>
+listener <span class="pl-k">=</span> GitLab<span class="pl-k">.</span><span class="pl-c1">CommentListener</span>(trigger; auth <span class="pl-k">=</span> myauth, secret <span class="pl-k">=</span> mysecret) <span class="pl-k">do</span> event, phrase
+    <span class="pl-c"><span class="pl-c">#</span> In our example case, this code sets name to "Bob" and adjective to "outgoing"</span>
+    name, adjective <span class="pl-k">=</span> <span class="pl-c1">matchall</span>(<span class="pl-sr"><span class="pl-pds">r"</span><span class="pl-cce">\"</span>.*?<span class="pl-cce">\"</span><span class="pl-pds">"</span></span>, phrase)
+    comment_params <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(<span class="pl-s"><span class="pl-pds">"</span>body<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>Hello, <span class="pl-v">$name</span>, you look very <span class="pl-v">$adjective</span> today!<span class="pl-pds">"</span></span>)
+
+    <span class="pl-c"><span class="pl-c">#</span> Parse the original comment event for all the necessary reply info</span>
+    comment <span class="pl-k">=</span> GitLab<span class="pl-k">.</span><span class="pl-c1">Comment</span>(event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>comment<span class="pl-pds">"</span></span>])
+
+    <span class="pl-k">if</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>object_attributes<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>noteable_type<span class="pl-pds">"</span></span>] <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Issue<span class="pl-pds">"</span></span>
+        comment_kind <span class="pl-k">=</span> <span class="pl-c1">:issue</span>
+        reply_to <span class="pl-k">=</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>object_attributes<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>noteable_id<span class="pl-pds">"</span></span>]
+    <span class="pl-k">elseif</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>object_attributes<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>noteable_type<span class="pl-pds">"</span></span>] <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Commit<span class="pl-pds">"</span></span>
+        comment_kind <span class="pl-k">=</span> <span class="pl-c1">:commit</span>
+        reply_to <span class="pl-k">=</span> <span class="pl-c1">get</span>(comment<span class="pl-k">.</span>commit_id)
+    <span class="pl-k">elseif</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>object_attributes<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>noteable_type<span class="pl-pds">"</span></span>] <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>MergeRequest<span class="pl-pds">"</span></span>
+        comment_kind <span class="pl-k">=</span> <span class="pl-c1">:review</span>
+        reply_to <span class="pl-k">=</span> event<span class="pl-k">.</span>payload[<span class="pl-s"><span class="pl-pds">"</span>object_attributes<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>noteable_id<span class="pl-pds">"</span></span>]
+        <span class="pl-c"><span class="pl-c">#</span> load required query params for review comment creation</span>
+        comment_params[<span class="pl-s"><span class="pl-pds">"</span>commit_id<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$(comment<span class="pl-k">.</span>id)</span><span class="pl-pds">"</span></span>
+        comment_params[<span class="pl-s"><span class="pl-pds">"</span>path<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$(comment<span class="pl-k">.</span>url)</span><span class="pl-pds">"</span></span>
+        comment_params[<span class="pl-s"><span class="pl-pds">"</span>position<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$(comment<span class="pl-k">.</span>id)</span><span class="pl-pds">"</span></span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> send the comment creation request to GitLab</span>
+    GitLab<span class="pl-k">.</span><span class="pl-c1">create_comment</span>(event<span class="pl-k">.</span>repository, reply_to, comment_kind; headers <span class="pl-k">=</span> options, params <span class="pl-k">=</span> comment_params)
+
+    <span class="pl-k">return</span> HttpCommon<span class="pl-k">.</span><span class="pl-c1">Response</span>(<span class="pl-c1">200</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Start the listener on localhost at port 8000</span>
+GitLab<span class="pl-k">.</span><span class="pl-c1">run</span>(listener, host<span class="pl-k">=</span><span class="pl-c1">IPv4</span>(<span class="pl-c1">127</span>,<span class="pl-c1">0</span>,<span class="pl-c1">0</span>,<span class="pl-c1">1</span>), port<span class="pl-k">=</span><span class="pl-c1">8000</span>)</pre></div>
+</article></div>
