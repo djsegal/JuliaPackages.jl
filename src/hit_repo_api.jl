@@ -115,11 +115,10 @@ function _hit_repo_finish(good_paths, general_db)
     @assert isfile(package_file)
 
     push!(cur_data_dict["package"], cur_package)
-    push!(cur_data_dict["owner"], split(cur_path, "/")[1])
-
     push!(cur_data_dict["registered"], cur_package in general_db.package)
 
     cur_json = JSON.parse(open(f->read(f, String), package_file))
+    push!(cur_data_dict["owner"], split(cur_json["full_name"], "/")[1])
 
     for (cur_key, cur_value) in cur_data_dict
       ( cur_key in skip_keys ) && continue
