@@ -26,7 +26,12 @@ function __init__()
   CSV.write(general_file, general_csv)
   CSV.write(decibans_file, decibans_db)
 
-  searched_paths = hit_search_api()
+  if isfile("../data/searched_paths.csv")
+    searched_paths_db = CSV.read("../data/searched_paths.csv")
+    searched_paths = collect(zip(searched_paths_db.package, searched_paths_db.path))
+  else
+    searched_paths = hit_search_api()
+  end
 
   trending_file, trending_db = custom_get_database("trending")
   CSV.write(trending_file, trending_db)
@@ -43,10 +48,10 @@ function __init__()
     paths_db = DataFrame(good_paths)
     rename!(paths_db, Symbol.(["package", "path"]))
     CSV.write("../data/paths.csv", DataFrame(paths_db))
+
+    hit_readme_api([good_paths..., searched_paths...])
   end
 
   CSV.write("../data/packages.csv", packages_db)
-
-  hit_readme_api([good_paths..., searched_paths...])
 
 end
