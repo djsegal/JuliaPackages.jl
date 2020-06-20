@@ -1,70 +1,48 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content" itemprop="text"><p>julia wrapper for linux's perf_event_open</p>
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-linuxperfjl----julia-wrapper-for-linuxs-perf" class="anchor" aria-hidden="true" href="#linuxperfjl----julia-wrapper-for-linuxs-perf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>LinuxPerf.jl -- Julia wrapper for Linux's perf</h1>
 <p>the kernel multiplexes event counter that requires limited hardware resources so some counters are only active for a fraction of the running time (% on the right).</p>
 <p>if you need to compare two quantities you must put them in the same event group so they are always scheduled at the same time (or not at all).</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> LinuxPerf<span class="pl-k">:</span> make_bench, enable!, disable!, reset!, reasonable_defaults, counters
-julia<span class="pl-k">&gt;</span> <span class="pl-k">const</span> bench <span class="pl-k">=</span> <span class="pl-c1">make_bench</span>(reasonable_defaults);
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> LinuxPerf
+
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">@noinline</span> <span class="pl-k">function</span> <span class="pl-en">g</span>(a)
-           <span class="pl-c1">enable!</span>(bench)
            c <span class="pl-k">=</span> <span class="pl-c1">0</span>
            <span class="pl-k">for</span> x <span class="pl-k">in</span> a
                <span class="pl-k">if</span> x <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
                    c <span class="pl-k">+=</span> <span class="pl-c1">1</span>
                <span class="pl-k">end</span>
            <span class="pl-k">end</span>
-           <span class="pl-c1">disable!</span>(bench)
            c
        <span class="pl-k">end</span>
 g (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">g</span>(<span class="pl-c1">zeros</span>(<span class="pl-c1">10000</span>))
 <span class="pl-c1">0</span>
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">counters</span>(bench)
-hw<span class="pl-k">:</span>cycles : 
-	               <span class="pl-c1">52794</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>cache_access : 
-	                 <span class="pl-c1">881</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>cache_misses : 
-	                 <span class="pl-c1">579</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>branches : 
-	               <span class="pl-c1">31367</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>branch_mispredicts : 
-	                 <span class="pl-c1">107</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)      <span class="pl-c"><span class="pl-c">#</span> =)</span>
-hw<span class="pl-k">:</span>instructions : 
-	               <span class="pl-c1">96961</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>ctx_switches : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>page_faults : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>minor_page_faults : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>major_page_faults : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>cpu_migrations : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
 
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">reset!</span>(bench)
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">g</span>(<span class="pl-c1">randn</span>(<span class="pl-c1">10000</span>))
-<span class="pl-c1">5023</span>
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">counters</span>(bench)
-hw<span class="pl-k">:</span>cycles : 
-	              <span class="pl-c1">194454</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>cache_access : 
-	                 <span class="pl-c1">291</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>cache_misses : 
-	                 <span class="pl-c1">222</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>branches : 
-	               <span class="pl-c1">38050</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-hw<span class="pl-k">:</span>branch_mispredicts : 
-	                <span class="pl-c1">5131</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)      <span class="pl-c"><span class="pl-c">#</span> =(</span>
-hw<span class="pl-k">:</span>instructions : 
-	              <span class="pl-c1">129253</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>ctx_switches : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>page_faults : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>minor_page_faults : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>major_page_faults : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)
-sw<span class="pl-k">:</span>cpu_migrations : 
-	                   <span class="pl-c1">0</span> (<span class="pl-c1">100.0</span> <span class="pl-k">%</span>)</pre></div>
+julia<span class="pl-k">&gt;</span> data <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">10000</span>); <span class="pl-c1">@measure</span> <span class="pl-c1">g</span>(data)
+┌───────────────────────┬────────────┬─────────────┐
+│                       │ Events     │ Active Time │
+├───────────────────────┼────────────┼─────────────┤
+│             hw<span class="pl-k">:</span>cycles │ <span class="pl-c1">25</span>,<span class="pl-c1">583</span>,<span class="pl-c1">165</span> │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│       hw<span class="pl-k">:</span>cache_access │ <span class="pl-c1">1</span>,<span class="pl-c1">640</span>,<span class="pl-c1">429</span>  │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│       hw<span class="pl-k">:</span>cache_misses │ <span class="pl-c1">328</span>,<span class="pl-c1">561</span>    │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│           hw<span class="pl-k">:</span>branches │ <span class="pl-c1">6</span>,<span class="pl-c1">164</span>,<span class="pl-c1">138</span>  │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│ hw<span class="pl-k">:</span>branch_mispredicts │ <span class="pl-c1">223</span>,<span class="pl-c1">272</span>    │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│       hw<span class="pl-k">:</span>instructions │ <span class="pl-c1">28</span>,<span class="pl-c1">115</span>,<span class="pl-c1">285</span> │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│       sw<span class="pl-k">:</span>ctx_switches │ <span class="pl-c1">0</span>          │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│        sw<span class="pl-k">:</span>page_faults │ <span class="pl-c1">41</span>         │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│  sw<span class="pl-k">:</span>minor_page_faults │ <span class="pl-c1">41</span>         │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│  sw<span class="pl-k">:</span>major_page_faults │ <span class="pl-c1">0</span>          │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+├───────────────────────┼────────────┼─────────────┤
+│     sw<span class="pl-k">:</span>cpu_migrations │ <span class="pl-c1">0</span>          │ <span class="pl-c1">100.0</span> <span class="pl-k">%</span>     │
+└───────────────────────┴────────────┴─────────────┘</pre></div>
+<p>For more fine tuned performance profile examples, please check out the <code>test</code>
+directory.</p>
 </article></div>

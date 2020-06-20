@@ -1,0 +1,51 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-plugins" class="anchor" aria-hidden="true" href="#plugins"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Plugins</h1>
+<p><a href="https://travis-ci.com/tisztamo/Plugins.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/3574465e4dbe2638d08e4cc072c29f691d4b3f1a/68747470733a2f2f7472617669732d63692e636f6d2f7469737a74616d6f2f506c7567696e732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/tisztamo/Plugins.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/tisztamo/Plugins.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/18772119077d3ec81d420f7c0e3e6c661cf20d24/68747470733a2f2f636f6465636f762e696f2f67682f7469737a74616d6f2f506c7567696e732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>A Plugin is a chunk of code that adds functionality to a system. It implements so-called hooks: functions that the system will call at specific points of its inner life (aka Event handlers).</p>
+<p>The system is configured with an array of plugins. If multiple plugins implement the same hook, they will be called in their order, with any plugin able to halt the processing. Plugins can also publish an API by registering a symbol.</p>
+<p>Plugins.jl allows full compiler optimization, meaning plugin execution can be just as performant as a manually composed system. (Yes, the merged hook implementations can be inlined.)</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Simple Plugins.jl example with two plugins implementing a hook: A logger and a counter. The logger also</span>
+<span class="pl-c"><span class="pl-c">#</span> registers itself to provide an API</span>
+
+<span class="pl-k">using</span> Plugins, Test
+
+<span class="pl-k">struct</span> Framework
+    plugins
+    <span class="pl-en">Framework</span>(plugins) <span class="pl-k">=</span> <span class="pl-c1">new</span>(<span class="pl-c1">PluginStack</span>(plugins))
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> LoggerPlugin <span class="pl-k">&lt;:</span> <span class="pl-c1">Plugin</span> <span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">log</span>(me<span class="pl-k">::</span><span class="pl-c1">LoggerPlugin</span>, message)
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Logger Plugin in action: <span class="pl-v">$message</span><span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">hook1_handler</span>(me<span class="pl-k">::</span><span class="pl-c1">LoggerPlugin</span>, framework)
+  <span class="pl-c1">log</span>(me, <span class="pl-s"><span class="pl-pds">"</span>hook1 called!<span class="pl-pds">"</span></span>)
+  <span class="pl-k">return</span> <span class="pl-c1">true</span> <span class="pl-c"><span class="pl-c">#</span> Allow other hooks to run. return false to "stop propagation"</span>
+<span class="pl-k">end</span>
+
+Plugins<span class="pl-k">.</span><span class="pl-en">symbol</span>(<span class="pl-k">::</span><span class="pl-c1">LoggerPlugin</span>) <span class="pl-k">=</span> <span class="pl-c1">:logger</span>
+
+<span class="pl-k">mutable struct</span> CounterPlugin <span class="pl-k">&lt;:</span> <span class="pl-c1">Plugin</span>
+    hook1count<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    <span class="pl-en">CounterPlugin</span>() <span class="pl-k">=</span> <span class="pl-c1">new</span>(<span class="pl-c1">0</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@inline</span> <span class="pl-en">hook1_handler</span>(plugin<span class="pl-k">::</span><span class="pl-c1">CounterPlugin</span>, framework) <span class="pl-k">=</span> <span class="pl-k">begin</span>
+    plugin<span class="pl-k">.</span>hook1count <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">return</span> <span class="pl-c1">true</span> 
+<span class="pl-k">end</span>
+
+counter <span class="pl-k">=</span> <span class="pl-c1">CounterPlugin</span>()
+app <span class="pl-k">=</span> <span class="pl-c1">Framework</span>([counter, <span class="pl-c1">LoggerPlugin</span>()])
+hook1 <span class="pl-k">=</span> <span class="pl-c1">hooks</span>(app, hook1_handler)
+
+<span class="pl-c1">hook1</span>() <span class="pl-c"><span class="pl-c">#</span> Prints "Logger Plugin in action: hook1 called!" and returns true</span>
+
+<span class="pl-c1">@test</span> counter<span class="pl-k">.</span>hook1count <span class="pl-k">===</span> <span class="pl-c1">1</span>
+
+<span class="pl-c1">log</span>(app<span class="pl-k">.</span>plugins[<span class="pl-c1">:logger</span>], <span class="pl-s"><span class="pl-pds">"</span>A log message<span class="pl-pds">"</span></span>)</pre></div>
+<p>At non-critical points you can call <code>hooks()</code> every time, but if you cannot waste a few microseconds, you have to cache the result. Note that <code>hooks()</code> is <em>not</em> type-stable, because to allow optimization it builds a type chain by filtering plugins that impement the specified hook. This means you have to parametrize your framework struct with the performance-critical hooks and call <code>hooks()</code> in the constructor. I plan to add a layer that makes this automatically, allowing you to only parametrize with a <code>PluginStack</code>.</p>
+<p>That's all the documentation at the time, please check the <a href="https://github.com/tisztamo/Plugins.jl/blob/master/test/runtests.jl">tests</a> for more examples.</p>
+</article></div>

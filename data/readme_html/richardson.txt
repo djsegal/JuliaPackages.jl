@@ -1,0 +1,154 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-richardson-package-for-julia" class="anchor" aria-hidden="true" href="#richardson-package-for-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Richardson package for Julia</h1>
+<p><a href="https://travis-ci.org/JuliaMath/Richardson.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/5bce8e56ab6ebe12999cefd301cd182ef4cf56e7/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614d6174682f52696368617264736f6e2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaMath/Richardson.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p>The <code>Richardson</code> package provides a function <code>extrapolate</code> that
+extrapolates a given function <code>f(x)</code> to <code>f(x0)</code>, evaluating
+<code>f</code> only  at a geometric sequence of points <code>&gt; x0</code>
+(or optionally <code>&lt; x0</code>).</p>
+<p>The key algorithm is <a href="https://en.wikipedia.org/wiki/Richardson_extrapolation" rel="nofollow">Richardson extrapolation</a> using a Neville–Aitken
+tableau, which adaptively increases the degree of an extrapolation
+polynomial until convergence is achieved to a desired tolerance
+(or convergence stalls due to e.g. floating-point errors).  This
+allows one to obtain <code>f(x0)</code> to high-order accuracy, assuming
+that <code>f(x0+h)</code> has a Taylor series or some other power
+series in <code>h</code>.   (See e.g. <a href="http://www.cs.rpi.edu/~flaherje/pdf/ode4.pdf" rel="nofollow">these course notes by Prof. Flaherty at RPI</a>.)</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">extrapolate</span>(f, h; contract<span class="pl-k">=</span><span class="pl-c1">0.125</span>, x0<span class="pl-k">=</span><span class="pl-c1">zero</span>(h),
+                  atol<span class="pl-k">=</span><span class="pl-c1">0</span>, rtol<span class="pl-k">=</span>atol<span class="pl-k">&gt;</span><span class="pl-c1">0</span> ? <span class="pl-c1">0</span> : <span class="pl-c1">sqrt</span>(ε), maxeval<span class="pl-k">=</span><span class="pl-c1">typemax</span>(Int))</pre></div>
+<p>Extrapolate <code>f(x)</code> to <code>f₀ ≈ f(x0)</code>, evaluating <code>f</code> only at <code>x &gt; x0</code> points
+(or <code>x &lt; x0</code> if <code>h &lt; 0</code>) using Richardson extrapolation starting at
+<code>x=x₀+h</code>.  It returns a tuple <code>(f₀, err)</code> of the estimated <code>f(x0)</code>
+and an error estimate.</p>
+<p>The return value of <code>f</code> can be any type supporting <code>±</code> and <code>norm</code>
+operations (i.e. a normed vector space).
+Similarly, <code>h</code> and <code>x0</code> can be in any normed vector space,
+in which case <code>extrapolate</code> performs Richardson extrapolation
+of <code>f(x0+s*h)</code> to <code>s=0⁺</code> (i.e. it takes the limit as <code>x</code> goes
+to <code>x0</code> along the <code>h</code> direction).</p>
+<p>On each step of Richardson extrapolation, it shrinks <code>x-x0</code> by
+a factor of <code>contract</code>, stopping when the estimated error is
+<code>&lt; max(rtol*norm(f₀), atol)</code>, when the estimated error starts to
+increase (e.g. due to numerical errors in the computation of <code>f</code>),
+or when <code>f</code> has been evaluated <code>maxeval</code> times.   Note that
+if the function may converge to zero, you should probably
+specify a nonzero <code>atol</code> (which cannot be set by default
+because it depends on the scale/units of <code>f</code>).</p>
+<p>If <code>x0 = ±∞</code> (<code>±Inf</code>), then <code>extrapolate</code> computes the limit of
+<code>f(x)</code> as <code>x ⟶ ±∞</code> using geometrically <em>increasing</em> values
+of <code>h</code> (by factors of <code>1/contract</code>).</p>
+<p>In general, the starting <code>h</code> should be large enough that <code>f(x0+h)</code>
+can be computed accurately and efficiently (e.g. without
+severe cancellation errors), but small enough that <code>f</code> does not
+oscillate much between <code>x0</code> and <code>x0+h</code>.  i.e. <code>h</code> should be a typical
+scale over which the function <code>f</code> varies significantly.</p>
+<p>Technically, Richardson extrapolation assumes that <code>f(x0+h)</code> can
+be expanded in a power series in <code>h^power</code>, where the default
+<code>power=1</code> corresponds to an ordinary Taylor series (i.e. assuming
+<code>f</code> is analytic at <code>x0</code>).  If this is not true, you may obtain
+slow convergence from <code>extrapolate</code>, but you can pass a different
+value of <code>power</code> (e.g. <code>power=0.5</code>) if your <code>f</code> has some different
+(Puiseux) power-series expansion.   Conversely, if <code>f</code> is
+an <em>even</em> function around <code>x0</code>, i.e. <code>f(x0+h) == f(x0-h)</code>,
+so that its Taylor series contains only <em>even</em> powers of <code>h</code>,
+you can accelerate convergence by passing <code>power=2</code>.</p>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h2>
+<p>For example, let's extrapolate <code>sin(x)/x</code> to <code>x=0</code> (where the correct answer is <code>1</code>) starting at <code>x=1</code>, printing out the <code>x</code> value at each step so that we can see what the algorithm is doing.</p>
+<p>(Since <code>f</code> is passed as the first argument to <code>extrapolate</code>, we
+can use Julia's <code>do</code> syntax to conveniently define a multi-line
+anonymous function to pass.)</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">extrapolate</span>(<span class="pl-c1">1.0</span>, rtol<span class="pl-k">=</span><span class="pl-c1">1e-10</span>) <span class="pl-k">do</span> x
+    <span class="pl-c1">@show</span> x
+    <span class="pl-c1">sin</span>(x)<span class="pl-k">/</span>x
+<span class="pl-k">end</span></pre></div>
+<p>giving the output:</p>
+<pre><code>x = 1.0
+x = 0.125
+x = 0.015625
+x = 0.001953125
+x = 0.000244140625
+x = 3.0517578125e-5
+(1.0000000000000002, 2.0838886172214188e-13)
+</code></pre>
+<p>That is, it evaluates our function <code>sin(x)/x</code> for 6 different values of <code>x</code> and returns <code>1.0000000000000002</code>, which is accurate to machine precision (the error is <code>≈ 2.2e-16</code>).  The returned error estimate of <code>2e-13</code> is conservative, which is typical for extrapolating well-behaved functions.</p>
+<p>Since <code>sin(x)/x</code> is an <em>even</em> (symmetric) function around <code>x=0</code>,
+its Taylor series contains only even powers of <code>x</code>.  We can
+exploit this fact to <em>accelerate convergence for even functions</em> by
+passing <code>power=2</code> to <code>extrapolate</code>:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">extrapolate</span>(<span class="pl-c1">1.0</span>, rtol<span class="pl-k">=</span><span class="pl-c1">1e-10</span>, power<span class="pl-k">=</span><span class="pl-c1">2</span>) <span class="pl-k">do</span> x
+    <span class="pl-c1">@show</span> x
+    <span class="pl-c1">sin</span>(x)<span class="pl-k">/</span>x
+<span class="pl-k">end</span></pre></div>
+<p>gives</p>
+<pre><code>x = 1.0
+x = 0.125
+x = 0.015625
+x = 0.001953125
+x = 0.000244140625
+(1.0, 0.0)
+</code></pre>
+<p>which converged to machine precision (in fact, the exact result) in only 5 function evaluations (1 fewer than above).</p>
+<h3><a id="user-content-infinite-limits" class="anchor" aria-hidden="true" href="#infinite-limits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Infinite limits</h3>
+<p>Using the <code>x0</code> keyword argument, we can compute the limit of <code>f(x)</code>
+as <code>x ⟶ x0</code>.  In fact, you can pass <code>x0 = Inf</code> to compute a limit as
+<code>x ⟶ ∞</code> (which is accomplished internally by a change of variables <code>x = 1/u</code> and performing Richardson extrapolation to <code>u=0</code>). For example:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">extrapolate</span>(<span class="pl-c1">1.0</span>, x0<span class="pl-k">=</span><span class="pl-c1">Inf</span>) <span class="pl-k">do</span> x
+    <span class="pl-c1">@show</span> x
+    (x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">3</span>x <span class="pl-k">-</span> <span class="pl-c1">2</span>) <span class="pl-k">/</span> (x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">5</span>)
+<span class="pl-k">end</span></pre></div>
+<p>gives</p>
+<pre><code>x = 1.0
+x = 8.0
+x = 64.0
+x = 512.0
+x = 4096.0
+x = 32768.0
+x = 262144.0
+(1.0000000000000002, 1.2938539128981574e-12)
+</code></pre>
+<p>which is the correct result (<code>1.0</code>) to machine precision.</p>
+<h3><a id="user-content-numerical-derivatives" class="anchor" aria-hidden="true" href="#numerical-derivatives"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Numerical derivatives</h3>
+<p>A classic application of Richardson extrapolation is the accurate evaluation of derivatives via <a href="https://en.wikipedia.org/wiki/Finite_difference" rel="nofollow">finite-difference approximations</a> (although analytical derivatives, e.g. by automatic differentiation, are of course vastly more efficient when they are available).  In this example, we use Richardson extrapolation on the forward-difference approximation <code>f'(x) ≈ (f(x+h)-f(x))/h</code>, for which the error decreases as <code>O(h)</code> but a naive application to a very small <code>h</code> will yield a huge <a href="https://en.wikipedia.org/wiki/Loss_of_significance" rel="nofollow">cancellation error</a> from floating-point roundoff effects.   We differentiate <code>f(x)=sin(x)</code> at <code>x=1</code>, for which the correct answer is <code>cos(1) ≈ 0.5403023058681397174009366...</code>, starting with <code>h=0.1</code></p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c1">extrapolate</span>(<span class="pl-c1">0.1</span>, rtol<span class="pl-k">=</span><span class="pl-c1">0</span>) <span class="pl-k">do</span> h
+    <span class="pl-c1">@show</span> h
+    (<span class="pl-c1">sin</span>(<span class="pl-c1">1</span><span class="pl-k">+</span>h) <span class="pl-k">-</span> <span class="pl-c1">sin</span>(<span class="pl-c1">1</span>)) <span class="pl-k">/</span> h
+<span class="pl-k">end</span></pre></div>
+<p>Although we gave an <code>rtol</code> of <code>0</code>, the <code>extrapolate</code> function will terminate after a finite number of steps when it detects that improvements are limited by floating-point error:</p>
+<pre><code>h = 0.1
+h = 0.0125
+h = 0.0015625
+h = 0.0001953125
+h = 2.44140625e-5
+h = 3.0517578125e-6
+(0.5403023058683176, 1.7075230118734908e-12)
+</code></pre>
+<p>The output <code>0.5403023058683176</code> differs from <code>cos(1)</code> by <code>≈ 1.779e-13</code>, so in this case the returned error estimate is only a little conservative.   Unlike the <code>sin(x)/x</code> example, <code>extrapolate</code> is not able
+to attain machine precision (the floating-point cancellation error in this function is quite severe for small <code>h</code>!), but it is able to get surprisingly close.</p>
+<p>Another possibility for a finite-difference/Richardson combination was suggested by <a href="https://www.sciencedirect.com/science/article/abs/pii/S0141119582800570" rel="nofollow">Ridders (1982)</a>, who computed both <code>f'(x)</code> and <code>f''(x)</code> (the first and second derivatives) simultaneously using a center-difference approximation, which requires two new <code>f(x)</code> evaluations for each <code>h</code>.  In particular, the center-difference approximations are <code>f'(x) ≈ (f(x+h)-f(x-h))/2h</code> and <code>f''(x) ≈ (f(x+h)-2f(x)+f(x-h))/h²</code>, both of which have errors that go as <code>O(h²)</code>.   We can plug both of these functions <em>simultaneously</em> into <code>extrapolate</code> (so that they share <code>f(x±h)</code> evaluations) by using a vector-valued function returning <code>[f', f'']</code>.   Moreover, since these center-difference approximations are even functions of <code>h</code> (identical for <code>±h</code>), we can pass <code>power=2</code> to <code>extrapolate</code> in order to exploit the even-power Taylor expansion.  Here is a function implementing both of these ideas:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> returns (f'(x), f''(x))</span>
+<span class="pl-k">function</span> <span class="pl-en">riddersderiv2</span>(f, x, h; atol<span class="pl-k">=</span><span class="pl-c1">0</span>, rtol<span class="pl-k">=</span>atol<span class="pl-k">&gt;</span><span class="pl-c1">0</span> ? <span class="pl-c1">0</span> : <span class="pl-c1">sqrt</span>(<span class="pl-c1">eps</span>(<span class="pl-c1">typeof</span>(<span class="pl-c1">float</span>(<span class="pl-c1">real</span>(x<span class="pl-k">+</span>h))))), contract<span class="pl-k">=</span><span class="pl-c1">0.5</span>)
+    f₀ <span class="pl-k">=</span> <span class="pl-c1">f</span>(x)
+    val, err <span class="pl-k">=</span> <span class="pl-c1">extrapolate</span>(h, atol<span class="pl-k">=</span>atol, rtol<span class="pl-k">=</span>rtol, contract<span class="pl-k">=</span>contract, power<span class="pl-k">=</span><span class="pl-c1">2</span>) <span class="pl-k">do</span> h
+        f₊, f₋ <span class="pl-k">=</span> <span class="pl-c1">f</span>(x<span class="pl-k">+</span>h), <span class="pl-c1">f</span>(x<span class="pl-k">-</span>h)
+        [(f₊<span class="pl-k">-</span>f₋)<span class="pl-k">/</span><span class="pl-c1">2</span>h, (f₊<span class="pl-k">-</span><span class="pl-c1">2</span>f₀<span class="pl-k">+</span>f₋)<span class="pl-k">/</span>h<span class="pl-k">^</span><span class="pl-c1">2</span>]
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> val[<span class="pl-c1">1</span>], val[<span class="pl-c1">2</span>]
+<span class="pl-k">end</span></pre></div>
+<p>(This code could be made even more efficient by using <a href="https://github.com/JuliaArrays/StaticArrays.jl">StaticArrays.jl</a> for the <code>[f', f'']</code> vector.)   The original paper by Ridders accomplishes something similar in <code>&lt; 20</code> lines of <a href="https://en.wikipedia.org/wiki/TI-59_/_TI-58" rel="nofollow">TI-59 calculator</a> code, by the way; so much for high-level languages!</p>
+<p>For example,</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">riddersderiv2</span>(<span class="pl-c1">1</span>, <span class="pl-c1">0.1</span>, rtol<span class="pl-k">=</span><span class="pl-c1">0</span>) <span class="pl-k">do</span> x
+           <span class="pl-c1">@show</span> x
+           <span class="pl-c1">sin</span>(x)
+       <span class="pl-k">end</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1.1</span>
+x <span class="pl-k">=</span> <span class="pl-c1">0.9</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1.05</span>
+x <span class="pl-k">=</span> <span class="pl-c1">0.95</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1.025</span>
+x <span class="pl-k">=</span> <span class="pl-c1">0.975</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1.0125</span>
+x <span class="pl-k">=</span> <span class="pl-c1">0.9875</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1.00625</span>
+x <span class="pl-k">=</span> <span class="pl-c1">0.99375</span>
+(<span class="pl-c1">0.5403023058681394</span>, <span class="pl-k">-</span><span class="pl-c1">0.841470984807975</span>)</pre></div>
+<p>evaluates the first and second derivatives of <code>sin(x)</code> at <code>x=1</code> and obtains the correct answer <code>(cos(1), -sin(1))</code> to about 15 and 13 decimal digits, respectively, using 11 function evaluations.</p>
+</article></div>

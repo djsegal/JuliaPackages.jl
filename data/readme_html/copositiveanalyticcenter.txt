@@ -1,0 +1,91 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-copositiveanalyticcenterjl" class="anchor" aria-hidden="true" href="#copositiveanalyticcenterjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>CopositiveAnalyticCenter.jl</h1>
+<p>Solves problems of the form:</p>
+<pre><code>minimize    dot(obj, x)
+subject to  norm(x) ≤ r
+            oracle(x) == true,
+</code></pre>
+<p>where <code>obj</code> is an <code>AbstractVector</code>, and <code>oracle</code> tests membership of some convex body. The main workhorse is the <code>accp</code> function,
+which solves this problem using an Analytic Center Cutting Plane method. It yields a near-optimal vector <code>x</code>.</p>
+<p>For some vector <code>x</code>, <code>oracle(x)</code> should return <code>true</code> if <code>x</code> lies in the feasible set, or else a <code>Halfspace</code> containing the feasible
+set but not <code>x</code>. <code>Halfspace(slope, constant)</code> denotes the set <code>{z: dot(slope, z) ≤ constant}</code>.</p>
+<p>For background information on this algorithm, see <a href="https://arxiv.org/abs/2006.05319" rel="nofollow">this preprint</a>.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>Simply run</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> Pkg; Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>CopositiveAnalyticCenter<span class="pl-pds">"</span></span>)</pre></div>
+<p>This package will test if <a href="https://github.com/JuliaOpt/Gurobi.jl">Gurobi.jl</a> is installed properly.
+If not, <a href="https://github.com/JuliaOpt/ECOS.jl">ECOS.jl</a> and <a href="https://github.com/JuliaOpt/Cbc.jl">Cbc.jl</a> will be installed.</p>
+<h2><a id="user-content-testing-copositivity" class="anchor" aria-hidden="true" href="#testing-copositivity"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Testing copositivity</h2>
+<p>The package provides the <code>testcopositive</code> function, which may be used in defining your <code>oracle</code>. For some symmetric matrix <code>A</code>,
+<code>testcopositive(A)</code> returns a <code>Tuple</code> containing the optimal value and optimal solution to</p>
+<pre><code>minimize    y' * A * y
+subject to  sum(y) = 1
+            y ≥ 0.
+</code></pre>
+<p>To avoid having to set up the problem above from scratch every time <code>testcopositive</code> is called,
+you can create a <code>CopositiveChecker</code> instance <code>cc</code>, e.g. <code>cc = CopositiveChecker(10);</code> to set up an environment for testing 10-by-10
+matrices. To test the 10-by-10 matrix <code>A</code> for copositivity using <code>cc</code>, call <code>testcopositive(A, cc)</code>.</p>
+<h2><a id="user-content-transforming-vectors-to-symmetric-matrices" class="anchor" aria-hidden="true" href="#transforming-vectors-to-symmetric-matrices"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Transforming vectors to symmetric matrices</h2>
+<p>To transform a vector to a symmetric matrix, you can use the <code>vec2mat</code> function included in the package. Its inverse is <code>vec2matinv</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CopositiveAnalyticCenter
+
+julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">vec2mat</span>([<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>])
+<span class="pl-c1">3</span><span class="pl-k">×</span><span class="pl-c1">3</span> Array{Int64,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>  <span class="pl-c1">2</span>  <span class="pl-c1">4</span>
+ <span class="pl-c1">2</span>  <span class="pl-c1">3</span>  <span class="pl-c1">5</span>
+ <span class="pl-c1">4</span>  <span class="pl-c1">5</span>  <span class="pl-c1">6</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vec2matinv</span>(A)
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">2</span>
+ <span class="pl-c1">3</span>
+ <span class="pl-c1">4</span>
+ <span class="pl-c1">5</span>
+ <span class="pl-c1">6</span></pre></div>
+<p>The adjoint of <code>vec2mat</code> with respect to <code>dot</code> from LinearAlgebra.jl is <code>vec2matadj</code>.</p>
+<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> [<span class="pl-c1">1</span> <span class="pl-c1">2</span>; <span class="pl-c1">2</span> <span class="pl-c1">3</span>];
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">vec2matadj</span>(A)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">4</span>
+ <span class="pl-c1">3</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> LinearAlgebra<span class="pl-k">:</span> dot
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">dot</span>(<span class="pl-c1">vec2matadj</span>(A), [<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">0</span>]) <span class="pl-k">==</span> <span class="pl-c1">dot</span>(A, <span class="pl-c1">vec2mat</span>([<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">0</span>]))
+<span class="pl-c1">true</span></pre></div>
+<h2><a id="user-content-example-usage" class="anchor" aria-hidden="true" href="#example-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example usage</h2>
+<p>To solve the problem</p>
+<pre><code>minimize    dot(A, X)
+subject to  norm(vec2matinv(X)) ≤ 1
+            X is copositive,
+</code></pre>
+<p>use the following function:</p>
+<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> CopositiveAnalyticCenter
+
+<span class="pl-k">function</span> <span class="pl-en">test_completely_positive</span>(A)
+    <span class="pl-c"><span class="pl-c">#</span> X = vec2mat(x), so dot(A, X) = dot(vec2matadj(A), x)</span>
+    obj <span class="pl-k">=</span> <span class="pl-c1">vec2matadj</span>(A)
+    cc <span class="pl-k">=</span> <span class="pl-c1">CopositiveChecker</span>(<span class="pl-c1">size</span>(A,<span class="pl-c1">1</span>))
+    <span class="pl-k">function</span> <span class="pl-en">oracle</span>(x<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>)
+        <span class="pl-c"><span class="pl-c">#</span> Test if X = vec2mat(x) is copositive</span>
+        val, y <span class="pl-k">=</span> <span class="pl-c1">testcopositive</span>(<span class="pl-c1">vec2mat</span>(x), cc)
+        <span class="pl-k">if</span> val <span class="pl-k">&gt;=</span> <span class="pl-c1">0</span>
+            <span class="pl-c"><span class="pl-c">#</span> If val ≥ 0, X = vec2mat(x) is copositive, so the oracle returns</span>
+            <span class="pl-c"><span class="pl-c">#</span> true.</span>
+            <span class="pl-k">return</span> <span class="pl-c1">true</span>
+        <span class="pl-k">else</span>
+            <span class="pl-c"><span class="pl-c">#</span> Otherwise, y ≥ 0 satisfies y' X y &lt; 0, while any copositive matrix</span>
+            <span class="pl-c"><span class="pl-c">#</span> lies in the halfspace</span>
+            <span class="pl-c"><span class="pl-c">#</span> {Z: y' Z y ≥ 0} = {vec2mat(z): dot(vec2matadj(-y*y'), z) ≤ 0}.</span>
+            <span class="pl-k">return</span> <span class="pl-c1">Halfspace</span>(<span class="pl-c1">vec2matadj</span>(<span class="pl-k">-</span>y<span class="pl-k">*</span>y<span class="pl-k">'</span>), <span class="pl-c1">0.</span>)
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    r <span class="pl-k">=</span> <span class="pl-c1">1.</span>
+    x <span class="pl-k">=</span> <span class="pl-c1">accp</span>(obj, oracle, r)
+    <span class="pl-k">return</span> <span class="pl-c1">vec2mat</span>(x)
+<span class="pl-k">end</span></pre></div>
+<p>The package ships with the function <code>completely_positive_cut</code> which does the same thing as <code>test_completely_positive</code> above, but with some additional options.</p>
+<p>Users interested in a yes-no answer to the question if <code>A</code> is completely positive can call <code>is_completely_positive(A)</code>.</p>
+</article></div>
