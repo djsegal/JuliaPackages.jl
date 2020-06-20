@@ -20,6 +20,9 @@ module JuliaPackages
   using Languages
   using TextAnalysis
 
+  using VersionParsing
+  using RegistryTools: Compress
+
   export general_db, decibans_db
   export packages_db, trending_db
 
@@ -28,6 +31,7 @@ module JuliaPackages
   include("scrape_trending_packages.jl")
 
   include("init.jl")
+
   include("package_paths.jl")
   include("combine_datasets.jl")
 

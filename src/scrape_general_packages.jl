@@ -13,6 +13,7 @@ function scrape_general_packages()
 
   gitlab_packages = []
   renamed_packages = []
+  independent_packages = []
 
   for cur_char in 'A':'Z'
     for cur_package in readdir("../tmp/General/$(cur_char)")
@@ -52,20 +53,39 @@ function scrape_general_packages()
       push!(cur_packages, package_name)
       push!(cur_owners, cur_owner)
 
-      if !isfile("../tmp/General/$(cur_char)/$(cur_package)/Deps.toml")
+      deps_file = "../tmp/General/$(cur_char)/$(cur_package)/Deps.toml"
+      if !isfile(deps_file)
         push!(cur_shallow_depending, Set())
         continue
       end
 
-      deps_dict = Pkg.TOML.parsefile(
-        "../tmp/General/$(cur_char)/$(cur_package)/Deps.toml"
-      )
+      deps_dict = Compress.load(deps_file)
+      if isempty(deps_dict)
+        push!(cur_shallow_depending, Set())
+        continue
+      end
 
-      push!(
-        cur_shallow_depending, Set(Base.Iterators.flatten(map(keys,values(deps_dict))))
-      )
+      versions_file = "../tmp/General/$(cur_char)/$(cur_package)/Versions.toml"
+      @assert isfile(versions_file)
+
+      versions_toml = Pkg.TOML.parsefile(versions_file)
+      package_version = maximum(vparse.(keys(versions_toml)))
+
+      if !haskey(deps_dict, package_version)
+        push!(independent_packages, package_name)
+        push!(cur_shallow_depending, Set())
+
+        continue
+      end
+
+      package_dependencies = Set(keys(deps_dict[package_version]))
+      push!(cur_shallow_depending, package_dependencies)
     end
   end
+
+  @show independent_packages
+  @show gitlab_packages
+  @show renamed_packages
 
   cur_request = JSON.parse(
     String(HTTP.get("https://api.github.com/repos/JuliaLang/julia/contents/stdlib").body)
