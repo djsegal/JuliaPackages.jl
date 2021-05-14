@@ -12,8 +12,9 @@ function scrape_general_packages()
   cur_shallow_depending = []
 
   gitlab_packages = []
-  renamed_packages = []
   independent_packages = []
+
+  rename_dict = Dict()
 
   for cur_char in 'A':'Z'
     for cur_package in readdir("../tmp/General/$(cur_char)")
@@ -41,13 +42,15 @@ function scrape_general_packages()
       )[end-1:end]
 
       if lowercase(package_name) != lowercase(cur_package)
-        if package_name == "StatPlots"
-          cur_package = "StatPlots"
-        else
-          push!(renamed_packages, package_name)
-          push!(renamed_packages, cur_package)
-          continue
-        end
+        println(["renamed", package_name, cur_package])
+        rename_dict[package_name] = cur_package
+        package_name = cur_package
+      end
+
+      @assert lowercase(package_name) == lowercase(cur_package)
+
+      if package_name in cur_packages
+        continue
       end
 
       push!(cur_packages, package_name)
@@ -85,7 +88,6 @@ function scrape_general_packages()
 
   @show independent_packages
   @show gitlab_packages
-  @show renamed_packages
 
   cur_request = JSON.parse(
     String(HTTP.get("https://api.github.com/repos/JuliaLang/julia/contents/stdlib").body)
@@ -93,7 +95,6 @@ function scrape_general_packages()
 
   other_list = [
     gitlab_packages...,
-    renamed_packages...,
     "Pkg",
     "Statistics"
   ]
@@ -110,6 +111,17 @@ function scrape_general_packages()
     end
   end
 
+  for (cur_index, cur_set) in enumerate(cur_shallow_depending)
+    new_values = []
+    for cur_value in cur_set
+      if cur_value in keys(rename_dict)
+        cur_value = rename_dict[cur_value]
+      end
+      push!(new_values, cur_value)
+    end
+    cur_shallow_depending[cur_index] = Set(new_values)
+  end
+
   cur_dict = OrderedDict(zip(cur_packages, cur_shallow_depending))
 
   while true
@@ -119,8 +131,8 @@ function scrape_general_packages()
       cur_set = [cur_values...]
 
       for cur_value in cur_values
-          @assert cur_value in keys(cur_dict)
-          append!(cur_set, cur_dict[cur_value])
+        @assert cur_value in keys(cur_dict)
+        append!(cur_set, cur_dict[cur_value])
       end
 
       cur_set = Set(cur_set)
@@ -157,8 +169,9 @@ function scrape_general_packages()
   for (cur_depending_list, cur_dependents_list) in dependents_list
     for (cur_package, cur_depending) in zip(cur_packages, cur_depending_list)
       for cur_depender in cur_depending
-        cur_index = findfirst(tmp_package -> tmp_package == cur_depender, cur_packages)
-        @assert !isnothing(cur_index)
+        cur_indices = findall(tmp_package -> tmp_package == cur_depender, cur_packages)
+        @assert length(cur_indices) == 1
+        cur_index = cur_indices[1]
 
         push!(cur_dependents_list[cur_index], cur_package)
       end
