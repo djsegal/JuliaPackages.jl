@@ -41,7 +41,14 @@ More precisely, the most top level Julia type can be a mutable one, but all cont
 <p>Because C doesn't support multiple return values, often C functions will take pointers to data that the function will modify.</p>
 </blockquote>
 <p>Consider <a href="https://github.com/ValveSoftware/openvr/blob/master/headers/openvr.h#L3625">the following C/C++ function</a></p>
-<div class="highlight highlight-source-c++"><pre><span class="pl-c"><span class="pl-c">/*</span>* Computes the overlay-space pixel coordinates of where the ray intersects the overlay with the</span>
+<div class="highlight highlight-source-c++ position-relative" data-snippet-clipboard-copy-content="/** Computes the overlay-space pixel coordinates of where the ray intersects the overlay with the
+* specified settings. Returns false if there is no intersection. */
+bool ComputeOverlayIntersection(
+	uint64_t ulOverlayHandle,
+	const VROverlayIntersectionParams_t *pParams,
+	VROverlayIntersectionResults_t *pResults
+);
+"><pre><span class="pl-c"><span class="pl-c">/*</span>* Computes the overlay-space pixel coordinates of where the ray intersects the overlay with the</span>
 <span class="pl-c">* specified settings. Returns false if there is no intersection. <span class="pl-c">*/</span></span>
 <span class="pl-k">bool</span> <span class="pl-en">ComputeOverlayIntersection</span>(
 	<span class="pl-c1">uint64_t</span> ulOverlayHandle,
@@ -49,7 +56,36 @@ More precisely, the most top level Julia type can be a mutable one, but all cont
 	VROverlayIntersectionResults_t *pResults
 );</pre></div>
 <p>Here <code>pResults</code> should hold a pointer to a <code>VROverlayIntersectionResults_t</code> C-struct that is defined in the following way</p>
-<div class="highlight highlight-source-c++"><pre><span class="pl-k">enum</span> ETrackingUniverseOrigin
+<div class="highlight highlight-source-c++ position-relative" data-snippet-clipboard-copy-content="enum ETrackingUniverseOrigin
+{
+	…
+};
+
+struct HmdVector3_t
+{
+	float v[3];
+};
+
+struct HmdVector2_t
+{
+	float v[2];
+};
+
+struct VROverlayIntersectionParams_t
+{
+	HmdVector3_t vSource;
+	HmdVector3_t vDirection;
+	ETrackingUniverseOrigin eOrigin;
+};
+
+struct VROverlayIntersectionResults_t
+{
+	HmdVector3_t vPoint;
+	HmdVector3_t vNormal;
+	HmdVector2_t vUVs;
+	float fDistance;
+};
+"><pre><span class="pl-k">enum</span> ETrackingUniverseOrigin
 {
 	…
 };
@@ -79,7 +115,29 @@ More precisely, the most top level Julia type can be a mutable one, but all cont
 	<span class="pl-k">float</span> <span class="pl-smi">fDistance</span>;
 };</pre></div>
 <p>In order to provide C-layout compatible Julia structs, we might use</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">const</span> ETrackingUniverseOrigin <span class="pl-k">=</span> UInt32 <span class="pl-c"><span class="pl-c">#</span> sizeof(ETrackingUniverseOrigin) == 4</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="const ETrackingUniverseOrigin = UInt32 # sizeof(ETrackingUniverseOrigin) == 4
+
+struct HmdVector3_t # sizeof(HmdVector3_t) == 12
+  v :: SArray{Tuple{3},Float32,1,3}
+end
+
+struct HmdVector2_t # sizeof(HmdVector2_t) == 8
+  v :: SArray{Tuple{2},Float32,1,2}
+end
+
+struct VROverlayIntersectionParams_t # sizeof(VROverlayIntersectionParams_t) == 28
+  vSource :: HmdVector3_t
+  vDirection :: HmdVector3_t
+  eOrigin :: ETrackingUniverseOrigin
+end
+
+struct VROverlayIntersectionResults_t # sizeof(VROverlayIntersectionResults_t) == 36
+  vPoint :: HmdVector3_t
+  vNormal :: HmdVector3_t
+  vUVs :: HmdVector2_t
+  fDistance :: Float32
+end
+"><pre><span class="pl-k">const</span> ETrackingUniverseOrigin <span class="pl-k">=</span> UInt32 <span class="pl-c"><span class="pl-c">#</span> sizeof(ETrackingUniverseOrigin) == 4</span>
 
 <span class="pl-k">struct</span> HmdVector3_t <span class="pl-c"><span class="pl-c">#</span> sizeof(HmdVector3_t) == 12</span>
   v <span class="pl-k">::</span> <span class="pl-c1">SArray{Tuple{3},Float32,1,3}</span>
@@ -106,7 +164,17 @@ More precisely, the most top level Julia type can be a mutable one, but all cont
 <h1><a id="user-content-what-this-module-provides" class="anchor" aria-hidden="true" href="#what-this-module-provides"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>What this module provides</h1>
 <h2><a id="user-content-mem" class="anchor" aria-hidden="true" href="#mem"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><code>@mem</code></h2>
 <p>Consider the Julia immutable types <code>Pconst</code> and <code>Cconst</code></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Pconst <span class="pl-c"><span class="pl-c">#</span> sizeof(Pconst) == 8</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct Pconst # sizeof(Pconst) == 8
+  x :: Float32
+  y :: Float32
+end
+
+struct Cconst # sizeof(Cconst) == 12
+  r :: Float32
+  g :: Float32
+  b :: Float32
+end
+"><pre><span class="pl-k">struct</span> Pconst <span class="pl-c"><span class="pl-c">#</span> sizeof(Pconst) == 8</span>
   x <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
   y <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
 <span class="pl-k">end</span>
@@ -117,25 +185,56 @@ More precisely, the most top level Julia type can be a mutable one, but all cont
   b <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
 <span class="pl-k">end</span></pre></div>
 <p>and the mutable type <code>Vmutbl</code></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> Vmutbl <span class="pl-c"><span class="pl-c">#</span> sizeof(Vmutbl) == 20</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="mutable struct Vmutbl # sizeof(Vmutbl) == 20
+  p :: Pconst
+  c :: Cconst
+end
+"><pre><span class="pl-k">mutable struct</span> Vmutbl <span class="pl-c"><span class="pl-c">#</span> sizeof(Vmutbl) == 20</span>
   p <span class="pl-k">::</span> <span class="pl-c1">Pconst</span>
   c <span class="pl-k">::</span> <span class="pl-c1">Cconst</span>
 <span class="pl-k">end</span></pre></div>
 <p>for</p>
-<div class="highlight highlight-source-julia"><pre>p <span class="pl-k">=</span> <span class="pl-c1">Pconst</span>(<span class="pl-c1">1</span>f0,<span class="pl-c1">2</span>f0)     <span class="pl-c"><span class="pl-c">#</span> Pconst(1.0f0, 2.0f0)</span>
-c <span class="pl-k">=</span> <span class="pl-c1">Cconst</span>(<span class="pl-c1">0</span>f0,<span class="pl-c1">1</span>f0,<span class="pl-c1">0</span>f0) <span class="pl-c"><span class="pl-c">#</span> Cconst(0.0f0, 1.0f0, 0.0f0)</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="p = Pconst(1f0,2f0)     # Pconst(1.0f0, 2.0f0)
+c = Cconst(0f0,1f0,0f0) # Cconst(0.0f0, 1.0f0, 0.0f0)
+v = Vmutbl(p,c)         # Vmutbl(Pconst(1.0f0, 2.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))
+"><pre>p <span class="pl-k">=</span> <span class="pl-c1">Pconst</span>(<span class="pl-c1">1f0</span>,<span class="pl-c1">2f0</span>)     <span class="pl-c"><span class="pl-c">#</span> Pconst(1.0f0, 2.0f0)</span>
+c <span class="pl-k">=</span> <span class="pl-c1">Cconst</span>(<span class="pl-c1">0f0</span>,<span class="pl-c1">1f0</span>,<span class="pl-c1">0f0</span>) <span class="pl-c"><span class="pl-c">#</span> Cconst(0.0f0, 1.0f0, 0.0f0)</span>
 v <span class="pl-k">=</span> <span class="pl-c1">Vmutbl</span>(p,c)         <span class="pl-c"><span class="pl-c">#</span> Vmutbl(Pconst(1.0f0, 2.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))</span></pre></div>
 <p>we can alter the top-level fields of <code>v</code></p>
-<div class="highlight highlight-source-julia"><pre>v<span class="pl-k">.</span>p <span class="pl-k">=</span> <span class="pl-c1">Pconst</span>(<span class="pl-c1">3</span>f0,<span class="pl-c1">2</span>f0)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="v.p = Pconst(3f0,2f0)
+v # Vmutbl(Pconst(3.0f0, 2.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))
+"><pre>v<span class="pl-k">.</span>p <span class="pl-k">=</span> <span class="pl-c1">Pconst</span>(<span class="pl-c1">3f0</span>,<span class="pl-c1">2f0</span>)
 v <span class="pl-c"><span class="pl-c">#</span> Vmutbl(Pconst(3.0f0, 2.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))</span></pre></div>
 <p>but not the more nested ones, because they are immutable</p>
-<div class="highlight highlight-source-julia"><pre>v<span class="pl-k">.</span>p<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">5</span>f0
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="v.p.x = 5f0
+# ERROR: setfield! immutable struct of type Pconst cannot be change
+"><pre>v<span class="pl-k">.</span>p<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">5f0</span>
 <span class="pl-c"><span class="pl-c">#</span> ERROR: setfield! immutable struct of type Pconst cannot be change</span></pre></div>
 <p>since we assume that these immutables do not need to stay <em>constant</em>, we can replace them at their memory location</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@mem</span> v<span class="pl-k">.</span>p<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">5</span>f0
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@mem v.p.x = 5f0
+v # Vmutbl(Pconst(5.0f0, 3.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))
+"><pre><span class="pl-c1">@mem</span> v<span class="pl-k">.</span>p<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">5f0</span>
 v <span class="pl-c"><span class="pl-c">#</span> Vmutbl(Pconst(5.0f0, 3.0f0), Cconst(0.0f0, 1.0f0, 0.0f0))</span></pre></div>
 <p>This currently also works for StaticArrays</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> A
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="mutable struct A
+   data :: SArray{Tuple{4,3,2},Float32,3,4*3*2}
+end
+
+a = A(1:4*3*2)
+# A( Float32[1.0  5.0  9.0;  2.0  6.0  10.0; 3.0  7.0  11.0; 4.0  8.0  12.0]
+#    Float32[13.0 17.0 21.0; 14.0 18.0 22.0; 15.0 19.0 23.0; 16.0 20.0 24.0])
+
+a.data[1,1,2] # 13.0
+@mem a.data[1,1,2] = 77f0 # 77.0
+a.data[1,1,2] # 77.0
+
+for I = CartesianIndices(a.data)
+  (x,y,z) = Tuple(I)
+  @mem a.data[x,y,z] = x+y+z
+end
+# A( Float32[3.0 4.0 5.0; 4.0 5.0 6.0; 5.0 6.0 7.0; 6.0 7.0 8.0]
+#    Float32[4.0 5.0 6.0; 5.0 6.0 7.0; 6.0 7.0 8.0; 7.0 8.0 9.0])
+"><pre><span class="pl-k">mutable struct</span> A
    data <span class="pl-k">::</span> <span class="pl-c1">SArray{Tuple{4,3,2},Float32,3,4*3*2}</span>
 <span class="pl-k">end</span>
 
@@ -144,7 +243,7 @@ a <span class="pl-k">=</span> <span class="pl-c1">A</span>(<span class="pl-c1">1
 <span class="pl-c"><span class="pl-c">#</span>    Float32[13.0 17.0 21.0; 14.0 18.0 22.0; 15.0 19.0 23.0; 16.0 20.0 24.0])</span>
 
 a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-c"><span class="pl-c">#</span> 13.0</span>
-<span class="pl-c1">@mem</span> a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-c1">77</span>f0 <span class="pl-c"><span class="pl-c">#</span> 77.0</span>
+<span class="pl-c1">@mem</span> a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-c1">77f0</span> <span class="pl-c"><span class="pl-c">#</span> 77.0</span>
 a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">2</span>] <span class="pl-c"><span class="pl-c">#</span> 77.0</span>
 
 <span class="pl-k">for</span> I <span class="pl-k">=</span> <span class="pl-c1">CartesianIndices</span>(a<span class="pl-k">.</span>data)
@@ -161,7 +260,13 @@ a<span class="pl-k">.</span>data[<span class="pl-c1">1</span>,<span class="pl-c1
 <li><code>@voidptr</code> just reinterprets <code>@ptr</code> to <code>Ptr{Nothing}</code></li>
 <li><code>@ptrtyped</code> of <code>T</code> just reinterprets <code>@ptr</code> to <code>Ptr{T}</code></li>
 </ul>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> StaticArrays
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using StaticArrays
+
+m = Ref(SVector{8,UInt8}(reverse([0xde, 0xad, 0xbe, 0xef, 0xba, 0xad, 0xf0, 0x0d])))
+unsafe_load(@ptr m[][8]) # 0xde
+unsafe_load(@ptr m[][7]) # 0xad
+unsafe_load(@typedptr UInt32 m[][3]) # 0xbeefbaad
+"><pre><span class="pl-k">using</span> StaticArrays
 
 m <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(<span class="pl-c1">SVector</span><span class="pl-c1">{8,UInt8}</span>(<span class="pl-c1">reverse</span>([<span class="pl-c1">0xde</span>, <span class="pl-c1">0xad</span>, <span class="pl-c1">0xbe</span>, <span class="pl-c1">0xef</span>, <span class="pl-c1">0xba</span>, <span class="pl-c1">0xad</span>, <span class="pl-c1">0xf0</span>, <span class="pl-c1">0x0d</span>])))
 <span class="pl-c1">unsafe_load</span>(<span class="pl-c1">@ptr</span> m[][<span class="pl-c1">8</span>]) <span class="pl-c"><span class="pl-c">#</span> 0xde</span>
@@ -171,7 +276,29 @@ m <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(<span class="pl-c1"
 <h2><a id="user-content-yolo" class="anchor" aria-hidden="true" href="#yolo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><code>@yolo</code></h2>
 <p><em>(experimental feature)</em></p>
 <p>There are some cases where <code>@mem</code> is set up to refuse writing to memory by assertions, that are enabled for <code>@yolo</code>.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> C <span class="pl-c"><span class="pl-c">#</span> mutable non-bitstype</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="mutable struct C # mutable non-bitstype
+  x :: Float32
+end
+struct B # immmutable non-bitstype
+  x :: Float32
+  c :: C
+end
+mutable struct A # mutable non-bitstype
+  b :: B
+end
+
+c = C(1f0)
+b = B(2f0,c)
+a = A(b)
+
+a.b.x = 3f0 # ↯ ERROR: setfield! immutable struct of type B cannot be changed
+
+f(a::A, v::Float32) = @mem a.b.x = v
+
+f(a,3f0)
+# ↯ ERROR: From type 'B' the field 'x' is of type 'Float32' and it is located in type 'B' at offset 0.
+#          The base type 'B' is immutable.
+"><pre><span class="pl-k">mutable struct</span> C <span class="pl-c"><span class="pl-c">#</span> mutable non-bitstype</span>
   x <span class="pl-k">::</span> <span class="pl-c1">Float32</span>
 <span class="pl-k">end</span>
 <span class="pl-k">struct</span> B <span class="pl-c"><span class="pl-c">#</span> immmutable non-bitstype</span>
@@ -182,25 +309,30 @@ m <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(<span class="pl-c1"
   b <span class="pl-k">::</span> <span class="pl-c1">B</span>
 <span class="pl-k">end</span>
 
-c <span class="pl-k">=</span> <span class="pl-c1">C</span>(<span class="pl-c1">1</span>f0)
-b <span class="pl-k">=</span> <span class="pl-c1">B</span>(<span class="pl-c1">2</span>f0,c)
+c <span class="pl-k">=</span> <span class="pl-c1">C</span>(<span class="pl-c1">1f0</span>)
+b <span class="pl-k">=</span> <span class="pl-c1">B</span>(<span class="pl-c1">2f0</span>,c)
 a <span class="pl-k">=</span> <span class="pl-c1">A</span>(b)
 
-a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">3</span>f0 <span class="pl-c"><span class="pl-c">#</span> ↯ ERROR: setfield! immutable struct of type B cannot be changed</span>
+a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">3f0</span> <span class="pl-c"><span class="pl-c">#</span> ↯ ERROR: setfield! immutable struct of type B cannot be changed</span>
 
 <span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, v<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> <span class="pl-c1">@mem</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> v
 
-<span class="pl-c1">f</span>(a,<span class="pl-c1">3</span>f0)
+<span class="pl-c1">f</span>(a,<span class="pl-c1">3f0</span>)
 <span class="pl-c"><span class="pl-c">#</span> ↯ ERROR: From type 'B' the field 'x' is of type 'Float32' and it is located in type 'B' at offset 0.</span>
 <span class="pl-c"><span class="pl-c">#</span>          The base type 'B' is immutable.</span></pre></div>
 <p>Since <code>C</code> is a non-bitstype, this make <code>B</code> also a non-bitstype but since <code>B</code> is immutable, <code>pointer_from_objref</code> won't work.
 To obtain the memory location of <code>b</code>, <code>@yolo</code> interprets <code>b</code> <em>inside</em> of <code>a</code> <a href="https://discourse.julialang.org/t/memory-layout-of-structs-with-mutable-fields/21400/13" rel="nofollow">as a pointer</a> to a <code>B</code> and uses that.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, v<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> <span class="pl-c1">@yolo</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> v
-<span class="pl-c1">f</span>(a,<span class="pl-c1">3</span>f0)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="f(a::A, v::Float32) = @yolo a.b.x = v
+f(a,3f0)
+a.b.x # 3.00
+"><pre><span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, v<span class="pl-k">::</span><span class="pl-c1">Float32</span>) <span class="pl-k">=</span> <span class="pl-c1">@yolo</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-k">=</span> v
+<span class="pl-c1">f</span>(a,<span class="pl-c1">3f0</span>)
 a<span class="pl-k">.</span>b<span class="pl-k">.</span>x <span class="pl-c"><span class="pl-c">#</span> 3.00</span></pre></div>
 <p>In the same example, suppose we wanted to change <code>a.b.c</code> <em>inside</em> of <code>a.b</code></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, c<span class="pl-k">::</span><span class="pl-c1">C</span>) <span class="pl-k">=</span> <span class="pl-c1">@yolo</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>c <span class="pl-k">=</span> c
-<span class="pl-c1">f</span>(a,<span class="pl-c1">C</span>(<span class="pl-c1">3</span>f0))</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="f(a::A, c::C) = @yolo a.b.c = c
+f(a,C(3f0))
+"><pre><span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, c<span class="pl-k">::</span><span class="pl-c1">C</span>) <span class="pl-k">=</span> <span class="pl-c1">@yolo</span> a<span class="pl-k">.</span>b<span class="pl-k">.</span>c <span class="pl-k">=</span> c
+<span class="pl-c1">f</span>(a,<span class="pl-c1">C</span>(<span class="pl-c1">3f0</span>))</pre></div>
 <p>From type <code>B</code> the field <code>c</code> is of type <code>C</code> and it is located in type <code>B</code> at offset 8.
 Since <code>C</code> is a non-bitstype, <code>@yolo</code> will use <code>pointer_from_objref</code> on the right hand side to obtain a pointer to that and then replace the reference to <code>c</code> <em>inside</em> <code>a.b</code>.</p>
 <p><em>WARNING: this probably produces memory leaks!</em></p>

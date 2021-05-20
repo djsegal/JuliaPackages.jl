@@ -12,6 +12,70 @@ The name <code>scandir</code> was chosen to parallel python's <code>os.scandir</
 <h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
 <p><code>scandir(path::AbstractString=".")</code> returns a vector of <code>DirEntry</code>.
 Each <code>DirEntry</code>'s filename is accessible via the <code>name</code> field.
-Its type can be queried by the standard <code>Base</code> functions (<code>isfile</code>, <code>isdir</code>, <code>islink</code>, <code>isfifo</code>, <code>issocket</code>, <code>ischardev</code>, <code>isblockdev</code>).</p>
-<p><code>ScanDir.walkdir</code> is a faster implementation of <code>Base.walkdir</code> (<a href="https://docs.julialang.org/en/v1/base/file/#Base.Filesystem.walkdir" rel="nofollow">https://docs.julialang.org/en/v1/base/file/#Base.Filesystem.walkdir</a>), and has the same interface.</p>
+Its type can be queried by the standard <code>Base</code> functions (<code>isfile</code>, <code>isdir</code>, <code>islink</code>, <code>isfifo</code>, <code>issocket</code>, <code>ischardev</code>, <code>isblockdev</code>). This will only call <code>stat</code> if  necessary -- which happens if the entry is a symlink and the type of the target needs to be determined. In this case, the link is followed from the path supplied to <code>scandir</code>, so the result may depend on the working directory if that path is relative.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; dir = mktempdir();
+julia&gt; cd(dir)
+julia&gt; mkdir(&quot;subdir&quot;);
+julia&gt; touch(&quot;file&quot;);
+julia&gt; symlink(&quot;subdir&quot;, &quot;link&quot;)
+julia&gt; entries = scandir()
+3-element Array{ScanDir.DirEntry,1}:
+ ScanDir.DirEntry(&quot;file&quot;, &quot;.\\file&quot;, 1)
+ ScanDir.DirEntry(&quot;link&quot;, &quot;.\\link&quot;, 3)
+ ScanDir.DirEntry(&quot;subdir&quot;, &quot;.\\subdir&quot;, 2)
+
+julia&gt; isdir.(entries) # triggers `stat` call for &quot;link&quot; only
+3-element BitArray{1}:
+ 0
+ 1
+ 1
+"><pre>julia<span class="pl-k">&gt;</span> dir <span class="pl-k">=</span> <span class="pl-c1">mktempdir</span>();
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">cd</span>(dir)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">mkdir</span>(<span class="pl-s"><span class="pl-pds">"</span>subdir<span class="pl-pds">"</span></span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">touch</span>(<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">symlink</span>(<span class="pl-s"><span class="pl-pds">"</span>subdir<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>link<span class="pl-pds">"</span></span>)
+julia<span class="pl-k">&gt;</span> entries <span class="pl-k">=</span> <span class="pl-c1">scandir</span>()
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{ScanDir<span class="pl-k">.</span>DirEntry,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ ScanDir<span class="pl-k">.</span><span class="pl-c1">DirEntry</span>(<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-cce">\\</span>file<span class="pl-pds">"</span></span>, <span class="pl-c1">1</span>)
+ ScanDir<span class="pl-k">.</span><span class="pl-c1">DirEntry</span>(<span class="pl-s"><span class="pl-pds">"</span>link<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-cce">\\</span>link<span class="pl-pds">"</span></span>, <span class="pl-c1">3</span>)
+ ScanDir<span class="pl-k">.</span><span class="pl-c1">DirEntry</span>(<span class="pl-s"><span class="pl-pds">"</span>subdir<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-cce">\\</span>subdir<span class="pl-pds">"</span></span>, <span class="pl-c1">2</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">isdir</span>.(entries) <span class="pl-c"><span class="pl-c">#</span> triggers `stat` call for "link" only</span>
+<span class="pl-c1">3</span><span class="pl-k">-</span>element BitArray{<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">1</span></pre></div>
+<p><code>ScanDir.walkdir</code> is a faster implementation of <code>Base.walkdir</code> (<a href="https://docs.julialang.org/en/v1/base/file/#Base.Filesystem.walkdir" rel="nofollow">https://docs.julialang.org/en/v1/base/file/#Base.Filesystem.walkdir</a>), and has a compatible interface. Its interface differs from <code>Base.walkdir</code> in two ways:</p>
+<ul>
+<li>it returns named tuples (root=..., dirs=..., file=...)</li>
+<li>it supports a <code>prune</code> keyword argument to filter the returned contents.</li>
+</ul>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; touch(&quot;subdir/file2&quot;);
+julia&gt; mkdir(&quot;subdir/skipme&quot;);
+julia&gt; touch(&quot;subdir/skipme/file3&quot;);
+julia&gt; collect(ScanDir.walkdir(&quot;.&quot;))
+3-element Array{Any,1}:
+ (root = &quot;.&quot;, dirs = [&quot;subdir&quot;], files = [&quot;file&quot;, &quot;link&quot;])
+ (root = &quot;.\\subdir&quot;, dirs = [&quot;skipme&quot;], files = [&quot;file2&quot;])
+ (root = &quot;.\\subdir\\skipme&quot;, dirs = String[], files = [&quot;file3&quot;])
+
+julia&gt; collect(ScanDir.walkdir(&quot;.&quot;, prune = e-&gt;startswith(e.name, &quot;skip&quot;)))
+2-element Array{Any,1}:
+ (root = &quot;.&quot;, dirs = [&quot;subdir&quot;], files = [&quot;file&quot;, &quot;link&quot;])
+ (root = &quot;.\\subdir&quot;, dirs = String[], files = [&quot;file2&quot;])
+
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">touch</span>(<span class="pl-s"><span class="pl-pds">"</span>subdir/file2<span class="pl-pds">"</span></span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">mkdir</span>(<span class="pl-s"><span class="pl-pds">"</span>subdir/skipme<span class="pl-pds">"</span></span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">touch</span>(<span class="pl-s"><span class="pl-pds">"</span>subdir/skipme/file3<span class="pl-pds">"</span></span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">collect</span>(ScanDir<span class="pl-k">.</span><span class="pl-c1">walkdir</span>(<span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-pds">"</span></span>))
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Any,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ (root <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-pds">"</span></span>, dirs <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>subdir<span class="pl-pds">"</span></span>], files <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>link<span class="pl-pds">"</span></span>])
+ (root <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-cce">\\</span>subdir<span class="pl-pds">"</span></span>, dirs <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>skipme<span class="pl-pds">"</span></span>], files <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>file2<span class="pl-pds">"</span></span>])
+ (root <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-cce">\\</span>subdir<span class="pl-cce">\\</span>skipme<span class="pl-pds">"</span></span>, dirs <span class="pl-k">=</span> String[], files <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>file3<span class="pl-pds">"</span></span>])
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">collect</span>(ScanDir<span class="pl-k">.</span><span class="pl-c1">walkdir</span>(<span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-pds">"</span></span>, prune <span class="pl-k">=</span> e<span class="pl-k">-&gt;</span><span class="pl-c1">startswith</span>(e<span class="pl-k">.</span>name, <span class="pl-s"><span class="pl-pds">"</span>skip<span class="pl-pds">"</span></span>)))
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Any,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ (root <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-pds">"</span></span>, dirs <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>subdir<span class="pl-pds">"</span></span>], files <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>link<span class="pl-pds">"</span></span>])
+ (root <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-cce">\\</span>subdir<span class="pl-pds">"</span></span>, dirs <span class="pl-k">=</span> String[], files <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>file2<span class="pl-pds">"</span></span>])
+</pre></div>
 </article></div>

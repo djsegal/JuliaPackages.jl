@@ -3,9 +3,11 @@
   algorithm over matrix product states as explained in Schollwöck’s <a href="https://www.sciencedirect.com/science/article/pii/S0003491610001752" rel="nofollow">The
   density-matrix renormalization group in the age of matrix product
   states</a>. A similar project has been undertaken in <a href="https://github.com/0/LatticeSweeper.jl">LatticeSweeper.jl</a>.</p>
-<p>To acquire this package, simply open a <code>julia</code> repl and type</p>
-<pre>] add https://github.com/MasonProtter/MatrixProductStates.jl.git
-</pre>
+<p>I’m not longer actively developthing this library, but I think it still has value as an educational resource for those wanting to learn DMRG.
+  Julia made it possible for me to implement this package using syntax which is very close to the math written in the online literature.</p>
+<p>To acquire this package, simply open a <code>julia</code> repl (obtained from <a href="https://julialang.org/downloads/" rel="nofollow">https://julialang.org/downloads/</a>) and type</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Pkg; Pkg.add(&quot;https://github.com/MasonProtter/MatrixProductStates.jl.git&quot;)
+"><pre><span class="pl-k">using</span> Pkg; Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>https://github.com/MasonProtter/MatrixProductStates.jl.git<span class="pl-pds">"</span></span>)</pre></div>
 <h2><a id="user-content-example-transverse-field-ising-model" class="anchor" aria-hidden="true" href="#example-transverse-field-ising-model"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example: Transverse Field Ising Model</h2>
 <details><summary>Click me!</summary>
 <p>
@@ -22,7 +24,25 @@
 </pre>
 <p>We can study this Hamiltonian using MatrixProductStates.jl as follows:</p>
 <p>First, make a function for generating the Hamiltonian given a coupling strength <code>g = h/J</code> and a system length <code>L</code>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> MatrixProductStates
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using MatrixProductStates
+
+function H_TFIM(g, L)
+    id = [1  0; 
+          0  1]
+    σˣ = [0  1; 
+          1  0]
+    σᶻ = [1  0; 
+          0 -1]
+    W_tnsr = zeros(Complex{Float64}, 3, 3, 2, 2)
+    W_tnsr[1, 1, :, :] = id    
+    W_tnsr[2, 1, :, :] = -σᶻ  
+    W_tnsr[3, 1, :, :] = -g*σˣ
+    W_tnsr[3, 2, :, :] = σᶻ   
+    W_tnsr[3, 3, :, :] = id   
+
+    return MPO(W_tnsr, L) # MPO will assume that W¹ = W_tnsr[end:end, :, :, :] and Wᴸ = W_tnsr[:, 1:1, :, :]
+end
+"><pre><span class="pl-k">using</span> MatrixProductStates
 
 <span class="pl-k">function</span> <span class="pl-en">H_TFIM</span>(g, L)
     id <span class="pl-k">=</span> [<span class="pl-c1">1</span>  <span class="pl-c1">0</span>; 
@@ -44,7 +64,16 @@
 <p>Suppose we want to know the ground state of this system for
   <code>g=0.8</code> and <code>L=12</code> and we have no idea what the MPS form of the ground
   state looks like a-priori.</p>
-<div class="highlight highlight-source-julia"><pre>g <span class="pl-k">=</span> <span class="pl-c1">1.1</span>; L <span class="pl-k">=</span> <span class="pl-c1">12</span>;
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="g = 1.1; L = 12;
+
+d    = 2;   # This is the local Hilbert space dimension for each site
+Dcut = 100; # This is the maximum bond dimension we'll allow our matrix product state to take
+
+H = H_TFIM(g, L)
+ψ = randn(MPS{L, Complex{Float64}}, Dcut, d) # Generate a completely randomized matrix product state
+
+ϕ, E₀ = ground_state(ψ, H, quiet=true) #Set quiet to false (the deault) to turn off notifications about the algorithm's progress
+"><pre>g <span class="pl-k">=</span> <span class="pl-c1">1.1</span>; L <span class="pl-k">=</span> <span class="pl-c1">12</span>;
 
 d    <span class="pl-k">=</span> <span class="pl-c1">2</span>;   <span class="pl-c"><span class="pl-c">#</span> This is the local Hilbert space dimension for each site</span>
 Dcut <span class="pl-k">=</span> <span class="pl-c1">100</span>; <span class="pl-c"><span class="pl-c">#</span> This is the maximum bond dimension we'll allow our matrix product state to take</span>
@@ -52,22 +81,39 @@ Dcut <span class="pl-k">=</span> <span class="pl-c1">100</span>; <span class="pl
 H <span class="pl-k">=</span> <span class="pl-c1">H_TFIM</span>(g, L)
 ψ <span class="pl-k">=</span> <span class="pl-c1">randn</span>(MPS{L, Complex{Float64}}, Dcut, d) <span class="pl-c"><span class="pl-c">#</span> Generate a completely randomized matrix product state</span>
 
-ϕ, Eₒ <span class="pl-k">=</span> <span class="pl-c1">ground_state</span>(ψ, H, quiet<span class="pl-k">=</span><span class="pl-c1">true</span>) <span class="pl-c"><span class="pl-c">#</span>Set quiet to false (the deault) to turn off notifications about the algorithm's progress</span></pre></div>
+ϕ, E₀ <span class="pl-k">=</span> <span class="pl-c1">ground_state</span>(ψ, H, quiet<span class="pl-k">=</span><span class="pl-c1">true</span>) <span class="pl-c"><span class="pl-c">#</span>Set quiet to false (the deault) to turn off notifications about the algorithm's progress</span></pre></div>
 <p>We now have the ground state <code>ϕ</code>, and an estimate of it’s energy
-  eigenvalue <code>Eₒ</code>!</p>
+  eigenvalue <code>E₀</code>!</p>
 <p>Note that 12 sites can be easily studied with far less computational
   cost as an exact diagonalization, but I didn’t want to suggest doing
   something like <code>L=50</code> right off the bat since that took ~90 minutes on
   my machine.</p>
 <p>We can make sure that this state’s energy matches our estimate:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> ϕ<span class="pl-s"><span class="pl-pds">'</span> * H * ϕ ≈ E₀ # computing ⟨ϕ|H|ϕ⟩</span>
-<span class="pl-s">true</span></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; ϕ' * H * ϕ ≈ E₀ # computing ⟨ϕ|H|ϕ⟩
+true
+"><pre>julia<span class="pl-k">&gt;</span> ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> E₀ <span class="pl-c"><span class="pl-c">#</span> computing ⟨ϕ|H|ϕ⟩</span>
+<span class="pl-c1">true</span></pre></div>
 <p>and we can varify that it’s approximately an eigenstate:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> ϕ<span class="pl-s"><span class="pl-pds">'</span> * H * H * ϕ  ≈ (ϕ<span class="pl-pds">'</span></span> <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ)<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> computing ⟨ϕ| H^2 |ϕ⟩ ≈ (⟨ϕ|H|ϕ⟩)^2</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; ϕ' * H * H * ϕ  ≈ (ϕ' * H * ϕ)^2 # computing ⟨ϕ| H^2 |ϕ⟩ ≈ (⟨ϕ|H|ϕ⟩)^2
+true
+"><pre>julia<span class="pl-k">&gt;</span> ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ  <span class="pl-k">≈</span> (ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ)<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> computing ⟨ϕ| H^2 |ϕ⟩ ≈ (⟨ϕ|H|ϕ⟩)^2</span>
 <span class="pl-c1">true</span></pre></div>
 <h3><a id="user-content-correlators" class="anchor" aria-hidden="true" href="#correlators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Correlators</h3>
 <p>We can take advantage of the <code>two_point_correlator</code> function to study spin-spin correlations in the TFIM</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> UnicodePlots
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using UnicodePlots
+
+σᶻ = [1 0 
+      0 -1]
+
+zz(i, j) = two_point_correlator(i=&gt;σᶻ, j=&gt;σᶻ, 12)
+
+js = 2:12
+
+zzs = [realize(ϕ'*zz(1, j)*ϕ) for j in js] #realize will convert complex numbers with a small imaginary part to real.
+
+lineplot(js, zzs, canvas=DotCanvas, ylim=[0, 1.01], width=80, height=30, 
+         ylabel=&quot;⟨σᶻ₁σᶻⱼ⟩&quot;, xlabel=&quot;lattice site j&quot;, title=&quot;Spin-Spin Correlation for g = $g&quot;)
+"><pre><span class="pl-k">using</span> UnicodePlots
 
 σᶻ <span class="pl-k">=</span> [<span class="pl-c1">1</span> <span class="pl-c1">0</span> 
       <span class="pl-c1">0</span> <span class="pl-k">-</span><span class="pl-c1">1</span>]
@@ -76,10 +122,10 @@ H <span class="pl-k">=</span> <span class="pl-c1">H_TFIM</span>(g, L)
 
 js <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">12</span>
 
-zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<span class="pl-s"><span class="pl-pds">'</span>*zz(1, j)*ϕ) for j in js] #realize will convert complex numbers with a small imaginary part to real.</span>
-<span class="pl-s"></span>
-<span class="pl-s">lineplot(js, zzs, canvas=DotCanvas, ylim=[0, 1.01], width=80, height=30, </span>
-<span class="pl-s">         ylabel="⟨σᶻ₁σᶻⱼ⟩", xlabel="lattice site j", title="Spin-Spin Correlation for g = $g")</span></pre></div>
+zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<span class="pl-k">'</span><span class="pl-k">*</span><span class="pl-c1">zz</span>(<span class="pl-c1">1</span>, j)<span class="pl-k">*</span>ϕ) <span class="pl-k">for</span> j <span class="pl-k">in</span> js] <span class="pl-c"><span class="pl-c">#</span>realize will convert complex numbers with a small imaginary part to real.</span>
+
+<span class="pl-c1">lineplot</span>(js, zzs, canvas<span class="pl-k">=</span>DotCanvas, ylim<span class="pl-k">=</span>[<span class="pl-c1">0</span>, <span class="pl-c1">1.01</span>], width<span class="pl-k">=</span><span class="pl-c1">80</span>, height<span class="pl-k">=</span><span class="pl-c1">30</span>, 
+         ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>⟨σᶻ₁σᶻⱼ⟩<span class="pl-pds">"</span></span>, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>lattice site j<span class="pl-pds">"</span></span>, title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Spin-Spin Correlation for g = <span class="pl-v">$g</span><span class="pl-pds">"</span></span>)</pre></div>
 <pre>                                      Spin-Spin Correlation for g = 1.1
               ┌────────────────────────────────────────────────────────────────────────────────┐ 
          1.01 │                                                                                │ 
@@ -119,16 +165,26 @@ zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<span clas
 <p>which shows exponentially decaying correlations in the ground state,
   as expected for <code>g &gt; 1</code>. We can also redo our calculation in the
   ordered phase:</p>
-<div class="highlight highlight-source-julia"><pre>g <span class="pl-k">=</span> <span class="pl-c1">0.8</span>;
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="g = 0.8;
+
+H = H_TFIM(g, L)
+
+ϕ, Eₒ = ground_state(ψ, H, quiet=true)
+
+ordered_zzs = [realize(ϕ'*zz(1, j)*ϕ) for j in js]
+
+lineplot(js, realize.(ordered_zzs), canvas=DotCanvas, ylim=[0, 1.01], width=80, height=30, 
+         ylabel=&quot;⟨σᶻ₁σᶻⱼ⟩&quot;, xlabel=&quot;lattice site j&quot;, title=&quot;Spin-Spin Correlation for g = $g&quot;)
+"><pre>g <span class="pl-k">=</span> <span class="pl-c1">0.8</span>;
 
 H <span class="pl-k">=</span> <span class="pl-c1">H_TFIM</span>(g, L)
 
 ϕ, Eₒ <span class="pl-k">=</span> <span class="pl-c1">ground_state</span>(ψ, H, quiet<span class="pl-k">=</span><span class="pl-c1">true</span>)
 
-ordered_zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<span class="pl-s"><span class="pl-pds">'</span>*zz(1, j)*ϕ) for j in js]</span>
-<span class="pl-s"></span>
-<span class="pl-s">lineplot(js, realize.(ordered_zzs), canvas=DotCanvas, ylim=[0, 1.01], width=80, height=30, </span>
-<span class="pl-s">         ylabel="⟨σᶻ₁σᶻⱼ⟩", xlabel="lattice site j", title="Spin-Spin Correlation for g = $g")</span></pre></div>
+ordered_zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<span class="pl-k">'</span><span class="pl-k">*</span><span class="pl-c1">zz</span>(<span class="pl-c1">1</span>, j)<span class="pl-k">*</span>ϕ) <span class="pl-k">for</span> j <span class="pl-k">in</span> js]
+
+<span class="pl-c1">lineplot</span>(js, <span class="pl-c1">realize</span>.(ordered_zzs), canvas<span class="pl-k">=</span>DotCanvas, ylim<span class="pl-k">=</span>[<span class="pl-c1">0</span>, <span class="pl-c1">1.01</span>], width<span class="pl-k">=</span><span class="pl-c1">80</span>, height<span class="pl-k">=</span><span class="pl-c1">30</span>, 
+         ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>⟨σᶻ₁σᶻⱼ⟩<span class="pl-pds">"</span></span>, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>lattice site j<span class="pl-pds">"</span></span>, title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Spin-Spin Correlation for g = <span class="pl-v">$g</span><span class="pl-pds">"</span></span>)</pre></div>
 <pre>                                      Spin-Spin Correlation for g = 0.8
               ┌────────────────────────────────────────────────────────────────────────────────┐ 
          1.01 │                                                                                │ 
@@ -168,12 +224,32 @@ ordered_zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<s
 </details>
 <p></p>
 <h2><a id="user-content-source-code" class="anchor" aria-hidden="true" href="#source-code"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Source Code</h2>
-<p>This readme is a literate document containing all of the source and
-  test code for the package.</p>
+<p>This readme is a literate document containing all of the source and test code for the package. Check it out, I think it’s surprisingly legible.
+  The sections Matrix Product States, Matrix Product Operatiors, Compression and Iterative Ground State Search are based directly on the math
+  written in Schollwöck’s review.</p>
 <h3><a id="user-content-module-definition" class="anchor" aria-hidden="true" href="#module-definition"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Module Definition</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-k">module</span> MatrixProductStates
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="module MatrixProductStates
+
+using LinearAlgebra, TensorOperations, TensorCast, LowRankApprox, Arpack, Strided, SparseArrays
+#using ProgressMeter
+
+export *, /, ==, ≈, isequal, adjoint, getindex, randn
+export MPS, MPO, left, right, compress, imag_time_evolution, rightcanonical, leftcanonical 
+export ground_state, two_point_correlator, realize
+
+include(&quot;utils.jl&quot;)
+include(&quot;MPS.jl&quot;)
+include(&quot;MPO.jl&quot;)
+include(&quot;compression.jl&quot;)
+include(&quot;contraction.jl&quot;)
+include(&quot;groundstate.jl&quot;)
+include(&quot;correlation.jl&quot;)
+include(&quot;timeevolution.jl&quot;)
+
+end
+"><pre><span class="pl-k">module</span> MatrixProductStates
 
 <span class="pl-k">using</span> LinearAlgebra, TensorOperations, TensorCast, LowRankApprox, Arpack, Strided, SparseArrays
 <span class="pl-c"><span class="pl-c">#</span>using ProgressMeter</span>
@@ -197,7 +273,31 @@ ordered_zzs <span class="pl-k">=</span> [<span class="pl-c1">realize</span>(ϕ<s
 <h3><a id="user-content-utils" class="anchor" aria-hidden="true" href="#utils"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Utils</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-k">export</span> ⊗, realize
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="export ⊗, realize
+
+abstract type Direction end
+
+struct Left  &lt;: Direction end # Often useful to dispatch on direction an algorithm is going
+struct Right &lt;: Direction end
+
+const left  = Left()
+const right = Right()
+
+A ⊗ B = kron(A, B)
+
+realize(x::Number) = error(&quot;Unrecognized numerical type&quot;)
+realize(x::Real) = x
+function realize(x::Complex; ϵ=1e-10)
+    abs(imag(x)) &lt; ϵ || error(&quot;Non-zero imaginary component, $(imag(x))&quot;)
+    real(x)
+end
+
+dg(M::Array{T, 4}) where {T} = permutedims(conj.(M), (2, 1, 3, 4))
+dg(M::Array{T, 3}) where {T} = permutedims(conj.(M), (2, 1, 3))
+
+not(x) = ~x
+
+"><pre><span class="pl-k">export</span> ⊗, realize
 
 <span class="pl-k">abstract type</span> Direction <span class="pl-k">end</span>
 
@@ -226,7 +326,104 @@ A ⊗ B <span class="pl-k">=</span> <span class="pl-c1">kron</span>(A, B)
 <h3><a id="user-content-matrix-product-states" class="anchor" aria-hidden="true" href="#matrix-product-states"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Matrix Product States</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="&quot;&quot;&quot;
+    MPS{L, T&lt;:Number}
+
+Matrix product state on L sites. 
+
+The `i`th tensor in the state has indices `[aⁱ⁻¹, aⁱ, σⁱ]` where
+`(aⁱ⁻¹, aⁱ)` are bond indices and `σⁱ` is the physical index.
+
+A four site MPS would be diagrammatically represented
+
+    σ¹          σ²          σ³          σ⁴
+    |           |           |           | 
+    •--(a¹ a¹)--•--(a² a²)--•--(a³ a³)--•     
+
+Note that `a⁰` and `aᴸ` must be of dimension 1.
+&quot;&quot;&quot;
+struct MPS{L, T&lt;:Number} 
+    tensors::Vector{Array{T,3}}
+end
+
+Base.isequal(ψ::MPS, ϕ::MPS)     = (isequal(ψ.tensors, ϕ.tensors))
+Base.isapprox(ψ::MPS, ϕ::MPS)   = isapprox(ψ.tensors, ϕ.tensors)
+
+Base.eltype(::Type{MPS{L, T}}) where {L, T} = T
+
+Base.length(::MPS{L, T}) where {L, T} = L
+
+Base.size(::MPS{L, T}) where {L, T} = (L,)
+Base.getindex(ψ::MPS, i::Int) = getindex(ψ.tensors, i)
+
+Base.:(*)(ψ::MPS{L, T}, x::Number) where {L, T} = MPS{L,T}(ψ.tensors .* x)
+Base.:(*)(x::Number, ψ::MPS) = ψ * x
+Base.:(/)(ψ::MPS{L,T}, x::Number) where {L, T} = MPS{L,T}(ψ.tensors ./ x)
+Base.copy(ψ::MPS{L, T}) where {L, T} = MPS{L,T}(copy.(ψ.tensors))
+
+function Base.randn(::Type{MPS{L, T}}, D::Int, d::Int) where {L, T}
+    tensors = [randn(1, D, d), [randn(D, D, d) for _ in 2:(L-1)]..., randn(D, 1, d)]
+    MPS{L, T}(tensors) |&gt; leftcanonical |&gt; rightcanonical
+end
+
+&quot;&quot;&quot;
+    MPS(vs::Vector{Vector})
+Create an `MPS` representing a product state (all bonds have dimension 1),
+where each site is described by the corresponding element of `vs`.
+&quot;&quot;&quot;
+function MPS(vs::Vector{Vector{T}}) where {T}
+    L = length(vs)
+
+    tensrs = Vector{Array{T,3}}(undef, L)
+    for i in 1:L
+        tensrs[i] = reshape(copy(vs[i]), 1, 1, :)
+    end
+
+    MPS{L,T}(tensrs)
+end
+
+&quot;&quot;&quot;
+    MPS(v::Vector, L)
+Create an `MPS` for `L` sites representing a uniform product state (all bonds
+have dimension 1), where each site is described by `v`.
+&quot;&quot;&quot;
+MPS(v::Vector, L) = MPS([v for _ in 1:L])
+
+function Base.show(io::IO, ::MIME&quot;text/plain&quot;, ψ::MPS{L, T}) where {L, T}
+    d = length(ψ.tensors[2][1, 1, :])
+    bonddims = [size(ψ[i][:, :, 1]) for i in 1:L]
+    println(io, &quot;Matrix product state on $L sites&quot;)
+    _show_mps_dims(io, L, d, bonddims)
+end
+
+function Base.show(ψ::MPS{L, T}) where {L, T}
+    d = length(ψ.tensors[2][1, 1, :])
+    bonddims = [size(ψ[i][:, :, 1]) for i in 1:L]
+    println(&quot;Matrix product state on $L sites&quot;)
+    _show_mps_dims(L, d, bonddims)
+end
+
+function _show_mps_dims(io::IO, L, d, bonddims)
+    println(io, &quot;  Physical dimension: $d&quot;)
+    print(io, &quot;  Bond dimensions:   &quot;)
+    if L &gt; 8
+        for i in 1:8
+            print(io, bonddims[i], &quot; × &quot;)
+        end
+        print(io, &quot; ... × &quot;, bonddims[L])
+    else
+        for i in 1:(L-1)
+            print(io, bonddims[i], &quot; × &quot;)
+        end
+        print(io, bonddims[L])
+    end
+end
+
+function Base.show(io::IO, ψ::MPS{L, T}) where {L, T}
+    print(io, &quot;MPS on $L sites&quot;)
+end
+
+"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
 <span class="pl-s">    MPS{L, T&lt;:Number}</span>
 <span class="pl-s"></span>
 <span class="pl-s">Matrix product state on L sites. </span>
@@ -325,7 +522,30 @@ Base<span class="pl-k">.</span><span class="pl-en">copy</span>(ψ<span class="pl
 </pre></div>
 <details><summary>Adjoint MPS</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> Base<span class="pl-k">.</span><span class="pl-en">adjoint</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS{L, T}</span>) <span class="pl-k">where</span> {L,T}
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function Base.adjoint(ψ::MPS{L, T}) where {L,T}
+    Adjoint{T, MPS{L, T}}(ψ)
+end
+
+function Base.show(io::IO, ::MIME&quot;text/plain&quot;, ψ::Adjoint{T, MPS{L, T}}) where {L, T}
+    d = length(ψ.parent[2][1, 1, :])
+    bonddims = reverse([reverse(size(ψ.parent[i][:, :, 1])) for i in 1:L])
+    println(io, &quot;Adjoint matrix product state on $L sites&quot;)
+    _show_mps_dims(io, L, d, bonddims)
+end
+
+function Base.show(io::IO, ψ::Adjoint{T, MPS{L, T}}) where {L, T}
+    print(io, &quot;Adjoint MPO on $L sites&quot;)t
+end
+
+Base.size(::Adjoint{T, MPS{L, T}}) where {L, T} = (1, L)
+
+function Base.getindex(ψ::Adjoint{T, MPS{L, T}}, args...) where {L, T}
+    out = getindex(reverse(ψ.parent.tensors), args...)
+    permutedims(conj.(out), (2, 1, 3))
+end
+
+adjoint_tensors(ψ::MPS) = reverse(conj.(permutedims.(ψ.tensors, [(2, 1, 3)])))
+"><pre><span class="pl-k">function</span> Base<span class="pl-k">.</span><span class="pl-en">adjoint</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS{L, T}</span>) <span class="pl-k">where</span> {L,T}
     <span class="pl-c1">Adjoint</span><span class="pl-c1">{T, MPS{L, T}}</span>(ψ)
 <span class="pl-k">end</span>
 
@@ -352,7 +572,38 @@ Base<span class="pl-k">.</span><span class="pl-en">size</span>(<span class="pl-k
 </details>
 <details><summary>MPS Contraction</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+&quot;&quot;&quot;
+    Base.:(*)(ψ′::Adjoint{T, MPS{L, T}}, ϕ::MPS{L, T}) where {L, T}
+representing
+    •--(b¹ b¹)--•--(b² b²)--•--(b³ b³)--•       
+    |           |           |           | 
+    σ′¹         σ′²         σ′³         σ′⁴
+    σ′¹         σ′²         σ′³         σ′⁴
+    |           |           |           | 
+    •--(a¹ a¹)--•--(a² a²)--•--(a³ a³)--•
+&quot;&quot;&quot;
+function Base.:(*)(ψ′::Adjoint{T, MPS{L, T}}, ϕ::MPS{L, T}) where {L, T}
+    ψ = ψ′.parent
+
+    M   = ϕ.tensors[1]
+    M̃dg = dg(ψ.tensors[1])
+    
+    @tensor cont[b₁, a₁] := M̃dg[b₁, 1, σ₁] * M[1, a₁, σ₁]
+    
+    for i in 2:L-1
+        M   = ϕ.tensors[i]
+        M̃dg = dg(ψ.tensors[i])
+
+        @tensor cont[bᵢ, aᵢ] := M̃dg[bᵢ, bᵢ₋₁, σᵢ] * cont[bᵢ₋₁, aᵢ₋₁] * M[aᵢ₋₁, aᵢ, σᵢ]
+    end
+    M   = ϕ.tensors[L]
+    M̃dg = dg(ψ.tensors[L])
+    
+    @tensor M̃dg[1, bᴸ⁻¹, σᴸ] * cont[bᴸ⁻¹, aᴸ⁻¹] * M[aᴸ⁻¹, 1, σᴸ]
+end
+
+"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
 <span class="pl-s">    Base.:(*)(ψ′::Adjoint{T, MPS{L, T}}, ϕ::MPS{L, T}) where {L, T}</span>
 <span class="pl-s">representing</span>
 <span class="pl-s">    •--(b¹ b¹)--•--(b² b²)--•--(b³ b³)--•       </span>
@@ -389,7 +640,109 @@ Base<span class="pl-k">.</span><span class="pl-en">size</span>(<span class="pl-k
 <h3><a id="user-content-matrix-product-operators" class="anchor" aria-hidden="true" href="#matrix-product-operators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Matrix Product Operators</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="&quot;&quot;&quot;
+    MPO{L, T&lt;:Number}
+
+Matrix product operator on L sites. The `i`th tensor in the operator
+has indices `[aⁱ⁻¹, aⁱ, σⁱ, σ′ⁱ]` where `(σⁱ, σ′ⁱ)` are the physical
+indices and `(aⁱ⁻¹, aⁱ)` are bond indices.
+
+A four site MPS would be diagrammatically represented
+
+    σ¹          σ²          σ³          σ⁴
+    |           |           |           | 
+    •--(a¹ a¹)--•--(a² a²)--•--(a³ a³)--•     
+    |           |           |           | 
+    σ′¹         σ′²         σ′³         σ′⁴
+
+
+Note that `a⁰` and `aᴸ` must be of dimension 1.
+&quot;&quot;&quot;
+struct MPO{L, T&lt;:Number}
+    tensors::Vector{Array{T,4}}
+end
+
+
+&quot;&quot;&quot;
+    MPO(W::Array{T,4}, L)
+Create an `MPO` for `L` sites with all interior sites containing the tensor
+`W`. The tensor is assumed to have the usual matrix-of-operators structure,
+with the first two indices being the bond (matrix) dimension and the last two
+indices being the physical (operator) dimension. The first and last sites only
+use the last row and first column of `W`, respectively.
+
+For example, the MPO form of the Hamiltonian for the TFIM is
+constructed as with coupling `g` and length `L` is constructed as
+follows:
+
+    id = [1 0
+          0 1]
+
+    σᶻ = [1  0 
+          0 -1]
+
+    σˣ = [0 1
+          1 0]
+
+    σʸ = [0  -im
+          im   0]
+
+    W = zeros(3, 3, 2, 2)
+    W[1, 1, :, :] = id
+    W[2, 1, :, :] = σᶻ
+    W[3, 1, :, :] = -g*σˣ
+    W[3, 2, :, :] = -σᶻ
+    W[3, 3, :, :] = id
+
+returning 
+ 
+    Ĥ::MPO = Ŵ¹ Ŵ² Ŵ³ ⋅⋅⋅ Ŵᴸ⁻¹ Wᴸ
+&quot;&quot;&quot;
+function MPO(W::Array{T,4}, L) where {T}
+    L &gt;= 2 || throw(DomainError(L, &quot;At least 2 sites.&quot;))
+
+    tensors = Vector{Array{T,4}}(undef, L)
+    
+    tensors[1] = W[end:end, :, :, :] # Row vector.
+    for i in 2:(L-1)
+        tensors[i] = W # Matrix
+    end
+    tensors[L] = W[:, 1:1, :, :] # Column vector.
+
+    MPO{L,T}(tensors)
+end
+
+Base.:(==)(O::MPO, U::MPO) = O.tensors == U.tensors
+Base.:(≈)(O::MPO, U::MPO)  = O.tensors ≈ U.tensors
+Base.getindex(O::MPO, args...) = getindex(O.tensors, args...)
+
+function Base.show(io::IO, ::MIME&quot;text/plain&quot;, O::MPO{L, T}) where {L, T}
+    d = length(O[2][1, 1, 1, :])
+    bonddims = [size(O[i][:, :, 1, 1]) for i in 1:L]
+    println(io, &quot;Matrix product Operator on $L sites&quot;)
+    _show_mpo_dims(io, L, d, bonddims)
+end
+
+function _show_mpo_dims(io::IO, L, d, bonddims)
+    println(io, &quot;  Physical dimension: $d&quot;)
+    print(io, &quot;  Bond dimensions:   &quot;)
+    if L &gt; 8
+        for i in 1:8
+            print(io, bonddims[i], &quot; × &quot;)
+        end
+        print(io, &quot; ... × &quot;, bonddims[L])
+    else
+        for i in 1:(L-1)
+            print(io, bonddims[i], &quot; × &quot;)
+        end
+        print(io, bonddims[L])
+    end
+end
+
+function Base.show(io::IO, O::MPO{L, T}) where {L, T}
+    print(io, &quot;MPO on $L sites&quot;)
+end
+"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
 <span class="pl-s">    MPO{L, T&lt;:Number}</span>
 <span class="pl-s"></span>
 <span class="pl-s">Matrix product operator on L sites. The `i`th tensor in the operator</span>
@@ -493,7 +846,88 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <span class="pl-k">end</span></pre></div>
 <details><summary>MPO Contraction</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="&quot;&quot;&quot;
+    Base.:(*)(O::MPO, ψ::MPS)
+representing
+
+    σ¹          σ²          σ³          σ⁴
+    |           |           |           | 
+    •--(b¹ b¹)--•--(b² b²)--•--(b³ b³)--•     
+    |           |           |           | 
+    σ′¹         σ′²         σ′³         σ′⁴
+    σ′¹         σ′²         σ′³         σ′⁴
+    |           |           |           | 
+    •--(a¹ a¹)--•--(a² a²)--•--(a³ a³)--•     
+&quot;&quot;&quot;
+function Base.:(*)(O::MPO{L, T}, ψ::MPS{L, T}) where {L, T}
+    tensors = Array{T,3}[]
+    for i in 1:L
+        W = O.tensors[i]
+        M = ψ.tensors[i]
+
+        @reduce N[(bᵢ₋₁, aᵢ₋₁), (bᵢ, aᵢ), σᵢ] :=  sum(σ′ᵢ) W[bᵢ₋₁, bᵢ, σᵢ, σ′ᵢ] * M[aᵢ₋₁, aᵢ, σ′ᵢ]
+        
+        push!(tensors, N)
+    end
+    MPS{L, T}(tensors)
+end
+
+
+&quot;&quot;&quot;
+    Base.:(*)(O1::MPO, O2::MPO)
+representing
+
+    σ¹          σ²          σ³          σ⁴
+    |           |           |           | 
+    •--(b¹ b¹)--•--(b² b²)--•--(b³ b³)--•     
+    |           |           |           | 
+    σ′′¹        σ′′²        σ′′³        σ′′⁴
+    σ′′¹        σ′′²        σ′′³        σ′′⁴
+    |           |           |           | 
+    •--(a¹ a¹)--•--(a² a²)--•--(a³ a³)--• 
+    |           |           |           | 
+    σ′¹         σ′²         σ′³         σ′⁴    
+&quot;&quot;&quot;
+function Base.:(*)(O1::MPO{L, T}, O2::MPO{L, T}) where {L, T}
+    tensors = Array{T,4}[]
+    for i in 1:L
+        W1 = O1.tensors[i]
+        W2 = O2.tensors[i]
+
+        @reduce V[(bᵢ₋₁, aᵢ₋₁), (bᵢ, aᵢ), σᵢ, σ′ᵢ] :=  sum(σ′′ᵢ) W1[bᵢ₋₁, bᵢ, σᵢ, σ′′ᵢ] * W2[aᵢ₋₁, aᵢ, σ′′ᵢ, σ′ᵢ]
+        
+        push!(tensors, V)
+    end
+    MPO{L, T}(tensors)
+end
+
+&quot;&quot;&quot;
+    Base.:(*)(ψ::Adjoint{T,MPS{L,T}}, O::MPO) where {L,T}
+representing
+
+    •--(a¹ a¹)--•--(a² a²)--•--(a³ a³)--•       
+    |           |           |           | 
+    σ′¹         σ′²         σ′³         σ′⁴
+    σ′¹         σ′²         σ′³         σ′⁴
+    |           |           |           | 
+    •--(b¹ b¹)--•--(b² b²)--•--(b³ b³)--•
+    |           |           |           | 
+    σ¹          σ²          σ³          σ⁴ 
+&quot;&quot;&quot;
+function Base.:(*)(ψ′::Adjoint{T,MPS{L,T}}, O::MPO{L, T}) where {L,T}
+    ψ = ψ′.parent
+    tensors = Array{T,3}[]
+    Ws = dg.(reverse(O.tensors))
+    for i in 1:L
+        W = Ws[i]
+        M = ψ.tensors[i]
+
+        @reduce N[(bᵢ₋₁, aᵢ₋₁), (bᵢ, aᵢ), σᵢ] :=  sum(σ′ᵢ) W[bᵢ₋₁, bᵢ, σᵢ, σ′ᵢ] * M[aᵢ₋₁, aᵢ, σ′ᵢ]
+        push!(tensors, N)
+    end
+    adjoint(MPS{L, T}(tensors))
+end
+"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
 <span class="pl-s">    Base.:(*)(O::MPO, ψ::MPS)</span>
 <span class="pl-s">representing</span>
 <span class="pl-s"></span>
@@ -581,8 +1015,72 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <h3><a id="user-content-compression" class="anchor" aria-hidden="true" href="#compression"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Compression</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre>
-<span class="pl-k">function</span> <span class="pl-en">compress</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS{L, T}</span>, to_the<span class="pl-k">::</span><span class="pl-c1">Right</span>; Dcut<span class="pl-k">::</span><span class="pl-c1">Int</span><span class="pl-k">=</span><span class="pl-c1">typemax</span>(Int)) <span class="pl-k">where</span> {L, T}
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+
+function compress(ψ::MPS{L, T}, to_the::Right; Dcut::Int=typemax(Int)) where {L, T}
+    tensors = Array{T, 3}[]
+    
+    B = ψ[1]
+    d = length(B[1, 1, :])
+    
+    @cast Bm[(σ¹, a⁰), a¹] |= B[a⁰, a¹, σ¹]
+    U, S, V = psvd(Bm, rank=Dcut)
+    #S = S/√sum(S .^ 2)
+
+    @cast A[a⁰, a¹, σ¹] |= U[(σ¹, a⁰), a¹] (σ¹:d)
+    push!(tensors, A)
+    
+    for i ∈ 2:L
+        B = ψ[i]
+        d = length(B[1, 1, :])
+
+        @tensor M[aⁱ⁻¹, aⁱ, σⁱ] := (Diagonal(S)*V')[aⁱ⁻¹, aⁱ⁻¹′] * B[aⁱ⁻¹′, aⁱ, σⁱ]
+        @cast   Mm[(σⁱ, aⁱ⁻¹), aⁱ] |= M[aⁱ⁻¹, aⁱ, σⁱ]
+        
+        U, S, V = psvd(Mm, rank=Dcut)
+        #S = S/√sum(S .^ 2)
+
+        @cast A[aⁱ⁻¹, aⁱ, σⁱ] |= U[(σⁱ, aⁱ⁻¹), aⁱ] (σⁱ:d)
+        push!(tensors, A)
+    end
+    MPS{L, T}(tensors), Left()
+end
+
+leftcanonical(ψ) = compress(ψ, right)[1]
+
+function compress(ψ::MPS{L, T}, to_the::Left; Dcut::Int=typemax(Int)) where {L, T}
+    tensors = Array{T, 3}[]
+    
+    A = ψ[L]
+    d = length(A[1, 1, :])
+    @cast Am[aᴸ⁻¹, (σᴸ, aᴸ)] |= A[aᴸ⁻¹, aᴸ, σᴸ]
+    
+    U, S, V = psvd(Am, rank=Dcut)
+    #S = S/√sum(S .^ 2)    
+
+    @cast B[aᴸ⁻¹, aᴸ, σᴸ] |= V'[aᴸ⁻¹, (σᴸ, aᴸ)] (σᴸ:d)
+    push!(tensors, B)
+    
+    for i ∈ (L-1):-1:1
+        A = ψ[i]
+        d = length(A[1, 1, :])
+        @tensor M[aⁱ⁻¹, aⁱ, σⁱ]    := A[aⁱ⁻¹, aⁱ′, σⁱ] * (U * Diagonal(S))[aⁱ′, aⁱ]
+        @cast   Mm[aⁱ⁻¹, (σⁱ, aⁱ)] |= M[aⁱ⁻¹, aⁱ, σⁱ]
+        
+        U, S, V = psvd(Mm, rank=Dcut)
+        #S = S/√sum(S .^ 2)
+
+        @cast B[aⁱ⁻¹, aⁱ, σⁱ] |= V'[aⁱ⁻¹, (σⁱ, aⁱ)] (σⁱ:d)
+        push!(tensors, B)
+    end
+    MPS{L, T}(reverse(tensors)), Right()
+end
+
+rightcanonical(ψ) = compress(ψ, left)[1]
+
+compress(ψ; Dcut) = compress(ψ, left, Dcut=Dcut)[1]
+
+"><pre><span class="pl-k">function</span> <span class="pl-en">compress</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS{L, T}</span>, to_the<span class="pl-k">::</span><span class="pl-c1">Right</span>; Dcut<span class="pl-k">::</span><span class="pl-c1">Int</span><span class="pl-k">=</span><span class="pl-c1">typemax</span>(Int)) <span class="pl-k">where</span> {L, T}
     tensors <span class="pl-k">=</span> Array{T, <span class="pl-c1">3</span>}[]
     
     B <span class="pl-k">=</span> ψ[<span class="pl-c1">1</span>]
@@ -650,7 +1148,164 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <h3><a id="user-content-iterative-ground-state-search" class="anchor" aria-hidden="true" href="#iterative-ground-state-search"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Iterative Ground State Search</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">R_exprs</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS{L, T}</span>, H<span class="pl-k">::</span><span class="pl-c1">MPO{L, T}</span>) <span class="pl-k">where</span> {L, T}
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+function R_exprs(ψ::MPS{L, T}, H::MPO{L, T}) where {L, T}
+    R_exs = Array{T, 3}[]
+    R_ex = ones(T, 1, 1, 1)
+    for l in L:-1:2
+        R_ex = iterate_R_ex(ψ[l], H[l], R_ex) 
+        push!(R_exs, R_ex)
+    end
+    reverse(R_exs)
+end
+
+# function preallocate_hs(ψ::MPS{L, T}) where {L, T}
+#     h_tnsrs = map(ψ.tensors) do M
+#         Dˡ⁻¹, Dˡ, d = size(M)
+#         Array{T, 6}(undef, d, Dˡ⁻¹, Dˡ, d, Dˡ⁻¹, Dˡ)
+#     end
+# end
+
+
+function sweep!(::Right, ψ::MPS{L, T}, H::MPO{L, T}, R_exs) where {L, T}
+    L_exs = Array{T, 3}[]
+    L_ex  = ones(T, 1, 1, 1)
+    E = zero(T)
+    for l in 1:(L-1)
+        W = H[l]
+        
+        E, A, SVp = eigenproblem(right, ψ[l], L_ex, W, R_exs[l])
+        ψ.tensors[l] = A
+
+        L_ex = iterate_L_ex(A, W, L_ex)
+        push!(L_exs, L_ex)
+
+        Bp1 = ψ.tensors[l+1]
+        @tensor Mp1[sⁱ⁻¹, aⁱ, σⁱ] := SVp[sⁱ⁻¹, aⁱ⁻¹] * Bp1[aⁱ⁻¹, aⁱ, σⁱ]
+        ψ.tensors[l+1] = Mp1
+    end
+    L_exs, E
+end
+
+function sweep!(::Left, ψ::MPS{L, T}, H::MPO{L, T}, L_exs) where {L, T}
+    R_exs = Array{T, 3}[]
+    R_ex  = ones(T, 1, 1, 1)
+    E = zero(T)
+    for l in L:-1:2
+        W = H[l]
+
+        E, US, B = eigenproblem(left, ψ[l], L_exs[l-1], W, R_ex)
+        ψ.tensors[l] = B
+
+        R_ex = iterate_R_ex(B, W, R_ex) 
+        push!(R_exs, R_ex)
+
+        Am1 = ψ.tensors[l-1]
+        @tensor Mm1[aˡ⁻², sˡ⁻¹, σˡ⁻¹] :=  Am1[aˡ⁻², aˡ⁻¹′, σˡ⁻¹] * US[aˡ⁻¹′, sˡ⁻¹]
+        ψ.tensors[l-1] = Mm1
+    end
+    R_exs, E
+end
+
+function h_matrix(L_ex::Array{T,3}, W::Array{T,4}, R_ex::Array{T,3}) where {T}
+    @tensor h[σˡ, aˡ⁻¹, aˡ, σˡ′, aˡ⁻¹′, aˡ′] := L_ex[bˡ⁻¹, aˡ⁻¹, aˡ⁻¹′] * W[bˡ⁻¹, bˡ, σˡ, σˡ′] * R_ex[bˡ, aˡ, aˡ′]
+    @cast h[(σˡ, aˡ⁻¹, aˡ), (σˡ′, aˡ⁻¹′, aˡ′)] := h[σˡ, aˡ⁻¹, aˡ, σˡ′, aˡ⁻¹′, aˡ′]
+end
+
+function eigenproblem(dir::Direction, M::Array{T, 3}, L_ex::Array{T, 3}, W::Array{T, 4}, R_ex::Array{T, 3}) where {T}
+    @cast v[(σˡ, aˡ⁻¹, aˡ)] |= M[aˡ⁻¹, aˡ, σˡ]
+    
+    h = h_matrix(L_ex, W, R_ex)
+    λ, Φ = eigs(h, v0=v, nev=1, which=:SR)
+    E  = λ[1]::T 
+    v⁰ = (Φ[:,1])::Vector{T}
+
+    (E, split_tensor(dir, v⁰, size(M))...)
+end
+
+function split_tensor(::Right, v⁰::Vector, (Dˡ⁻¹, Dˡ, d))
+    @cast Mm[(σˡ, aˡ⁻¹), aˡ] := v⁰[(σˡ, aˡ⁻¹, aˡ)] (aˡ⁻¹:Dˡ⁻¹, aˡ:Dˡ, σˡ:d)
+    U, S, V = svd(Mm)
+    @cast A[aˡ⁻¹, aˡ, σˡ] |= U[(σˡ, aˡ⁻¹), aˡ] (σˡ:d, aˡ⁻¹:Dˡ⁻¹, aˡ:Dˡ)
+    A, Diagonal(S)*V'
+end
+
+function split_tensor(::Left, v⁰::Vector, (Dˡ⁻¹, Dˡ, d))
+    @cast Mm[aˡ⁻¹, (σˡ, aˡ)] |= v⁰[(σˡ, aˡ⁻¹, aˡ)] (aˡ⁻¹:Dˡ⁻¹, aˡ:Dˡ, σˡ:d)
+    U, S, V = svd(Mm)
+    @cast B[aˡ⁻¹, aˡ, σˡ] |= V'[aˡ⁻¹, (σˡ, aˡ)] (σˡ:d)
+    U*Diagonal(S), B
+end
+
+function iterate_R_ex(B, W, R_ex) where {T}
+    @tensoropt R_ex′[bⁱ⁻¹, aⁱ⁻¹, aⁱ⁻¹′] := (conj.(B))[aⁱ⁻¹,aⁱ,σⁱ] * W[bⁱ⁻¹,bⁱ,σⁱ,σⁱ′] * B[aⁱ⁻¹′,aⁱ′,σⁱ′] * R_ex[bⁱ,aⁱ,aⁱ′]
+end
+
+function iterate_L_ex(A, W, L_ex) where {T}
+    @tensoropt L_ex′[bˡ, aˡ, aˡ′] := L_ex[bˡ⁻¹,aˡ⁻¹,aˡ⁻¹′] * (conj.(A))[aˡ⁻¹,aˡ,σˡ] * W[bˡ⁻¹,bˡ,σˡ,σˡ′] * A[aˡ⁻¹′,aˡ′,σˡ′]
+end
+
+
+&quot;&quot;&quot;
+    ground_state(ψ::MPS{L, T}, H::MPO{L, T}; maxiter=10, quiet=false, ϵ=1e-8) where {L, T}
+
+Perform the finite system density matrix renormalization group
+algorithm. First this will build up the R expressions, then do right
+and left sweeps until either
+ 1) The state converges to an eigenstate `ϕ` such that
+    ϕ' * H * H * ϕ ≈ (ϕ' * H * ϕ) 
+to the requested tolerance `ϵ`
+ 2) The energy eigenvalue stops changing (possible signaling the algorithm is 
+stuck in a local minimum)
+ 3) The number of full (right and left) sweeps exceeds `maxiter`. 
+
+Setting `quiet=true` will suppress notifications about the algorithm's
+progress but *not* warnings due to non-convergence.
+&quot;&quot;&quot;
+function ground_state(ψ::MPS{L, T}, H::MPO{L, T}; maxiter=10, quiet=false, ϵ=1e-8) where {L, T}
+    ϕ = ψ |&gt; copy
+
+    quiet || println(&quot;Computing R expressions&quot;)
+    R_exs = R_exprs(ψ, H)
+
+    converged = false
+    count     = 0
+    E₀ = zero(T)
+    enable_cache(maxsize=5*10^9)
+    while not(converged)
+        quiet || println(&quot;Performing right sweep&quot;)
+        L_exs, E₀′ = sweep!(right, ϕ, H, R_exs)
+
+        quiet || println(&quot;Performing left sweep&quot;)
+        R_exs, E₀  = sweep!(left,  ϕ, H, L_exs)
+
+        count += 1
+        if iseigenstate(ϕ, H, ϵ=ϵ)
+            quiet || println(&quot;Converged in $count iterations&quot;)
+            converged = true
+        elseif count &gt; 1 &amp;&amp; E₀ ≈ E₀′
+                @warn &quot;&quot;&quot;
+Energy eigenvalue converged but state is not an eigenstate.
+Consider either lowering your requested tolerance or 
+implementing a warm-up algorithm to avoid local minima.
+&quot;&quot;&quot;
+            break
+        elseif count &gt;= maxiter
+            @warn &quot;Did not converge in $maxiter iterations&quot;
+            break
+        end
+    end
+    clear_cache()
+    ϕ, E₀
+end
+
+
+function iseigenstate(ψ::MPS, H::MPO; ϵ=1e-8)
+    ϕ = rightcanonical(ψ)
+    isapprox(ϕ' * (H * H * ϕ), (ϕ' * (H * ϕ))^2, rtol=ϵ)
+end
+
+"><pre><span class="pl-k">function</span> <span class="pl-en">R_exprs</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS{L, T}</span>, H<span class="pl-k">::</span><span class="pl-c1">MPO{L, T}</span>) <span class="pl-k">where</span> {L, T}
     R_exs <span class="pl-k">=</span> Array{T, <span class="pl-c1">3</span>}[]
     R_ex <span class="pl-k">=</span> <span class="pl-c1">ones</span>(T, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>)
     <span class="pl-k">for</span> l <span class="pl-k">in</span> L<span class="pl-k">:</span><span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>
@@ -725,14 +1380,14 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <span class="pl-k">end</span>
 
 <span class="pl-k">function</span> <span class="pl-en">split_tensor</span>(<span class="pl-k">::</span><span class="pl-c1">Right</span>, v⁰<span class="pl-k">::</span><span class="pl-c1">Vector</span>, (Dˡ⁻¹, Dˡ, d))
-    <span class="pl-c1">@cast</span> Mm[(σˡ, aˡ⁻¹), aˡ] <span class="pl-k">:=</span> v⁰[(σˡ, aˡ⁻¹, aˡ)] (aˡ⁻¹<span class="pl-c1">:D</span>ˡ⁻¹, aˡ<span class="pl-c1">:D</span>ˡ, σˡ<span class="pl-c1">:d</span>)
+    <span class="pl-c1">@cast</span> Mm[(σˡ, aˡ⁻¹), aˡ] <span class="pl-k">:=</span> v⁰[(σˡ, aˡ⁻¹, aˡ)] (aˡ⁻¹<span class="pl-c1">:Dˡ⁻¹</span>, aˡ<span class="pl-c1">:Dˡ</span>, σˡ<span class="pl-c1">:d</span>)
     U, S, V <span class="pl-k">=</span> <span class="pl-c1">svd</span>(Mm)
-    <span class="pl-c1">@cast</span> A[aˡ⁻¹, aˡ, σˡ] <span class="pl-k">|=</span> U[(σˡ, aˡ⁻¹), aˡ] (σˡ<span class="pl-c1">:d</span>, aˡ⁻¹<span class="pl-c1">:D</span>ˡ⁻¹, aˡ<span class="pl-c1">:D</span>ˡ)
+    <span class="pl-c1">@cast</span> A[aˡ⁻¹, aˡ, σˡ] <span class="pl-k">|=</span> U[(σˡ, aˡ⁻¹), aˡ] (σˡ<span class="pl-c1">:d</span>, aˡ⁻¹<span class="pl-c1">:Dˡ⁻¹</span>, aˡ<span class="pl-c1">:Dˡ</span>)
     A, <span class="pl-c1">Diagonal</span>(S)<span class="pl-k">*</span>V<span class="pl-k">'</span>
 <span class="pl-k">end</span>
 
 <span class="pl-k">function</span> <span class="pl-en">split_tensor</span>(<span class="pl-k">::</span><span class="pl-c1">Left</span>, v⁰<span class="pl-k">::</span><span class="pl-c1">Vector</span>, (Dˡ⁻¹, Dˡ, d))
-    <span class="pl-c1">@cast</span> Mm[aˡ⁻¹, (σˡ, aˡ)] <span class="pl-k">|=</span> v⁰[(σˡ, aˡ⁻¹, aˡ)] (aˡ⁻¹<span class="pl-c1">:D</span>ˡ⁻¹, aˡ<span class="pl-c1">:D</span>ˡ, σˡ<span class="pl-c1">:d</span>)
+    <span class="pl-c1">@cast</span> Mm[aˡ⁻¹, (σˡ, aˡ)] <span class="pl-k">|=</span> v⁰[(σˡ, aˡ⁻¹, aˡ)] (aˡ⁻¹<span class="pl-c1">:Dˡ⁻¹</span>, aˡ<span class="pl-c1">:Dˡ</span>, σˡ<span class="pl-c1">:d</span>)
     U, S, V <span class="pl-k">=</span> <span class="pl-c1">svd</span>(Mm)
     <span class="pl-c1">@cast</span> B[aˡ⁻¹, aˡ, σˡ] <span class="pl-k">|=</span> V<span class="pl-k">'</span>[aˡ⁻¹, (σˡ, aˡ)] (σˡ<span class="pl-c1">:d</span>)
     U<span class="pl-k">*</span><span class="pl-c1">Diagonal</span>(S), B
@@ -803,7 +1458,7 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 
 <span class="pl-k">function</span> <span class="pl-en">iseigenstate</span>(ψ<span class="pl-k">::</span><span class="pl-c1">MPS</span>, H<span class="pl-k">::</span><span class="pl-c1">MPO</span>; ϵ<span class="pl-k">=</span><span class="pl-c1">1e-8</span>)
     ϕ <span class="pl-k">=</span> <span class="pl-c1">rightcanonical</span>(ψ)
-    <span class="pl-c1">isapprox</span>(ϕ<span class="pl-s"><span class="pl-pds">'</span> * (H * H * ϕ), (ϕ<span class="pl-pds">'</span></span> <span class="pl-k">*</span> (H <span class="pl-k">*</span> ϕ))<span class="pl-k">^</span><span class="pl-c1">2</span>, rtol<span class="pl-k">=</span>ϵ)
+    <span class="pl-c1">isapprox</span>(ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> (H <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ), (ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> (H <span class="pl-k">*</span> ϕ))<span class="pl-k">^</span><span class="pl-c1">2</span>, rtol<span class="pl-k">=</span>ϵ)
 <span class="pl-k">end</span>
 </pre></div>
 </details>
@@ -811,7 +1466,44 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <h3><a id="user-content-correlation-functions" class="anchor" aria-hidden="true" href="#correlation-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Correlation Functions</h3>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+&quot;&quot;&quot;
+    two_point_correlator((i, op_i)::Pair{Int, Matrix}, (j, op_j)::Pair{Int, Matrix}, L)
+
+Create an MPO on `L` sites (with bond dimension 1) representing identity operators everywhere except
+sites `i` and `j` where `op_i` and `op_j` are inserted instead. ie.
+
+    𝟙 ⊗ 𝟙 ⊗ ... ⊗ op_i ⊗ 𝟙 ⊗ ... ⊗ op_j ⊗ 𝟙 ⊗ ... ⊗ 𝟙
+
+example: spin-spin correlation function
+
+we can construct ⟨σᶻᵢσᶻⱼ⟩ on a 12 site lattice as
+    σᶻ = [1 0; 0 -1]
+    two_point_correlator(i=&gt;σᶻ, j=&gt;σᶻ, 12)  
+&quot;&quot;&quot;
+function two_point_correlator((i, op_i), (j, op_j), L)
+    d = size(op_i)[1]
+    @assert (size(op_i) == (d, d)) &amp;&amp; (size(op_j) == (d, d))
+    @assert i in 1:L
+    @assert j in 1:L
+    id = diagm(0 =&gt; ones(Complex{Float64}, d))
+
+    op_i_tnsr = reshape(convert(Matrix{Complex{Float64}}, op_i), 1, 1, d, d) 
+    op_j_tnsr = reshape(convert(Matrix{Complex{Float64}}, op_j), 1, 1, d, d)
+    id_tnsr   = reshape(id, 1, 1, d, d)
+
+    tensors = map(1:L) do l
+        O_tnsr = (l == i ? op_i_tnsr : 
+                  l == j ? op_j_tnsr : 
+                  id_tnsr)
+    end 
+    MPO{L,Complex{Float64}}(tensors)
+end
+
+
+
+
+"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
 <span class="pl-s">    two_point_correlator((i, op_i)::Pair{Int, Matrix}, (j, op_j)::Pair{Int, Matrix}, L)</span>
 <span class="pl-s"></span>
 <span class="pl-s">Create an MPO on `L` sites (with bond dimension 1) representing identity operators everywhere except</span>
@@ -837,8 +1529,8 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
     id_tnsr   <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(id, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, d, d)
 
     tensors <span class="pl-k">=</span> <span class="pl-c1">map</span>(<span class="pl-c1">1</span><span class="pl-k">:</span>L) <span class="pl-k">do</span> l
-        O_tnsr <span class="pl-k">=</span> (l <span class="pl-k">==</span> i ? op_i_tnsr : 
-                  l <span class="pl-k">==</span> j ? op_j_tnsr : 
+        O_tnsr <span class="pl-k">=</span> (l <span class="pl-k">==</span> i <span class="pl-k">?</span> op_i_tnsr <span class="pl-k">:</span> 
+                  l <span class="pl-k">==</span> j <span class="pl-k">?</span> op_j_tnsr <span class="pl-k">:</span> 
                   id_tnsr)
     <span class="pl-k">end</span> 
     <span class="pl-c1">MPO</span><span class="pl-c1">{L,Complex{Float64}}</span>(tensors)
@@ -853,7 +1545,53 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <p>I don’t think this works!</p>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Fixme! this does not appear to find ground states!</span>
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+# Fixme! this does not appear to find ground states!
+
+function _MPO_handed_time_evolver(hs::Vector{Matrix{T}}, τ, L, d) where {T}
+    tensors = Array{T, 4}[]
+    for h in hs
+        O = exp(-τ*h)
+        @cast P[(σⁱ, σⁱ′), (σⁱ⁺¹, σⁱ⁺¹′)] |= O[(σⁱ, σⁱ⁺¹), (σⁱ′, σⁱ⁺¹′)] (σⁱ:d, σⁱ′:d)
+        U, S, V = svd(P)
+
+        @cast U[1, k, σⁱ, σⁱ′]     := U[(σⁱ, σⁱ′), k] * √(S[k])      (σⁱ:d)
+        @cast Ū[k, 1, σⁱ⁺¹, σⁱ⁺¹′] := √(S[k]) * V'[k, (σⁱ⁺¹, σⁱ⁺¹′)] (σⁱ⁺¹:d)
+        push!(tensors, U, Ū)
+    end
+    MPO{L, T}(tensors)
+end
+
+function MPO_time_evolvers(h1::Matrix, hi::Matrix, hL::Matrix, τ, L, d)
+    if iseven(L)
+        odd_hs  = [h1, [hi for _ in 3:2:(L-1)]...]
+        even_hs = [[hi for i in 2:2:(L-1)]..., hL]
+    else
+        odd_hs  = [h1, [hi for _ in 3:2:(L-1)]..., hL]
+        even_hs = [hi for i in 2:2:(L-1)]
+    end
+    
+    Uodd  = _MPO_handed_time_evolver(odd_hs, τ, L, d)
+    Ueven = _MPO_handed_time_evolver(even_hs, τ, L, d)
+    Uodd, Ueven
+end
+
+function imag_time_evolution(ψ::MPS{L, T}, h1::Matrix{T}, hi::Matrix{T}, hL::Matrix{T}, 
+                             β, N, Dcut) where {L, T}
+    @warn &quot;This probably still doesn't work!&quot;
+    τ = β/N
+    d = length(ψ[1][1, 1, :])
+    ϕ = ψ  # Ground state guess
+    dir = left
+    Uodd, Ueven = MPO_time_evolvers(h1, hi, hL, τ, L, d)
+    for _ in 1:N
+        ϕ1, dir = compress(Uodd  * ϕ,  dir, Dcut=Dcut)
+        ϕ,  dir = compress(Ueven * ϕ1, dir, Dcut=Dcut)
+        #ϕ,  dir = compress(Uodd  * ϕ2, dir, Dcut=Dcut)
+    end
+    ϕ
+end
+"><pre><span class="pl-c"><span class="pl-c">#</span> Fixme! this does not appear to find ground states!</span>
 
 <span class="pl-k">function</span> <span class="pl-en">_MPO_handed_time_evolver</span>(hs<span class="pl-k">::</span><span class="pl-c1">Vector{Matrix{T}}</span>, τ, L, d) <span class="pl-k">where</span> {T}
     tensors <span class="pl-k">=</span> Array{T, <span class="pl-c1">4</span>}[]
@@ -892,8 +1630,8 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
     dir <span class="pl-k">=</span> left
     Uodd, Ueven <span class="pl-k">=</span> <span class="pl-c1">MPO_time_evolvers</span>(h1, hi, hL, τ, L, d)
     <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>N
-        ϕ<span class="pl-c1">1</span>, dir <span class="pl-k">=</span> <span class="pl-c1">compress</span>(Uodd  <span class="pl-k">*</span> ϕ,  dir, Dcut<span class="pl-k">=</span>Dcut)
-        ϕ,  dir <span class="pl-k">=</span> <span class="pl-c1">compress</span>(Ueven <span class="pl-k">*</span> ϕ<span class="pl-c1">1</span>, dir, Dcut<span class="pl-k">=</span>Dcut)
+        ϕ1, dir <span class="pl-k">=</span> <span class="pl-c1">compress</span>(Uodd  <span class="pl-k">*</span> ϕ,  dir, Dcut<span class="pl-k">=</span>Dcut)
+        ϕ,  dir <span class="pl-k">=</span> <span class="pl-c1">compress</span>(Ueven <span class="pl-k">*</span> ϕ1, dir, Dcut<span class="pl-k">=</span>Dcut)
         <span class="pl-c"><span class="pl-c">#</span>ϕ,  dir = compress(Uodd  * ϕ2, dir, Dcut=Dcut)</span>
     <span class="pl-k">end</span>
     ϕ
@@ -903,7 +1641,109 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 <h2><a id="user-content-tests" class="anchor" aria-hidden="true" href="#tests"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Tests</h2>
 <details><summary>Source</summary>
 <p>
-</p><div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Test, MatrixProductStates, SparseArrays, Arpack
+</p><div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Test, MatrixProductStates, SparseArrays, Arpack
+
+@testset &quot;TFIM   &quot; begin
+    g = 1.0; L = 7
+
+    function H_TFIM(g, L)
+        id = [1  0; 
+              0  1]
+        σˣ = [0  1; 
+              1  0]
+        σᶻ = [1  0; 
+              0 -1]
+        W_tnsr = zeros(Complex{Float64}, 3, 3, 2, 2)
+        W_tnsr[1, 1, :, :] = id    
+        W_tnsr[2, 1, :, :] = -σᶻ  
+        W_tnsr[3, 1, :, :] = -g*σˣ
+        W_tnsr[3, 2, :, :] = σᶻ   
+        W_tnsr[3, 3, :, :] = id   
+
+        return MPO(W_tnsr, L)
+    end
+    H = H_TFIM(g, L)
+    ψ = randn(MPS{L, Complex{Float64}}, 100, 2)
+    
+    ψ̃ = compress(ψ, left, Dcut=80)[1] # Note: no actual information is lost in this 
+    # compression because of the small size of the chain
+
+    @test              ψ̃'ψ̃ ≈ 1
+    @test          ψ'ψ/ψ'ψ ≈ ψ̃'ψ̃
+    @test ((ψ'*(H*ψ))/ψ'ψ) ≈ (ψ̃' * (H * ψ̃))/ψ̃'ψ̃
+    @test ((ψ'*(H*ψ))/ψ'ψ) ≈ (ψ̃' * (H * ψ))/ψ̃'ψ
+
+    ϕ, E₀ = ground_state(ψ, H, quiet=true)
+    @test ϕ' * H * H * ϕ ≈ (ϕ'*H*ϕ)^2
+end
+
+@testset &quot;Hubbard&quot; begin
+
+    id = [1 0
+          0 1]
+    c  = [0 0
+          1 0] #Anti commuting matrix
+    c_up = c  ⊗ id
+    c_dn = id ⊗ c
+    id²  = id ⊗ id
+    n_up = c_up' * c_up
+    n_dn = c_dn' * c_dn
+
+    P_up = (id² - 2c_up'*c_up) # Spin up parity operator
+    P_dn = (id² - 2c_dn'*c_dn) # Spin down parity operator
+
+    function H_hub(U, μ, L)
+        W_tnsr = zeros(Complex{Float64}, 6, 6, 4, 4)
+        W_tnsr[1, 1, :, :] = id²
+        W_tnsr[2, 1, :, :] = c_up'
+        W_tnsr[3, 1, :, :] = c_dn'
+        W_tnsr[4, 1, :, :] = c_up
+        W_tnsr[5, 1, :, :] = c_dn
+        W_tnsr[6, 1, :, :] = U*(n_up * n_dn) - μ*(n_up + n_dn)
+        W_tnsr[6, 2, :, :] =  c_up  * P_up  # Must multiply by the parity operator to get 
+        W_tnsr[6, 3, :, :] =  c_dn  * P_dn  # correct off-site commutation relations!
+        W_tnsr[6, 4, :, :] = -c_up' * P_up
+        W_tnsr[6, 5, :, :] = -c_dn' * P_dn
+        W_tnsr[6, 6, :, :] = id²
+        MPO(W_tnsr, L)
+    end
+
+    function solve_hub(U, μ, L; retfull=true, quiet=true)
+        H = H_hub(U, μ, L)
+        ψ = randn(MPS{L, Complex{Float64}}, 100, 4)
+        (ϕ, E₀), t, bytes = @timed ground_state(ψ, H, ϵ=1e-5, quiet=quiet)
+
+        (ϕ=ϕ, E₀=E₀, H=H, t=t, Gbytes=bytes/1e9)
+    end
+
+    function Hub_ED(U, μ, L,)
+        Û = U*(n_up * n_dn) - μ*(n_up + n_dn)
+        c_dg_up(i) = foldl(⊗, sparse.([i==j ? c_up' : id² for j in 1:L]))
+        cup(i)     = foldl(⊗, sparse.([i==j ? c_up  : id² for j in 1:L]))
+        c_dg_dn(i) = foldl(⊗, sparse.([i==j ? c_dn' : id² for j in 1:L]))
+        cdn(i)     = foldl(⊗, sparse.([i==j ? c_dn  : id² for j in 1:L]))
+        Ûf(i)      = foldl(⊗, sparse.([i==j ? Û     : id² for j in 1:L]))
+        function c_dg_c(i) 
+            out = c_dg_up(i)*cup(i+1) + c_dg_dn(i)*cdn(i+1)
+            out + out'
+        end
+        H = -sum(c_dg_c, 1:(L-1)) + sum(Ûf, 1:L)
+
+        λ, ϕ = eigs(H, nev=1, which=:SR)
+        (ϕ'H*ϕ)[]
+    end
+
+   
+    U = 3.0; μ = -1.0; L = 4
+    H = H_hub(U, μ, L)
+
+    ϕ, E₀ = solve_hub(U, μ, L, retfull=true, quiet=true)
+    @test ϕ' * H * H * ϕ ≈ (ϕ'*H*ϕ)^2  # Make sure energy is eigenvalue
+    @test ϕ' * H * ϕ ≈ E₀              # make sure eigenvalue matches one produced by alogrithm
+    @test ϕ' * H * ϕ ≈ Hub_ED(U, μ, L) # check against exact diagonalization
+end
+
+"><pre><span class="pl-k">using</span> Test, MatrixProductStates, SparseArrays, Arpack
 
 <span class="pl-c1">@testset</span> <span class="pl-s"><span class="pl-pds">"</span>TFIM   <span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
     g <span class="pl-k">=</span> <span class="pl-c1">1.0</span>; L <span class="pl-k">=</span> <span class="pl-c1">7</span>
@@ -930,13 +1770,13 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
     ψ̃ <span class="pl-k">=</span> <span class="pl-c1">compress</span>(ψ, left, Dcut<span class="pl-k">=</span><span class="pl-c1">80</span>)[<span class="pl-c1">1</span>] <span class="pl-c"><span class="pl-c">#</span> Note: no actual information is lost in this </span>
     <span class="pl-c"><span class="pl-c">#</span> compression because of the small size of the chain</span>
 
-    <span class="pl-c1">@test</span>              ψ̃<span class="pl-s"><span class="pl-pds">'</span>ψ̃ ≈ 1</span>
-<span class="pl-s">    @test          ψ<span class="pl-pds">'</span></span>ψ<span class="pl-k">/</span>ψ<span class="pl-s"><span class="pl-pds">'</span>ψ ≈ ψ̃<span class="pl-pds">'</span></span>ψ̃
-    <span class="pl-c1">@test</span> ((ψ<span class="pl-s"><span class="pl-pds">'</span>*(H*ψ))/ψ<span class="pl-pds">'</span></span>ψ) <span class="pl-k">≈</span> (ψ̃<span class="pl-s"><span class="pl-pds">'</span> * (H * ψ̃))/ψ̃<span class="pl-pds">'</span></span>ψ̃
-    <span class="pl-c1">@test</span> ((ψ<span class="pl-s"><span class="pl-pds">'</span>*(H*ψ))/ψ<span class="pl-pds">'</span></span>ψ) <span class="pl-k">≈</span> (ψ̃<span class="pl-s"><span class="pl-pds">'</span> * (H * ψ))/ψ̃<span class="pl-pds">'</span></span>ψ
+    <span class="pl-c1">@test</span>              ψ̃<span class="pl-k">'</span>ψ̃ <span class="pl-k">≈</span> <span class="pl-c1">1</span>
+    <span class="pl-c1">@test</span>          ψ<span class="pl-k">'</span>ψ<span class="pl-k">/</span>ψ<span class="pl-k">'</span>ψ <span class="pl-k">≈</span> ψ̃<span class="pl-k">'</span>ψ̃
+    <span class="pl-c1">@test</span> ((ψ<span class="pl-k">'</span><span class="pl-k">*</span>(H<span class="pl-k">*</span>ψ))<span class="pl-k">/</span>ψ<span class="pl-k">'</span>ψ) <span class="pl-k">≈</span> (ψ̃<span class="pl-k">'</span> <span class="pl-k">*</span> (H <span class="pl-k">*</span> ψ̃))<span class="pl-k">/</span>ψ̃<span class="pl-k">'</span>ψ̃
+    <span class="pl-c1">@test</span> ((ψ<span class="pl-k">'</span><span class="pl-k">*</span>(H<span class="pl-k">*</span>ψ))<span class="pl-k">/</span>ψ<span class="pl-k">'</span>ψ) <span class="pl-k">≈</span> (ψ̃<span class="pl-k">'</span> <span class="pl-k">*</span> (H <span class="pl-k">*</span> ψ))<span class="pl-k">/</span>ψ̃<span class="pl-k">'</span>ψ
 
     ϕ, E₀ <span class="pl-k">=</span> <span class="pl-c1">ground_state</span>(ψ, H, quiet<span class="pl-k">=</span><span class="pl-c1">true</span>)
-    <span class="pl-c1">@test</span> ϕ<span class="pl-s"><span class="pl-pds">'</span> * H * H * ϕ ≈ (ϕ<span class="pl-pds">'</span></span><span class="pl-k">*</span>H<span class="pl-k">*</span>ϕ)<span class="pl-k">^</span><span class="pl-c1">2</span>
+    <span class="pl-c1">@test</span> ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> (ϕ<span class="pl-k">'</span><span class="pl-k">*</span>H<span class="pl-k">*</span>ϕ)<span class="pl-k">^</span><span class="pl-c1">2</span>
 <span class="pl-k">end</span>
 
 <span class="pl-c1">@testset</span> <span class="pl-s"><span class="pl-pds">"</span>Hubbard<span class="pl-pds">"</span></span> <span class="pl-k">begin</span>
@@ -980,11 +1820,11 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
 
     <span class="pl-k">function</span> <span class="pl-en">Hub_ED</span>(U, μ, L,)
         Û <span class="pl-k">=</span> U<span class="pl-k">*</span>(n_up <span class="pl-k">*</span> n_dn) <span class="pl-k">-</span> μ<span class="pl-k">*</span>(n_up <span class="pl-k">+</span> n_dn)
-        <span class="pl-en">c_dg_up</span>(i) <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j ? c_up<span class="pl-k">'</span> : id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
-        <span class="pl-en">cup</span>(i)     <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j ? c_up  : id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
-        <span class="pl-en">c_dg_dn</span>(i) <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j ? c_dn<span class="pl-k">'</span> : id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
-        <span class="pl-en">cdn</span>(i)     <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j ? c_dn  : id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
-        Û<span class="pl-en">f</span>(i)      <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j ? Û     : id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
+        <span class="pl-en">c_dg_up</span>(i) <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j <span class="pl-k">?</span> c_up<span class="pl-k">'</span> <span class="pl-k">:</span> id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
+        <span class="pl-en">cup</span>(i)     <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j <span class="pl-k">?</span> c_up  <span class="pl-k">:</span> id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
+        <span class="pl-en">c_dg_dn</span>(i) <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j <span class="pl-k">?</span> c_dn<span class="pl-k">'</span> <span class="pl-k">:</span> id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
+        <span class="pl-en">cdn</span>(i)     <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j <span class="pl-k">?</span> c_dn  <span class="pl-k">:</span> id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
+        <span class="pl-en">Ûf</span>(i)      <span class="pl-k">=</span> <span class="pl-c1">foldl</span>(⊗, <span class="pl-c1">sparse</span>.([i<span class="pl-k">==</span>j <span class="pl-k">?</span> Û     <span class="pl-k">:</span> id² <span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>L]))
         <span class="pl-k">function</span> <span class="pl-en">c_dg_c</span>(i) 
             out <span class="pl-k">=</span> <span class="pl-c1">c_dg_up</span>(i)<span class="pl-k">*</span><span class="pl-c1">cup</span>(i<span class="pl-k">+</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">c_dg_dn</span>(i)<span class="pl-k">*</span><span class="pl-c1">cdn</span>(i<span class="pl-k">+</span><span class="pl-c1">1</span>)
             out <span class="pl-k">+</span> out<span class="pl-k">'</span>
@@ -992,19 +1832,19 @@ Base<span class="pl-k">.</span><span class="pl-en">getindex</span>(O<span class=
         H <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">sum</span>(c_dg_c, <span class="pl-c1">1</span><span class="pl-k">:</span>(L<span class="pl-k">-</span><span class="pl-c1">1</span>)) <span class="pl-k">+</span> <span class="pl-c1">sum</span>(Ûf, <span class="pl-c1">1</span><span class="pl-k">:</span>L)
 
         λ, ϕ <span class="pl-k">=</span> <span class="pl-c1">eigs</span>(H, nev<span class="pl-k">=</span><span class="pl-c1">1</span>, which<span class="pl-k">=</span><span class="pl-c1">:SR</span>)
-        (ϕ<span class="pl-s"><span class="pl-pds">'</span>H*ϕ)[]</span>
-<span class="pl-s">    end</span>
-<span class="pl-s"></span>
-<span class="pl-s">   </span>
-<span class="pl-s">    U = 3.0; μ = -1.0; L = 4</span>
-<span class="pl-s">    H = H_hub(U, μ, L)</span>
-<span class="pl-s"></span>
-<span class="pl-s">    ϕ, E₀ = solve_hub(U, μ, L, retfull=true, quiet=true)</span>
-<span class="pl-s">    @test ϕ<span class="pl-pds">'</span></span> <span class="pl-k">*</span> H <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> (ϕ<span class="pl-s"><span class="pl-pds">'</span>*H*ϕ)^2  # Make sure energy is eigenvalue</span>
-<span class="pl-s">    @test ϕ<span class="pl-pds">'</span></span> <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> E₀              <span class="pl-c"><span class="pl-c">#</span> make sure eigenvalue matches one produced by alogrithm</span>
-    <span class="pl-c1">@test</span> ϕ<span class="pl-s"><span class="pl-pds">'</span> * H * ϕ ≈ Hub_ED(U, μ, L) # check against exact diagonalization</span>
-<span class="pl-s">end</span>
-<span class="pl-s"></span></pre></div>
+        (ϕ<span class="pl-k">'</span>H<span class="pl-k">*</span>ϕ)[]
+    <span class="pl-k">end</span>
+
+   
+    U <span class="pl-k">=</span> <span class="pl-c1">3.0</span>; μ <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">1.0</span>; L <span class="pl-k">=</span> <span class="pl-c1">4</span>
+    H <span class="pl-k">=</span> <span class="pl-c1">H_hub</span>(U, μ, L)
+
+    ϕ, E₀ <span class="pl-k">=</span> <span class="pl-c1">solve_hub</span>(U, μ, L, retfull<span class="pl-k">=</span><span class="pl-c1">true</span>, quiet<span class="pl-k">=</span><span class="pl-c1">true</span>)
+    <span class="pl-c1">@test</span> ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> (ϕ<span class="pl-k">'</span><span class="pl-k">*</span>H<span class="pl-k">*</span>ϕ)<span class="pl-k">^</span><span class="pl-c1">2</span>  <span class="pl-c"><span class="pl-c">#</span> Make sure energy is eigenvalue</span>
+    <span class="pl-c1">@test</span> ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> E₀              <span class="pl-c"><span class="pl-c">#</span> make sure eigenvalue matches one produced by alogrithm</span>
+    <span class="pl-c1">@test</span> ϕ<span class="pl-k">'</span> <span class="pl-k">*</span> H <span class="pl-k">*</span> ϕ <span class="pl-k">≈</span> <span class="pl-c1">Hub_ED</span>(U, μ, L) <span class="pl-c"><span class="pl-c">#</span> check against exact diagonalization</span>
+<span class="pl-k">end</span>
+</pre></div>
 </details>
 <p></p>
 </article></div>

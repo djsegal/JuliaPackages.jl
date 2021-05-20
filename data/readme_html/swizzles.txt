@@ -1,0 +1,136 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-swizzles" class="anchor" aria-hidden="true" href="#swizzles"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Swizzles</h1>
+
+<p>Swizzles are Julia operators that allow the user to fuse reduction and transposition operations into broadcast expressions. Swizzles are lazily evaluated, creating a language of Julia objects to represent tensor contractions and related operations. Swizzles were created as a good-faith attempt to implement tensor algebra using the abstractions and programming patterns of base Julia (broadcasting in particular). We hope that the results of our exploration may help inform future implementation decisions and redesigns of the Julia standard library. This project is no longer actively developed; Peter is partitioning graphs now. Swizzles.jl has been tested on Julia 1.5.</p>
+<h2><a id="user-content-what-is" class="anchor" aria-hidden="true" href="#what-is"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>What Is?</h2>
+<p><code>Swizzle(op, mask...)(init, arg)</code> creates an operator which initializes <code>dst</code> using <code>init</code>, then reduces <code>arg</code> into <code>dst</code> such that dimension <code>d</code> of <code>dst</code> corresponds to dimension <code>mask[d]</code> of <code>arg</code>. This operator is represented lazily using the array type <code>SwizzledArray</code>. Thus,</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; using Swizzles
+
+julia&gt; A = [1 2 3; 4 5 6; 7 8 9]
+3×3 Array{Int64,2}:
+ 1  2  3
+ 4  5  6
+ 7  8  9
+
+julia&gt; Swizzle(+, 2).(A)
+3-element Array{Int64,1}:
+ 12
+ 15
+ 18
+
+julia&gt; Swizzle(+).(A)
+45
+"><pre lang="julia-repl"><code>julia&gt; using Swizzles
+
+julia&gt; A = [1 2 3; 4 5 6; 7 8 9]
+3×3 Array{Int64,2}:
+ 1  2  3
+ 4  5  6
+ 7  8  9
+
+julia&gt; Swizzle(+, 2).(A)
+3-element Array{Int64,1}:
+ 12
+ 15
+ 18
+
+julia&gt; Swizzle(+).(A)
+45
+</code></pre></div>
+<p>We can use an instance of the singleton type <code>Nil</code> to insert a size 1 dimension into <code>dst</code>.</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; Swizzle(+, nil, 2).(A)
+1×3 Array{Int64,2}:
+ 12  15  18
+"><pre lang="julia-repl"><code>julia&gt; Swizzle(+, nil, 2).(A)
+1×3 Array{Int64,2}:
+ 12  15  18
+</code></pre></div>
+<p>It is convenient to represent transpositions (<code>Swizzle</code>s which do not initialize or reduce) using the operator <code>Beam(imask...)</code>. <code>Beam(imask...)(arg)</code> produces an output array <code>dst</code> such that dimension <code>imask[d]</code> of <code>dst</code> corresponds to dimension <code>d</code> of <code>arg</code>.</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; B = [12; 15; 18]
+3-element Array{Int64,1}:
+ 12
+ 15
+ 18
+
+julia&gt; Beam(2).(B)
+1×3 Array{Int64,2}:
+ 12  15  18
+"><pre lang="julia-repl"><code>julia&gt; B = [12; 15; 18]
+3-element Array{Int64,1}:
+ 12
+ 15
+ 18
+
+julia&gt; Beam(2).(B)
+1×3 Array{Int64,2}:
+ 12  15  18
+</code></pre></div>
+<p>Notice the similarity between index notation</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="A[i,j] = ∑ B[i,k,l] * D[l,j] * C[k,j]
+"><pre><code>A[i,j] = ∑ B[i,k,l] * D[l,j] * C[k,j]
+</code></pre></div>
+<p>and the Swizzles.jl representation</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="A .= Swizzle(+, 2, 1).(Beam(+, 2, 3, 4).(B) .* Beam(4, 1).(D) .* Beam(3, 1).(C))
+"><pre><code>A .= Swizzle(+, 2, 1).(Beam(+, 2, 3, 4).(B) .* Beam(4, 1).(D) .* Beam(3, 1).(C))
+</code></pre></div>
+<h2><a id="user-content-why" class="anchor" aria-hidden="true" href="#why"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Why?</h2>
+<p>Swizzles.jl was created to provide a trait-based dispatch mechanism for tensor
+kernel selection and array implementation. Swizzles uses <code>BroadcastStyles</code> and
+<code>eachindex</code> to help select implementations, and provides an alternative abstract
+array supertype, <code>StylishArray</code>, for new array types to target. The language
+of <code>Swizzle</code> and <code>Broadcast</code> provides a high-level intermediate representation
+for tensor operations.</p>
+<h2><a id="user-content-more-examples" class="anchor" aria-hidden="true" href="#more-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>More Examples!</h2>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; using Swizzles, LinearAlgebra
+
+julia&gt; x = rand(7); y = rand(7);
+
+julia&gt; Swizzle(+).(x .* y) ≈ dot(x, y)
+true
+
+julia&gt; Swizzle(+).(abs.(x)) ≈ norm(x, 1)
+true
+
+julia&gt; A = rand(5, 7); B = rand(7, 8);
+
+julia&gt; Swizzle(+, nil, 2).(A) ≈ sum(A, dims=1)
+true
+
+julia&gt; Swizzle(+, 2).(A) ≈ sum(A, dims=1)[1,:]
+true
+
+julia&gt; Beam(2, 1).(A) ≈ transpose(A)
+true
+
+julia&gt; Beam(1, 4).(A) ≈ reshape(A, 5, 1, 1, 7)
+true
+
+julia&gt; Swizzle(+, 1, 3).(A.*Beam(2, 3).(B)) ≈ A * B
+true
+"><pre lang="julia-repl"><code>julia&gt; using Swizzles, LinearAlgebra
+
+julia&gt; x = rand(7); y = rand(7);
+
+julia&gt; Swizzle(+).(x .* y) ≈ dot(x, y)
+true
+
+julia&gt; Swizzle(+).(abs.(x)) ≈ norm(x, 1)
+true
+
+julia&gt; A = rand(5, 7); B = rand(7, 8);
+
+julia&gt; Swizzle(+, nil, 2).(A) ≈ sum(A, dims=1)
+true
+
+julia&gt; Swizzle(+, 2).(A) ≈ sum(A, dims=1)[1,:]
+true
+
+julia&gt; Beam(2, 1).(A) ≈ transpose(A)
+true
+
+julia&gt; Beam(1, 4).(A) ≈ reshape(A, 5, 1, 1, 7)
+true
+
+julia&gt; Swizzle(+, 1, 3).(A.*Beam(2, 3).(B)) ≈ A * B
+true
+</code></pre></div>
+</article></div>

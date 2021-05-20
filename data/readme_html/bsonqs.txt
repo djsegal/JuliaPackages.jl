@@ -9,13 +9,18 @@ section below for more info.</p>
 <p>Usage is mostly the same as the original package. You should be able to use
 this as a drop in replacement, except that you may need to alias the package
 name.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> BSONqs
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using BSONqs
+
+const BSON = BSONqs
+"><pre><span class="pl-k">using</span> BSONqs
 
 <span class="pl-k">const</span> BSON <span class="pl-k">=</span> BSONqs</pre></div>
 <p>Currently the <code>load</code> function does not support some of the more exotic data
 types, however you may use <code>load_compat</code> instead. There are also now two forms
 of the <code>parse</code> function.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">parse</span>(x<span class="pl-k">::</span><span class="pl-c1">Union{IO, String}</span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="parse(x::Union{IO, String})
+parse(x::Union{IO, String}, ctx::ParseCtx; mmap=false)
+"><pre><span class="pl-c1">parse</span>(x<span class="pl-k">::</span><span class="pl-c1">Union{IO, String}</span>)
 <span class="pl-c1">parse</span>(x<span class="pl-k">::</span><span class="pl-c1">Union{IO, String}</span>, ctx<span class="pl-k">::</span><span class="pl-c1">ParseCtx</span>; mmap<span class="pl-k">=</span><span class="pl-c1">false</span>)</pre></div>
 <p>The later provides the best performance in most circumstances and is the least
 compatible. It should be noted that <code>load(x; args...) = parse(x, ParseCtx(); args...)</code>, but that <code>parse(x)</code> is not the same as <code>load_compat(x)</code>.</p>
@@ -25,7 +30,26 @@ from a file.</p>
 <p>Finally there is an experimental interface for lazily loading a BSON document
 one member at a time. This also allows you to specify the type of each
 document member.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">import</span> Mmap
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="import Mmap
+
+open(&quot;a_file.bson&quot;) do fio
+  io = IOBuffer(Mmap.mmap(fio))
+  doc = Document(io, DefaultMemberType)
+
+  # Get a doc member, parsing it as the DefaultMemberType
+  val = doc[:a_member_key]
+  # Get a doc member, parsing it as T
+  val = doc[T, :a_member_key]
+
+  # iterate over all the members, parsing them as DefaultMemberType
+  for (k, v) in doc
+    ...
+  end
+
+# Load the entire document into a Dict, again using DefaultMemberType
+  Dict(doc)
+end
+"><pre><span class="pl-k">import</span> Mmap
 
 <span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>a_file.bson<span class="pl-pds">"</span></span>) <span class="pl-k">do</span> fio
   io <span class="pl-k">=</span> <span class="pl-c1">IOBuffer</span>(Mmap<span class="pl-k">.</span><span class="pl-c1">mmap</span>(fio))
@@ -64,7 +88,15 @@ or may not be faster.</p>
 in this case it also allows us to avoid unecessary copies and
 allocations. Below is a comparison of the original library and BSONqs with and
 without mmap on a common dataset (on the second pass).</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> BSON<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>vgg19.bson<span class="pl-pds">"</span></span>);
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @time BSON.load(&quot;vgg19.bson&quot;);
+  0.626661 seconds (1.97 k allocations: 1.071 GiB, 33.95% gc time)
+
+julia&gt; @time BSONqs.load(&quot;vgg19.bson&quot;);
+  0.482821 seconds (1.82 k allocations: 1.071 GiB, 42.69% gc time)
+
+julia&gt; @time BSONqs.load(&quot;vgg19.bson&quot;; mmap=true);
+  0.237986 seconds (1.82 k allocations: 548.121 MiB, 26.12% gc time)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> BSON<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>vgg19.bson<span class="pl-pds">"</span></span>);
   <span class="pl-c1">0.626661</span> seconds (<span class="pl-c1">1.97</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">1.071</span> GiB, <span class="pl-c1">33.95</span><span class="pl-k">%</span> gc time)
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> BSONqs<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>vgg19.bson<span class="pl-pds">"</span></span>);

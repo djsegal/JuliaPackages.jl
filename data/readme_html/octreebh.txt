@@ -1,0 +1,85 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-octreebh" class="anchor" aria-hidden="true" href="#octreebh"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>OctreeBH</h1>
+<p><a href="https://huchiayu.github.io/OctreeBH.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://huchiayu.github.io/OctreeBH.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a>
+<a href="https://github.com/huchiayu/OctreeBH.jl/actions"><img src="https://github.com/huchiayu/OctreeBH.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/huchiayu/OctreeBH.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6eeecdac0c47dde2ff7cd9572543dbadf3bc66f4c441001f25f3e9fad3b4ec8b/68747470733a2f2f636f6465636f762e696f2f67682f68756368696179752f4f637472656542482e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/huchiayu/OctreeBH.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p><code>OctreeBH</code> is an implementation of octree for solving N-body problems using the <a href="https://en.wikipedia.org/wiki/Barnes%E2%80%93Hut_simulation" rel="nofollow">Barnes–Hut approximation</a>. Namely, tree nodes carry information that can be summed or compared in an efficient way. The package provides two main functionalities: (1) finding particles within a given radius (neighbor search) and (2) calculating gravitational acceleration in an N-body system. Neighbor search can be done in either the "gather" or "scatter" approach, which is particularly useful in <a href="https://en.wikipedia.org/wiki/Smoothed-particle_hydrodynamics" rel="nofollow">smoothed-particle hydrodynamics</a>. Gravitational acceleration adopts the monopole approximation, i.e., distant particles are clustered together and treated as a point mass located at their center of mass. Boundary conditions can be open, periodic, or mixed (e.g. periodic in x &amp; y while open in z). Spatial dimension (N) can be any arbitrary positive integer.</p>
+<h1><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Quick Start</h1>
+<p>Finding particles within a searching radius <code>hsml0</code> centered at <code>x</code>:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="using OctreeBH
+using StaticArrays
+
+N = 3 #spatial dimension
+T = Float64
+
+Npart = 100000 #number of particles
+hsml0 = 0.04 #searching radius
+boxsizes = @SVector(ones(N)) #for periodic B.C.
+topnode_length = @SVector(ones(N)) #size of the top tree node
+center = topnode_length .* 0.5 #center of the top tree ndoe
+
+hsml = ones(Npart) .* hsml0 #particle smoothing length 
+mass = ones(Npart) #particle mass
+
+#randomly distributing particles
+X = [@SVector rand(N) for _ in 1:Npart]
+
+#store particle data into the struct &quot;Data&quot; 
+part = [Data{N,T}(X[i], i, hsml[i], mass[i]) for i in 1:Npart]
+
+#build the tree
+tree = buildtree(part, center, topnode_length);
+
+x = @SVector rand(N) #search center
+
+#get indices of the gather neighbors
+idx_ngbs_g = get_gather_ngb_tree(x, hsml0, tree, boxsizes)
+
+#get indices of the scatter neighbors
+idx_ngbs_s = get_scatter_ngb_tree(x, tree, boxsizes)
+
+#for constant hsml, the two ngbs are identical
+@show length(idx_ngbs_g), length(idx_ngbs_s)
+"><pre><code>using OctreeBH
+using StaticArrays
+
+N = 3 #spatial dimension
+T = Float64
+
+Npart = 100000 #number of particles
+hsml0 = 0.04 #searching radius
+boxsizes = @SVector(ones(N)) #for periodic B.C.
+topnode_length = @SVector(ones(N)) #size of the top tree node
+center = topnode_length .* 0.5 #center of the top tree ndoe
+
+hsml = ones(Npart) .* hsml0 #particle smoothing length 
+mass = ones(Npart) #particle mass
+
+#randomly distributing particles
+X = [@SVector rand(N) for _ in 1:Npart]
+
+#store particle data into the struct "Data" 
+part = [Data{N,T}(X[i], i, hsml[i], mass[i]) for i in 1:Npart]
+
+#build the tree
+tree = buildtree(part, center, topnode_length);
+
+x = @SVector rand(N) #search center
+
+#get indices of the gather neighbors
+idx_ngbs_g = get_gather_ngb_tree(x, hsml0, tree, boxsizes)
+
+#get indices of the scatter neighbors
+idx_ngbs_s = get_scatter_ngb_tree(x, tree, boxsizes)
+
+#for constant hsml, the two ngbs are identical
+@show length(idx_ngbs_g), length(idx_ngbs_s)
+</code></pre></div>
+<h1><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h1>
+<p>The example code visualization.jl visualizes the (quad)tree structure for a given particle configuration in 2D. It also illustrates the difference between the gather neighbors (lower left) and scatter neighbors (upper right), which are identical in this particular case as the smoothing length (search radius) is constant.</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://user-images.githubusercontent.com/23061774/113936917-c0f69080-97f8-11eb-880e-4fd8019b9f49.png"><img src="https://user-images.githubusercontent.com/23061774/113936917-c0f69080-97f8-11eb-880e-4fd8019b9f49.png" alt="vis_tree" style="max-width:100%;"></a></p>
+<p>The example code <a href="https://github.com/huchiayu/OctreeBH.jl/blob/main/test/nbody.jl">nbody.jl</a> solves a gravitational N-body system using the leapfrog integration scheme.</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://user-images.githubusercontent.com/23061774/112749075-417aed00-8fc0-11eb-8f18-9793b1e82f57.gif"><img src="https://user-images.githubusercontent.com/23061774/112749075-417aed00-8fc0-11eb-8f18-9793b1e82f57.gif" alt="movie" style="max-width:100%;"></a></p>
+<h1><a id="user-content-author" class="anchor" aria-hidden="true" href="#author"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Author</h1>
+<p>Chia-Yu Hu @ Max Planck Institute for Extraterrestrial Physics (<a href="mailto:cyhu.astro@gmail.com">cyhu.astro@gmail.com</a>)</p>
+</article></div>

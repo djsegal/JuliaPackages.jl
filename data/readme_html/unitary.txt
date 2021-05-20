@@ -1,0 +1,73 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-unitaryjl" class="anchor" aria-hidden="true" href="#unitaryjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Unitary.jl</h1>
+<p>This package implements a differentiable parametrization of a group of unitary matrices as described in paper <em>Sum-Product-Transform Networks: Exploiting Symmetries using Invertible Transformations, Tomas Pevny, Vasek Smidl, Martin Trapp, Ondrej Polacek, Tomas Oberhuber, 2020</em> <a href="https://arxiv.org/abs/2005.01297" rel="nofollow">https://arxiv.org/abs/2005.01297</a></p>
+<p>The actual "Dense" node implementing <code>f(x) = σ.(W * x .+ b)</code>, where <code>W</code> is in svd form has moved to <a href="https://github.com/pevnak/SumProductTransform.jl">https://github.com/pevnak/SumProductTransform.jl</a> to keep this simple. Since in the paper, we have experimented with different ways, how to efficiently implement Dense matrices featuring efficient inversion and calculation of determinant, the repository contains a little bit more.</p>
+<ul>
+<li><code>Givens</code> - representation of a unitary matrix using Givens rotations</li>
+<li><code>UnitaryHouseholder</code> - representation of a unitary matrix using Householder reflections, an approach common in Machine Learning</li>
+<li>LU - representation of a matrix using LU decomposition</li>
+<li>LDU  - representation of a matrix using LDU decomposition</li>
+</ul>
+<p>The usage is simple:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="using Unitary, Flux, BenchmarkTools
+using Unitary: Givens, lowup
+
+x = randn(Float32, 50, 100)
+xx = randn(Float32, 100, 50)
+
+a = Givens(50)
+@btime a * x;		
+#  224.097 μs (4 allocations: 20.00 KiB)
+@btime xx * a;	
+#  79.517 μs (4 allocations: 20.00 KiB)
+
+ps = Flux.params(a)
+@btime gradient(() -&gt; sum(a * x), ps);	# 890.323 μs (58 allocations: 71.52 KiB)
+# 891.481 μs (60 allocations: 72.42 KiB)
+@btime gradient(() -&gt; sum(xx * a), ps);	# 473.158 μs (58 allocations: 71.52 KiB)
+@ 468.794 μs (60 allocations: 72.42 KiB)
+
+a = Givens(50)
+@btime a * x;
+# 646.874 μs (10154 allocations: 2.37 MiB)
+
+@btime xx * a;
+#  726.198 μs (10204 allocations: 2.39 MiB)
+
+@btime gradient(() -&gt; sum(a * x), ps);  
+#  103.869 ms (44538 allocations: 179.60 MiB)
+
+@btime gradient(() -&gt; sum(xx * a), ps);
+#  105.061 ms (44688 allocations: 179.67 MiB)
+"><pre><code>using Unitary, Flux, BenchmarkTools
+using Unitary: Givens, lowup
+
+x = randn(Float32, 50, 100)
+xx = randn(Float32, 100, 50)
+
+a = Givens(50)
+@btime a * x;		
+#  224.097 μs (4 allocations: 20.00 KiB)
+@btime xx * a;	
+#  79.517 μs (4 allocations: 20.00 KiB)
+
+ps = Flux.params(a)
+@btime gradient(() -&gt; sum(a * x), ps);	# 890.323 μs (58 allocations: 71.52 KiB)
+# 891.481 μs (60 allocations: 72.42 KiB)
+@btime gradient(() -&gt; sum(xx * a), ps);	# 473.158 μs (58 allocations: 71.52 KiB)
+@ 468.794 μs (60 allocations: 72.42 KiB)
+
+a = Givens(50)
+@btime a * x;
+# 646.874 μs (10154 allocations: 2.37 MiB)
+
+@btime xx * a;
+#  726.198 μs (10204 allocations: 2.39 MiB)
+
+@btime gradient(() -&gt; sum(a * x), ps);  
+#  103.869 ms (44538 allocations: 179.60 MiB)
+
+@btime gradient(() -&gt; sum(xx * a), ps);
+#  105.061 ms (44688 allocations: 179.67 MiB)
+</code></pre></div>
+<p>Matrices support only multiplication, because that is what they have been designed for, but you can always convert them to normal matrices using <code>Matrix</code> (but this is not at the moment differentiable).</p>
+</article></div>

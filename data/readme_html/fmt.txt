@@ -1,0 +1,608 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><strong>This package is still under active development. The API may change anytime. Almost no error checks. Only handful basic types are supported.</strong></p>
+<h1><a id="user-content-fmtjl--python-style-format-strings-for-julia" class="anchor" aria-hidden="true" href="#fmtjl--python-style-format-strings-for-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Fmt.jl ― Python-style format strings for Julia</h1>
+<p>Fmt.jl provides a Python-style format language.
+It is an alternative of Printf.jl and string utility functions in Base.
+Formats are constructed by a <a href="https://docs.julialang.org/en/v1/manual/strings/#non-standard-string-literals" rel="nofollow">non-standard string literal</a> prefixed by <code>f</code>, called f-strings.
+In the following example, a part of an f-string surrounded by curly braces <code>{</code> <code>}</code> is replaced with a formatted floating-point number:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; using Fmt
+
+julia&gt; pi = float(π)
+3.141592653589793
+
+julia&gt; f&quot;π ≈ {$pi:.4f}&quot;
+&quot;π ≈ 3.1416&quot;
+"><pre><code>julia&gt; using Fmt
+
+julia&gt; pi = float(π)
+3.141592653589793
+
+julia&gt; f"π ≈ {$pi:.4f}"
+"π ≈ 3.1416"
+</code></pre></div>
+<p>The goals of Fmt.jl are:</p>
+<ul>
+<li><strong>Full-fledged</strong>: It supports almost complete features of Python's format strings.</li>
+<li><strong>Performant</strong>: The formatter is much faster than <code>string</code> and other functions.</li>
+<li><strong>Lightweight</strong>: It has no dependencies except the Base library.</li>
+</ul>
+<h2><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Overview</h2>
+<p>The <code>@f_str</code> macro (or f-string) is the only exported binding from the <code>Fmt</code> module.
+This macro can interpolate variables into a string with format specification.
+Interpolation happens inside replacement fields surrounded by a pair of curly braces <code>{}</code>; other parts of an f-string are treated as ordinal strings.
+A replacement field usually has an argument <code>ARG</code> and a specification <code>SPEC</code> separated by a colon: <code>{ARG:SPEC}</code>, although both of them can be omitted.</p>
+<p>Let's see some examples.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# load @f_str
+using Fmt
+
+# default format
+x = 42
+f&quot;x is {$x}.&quot; == &quot;x is 42.&quot;
+
+# binary, octal, decimal, and hexadecimal format
+f&quot;{$x:b}&quot; == &quot;101010&quot;
+f&quot;{$x:o}&quot; == &quot;52&quot;
+f&quot;{$x:d}&quot; == &quot;42&quot;
+f&quot;{$x:x}&quot; == &quot;2a&quot;
+f&quot;{$x:X}&quot; == &quot;2A&quot;
+
+# format with a minimum width
+f&quot;{$x:4}&quot; == &quot;  42&quot;
+f&quot;{$x:6}&quot; == &quot;    42&quot;
+
+# left, center, and right alignment
+f&quot;{$x:&lt;6}&quot;  == &quot;42    &quot;
+f&quot;{$x:^6}&quot;  == &quot;  42  &quot;
+f&quot;{$x:&gt;6}&quot;  == &quot;    42&quot;
+f&quot;{$x:*&lt;6}&quot; == &quot;42****&quot;
+f&quot;{$x:*^6}&quot; == &quot;**42**&quot;
+f&quot;{$x:*&gt;6}&quot; == &quot;****42&quot;
+
+# dynamic width
+n = 6
+f&quot;{$x:&lt;{$n}}&quot; == &quot;42    &quot;
+f&quot;{$x:^{$n}}&quot; == &quot;  42  &quot;
+f&quot;{$x:&gt;{$n}}&quot; == &quot;    42&quot;
+
+# grouping digits with thousand separator
+x = 1234567
+f&quot;{$x:,}&quot; == &quot;1,234,567&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> load @f_str</span>
+<span class="pl-k">using</span> Fmt
+
+<span class="pl-c"><span class="pl-c">#</span> default format</span>
+x <span class="pl-k">=</span> <span class="pl-c1">42</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>x is {$x}.<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>x is 42.<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> binary, octal, decimal, and hexadecimal format</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:b}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>101010<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:o}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>52<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:d}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>42<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:x}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>2a<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:X}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>2A<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> format with a minimum width</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:4}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>  42<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:6}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>    42<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> left, center, and right alignment</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:&lt;6}<span class="pl-pds">"</span></span>  <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>42    <span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:^6}<span class="pl-pds">"</span></span>  <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>  42  <span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:&gt;6}<span class="pl-pds">"</span></span>  <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>    42<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:*&lt;6}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>42****<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:*^6}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>**42**<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:*&gt;6}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>****42<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> dynamic width</span>
+n <span class="pl-k">=</span> <span class="pl-c1">6</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:&lt;{$n}}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>42    <span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:^{$n}}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>  42  <span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:&gt;{$n}}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>    42<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> grouping digits with thousand separator</span>
+x <span class="pl-k">=</span> <span class="pl-c1">1234567</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x:,}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>1,234,567<span class="pl-pds">"</span></span></pre></div>
+<p>In addition to f-strings, Fmt.jl provides two formatting functions:</p>
+<ul>
+<li><code>Fmt.format(fstr, args...; kwargs...)</code> creates a formatted string by applying <code>args</code> and <code>kwargs</code> to <code>fstr</code>.</li>
+<li><code>Fmt.printf([out,] fstr, args...; kwargs...)</code> prints a formatted string to <code>out</code> (default: <code>stdout</code>) by applying <code>args</code> and <code>kwargs</code> to <code>fstr</code>.</li>
+</ul>
+<p>When using these functions, you cannot interpolate replacement fields with <code>$</code>. All replacement values are given as function arguments:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Fmt
+
+# positional arguments with implicit numbering
+Fmt.format(f&quot;{} and {}&quot;, &quot;Alice&quot;, &quot;Bob&quot;) == &quot;Alice and Bob&quot;
+
+# positional arguments with explicit numbering
+Fmt.format(f&quot;{1} and {2}&quot;, &quot;Alice&quot;, &quot;Bob&quot;) == &quot;Alice and Bob&quot;
+Fmt.format(f&quot;{2} and {1}&quot;, &quot;Alice&quot;, &quot;Bob&quot;) == &quot;Bob and Alice&quot;
+
+# keyword arguments
+Fmt.format(f&quot;{A} and {B}&quot;, A = &quot;Alice&quot;, B = &quot;Bob&quot;) == &quot;Alice and Bob&quot;
+Fmt.format(f&quot;{B} and {A}&quot;, A = &quot;Alice&quot;, B = &quot;Bob&quot;) == &quot;Bob and Alice&quot;
+
+# box drawing example
+Fmt.printf(f&quot;&quot;&quot;
+┌{1:─^{2}}┐             ┌{1:─^{2}}┐
+│{A: ^{2}}│ ──────────&gt; │{B: ^{2}}│
+└{1:─^{2}}┘             └{1:─^{2}}┘
+&quot;&quot;&quot;, &quot;&quot;, 15, A = &quot;Alice&quot;, B = &quot;Bob&quot;)
+# ┌───────────────┐             ┌───────────────┐
+# │     Alice     │ ──────────&gt; │      Bob      │
+# └───────────────┘             └───────────────┘
+"><pre><span class="pl-k">using</span> Fmt
+
+<span class="pl-c"><span class="pl-c">#</span> positional arguments with implicit numbering</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{} and {}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Alice and Bob<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> positional arguments with explicit numbering</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{1} and {2}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Alice and Bob<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{2} and {1}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Bob and Alice<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> keyword arguments</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{A} and {B}<span class="pl-pds">"</span></span>, A <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, B <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Alice and Bob<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{B} and {A}<span class="pl-pds">"</span></span>, A <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, B <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Bob and Alice<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> box drawing example</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">printf</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"""</span></span>
+<span class="pl-s">┌{1:─^{2}}┐             ┌{1:─^{2}}┐</span>
+<span class="pl-s">│{A: ^{2}}│ ──────────&gt; │{B: ^{2}}│</span>
+<span class="pl-s">└{1:─^{2}}┘             └{1:─^{2}}┘</span>
+<span class="pl-s"><span class="pl-pds">"""</span></span>, <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>, <span class="pl-c1">15</span>, A <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, B <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>)
+<span class="pl-c"><span class="pl-c">#</span> ┌───────────────┐             ┌───────────────┐</span>
+<span class="pl-c"><span class="pl-c">#</span> │     Alice     │ ──────────&gt; │      Bob      │</span>
+<span class="pl-c"><span class="pl-c">#</span> └───────────────┘             └───────────────┘</span></pre></div>
+<p>The syntax of f-strings is borrowed from <a href="https://docs.python.org/3/library/string.html#format-string-syntax" rel="nofollow">Python's Format String Syntax</a>, which is ported to C++ as <a href="https://en.cppreference.com/w/cpp/utility/format" rel="nofollow">C++20 std::format</a> and Rust as <a href="https://doc.rust-lang.org/std/fmt/" rel="nofollow">std::fmt</a>.
+See the next sections for details of the syntax and semantic supported by Fmt.jl.</p>
+<h2><a id="user-content-syntax" class="anchor" aria-hidden="true" href="#syntax"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Syntax</h2>
+<p>Each replacement field is surrounded by a pair of curly braces.
+To escape curly braces, double curly braces (<code>{{</code> and <code>}}</code>) are interpreted as single curly braces (<code>{</code> and <code>}</code>).
+Backslash-escaped characters are treated in the same way as in usual strings.
+However, dollar signs <code>$</code> are no longer a special character for interpolation; that is, no interpolation happens outside replacement fields.</p>
+<p>The syntax of a replacement field is formally defined as follows:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="# replacement field
+field      = '{'[argument]['/'conv][':'spec]'}'
+argument   = number | ['$']identifier | '$('expression')'
+number     = digit+
+identifier = any valid identifier
+expression = any valid expression
+digit      = '0' | '1' | '2' | … | '9'
+conv       = 's' | 'r'
+
+# format specification
+spec       = [[fill]align][sign][altform][zero][width][grouping]['.'precision][type]
+fill       = any valid character (except '{' and '}') | '{'[argument]'}'
+align      = '&lt;' | '^' | '&gt;'
+sign       = '+' | '-' | ' '
+altform    = '#'
+zero       = '0'
+width      = digit+ | '{'[argument]'}'
+grouping   = ',' | '_'
+precision  = digit+ | '{'[argument]'}'
+type       = 'd' | 'X' | 'x' | 'o' | 'B' | 'b' | 'c' | 'p' | 's'
+             'F' | 'f' | 'E' | 'e' | 'G' | 'g' | 'A' | 'a' | '%'
+"><pre><code># replacement field
+field      = '{'[argument]['/'conv][':'spec]'}'
+argument   = number | ['$']identifier | '$('expression')'
+number     = digit+
+identifier = any valid identifier
+expression = any valid expression
+digit      = '0' | '1' | '2' | … | '9'
+conv       = 's' | 'r'
+
+# format specification
+spec       = [[fill]align][sign][altform][zero][width][grouping]['.'precision][type]
+fill       = any valid character (except '{' and '}') | '{'[argument]'}'
+align      = '&lt;' | '^' | '&gt;'
+sign       = '+' | '-' | ' '
+altform    = '#'
+zero       = '0'
+width      = digit+ | '{'[argument]'}'
+grouping   = ',' | '_'
+precision  = digit+ | '{'[argument]'}'
+type       = 'd' | 'X' | 'x' | 'o' | 'B' | 'b' | 'c' | 'p' | 's'
+             'F' | 'f' | 'E' | 'e' | 'G' | 'g' | 'A' | 'a' | '%'
+</code></pre></div>
+<p>Note that <em>syntactic</em> validity does not imply <em>semantic</em> validity.
+For example, <code>{:,s}</code> is syntactically valid but semantically invalid, because the string type <code>s</code> does not support the thousands separator <code>,</code>.</p>
+<p>A sequence of <code>zero</code> and <code>width</code> may be ambiguous because <code>width</code> may start with <code>0</code>.
+To resolve the ambiguity, if <code>0</code> is followed by a digit, the leading zero is interpreted as <code>zero</code> and the following digits are interpreted as <code>width</code>.
+Otherwise, the zero is interpreted as <code>width</code>.</p>
+<h2><a id="user-content-semantic" class="anchor" aria-hidden="true" href="#semantic"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Semantic</h2>
+<p>The semantic of the format specification is basically the same as that of Python.</p>
+<p>Fields that have an argument prefixed by <code>$</code> are interpolated like ordinal strings.
+Currently, mixing interpolated and non-interpolated replacement fields in an f-string is not allowed.
+The f-string returns a string if there is a field with interpolation.
+Otherwise, it returns an <code>Fmt.Format</code> object, which can be passed to <code>Fmt.format</code> and <code>Fmt.printf</code> as the formatting template.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="f&quot;x is {$x}.&quot; isa String      #&gt; true
+f&quot;x is {x}.&quot;  isa Fmt.Format  #&gt; true
+f&quot;x is {}.&quot;   isa Fmt.Format  #&gt; true
+f&quot;x is x.&quot;    isa Fmt.Format  #&gt; true
+"><pre><span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>x is {$x}.<span class="pl-pds">"</span></span> <span class="pl-k">isa</span> String      <span class="pl-c"><span class="pl-c">#</span>&gt; true</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>x is {x}.<span class="pl-pds">"</span></span>  <span class="pl-k">isa</span> Fmt<span class="pl-k">.</span>Format  <span class="pl-c"><span class="pl-c">#</span>&gt; true</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>x is {}.<span class="pl-pds">"</span></span>   <span class="pl-k">isa</span> Fmt<span class="pl-k">.</span>Format  <span class="pl-c"><span class="pl-c">#</span>&gt; true</span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>x is x.<span class="pl-pds">"</span></span>    <span class="pl-k">isa</span> Fmt<span class="pl-k">.</span>Format  <span class="pl-c"><span class="pl-c">#</span>&gt; true</span></pre></div>
+<h3><a id="user-content-argument" class="anchor" aria-hidden="true" href="#argument"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Argument</h3>
+<p>The <code>argument</code> is either positional or keyword.
+Positional arguments are numbered from one, and their values are supplied from arguments passed to the <code>Fmt.format</code> function.
+If numbers are omitted, they are automatically numbered incrementally from left to right, which is independent from other kinds of arguments.
+Keyword arguments are named by a variable and may be interpolated.
+If a keyword argument is interpolated (indicated by <code>$</code>), its value is supplied from the context where the replacement field is placed; otherwise, its value is supplied from a keyword argument with the same name passed to the <code>Fmt.format</code> function.
+Currently, you cannot mix interpolated keyword arguments with other kinds of arguments in a single format.</p>
+<p>Interpolated formats immediately return a string of the <code>String</code> type, while other formats are evaluated to an <code>Fmt.Format</code> object.
+The <code>Fmt.format</code> object can be passed to the <code>Fmt.format</code> function as its first argument to create a formatted string.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Positional arguments
+Fmt.format(f&quot;{1} {2}&quot;, &quot;foo&quot;, &quot;bar&quot;) == &quot;foo bar&quot;
+
+# Positional arguments (implicit numbers)
+Fmt.format(f&quot;{} {}&quot;, &quot;foo&quot;, &quot;bar&quot;) == &quot;foo bar&quot;
+
+# Keyword arguments
+Fmt.format(f&quot;{x} {y}&quot;, x = &quot;foo&quot;, y = &quot;bar&quot;) == &quot;foo bar&quot;
+
+# Positional and keyword arguments
+Fmt.format(f&quot;{1} {x} {2}&quot;, &quot;foo&quot;, &quot;bar&quot;, x = &quot;and&quot;) == &quot;foo and bar&quot;
+
+# Keyword arguments with interpolation
+x, y = &quot;foo&quot;, &quot;bar&quot;
+f&quot;{$x} {$y}&quot; == &quot;foo bar&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> Positional arguments</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{1} {2}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo bar<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Positional arguments (implicit numbers)</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{} {}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo bar<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Keyword arguments</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{x} {y}<span class="pl-pds">"</span></span>, x <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>, y <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo bar<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Positional and keyword arguments</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{1} {x} {2}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>, x <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>and<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo and bar<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Keyword arguments with interpolation</span>
+x, y <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$x} {$y}<span class="pl-pds">"</span></span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo bar<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-conversion" class="anchor" aria-hidden="true" href="#conversion"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Conversion</h3>
+<p>Conversion is indicated by <code>/</code> followed by <code>s</code> or <code>r</code>.
+If conversion is specified, the argument is first converted to a string representation using the <code>string</code> or <code>repr</code> function.
+As the conversion characters suggest, <code>/s</code> converts the argument using the <code>string</code> function and <code>/r</code> with the <code>repr</code> function.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Conversion
+Fmt.format(f&quot;{/s}&quot;, 'a') == &quot;a&quot;
+Fmt.format(f&quot;{/r}&quot;, 'a') == &quot;'a'&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> Conversion</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{/s}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{/r}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>'a'<span class="pl-pds">"</span></span></pre></div>
+<p>Python uses <code>!</code> to mark the conversion syntax.
+Fmt.jl uses <code>/</code> instead to avoid syntactic ambiguity, because Julia allows <code>!</code> as a valid character for identifiers.</p>
+<h3><a id="user-content-fill-and-alignment" class="anchor" aria-hidden="true" href="#fill-and-alignment"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Fill and alignment</h3>
+<p>The content of a formatted value can be aligned within the specified <code>width</code>.
+Note that text alignment does not make sense unless <code>width</code> is specified.</p>
+<p>The <code>align</code> character indicates an alignment type as follows:</p>
+<ul>
+<li><code>&lt;</code> : left alignment</li>
+<li><code>^</code> : center alignment</li>
+<li><code>&gt;</code> : right alignment</li>
+</ul>
+<p>The left and right margins are filled with <code>fill</code>.
+It can be any character except <code>{</code> and <code>}</code>.
+If omitted, a space character (i.e., U+0020) is used.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Alignment with the default fill
+Fmt.format(f&quot;{:&lt;7}&quot;, &quot;foo&quot;) == &quot;foo    &quot;
+Fmt.format(f&quot;{:^7}&quot;, &quot;foo&quot;) == &quot;  foo  &quot;
+Fmt.format(f&quot;{:&gt;7}&quot;, &quot;foo&quot;) == &quot;    foo&quot;
+
+# Alignment with a specified fill
+Fmt.format(f&quot;{:*&lt;7}&quot;, &quot;foo&quot;) == &quot;foo****&quot;
+Fmt.format(f&quot;{:*^7}&quot;, &quot;foo&quot;) == &quot;**foo**&quot;
+Fmt.format(f&quot;{:*&gt;7}&quot;, &quot;foo&quot;) == &quot;****foo&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> Alignment with the default fill</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:&lt;7}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo    <span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:^7}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>  foo  <span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:&gt;7}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>    foo<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Alignment with a specified fill</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:*&lt;7}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>foo****<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:*^7}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>**foo**<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:*&gt;7}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>****foo<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-sign" class="anchor" aria-hidden="true" href="#sign"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sign</h3>
+<p><code>sign</code> controls the character indicating the sign of a number:</p>
+<ul>
+<li><code>-</code> : a sign should be used only for negative values (default)</li>
+<li><code>+</code> : a sign should be used for both non-negative and negative values</li>
+<li>space : a sign should be used only for negative values and a space should be used for non-negative values</li>
+</ul>
+<p>Note that <code>sign</code> is only meaningful for numbers.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Fmt.format(f&quot;{:-}&quot;,  3) == &quot;3&quot;
+Fmt.format(f&quot;{:-}&quot;, -3) == &quot;-3&quot;
+Fmt.format(f&quot;{:+}&quot;,  3) == &quot;+3&quot;
+Fmt.format(f&quot;{:+}&quot;, -3) == &quot;-3&quot;
+Fmt.format(f&quot;{: }&quot;,  3) == &quot; 3&quot;
+Fmt.format(f&quot;{: }&quot;, -3) == &quot;-3&quot;
+"><pre>Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:-}<span class="pl-pds">"</span></span>,  <span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>3<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:-}<span class="pl-pds">"</span></span>, <span class="pl-k">-</span><span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>-3<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:+}<span class="pl-pds">"</span></span>,  <span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>+3<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:+}<span class="pl-pds">"</span></span>, <span class="pl-k">-</span><span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>-3<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{: }<span class="pl-pds">"</span></span>,  <span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span> 3<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{: }<span class="pl-pds">"</span></span>, <span class="pl-k">-</span><span class="pl-c1">3</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>-3<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-alternate-form-altform" class="anchor" aria-hidden="true" href="#alternate-form-altform"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Alternate form (altform)</h3>
+<p><code>altform</code> (<code>#</code>) indicates that the value should be formatted in a different way, depending on the type of the value and the <code>type</code> character.
+For integers, it indicates that the prefix (<code>0b</code>, <code>0o</code>, <code>0x</code>, or <code>0X</code>) should be added before digits:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Standard form of integers
+Fmt.format(&quot;{:o}&quot;, 42) == &quot;52&quot;
+Fmt.format(&quot;{:x}&quot;, 42) == &quot;2a&quot;
+
+# Alternate form of integers
+Fmt.format(&quot;{:#o}&quot;, 42) == &quot;0o52&quot;
+Fmt.format(&quot;{:#x}&quot;, 42) == &quot;0x2a&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> Standard form of integers</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds">"</span>{:o}<span class="pl-pds">"</span></span>, <span class="pl-c1">42</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>52<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds">"</span>{:x}<span class="pl-pds">"</span></span>, <span class="pl-c1">42</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>2a<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Alternate form of integers</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds">"</span>{:#o}<span class="pl-pds">"</span></span>, <span class="pl-c1">42</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>0o52<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds">"</span>{:#x}<span class="pl-pds">"</span></span>, <span class="pl-c1">42</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>0x2a<span class="pl-pds">"</span></span></pre></div>
+<p>For floating-point numbers, it indicates ... (TBD).</p>
+<h3><a id="user-content-zero" class="anchor" aria-hidden="true" href="#zero"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Zero</h3>
+<p><code>zero</code> (<code>0</code>) indicates that sign-aware zero padding should be added to fill the width specified by <code>width</code>.
+That is, zeros for padding are added after the sign, not before the sign like <code>fill</code>.
+The following example illustrates the difference between sign-aware padding and sign-ignorant padding:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Sign-aware zero padding
+Fmt.format(f&quot;{:+08}&quot;,  42) == &quot;+0000042&quot;
+
+# Sign-ignorant zero padding
+Fmt.format(f&quot;{:0&gt;+8}&quot;, 42) == &quot;00000+42&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> Sign-aware zero padding</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:+08}<span class="pl-pds">"</span></span>,  <span class="pl-c1">42</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>+0000042<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> Sign-ignorant zero padding</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:0&gt;+8}<span class="pl-pds">"</span></span>, <span class="pl-c1">42</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>00000+42<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-width" class="anchor" aria-hidden="true" href="#width"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Width</h3>
+<p><code>width</code> indicates the minimum width of a formatted string.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Format an integer with minimum width 4
+Fmt.format(f&quot;{:4}&quot;, 123)   == &quot; 123&quot;
+Fmt.format(f&quot;{:4}&quot;, 1234)  == &quot;1234&quot;
+Fmt.format(f&quot;{:4}&quot;, 12345) == &quot;12345&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> Format an integer with minimum width 4</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:4}<span class="pl-pds">"</span></span>, <span class="pl-c1">123</span>)   <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span> 123<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:4}<span class="pl-pds">"</span></span>, <span class="pl-c1">1234</span>)  <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>1234<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:4}<span class="pl-pds">"</span></span>, <span class="pl-c1">12345</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>12345<span class="pl-pds">"</span></span></pre></div>
+<p>The default alignment depends on the type of a value.
+For example, numbers are left-aligned while strings are right-aligned unless <code>align</code> is specified.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Fmt.format(f&quot;{:4}&quot;, 1)   == &quot;   1&quot;
+Fmt.format(f&quot;{:4}&quot;, &quot;a&quot;) == &quot;a   &quot;
+"><pre>Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:4}<span class="pl-pds">"</span></span>, <span class="pl-c1">1</span>)   <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>   1<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:4}<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>a   <span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-grouping" class="anchor" aria-hidden="true" href="#grouping"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Grouping</h3>
+<p><code>grouping</code> spcifies the way of grouping digits.
+For integers with the decimal format, <code>,</code> and <code>_</code> indicates thousand separator (e.g., <code>1,234,567</code>).
+For integers with the binary, octal or hexadecimal format, <code>_</code> indicates four-digit separator (e.g., <code>0x1234_5678</code>).
+For floating-point numbers, integral parts are grouped.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# integers
+Fmt.format(f&quot;{:,}&quot;,   123456789)  == &quot;123,456,789&quot;
+Fmt.format(f&quot;{:_}&quot;,   123456789)  == &quot;123_456_789&quot;
+Fmt.format(f&quot;{:#_x}&quot;, 0xdeadbeef) == &quot;0xdead_beef&quot;
+
+# floats
+Fmt.format(f&quot;{:,f}&quot;, 2.99792458e8) == &quot;299,792,458.000000&quot;
+Fmt.format(f&quot;{:_f}&quot;, 2.99792458e8) == &quot;299_792_458.000000&quot;
+"><pre><span class="pl-c"><span class="pl-c">#</span> integers</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:,}<span class="pl-pds">"</span></span>,   <span class="pl-c1">123456789</span>)  <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>123,456,789<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:_}<span class="pl-pds">"</span></span>,   <span class="pl-c1">123456789</span>)  <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>123_456_789<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:#_x}<span class="pl-pds">"</span></span>, <span class="pl-c1">0xdeadbeef</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>0xdead_beef<span class="pl-pds">"</span></span>
+
+<span class="pl-c"><span class="pl-c">#</span> floats</span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:,f}<span class="pl-pds">"</span></span>, <span class="pl-c1">2.99792458e8</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>299,792,458.000000<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:_f}<span class="pl-pds">"</span></span>, <span class="pl-c1">2.99792458e8</span>) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>299_792_458.000000<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-precision" class="anchor" aria-hidden="true" href="#precision"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Precision</h3>
+<p>For floating-point numbers, <code>precision</code> specifies the precision of a formatted representation string of a number.</p>
+<p>TBD</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Fmt.format(f&quot;{:.2f}&quot;, Float64(pi)) == &quot;3.14&quot;
+Fmt.format(f&quot;{:.3f}&quot;, Float64(pi)) == &quot;3.142&quot;
+Fmt.format(f&quot;{:.4f}&quot;, Float64(pi)) == &quot;3.1416&quot;
+"><pre>Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:.2f}<span class="pl-pds">"</span></span>, <span class="pl-c1">Float64</span>(<span class="pl-c1">pi</span>)) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>3.14<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:.3f}<span class="pl-pds">"</span></span>, <span class="pl-c1">Float64</span>(<span class="pl-c1">pi</span>)) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>3.142<span class="pl-pds">"</span></span>
+Fmt<span class="pl-k">.</span><span class="pl-c1">format</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{:.4f}<span class="pl-pds">"</span></span>, <span class="pl-c1">Float64</span>(<span class="pl-c1">pi</span>)) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>3.1416<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-type" class="anchor" aria-hidden="true" href="#type"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Type</h3>
+<h4><a id="user-content-integers" class="anchor" aria-hidden="true" href="#integers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Integers</h4>
+<table>
+<thead>
+<tr>
+<th align="center">Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>d</code></td>
+<td>decimal</td>
+</tr>
+<tr>
+<td align="center"><code>X</code></td>
+<td>hexadecimal (uppercase)</td>
+</tr>
+<tr>
+<td align="center"><code>x</code></td>
+<td>hexadecimal (lowercase)</td>
+</tr>
+<tr>
+<td align="center"><code>o</code></td>
+<td>octal</td>
+</tr>
+<tr>
+<td align="center"><code>B</code></td>
+<td>binary (uppercase)</td>
+</tr>
+<tr>
+<td align="center"><code>b</code></td>
+<td>binary (lowecase)</td>
+</tr>
+<tr>
+<td align="center"><code>c</code></td>
+<td>character</td>
+</tr>
+<tr>
+<td align="center">none</td>
+<td>decimal</td>
+</tr>
+</tbody>
+</table>
+<h4><a id="user-content-floating-point-numbers" class="anchor" aria-hidden="true" href="#floating-point-numbers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Floating-point numbers</h4>
+<table>
+<thead>
+<tr>
+<th align="center">Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>F</code></td>
+<td>fixed-point notation (uppercase)</td>
+</tr>
+<tr>
+<td align="center"><code>f</code></td>
+<td>fixed-point notation (lowercase)</td>
+</tr>
+<tr>
+<td align="center"><code>E</code></td>
+<td>scientific notation (uppercase)</td>
+</tr>
+<tr>
+<td align="center"><code>e</code></td>
+<td>scientific notation (lowercase)</td>
+</tr>
+<tr>
+<td align="center"><code>A</code></td>
+<td>hexadecimal notation (uppercase)</td>
+</tr>
+<tr>
+<td align="center"><code>a</code></td>
+<td>hexadecimal notation (lowercase)</td>
+</tr>
+<tr>
+<td align="center"><code>G</code></td>
+<td>general notation (uppercase)</td>
+</tr>
+<tr>
+<td align="center"><code>g</code></td>
+<td>general notation (lowercase)</td>
+</tr>
+<tr>
+<td align="center"><code>%</code></td>
+<td>percentage (multiplied by 100)</td>
+</tr>
+<tr>
+<td align="center">none</td>
+<td>general notation</td>
+</tr>
+</tbody>
+</table>
+<p>There are three kinds of notations for floating-point numbers.
+Fixed-point notation refers to a notation without exponent part, such as <code>3.14</code> and <code>0.001</code>.
+Scientific notation refers to a notation with exponent part, such as <code>6.02e+23</code> and <code>1e-8</code>.
+Hexadecimal notation is similar to scientific notation, but it is prefixed by <code>0x</code> and its fractional part is denoted in hexadecimal digits.</p>
+<p>General notation may be in fixed-point notation or scientific notation, depending on the exponent part of a number.
+It chooses fixed-point notation if the exponent part of the value is within a "reasonable" range.
+Otherwise, it chooses scientific notation because denoting the value in fixed-point notation will be too long.</p>
+<p><code>F</code> and <code>f</code> force fixed-point notation.
+The only difference between <code>F</code> and <code>f</code> is that <code>F</code> uses uppercase letters for (positive and negative) infinities and NaNs (i.e., <code>INF</code> and <code>NAN</code>, respectively) whiel <code>f</code> uses lowercase letters (i.e., <code>inf</code> and <code>nan</code>, respectively).</p>
+<p><code>E</code> and <code>e</code> force scientific notation.
+The difference between <code>E</code> and <code>e</code> is analogous to that of <code>F</code> and <code>f</code>, but the prefix of exponent part is denoted in an uppercase letter (i.e., <code>E</code>) for <code>E</code> and in an lowercase letter (i.e., <code>e</code>) for <code>e</code>.</p>
+<p><code>A</code> and <code>a</code> force hexadecimal notation.
+<code>A</code> uses uppercase letters and <code>a</code> uses lowercase letters.</p>
+<p><code>G</code> uses <code>F</code> or <code>E</code>, and <code>g</code> uses <code>f</code> or <code>e</code>, depending on the value as already mentioned above.</p>
+<p><code>%</code> multiplies a value by 100, denotes the value in fixed-point notation, and appends the <code>%</code> mark.</p>
+<p>If no type specifier is given, the notation is the same as that of <code>g</code> but at least one digit is shown past the decimal point.</p>
+<h4><a id="user-content-rationals" class="anchor" aria-hidden="true" href="#rationals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Rationals</h4>
+<p>If <code>type</code> is <code>F</code> or <code>f</code>, it formats the number in fixed-point notation.
+If <code>type</code> is <code>%</code>, it formats the number in the same way as <code>f</code> but the number is multiplied by 100, followed by <code>%</code>.
+If no <code>type</code> is specified, it formats the number with its (reduced) numerator and denominator separated by a slash (e.g., '3/10').</p>
+<h4><a id="user-content-other-values" class="anchor" aria-hidden="true" href="#other-values"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Other values</h4>
+<p><code>p</code> is for pointers and <code>s</code> for strings.
+These are the default for each type and do not specify any special format.</p>
+<h2><a id="user-content-performance" class="anchor" aria-hidden="true" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Performance</h2>
+<p>Fmt.jl is carefully optimized and will be faster than naive printing.
+Let's see the next benchmarking script, which prints a pair of integers to devnull.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Fmt
+using Printf
+using Formatting
+
+fmt_print(out, x, y)        = print(out, f&quot;({$x}, {$y})\n&quot;)
+sprintf_print(out, x, y)    = print(out, @sprintf(&quot;(%d, %d)\n&quot;, x, y))
+naive_print(out, x, y)      = print(out, '(', x, &quot;, &quot;, y, &quot;)\n&quot;)
+string_print(out, x, y)     = print(out, &quot;($x, $y)\n&quot;)
+const expr = FormatExpr(&quot;({1}, {2})\n&quot;)
+formatting_print(out, x, y) = print(out, format(expr, x, y))
+
+function benchmark(printer, out, x, y)
+    @assert length(x) == length(y)
+    for i in 1:length(x)
+        printer(out, x[i], y[i])
+    end
+end
+
+using Random
+Random.seed!(1234)
+x = rand(-999:999, 1_000_000)
+y = rand(-999:999, 1_000_000)
+
+using BenchmarkTools
+for printer in [fmt_print, sprintf_print, naive_print,
+                string_print, formatting_print]
+    print(f&quot;{$printer:&gt;20}:&quot;)
+    @btime benchmark($printer, $devnull, $x, $y)
+end
+"><pre><span class="pl-k">using</span> Fmt
+<span class="pl-k">using</span> Printf
+<span class="pl-k">using</span> Formatting
+
+<span class="pl-en">fmt_print</span>(out, x, y)        <span class="pl-k">=</span> <span class="pl-c1">print</span>(out, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>({$x}, {$y})<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+<span class="pl-en">sprintf_print</span>(out, x, y)    <span class="pl-k">=</span> <span class="pl-c1">print</span>(out, <span class="pl-c1">@sprintf</span>(<span class="pl-s"><span class="pl-pds">"</span>(%d, %d)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>, x, y))
+<span class="pl-en">naive_print</span>(out, x, y)      <span class="pl-k">=</span> <span class="pl-c1">print</span>(out, <span class="pl-s"><span class="pl-pds">'</span>(<span class="pl-pds">'</span></span>, x, <span class="pl-s"><span class="pl-pds">"</span>, <span class="pl-pds">"</span></span>, y, <span class="pl-s"><span class="pl-pds">"</span>)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+<span class="pl-en">string_print</span>(out, x, y)     <span class="pl-k">=</span> <span class="pl-c1">print</span>(out, <span class="pl-s"><span class="pl-pds">"</span>(<span class="pl-v">$x</span>, <span class="pl-v">$y</span>)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+<span class="pl-k">const</span> expr <span class="pl-k">=</span> <span class="pl-c1">FormatExpr</span>(<span class="pl-s"><span class="pl-pds">"</span>({1}, {2})<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+<span class="pl-en">formatting_print</span>(out, x, y) <span class="pl-k">=</span> <span class="pl-c1">print</span>(out, <span class="pl-c1">format</span>(expr, x, y))
+
+<span class="pl-k">function</span> <span class="pl-en">benchmark</span>(printer, out, x, y)
+    <span class="pl-c1">@assert</span> <span class="pl-c1">length</span>(x) <span class="pl-k">==</span> <span class="pl-c1">length</span>(y)
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(x)
+        <span class="pl-c1">printer</span>(out, x[i], y[i])
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">using</span> Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">1234</span>)
+x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">999</span><span class="pl-k">:</span><span class="pl-c1">999</span>, <span class="pl-c1">1_000_000</span>)
+y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">999</span><span class="pl-k">:</span><span class="pl-c1">999</span>, <span class="pl-c1">1_000_000</span>)
+
+<span class="pl-k">using</span> BenchmarkTools
+<span class="pl-k">for</span> printer <span class="pl-k">in</span> [fmt_print, sprintf_print, naive_print,
+                string_print, formatting_print]
+    <span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">f</span>"</span>{$printer:&gt;20}:<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">@btime</span> <span class="pl-c1">benchmark</span>(<span class="pl-k">$</span>printer, <span class="pl-k">$</span><span class="pl-c1">devnull</span>, <span class="pl-k">$</span>x, <span class="pl-k">$</span>y)
+<span class="pl-k">end</span></pre></div>
+<p>The result on my machine is:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="$ julia benchmark/compare.jl
+           fmt_print:  37.928 ms (2000000 allocations: 91.55 MiB)
+       sprintf_print:  77.613 ms (2000000 allocations: 106.81 MiB)
+         naive_print:  202.531 ms (4975844 allocations: 198.00 MiB)
+        string_print:  316.838 ms (7975844 allocations: 365.84 MiB)
+    formatting_print:  716.088 ms (23878703 allocations: 959.44 MiB)
+"><pre><code>$ julia benchmark/compare.jl
+           fmt_print:  37.928 ms (2000000 allocations: 91.55 MiB)
+       sprintf_print:  77.613 ms (2000000 allocations: 106.81 MiB)
+         naive_print:  202.531 ms (4975844 allocations: 198.00 MiB)
+        string_print:  316.838 ms (7975844 allocations: 365.84 MiB)
+    formatting_print:  716.088 ms (23878703 allocations: 959.44 MiB)
+</code></pre></div>
+<p>Benchmark environment:</p>
+<ul>
+<li>CPU: AMD Ryzen 9 3950X</li>
+<li>OS: GNU/Linux 5.9.12</li>
+<li>Julia: v1.6.0</li>
+<li>Formatting.jl: v0.4.2</li>
+</ul>
+<h2><a id="user-content-related-projects" class="anchor" aria-hidden="true" href="#related-projects"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Related projects</h2>
+<ul>
+<li><a href="https://docs.julialang.org/en/v1/stdlib/Printf/" rel="nofollow">Printf.jl</a> provides C-style formatting macros. In my opinion, it doesn't match dynamic nature of Julia because it needs type specifier.</li>
+<li><a href="https://github.com/JuliaIO/Formatting.jl">Formatting.jl</a> provides similar functionality with different APIs. Fmt.jl is much simpler and more performant.</li>
+</ul>
+</article></div>

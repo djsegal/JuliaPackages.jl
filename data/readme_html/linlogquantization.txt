@@ -1,0 +1,248 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-linlogquantizationjl" class="anchor" aria-hidden="true" href="#linlogquantizationjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>LinLogQuantization.jl</h1>
+<p><a href="https://github.com/milankl/LinLogQuantization.jl/actions/workflows/CI.yml"><img src="https://github.com/milankl/LinLogQuantization.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width:100%;"></a></p>
+<p>Linear and logarithmic quantisation for Julia arrays into 8, 16, 24 or 32-bit.
+Quantisation is a lossy compression method that divides the range of values in
+an array in equi-distant quantums and encodes those from 0 to <code>2^n-1</code> where
+<code>n</code> is the number of bits available. The quantums are either equi-distant in
+linear space or in logarithmic space, which has a denser encoding for
+values close to the minimum in trade-off with a less dense encoding close
+to the maximum.</p>
+<p>Linear quantization takes values in (-∞,∞) (no <code>NaN</code> or <code>Inf</code>) logarithmic quantization
+is only supported for values in [0,∞).</p>
+<h2><a id="user-content-usage-linear-quantization" class="anchor" aria-hidden="true" href="#usage-linear-quantization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage: Linear quantization</h2>
+<p>Linear quantisation of n-dimensional arrays (any number format that can be
+converted to <code>Float64</code> is supported, including <code>Float32, Float16</code>)
+into 8, 16, 24 or 32 bit is achieved via</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; A = rand(Float32,1000)
+julia&gt; L = LinQuant8Array(A)
+1000-element LinQuantArray{UInt8,1}:
+ 0xc2
+ 0x19
+ 0x3e
+ 0x5b
+    ⋮
+"><pre>julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Float32,<span class="pl-c1">1000</span>)
+julia<span class="pl-k">&gt;</span> L <span class="pl-k">=</span> <span class="pl-c1">LinQuant8Array</span>(A)
+<span class="pl-c1">1000</span><span class="pl-k">-</span>element LinQuantArray{UInt8,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0xc2</span>
+ <span class="pl-c1">0x19</span>
+ <span class="pl-c1">0x3e</span>
+ <span class="pl-c1">0x5b</span>
+    ⋮</pre></div>
+<p>and similarly with <code>LinQuant16Array, LinQuant24Array, LinQuant32Array</code>.
+Decompression via</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; Array(L)
+1000-element Array{Float32,1}:
+ 0.76074356
+ 0.09858093
+ 0.24355145
+ 0.357177
+    ⋮
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">Array</span>(L)
+<span class="pl-c1">1000</span><span class="pl-k">-</span>element Array{Float32,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.76074356</span>
+ <span class="pl-c1">0.09858093</span>
+ <span class="pl-c1">0.24355145</span>
+ <span class="pl-c1">0.357177</span>
+    ⋮</pre></div>
+<p><code>Array{T}()</code> optionally takes a type parameter <code>T</code> such that decompression to
+other number formats than the default <code>Float32</code> is possible involves a rounding
+error which follows a round-to-nearest in linear space.</p>
+<h3><a id="user-content-logarithmic-quantisation" class="anchor" aria-hidden="true" href="#logarithmic-quantisation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Logarithmic quantisation</h3>
+<p>In a similar way, <code>LogQuant8Array, LogQuant16Array, LogQuant24Array, LogQuant32Array</code>
+compresses an n-dimensional array (non-negative elements only) via logarithmic quantisation.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; A = rand(Float32,100,100)
+julia&gt; A[1,1] = 0
+julia&gt; L = LogQuant16Array(A)
+100×100 LogQuantArray{UInt16,2}:
+ 0x0000  0xf22d  0xfdf6  0xf3e8  0xf775  …  
+ 0xe3dc  0xfdc0  0xedb5  0xed47  0xee5b     
+ 0xde3d  0xbe58  0xb541  0xf573  0x9885     
+ 0xf38b  0xfefe  0xea2f  0xfbb6  0xf0d2     
+ 0xd0d2  0xfe1f  0xff60  0xf6cd  0xec26        
+ 0xffa6  0xe621  0xf14d  0xfb2c  0xf50c  …  
+ 0xfcb7  0xe6fb  0xf237  0xecd5  0xfb0a     
+ 0xe4ed  0xf86f  0xf83d  0xff86  0xb686     
+      ⋮                                  ⋱
+"><pre>julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Float32,<span class="pl-c1">100</span>,<span class="pl-c1">100</span>)
+julia<span class="pl-k">&gt;</span> A[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">0</span>
+julia<span class="pl-k">&gt;</span> L <span class="pl-k">=</span> <span class="pl-c1">LogQuant16Array</span>(A)
+<span class="pl-c1">100</span><span class="pl-k">×</span><span class="pl-c1">100</span> LogQuantArray{UInt16,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0x0000</span>  <span class="pl-c1">0xf22d</span>  <span class="pl-c1">0xfdf6</span>  <span class="pl-c1">0xf3e8</span>  <span class="pl-c1">0xf775</span>  …  
+ <span class="pl-c1">0xe3dc</span>  <span class="pl-c1">0xfdc0</span>  <span class="pl-c1">0xedb5</span>  <span class="pl-c1">0xed47</span>  <span class="pl-c1">0xee5b</span>     
+ <span class="pl-c1">0xde3d</span>  <span class="pl-c1">0xbe58</span>  <span class="pl-c1">0xb541</span>  <span class="pl-c1">0xf573</span>  <span class="pl-c1">0x9885</span>     
+ <span class="pl-c1">0xf38b</span>  <span class="pl-c1">0xfefe</span>  <span class="pl-c1">0xea2f</span>  <span class="pl-c1">0xfbb6</span>  <span class="pl-c1">0xf0d2</span>     
+ <span class="pl-c1">0xd0d2</span>  <span class="pl-c1">0xfe1f</span>  <span class="pl-c1">0xff60</span>  <span class="pl-c1">0xf6cd</span>  <span class="pl-c1">0xec26</span>        
+ <span class="pl-c1">0xffa6</span>  <span class="pl-c1">0xe621</span>  <span class="pl-c1">0xf14d</span>  <span class="pl-c1">0xfb2c</span>  <span class="pl-c1">0xf50c</span>  …  
+ <span class="pl-c1">0xfcb7</span>  <span class="pl-c1">0xe6fb</span>  <span class="pl-c1">0xf237</span>  <span class="pl-c1">0xecd5</span>  <span class="pl-c1">0xfb0a</span>     
+ <span class="pl-c1">0xe4ed</span>  <span class="pl-c1">0xf86f</span>  <span class="pl-c1">0xf83d</span>  <span class="pl-c1">0xff86</span>  <span class="pl-c1">0xb686</span>     
+      ⋮                                  ⋱</pre></div>
+<p>Exception occurs for 0, which is mapped to <code>0x0</code>.
+<code>Ox1</code> to <code>0xff...ff</code> are then the available bitpatterns to encode the range from <code>minimum(A)</code>
+to <code>maximum(A)</code> logarithmically. By default the rounding mode for logarithmic quantisation
+is round-to-nearest in linear space. Alternatively, a second argument can be either
+<code>:linspace</code> or <code>:logspace</code>, which allows for round-to-nearest in logarithmic space.
+Decompression as with linear quantisation via the <code>Array()</code> function.</p>
+<h2><a id="user-content-theory" class="anchor" aria-hidden="true" href="#theory"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Theory</h2>
+<p>To compress an array <code>A</code>, the minimum and maximum is obtained</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Amin = minimum(A)
+Amax = maximum(A)
+"><pre>Amin <span class="pl-k">=</span> <span class="pl-c1">minimum</span>(A)
+Amax <span class="pl-k">=</span> <span class="pl-c1">maximum</span>(A)</pre></div>
+<p>which allows the calculation of <code>Δ</code>, the inverse of the spacing between two
+quantums</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Δ = 2^(n-1)/(Amax-Amin)
+"><pre>Δ <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">^</span>(n<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">/</span>(Amax<span class="pl-k">-</span>Amin)</pre></div>
+<p>where <code>n</code> is the number of bits used for quantisation. For every
+element <code>a</code> in <code>A</code> the corresponding quantum <code>q</code> which is closest in linear space
+is calculated via</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="q = T(round((a-Amin)*Δ))
+"><pre>q <span class="pl-k">=</span> <span class="pl-c1">T</span>(<span class="pl-c1">round</span>((a<span class="pl-k">-</span>Amin)<span class="pl-k">*</span>Δ))</pre></div>
+<p>where <code>round</code> is the round-to-nearest function for integers and <code>T</code> the conversion
+function to 24-bit unsigned integers <code>UInt24</code> (or <code>UInt8, UInt16</code> for other choices
+of <code>n</code>). Consequently, an array of all <code>q</code> and <code>Amin,Amax</code> have to be stored to
+allow for decompression, which is obtained by reversing the conversion from <code>a</code>
+to <code>q</code>. Note that the rounding error is introduced as the <code>round</code> function cannot
+be inverted.</p>
+<p>Logarithmic quantisation distributes the quantums logarithmically, such that
+more bitpatterns are reserved for values close to the minimum and fewer close to
+the maximum in <code>A</code>. Logarithmic quantisation can be generalised to negative values
+by introducing a sign-bit, however, we limit our application here to non-negative
+values. We obtain the minimum and maximum value in <code>A</code> as follows</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Alogmin = log(minpos(A))
+Alogmax = log(maximum(A))
+"><pre>Alogmin <span class="pl-k">=</span> <span class="pl-c1">log</span>(<span class="pl-c1">minpos</span>(A))
+Alogmax <span class="pl-k">=</span> <span class="pl-c1">log</span>(<span class="pl-c1">maximum</span>(A))</pre></div>
+<p>where zeros are ignored in the <code>minpos</code> function, which instead returns the smallest
+positive value. The inverse spacing <code>Δ</code> is then</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Δ = 2^(n-2)/(logmax-logmin)
+"><pre>Δ <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">^</span>(n<span class="pl-k">-</span><span class="pl-c1">2</span>)<span class="pl-k">/</span>(logmax<span class="pl-k">-</span>logmin)</pre></div>
+<p>Note, that only <code>2^(n-1)</code> (and not 2^n as for linear quantisation) bitpatterns
+are used to resolve the range between minimum and maximum, as we want to reserve
+the bitpattern <code>0x000000</code> for zero. The corresponding quantum <code>q</code> for <code>a</code>
+<code>A</code> is then</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="q = T(round(c + Δ*log(a)))+0x1
+"><pre>q <span class="pl-k">=</span> <span class="pl-c1">T</span>(<span class="pl-c1">round</span>(c <span class="pl-k">+</span> Δ<span class="pl-k">*</span><span class="pl-c1">log</span>(a)))<span class="pl-k">+</span><span class="pl-c1">0x1</span></pre></div>
+<p>unless <code>a=0</code> in which case <code>q=0x000000</code>. The constant <code>c</code> can be set as <code>-Alogmin*Δ</code>
+such that we obtain essentially the same compression function as for linear quantisation,
+except that every element <code>a</code> in <code>A</code> is converted to their logarithm first. However,
+rounding to nearest in logarithmic space will therefore be achieved, which is a
+biased rounding mode, that has a bias away from zero. We can correct this
+round-to-nearest in logarithmic space rounding mode with</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="c = 1/2 - Δ*log(minimum(A)*(exp(1/Δ)+1)/2)
+"><pre>c <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span> <span class="pl-k">-</span> Δ<span class="pl-k">*</span><span class="pl-c1">log</span>(<span class="pl-c1">minimum</span>(A)<span class="pl-k">*</span>(<span class="pl-c1">exp</span>(<span class="pl-c1">1</span><span class="pl-k">/</span>Δ)<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)</pre></div>
+<p>which yields round-to-nearest in linear space. See next section.</p>
+<h2><a id="user-content-round-to-nearest-in-linear-or-logarithmic-space" class="anchor" aria-hidden="true" href="#round-to-nearest-in-linear-or-logarithmic-space"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Round to nearest in linear or logarithmic space</h2>
+<p>For a logarithmic integer system with base <code>b</code> (i.e. only <code>0,b,b²,b³,...</code>
+are representable), for example, we have</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="log_b(1) = 0
+log_b(√b) = 0.5
+log_b(b) = 1
+log_b(√b³) = 1.5
+log_b(b²) = 2
+"><pre><span class="pl-en">log_b</span>(<span class="pl-c1">1</span>) <span class="pl-k">=</span> <span class="pl-c1">0</span>
+<span class="pl-en">log_b</span>(<span class="pl-k">√</span>b) <span class="pl-k">=</span> <span class="pl-c1">0.5</span>
+<span class="pl-en">log_b</span>(b) <span class="pl-k">=</span> <span class="pl-c1">1</span>
+<span class="pl-en">log_b</span>(<span class="pl-k">√</span>b³) <span class="pl-k">=</span> <span class="pl-c1">1.5</span>
+<span class="pl-en">log_b</span>(b²) <span class="pl-k">=</span> <span class="pl-c1">2</span></pre></div>
+<p>such that <code>q*√b</code> is always halfway between two representable numbers <code>q,q2</code> in
+logarithmic space, which will be the threshold for round up or down in the <code>round</code>
+function. <code>q*√b</code> is not halfway in linear space, which is always at
+<code>q + (q*b - q)/2</code>. For simplicity we can set <code>q=1</code>, and for <code>b=2</code> we find that</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="√2 = 1.41... != 1.5 = 1 + (2-1)/2
+"><pre><span class="pl-k">√</span><span class="pl-c1">2</span> <span class="pl-k">=</span> <span class="pl-c1">1.41</span><span class="pl-k">...</span> <span class="pl-k">!=</span> <span class="pl-c1">1.5</span> <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-k">+</span> (<span class="pl-c1">2</span><span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">/</span><span class="pl-c1">2</span></pre></div>
+<p>Round-to-nearest in log-space therefore rounds the values between 1.41... and 1.5
+to 2, which will introduce an away-from-zero bias. As halfway in log-space is reached
+by multiplication with <code>√b</code>, this can be corrected to halfway in linear space
+by adding a constant <code>c_b</code> in log-space, such that conversion from halfway in linear
+space, i.e. <code>1+(b-1)/2</code> should yield halway in log-space, i.e. 0.5</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="c_b + log_b(1+(b-1)/2) = 0.5
+"><pre>c_b <span class="pl-k">+</span> <span class="pl-en">log_b</span>(<span class="pl-c1">1</span><span class="pl-k">+</span>(b<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>) <span class="pl-k">=</span> <span class="pl-c1">0.5</span></pre></div>
+<p>So, for <code>b=2</code> we have <code>c_b = 0.5 - log2(1.5) ≈ -0.085</code>. Hence, a small number will
+be subtracted before rounding is applied to reduce the away-from-zero bias.</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://github.com/milankl/LinLogQuantization.jl/blob/main/figs/round_logquant.png"><img src="https://github.com/milankl/LinLogQuantization.jl/raw/main/figs/round_logquant.png" alt="" style="max-width:100%;"></a></p>
+<p><strong>Figure A1.</strong> Schematic to illustrate round-to-nearest in linear vs logarithmic
+space for logarithmic number systems.</p>
+<p>We now generalise the logarithmic system, such that the distance <code>dlog = 1/Δ</code> between
+two representable numbers (i.e. quantums) is not necessarily 1 (in log-space) and
+we allow for an offset as done in the logarithmic quantisation. Let <code>min</code> be the
+offset (i.e. the minimum of the uncompressed array) and <code>dlin</code> the spacing between
+the first two representable quantums <code>min,q2</code>. Then the logarithm of halfway in
+linear space, <code>log_b(min + dlin/2)</code>, should map to <code>0.5</code>.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="c_b + (log_b(min + dlin/2) - log_b(min))/dlog = 0.5
+"><pre>c_b <span class="pl-k">+</span> (<span class="pl-c1">log_b</span>(min <span class="pl-k">+</span> dlin<span class="pl-k">/</span><span class="pl-c1">2</span>) <span class="pl-k">-</span> <span class="pl-c1">log_b</span>(min))<span class="pl-k">/</span>dlog <span class="pl-k">=</span> <span class="pl-c1">0.5</span></pre></div>
+<p>With <code>dlin = b^(log_b(min) + dlog) - min</code> this can be transformed into</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="c_b = 1/2 - 1/dlog*log_b((b^dlog + 1)/2)
+"><pre>c_b <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span> <span class="pl-k">-</span> <span class="pl-c1">1</span><span class="pl-k">/</span>dlog<span class="pl-k">*</span><span class="pl-c1">log_b</span>((b<span class="pl-k">^</span>dlog <span class="pl-k">+</span> <span class="pl-c1">1</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)</pre></div>
+<p>and combined with the offset correction <code>-log_b(min)*Δ</code> to form either</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="c = -log(min)*Δ,   (round-to-nearest in log-space)
+c = 1/2 - Δ*log(minimum(A)*(exp(1/Δ)+1)/2)    (round-to-nearest in linear-space)
+"><pre>c <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">log</span>(min)<span class="pl-k">*</span>Δ,   (round<span class="pl-k">-</span>to<span class="pl-k">-</span>nearest <span class="pl-k">in</span> log<span class="pl-k">-</span>space)
+c <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span> <span class="pl-k">-</span> Δ<span class="pl-k">*</span><span class="pl-c1">log</span>(<span class="pl-c1">minimum</span>(A)<span class="pl-k">*</span>(<span class="pl-c1">exp</span>(<span class="pl-c1">1</span><span class="pl-k">/</span>Δ)<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)    (round<span class="pl-k">-</span>to<span class="pl-k">-</span>nearest <span class="pl-k">in</span> linear<span class="pl-k">-</span>space)</pre></div>
+<p>with <code>b = ℯ</code>, so that only the natural logarithm has to be computed for every
+element in the uncompressed array.</p>
+<h2><a id="user-content-benchmarking" class="anchor" aria-hidden="true" href="#benchmarking"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Benchmarking</h2>
+<p>Approximate throughputs are (via <code>@btime</code>)</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th align="right">8 bit</th>
+<th align="right">16 bit</th>
+<th align="right">24 bit</th>
+<th align="right">32 bit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Linear</strong></td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+</tr>
+<tr>
+<td>compression</td>
+<td align="right">1350 MB/s</td>
+<td align="right">1350 MB/s</td>
+<td align="right">50 MB/s</td>
+<td align="right">1350 MB/s</td>
+</tr>
+<tr>
+<td>decompression</td>
+<td align="right">4700 MB/s</td>
+<td align="right">4700 MB/s</td>
+<td align="right">4000 MB/s</td>
+<td align="right">3600 MB/s</td>
+</tr>
+<tr>
+<td><strong>Logarithmic</strong></td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+</tr>
+<tr>
+<td>compression</td>
+<td align="right">285 MB/s</td>
+<td align="right">285 MB/s</td>
+<td align="right">40 MB/s</td>
+<td align="right">285 MB/s</td>
+</tr>
+<tr>
+<td>decompression</td>
+<td align="right">250 MB/s</td>
+<td align="right">250 MB/s</td>
+<td align="right">250 MB/s</td>
+<td align="right">500 MB/s</td>
+</tr>
+</tbody>
+</table>
+<p>24-bit quantisation is via <code>UInt24</code> from the <code>BitIntegers</code> package,
+which introduces a drastic slow-down.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>LinLogQuantization.jl is registered, so just do</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt;] add LinLogQuantization
+"><pre>julia<span class="pl-k">&gt;</span>] add LinLogQuantization</pre></div>
+<p>where <code>]</code> opens the package manager</p>
+</article></div>

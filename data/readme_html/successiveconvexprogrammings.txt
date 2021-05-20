@@ -1,0 +1,174 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-successiveconvexprogrammingsjl" class="anchor" aria-hidden="true" href="#successiveconvexprogrammingsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>SuccessiveConvexProgrammings.jl</h1>
+<p><strong>SuccessiveConvexProgrammings.jl</strong> (a.k.a. SCPs)
+is for Successive Convex Programming algorithms.
+Currently,
+this repo focuses on the realisation of the existing algorithms.</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
+<p>Here's an example code for
+<a href="https://arxiv.org/abs/1804.06539" rel="nofollow">Y. Mao et al., Successive Convexification, 2018</a>,
+one of SCP algorithms for solving non-convex optimal control problem.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Custom functions for problem formulation
+function my_path_obj(x::Array, u::Array)::Array
+    return [0.5*(norm(x)^2 + norm(u)^2)]
+end
+
+function my_terminal_obj(x::Array)::Array
+    return [norm(x .- 2.0)^2]
+end
+
+function not_too_large_input(x::Array, u::Array)::Array  # not used here
+    return u .+ 2.0  # &lt;=0
+end
+
+function not_too_large_input2(x::Array, u::Array)::Array
+    return u .- 2.0  # &lt;=0
+end
+
+function not_too_small_input(x::Array, u::Array)::Array
+    return -(u .+ 2.0)  # &lt;=0
+end
+
+function my_const_path_eq(x::Array, u::Array, x_next::Array)::Array
+    A = Matrix(I, 4, 4)
+    B = [0 1; 0 1; 1 0; 1 0]
+    dynamics(x, u) = A*x + B*u
+    return x_next - dynamics(x, u)
+end
+
+
+function my_const_initial_eq(x::Array, u::Array)
+    return x
+end
+
+function my_const_terminal_eq(x::Array)
+    return (x .- 2.0)
+end
+
+
+# SCvx example
+n_x, n_u, N = 4, 2, 31
+scvx = SCvx(N=N, n_x=n_x, n_u=n_u,
+            objs_path=[my_path_obj],
+            objs_terminal=[my_terminal_obj],
+            consts_path_ineq=[not_too_large_input2,
+                              not_too_small_input],
+            consts_path_eq=[my_const_path_eq],
+            consts_initial_eq=[my_const_initial_eq],
+            consts_terminal_eq=[my_const_terminal_eq],
+           )
+X_0, U_0 = ones(N, n_x), ones(N-1, n_u)
+scvx = initial_guess!(scvx, X_0, U_0)
+@time solve!(scvx, verbose=verbose)
+"><pre><span class="pl-c"><span class="pl-c">#</span> Custom functions for problem formulation</span>
+<span class="pl-k">function</span> <span class="pl-en">my_path_obj</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>, u<span class="pl-k">::</span><span class="pl-c1">Array</span>)<span class="pl-k">::</span><span class="pl-c1">Array</span>
+    <span class="pl-k">return</span> [<span class="pl-c1">0.5</span><span class="pl-k">*</span>(<span class="pl-c1">norm</span>(x)<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">norm</span>(u)<span class="pl-k">^</span><span class="pl-c1">2</span>)]
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">my_terminal_obj</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>)<span class="pl-k">::</span><span class="pl-c1">Array</span>
+    <span class="pl-k">return</span> [<span class="pl-c1">norm</span>(x <span class="pl-k">.-</span> <span class="pl-c1">2.0</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>]
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">not_too_large_input</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>, u<span class="pl-k">::</span><span class="pl-c1">Array</span>)<span class="pl-k">::</span><span class="pl-c1">Array</span>  <span class="pl-c"><span class="pl-c">#</span> not used here</span>
+    <span class="pl-k">return</span> u <span class="pl-k">.+</span> <span class="pl-c1">2.0</span>  <span class="pl-c"><span class="pl-c">#</span> &lt;=0</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">not_too_large_input2</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>, u<span class="pl-k">::</span><span class="pl-c1">Array</span>)<span class="pl-k">::</span><span class="pl-c1">Array</span>
+    <span class="pl-k">return</span> u <span class="pl-k">.-</span> <span class="pl-c1">2.0</span>  <span class="pl-c"><span class="pl-c">#</span> &lt;=0</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">not_too_small_input</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>, u<span class="pl-k">::</span><span class="pl-c1">Array</span>)<span class="pl-k">::</span><span class="pl-c1">Array</span>
+    <span class="pl-k">return</span> <span class="pl-k">-</span>(u <span class="pl-k">.+</span> <span class="pl-c1">2.0</span>)  <span class="pl-c"><span class="pl-c">#</span> &lt;=0</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">my_const_path_eq</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>, u<span class="pl-k">::</span><span class="pl-c1">Array</span>, x_next<span class="pl-k">::</span><span class="pl-c1">Array</span>)<span class="pl-k">::</span><span class="pl-c1">Array</span>
+    A <span class="pl-k">=</span> <span class="pl-c1">Matrix</span>(I, <span class="pl-c1">4</span>, <span class="pl-c1">4</span>)
+    B <span class="pl-k">=</span> [<span class="pl-c1">0</span> <span class="pl-c1">1</span>; <span class="pl-c1">0</span> <span class="pl-c1">1</span>; <span class="pl-c1">1</span> <span class="pl-c1">0</span>; <span class="pl-c1">1</span> <span class="pl-c1">0</span>]
+    <span class="pl-en">dynamics</span>(x, u) <span class="pl-k">=</span> A<span class="pl-k">*</span>x <span class="pl-k">+</span> B<span class="pl-k">*</span>u
+    <span class="pl-k">return</span> x_next <span class="pl-k">-</span> <span class="pl-c1">dynamics</span>(x, u)
+<span class="pl-k">end</span>
+
+
+<span class="pl-k">function</span> <span class="pl-en">my_const_initial_eq</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>, u<span class="pl-k">::</span><span class="pl-c1">Array</span>)
+    <span class="pl-k">return</span> x
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">my_const_terminal_eq</span>(x<span class="pl-k">::</span><span class="pl-c1">Array</span>)
+    <span class="pl-k">return</span> (x <span class="pl-k">.-</span> <span class="pl-c1">2.0</span>)
+<span class="pl-k">end</span>
+
+
+<span class="pl-c"><span class="pl-c">#</span> SCvx example</span>
+n_x, n_u, N <span class="pl-k">=</span> <span class="pl-c1">4</span>, <span class="pl-c1">2</span>, <span class="pl-c1">31</span>
+scvx <span class="pl-k">=</span> <span class="pl-c1">SCvx</span>(N<span class="pl-k">=</span>N, n_x<span class="pl-k">=</span>n_x, n_u<span class="pl-k">=</span>n_u,
+            objs_path<span class="pl-k">=</span>[my_path_obj],
+            objs_terminal<span class="pl-k">=</span>[my_terminal_obj],
+            consts_path_ineq<span class="pl-k">=</span>[not_too_large_input2,
+                              not_too_small_input],
+            consts_path_eq<span class="pl-k">=</span>[my_const_path_eq],
+            consts_initial_eq<span class="pl-k">=</span>[my_const_initial_eq],
+            consts_terminal_eq<span class="pl-k">=</span>[my_const_terminal_eq],
+           )
+X_0, U_0 <span class="pl-k">=</span> <span class="pl-c1">ones</span>(N, n_x), <span class="pl-c1">ones</span>(N<span class="pl-k">-</span><span class="pl-c1">1</span>, n_u)
+scvx <span class="pl-k">=</span> <span class="pl-c1">initial_guess!</span>(scvx, X_0, U_0)
+<span class="pl-c1">@time</span> <span class="pl-c1">solve!</span>(scvx, verbose<span class="pl-k">=</span>verbose)</pre></div>
+<p>Result:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="  0.921291 seconds (4.62 M allocations: 299.719 MiB, 5.15% gc time)
+SCvx
+  N: Int64 31
+  i: Int64 14
+  i_max: Int64 200
+  n_x: Int64 4
+  n_u: Int64 2
+  r_k: Float64 0.5
+  λ: Float64 100000.0
+  ρ0: Float64 0.0
+  ρ1: Float64 0.25
+  ρ2: Float64 0.7
+  rl: Float64 0.1
+  α: Float64 2.0
+  β: Float64 2.0
+  ϵ: Float64 0.001
+  objs_path: Array{typeof(my_path_obj)}((1,))
+  objs_terminal: Array{typeof(my_terminal_obj)}((1,))
+  consts_path_ineq: Array{Function}((2,))
+  consts_path_eq: Array{typeof(my_const_path_eq)}((1,))
+  consts_initial_ineq: Nothing nothing
+  consts_initial_eq: Array{typeof(my_const_initial_eq)}((1,))
+  consts_terminal_ineq: Nothing nothing
+  consts_terminal_eq: Array{typeof(my_const_terminal_eq)}((1,))
+  X_k: Array{Float64}((31, 4)) [-1.3511982930901345e-15 -1.3548666104268918e-15 -1.380711075409979e-15 -1.3816195819191138e-15; -0.00022117647021521698 -0.00022117647021522433 -0.0002200495650853284 -0.0002200495650853302; … ; 0.5772280007439645 0.5772280007439643 0.5772237620536798 0.5772237620536798; 2.000000000537185 2.000000000537185 2.000000000537199 2.000000000537199]
+  U_k: Array{Float64}((30, 2)) [-0.00022004956515178924 -0.00022117647028205013; -6.284246324169491e-5 -6.288074341830041e-5; … ; 0.41606753466786084 0.4160697952736614; 1.4227762395362158 1.4227720008458915]
+  obj_k: Float64 2.9282206598904503
+  flag: String &quot;success&quot;
+"><pre>  <span class="pl-c1">0.921291</span> seconds (<span class="pl-c1">4.62</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">299.719</span> MiB, <span class="pl-c1">5.15</span><span class="pl-k">%</span> gc time)
+SCvx
+  N<span class="pl-k">:</span> Int64 <span class="pl-c1">31</span>
+  i<span class="pl-k">:</span> Int64 <span class="pl-c1">14</span>
+  i_max<span class="pl-k">:</span> Int64 <span class="pl-c1">200</span>
+  n_x<span class="pl-k">:</span> Int64 <span class="pl-c1">4</span>
+  n_u<span class="pl-k">:</span> Int64 <span class="pl-c1">2</span>
+  r_k<span class="pl-k">:</span> Float64 <span class="pl-c1">0.5</span>
+  λ: Float64 <span class="pl-c1">100000.0</span>
+  ρ0<span class="pl-k">:</span> Float64 <span class="pl-c1">0.0</span>
+  ρ1<span class="pl-k">:</span> Float64 <span class="pl-c1">0.25</span>
+  ρ2<span class="pl-k">:</span> Float64 <span class="pl-c1">0.7</span>
+  rl<span class="pl-k">:</span> Float64 <span class="pl-c1">0.1</span>
+  α: Float64 <span class="pl-c1">2.0</span>
+  β: Float64 <span class="pl-c1">2.0</span>
+  ϵ: Float64 <span class="pl-c1">0.001</span>
+  objs_path<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{typeof(my_path_obj)}</span>((<span class="pl-c1">1</span>,))
+  objs_terminal<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{typeof(my_terminal_obj)}</span>((<span class="pl-c1">1</span>,))
+  consts_path_ineq<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{Function}</span>((<span class="pl-c1">2</span>,))
+  consts_path_eq<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{typeof(my_const_path_eq)}</span>((<span class="pl-c1">1</span>,))
+  consts_initial_ineq<span class="pl-k">:</span> Nothing <span class="pl-c1">nothing</span>
+  consts_initial_eq<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{typeof(my_const_initial_eq)}</span>((<span class="pl-c1">1</span>,))
+  consts_terminal_ineq<span class="pl-k">:</span> Nothing <span class="pl-c1">nothing</span>
+  consts_terminal_eq<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{typeof(my_const_terminal_eq)}</span>((<span class="pl-c1">1</span>,))
+  X_k<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{Float64}</span>((<span class="pl-c1">31</span>, <span class="pl-c1">4</span>)) [<span class="pl-k">-</span><span class="pl-c1">1.3511982930901345e-15</span> <span class="pl-k">-</span><span class="pl-c1">1.3548666104268918e-15</span> <span class="pl-k">-</span><span class="pl-c1">1.380711075409979e-15</span> <span class="pl-k">-</span><span class="pl-c1">1.3816195819191138e-15</span>; <span class="pl-k">-</span><span class="pl-c1">0.00022117647021521698</span> <span class="pl-k">-</span><span class="pl-c1">0.00022117647021522433</span> <span class="pl-k">-</span><span class="pl-c1">0.0002200495650853284</span> <span class="pl-k">-</span><span class="pl-c1">0.0002200495650853302</span>; … ; <span class="pl-c1">0.5772280007439645</span> <span class="pl-c1">0.5772280007439643</span> <span class="pl-c1">0.5772237620536798</span> <span class="pl-c1">0.5772237620536798</span>; <span class="pl-c1">2.000000000537185</span> <span class="pl-c1">2.000000000537185</span> <span class="pl-c1">2.000000000537199</span> <span class="pl-c1">2.000000000537199</span>]
+  U_k<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{Float64}</span>((<span class="pl-c1">30</span>, <span class="pl-c1">2</span>)) [<span class="pl-k">-</span><span class="pl-c1">0.00022004956515178924</span> <span class="pl-k">-</span><span class="pl-c1">0.00022117647028205013</span>; <span class="pl-k">-</span><span class="pl-c1">6.284246324169491e-5</span> <span class="pl-k">-</span><span class="pl-c1">6.288074341830041e-5</span>; … ; <span class="pl-c1">0.41606753466786084</span> <span class="pl-c1">0.4160697952736614</span>; <span class="pl-c1">1.4227762395362158</span> <span class="pl-c1">1.4227720008458915</span>]
+  obj_k<span class="pl-k">:</span> Float64 <span class="pl-c1">2.9282206598904503</span>
+  flag<span class="pl-k">:</span> String <span class="pl-s"><span class="pl-pds">"</span>success<span class="pl-pds">"</span></span></pre></div>
+<p>See directory <code>test</code> for more details.</p>
+<p>To enhance the optimisation speed,
+consider 1) warm start and 2) using <a href="https://github.com/JuliaLang/PackageCompiler.jl">PackageCompiler.jl</a>.</p>
+</article></div>

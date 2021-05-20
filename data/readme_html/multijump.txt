@@ -1,18 +1,18 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-multijump" class="anchor" aria-hidden="true" href="#multijump"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>MultiJuMP</h1>
-<p><a href="https://travis-ci.org/anriseth/MultiJuMP.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/f05bba5987f489db0090375ae1b1b794012cfbaf/68747470733a2f2f7472617669732d63692e6f72672f616e7269736574682f4d756c74694a754d502e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/anriseth/MultiJuMP.jl.svg?branch=master" style="max-width:100%;"></a>
-<a href="https://zenodo.org/badge/latestdoi/41850916" rel="nofollow"><img src="https://camo.githubusercontent.com/d76a94a11756b913b840fdafd3e5b613383cfbbb/68747470733a2f2f7a656e6f646f2e6f72672f62616467652f34313835303931362e737667" alt="DOI" data-canonical-src="https://zenodo.org/badge/41850916.svg" style="max-width:100%;"></a></p>
+<p><a href="https://travis-ci.org/anriseth/MultiJuMP.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/bb414db17eb0fcc3613aa959a74845e5bb3383e5cdb432c28e4b3c56c63f074b/68747470733a2f2f7472617669732d63692e6f72672f616e7269736574682f4d756c74694a754d502e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/anriseth/MultiJuMP.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://zenodo.org/badge/latestdoi/41850916" rel="nofollow"><img src="https://camo.githubusercontent.com/2c03164565c651fa4b49eb56a17c05c77249995a98f91cfc14def9bdb5c4a861/68747470733a2f2f7a656e6f646f2e6f72672f62616467652f34313835303931362e737667" alt="DOI" data-canonical-src="https://zenodo.org/badge/41850916.svg" style="max-width:100%;"></a></p>
 <p>MultiJuMP enables the user to easily run multiobjective optimisation problems
 and generate Pareto fronts. The code is built as an extension of
 <a href="https://github.com/JuliaOpt/JuMP.jl">JuMP</a>.
 We have implemented three ways to trace out the Pareto front:</p>
 <ul>
-<li>Normal Boundary Intersection (<code>solve(m, method = NBI())</code>)
+<li>Normal Boundary Intersection (<code>optimize!(m, method = NBI())</code>)
 <ul>
 <li>This method is applicable only for nonlinear optimisation</li>
 </ul>
 </li>
-<li>Weighted sums (<code>solve(m, method = WeightedSum())</code>)</li>
-<li>Constraint methods (<code>solve(m, method = EpsilonCons())</code>)
+<li>Weighted sums (<code>optimize!(m, method = WeightedSum())</code>)</li>
+<li>Constraint methods (<code>optimize!(m, method = EpsilonCons())</code>)
 <ul>
 <li>This method only works for biobjective optimisation as of now</li>
 </ul>
@@ -27,10 +27,33 @@ tri-objective Pareto fronts.</p>
 <p>MultiJuMP supports linear problems using the <code>linear=true</code> keyword when
 calling <code>multi_model(linear=true)</code>. Currently, only the <code>EpsilonCons()</code>
 and <code>WeightedSum()</code> methods are supported for linear problems.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> MultiJuMP, JuMP
-<span class="pl-k">using</span> Clp<span class="pl-k">:</span> ClpSolver
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using MultiJuMP, JuMP
+using Clp
 
-<span class="pl-k">const</span> mmodel <span class="pl-k">=</span> <span class="pl-c1">multi_model</span>(solver <span class="pl-k">=</span> <span class="pl-c1">ClpSolver</span>(), linear <span class="pl-k">=</span> <span class="pl-c1">true</span>)
+const mmodel = multi_model(Clp.Optimizer, linear = true)
+const y = @variable(mmodel, 0 &lt;= y &lt;= 10.0)
+const z = @variable(mmodel, 0 &lt;= z &lt;= 10.0)
+@constraint(mmodel, y + z &lt;= 15.0)
+
+# objectives
+const exp_obj1 = @expression(mmodel, -y +0.05 * z)
+const exp_obj2 = @expression(mmodel, 0.05 * y - z)
+const obj1 = SingleObjective(exp_obj1)
+const obj2 = SingleObjective(exp_obj2)
+
+# setting objectives in the data
+const multim = get_multidata(mmodel)
+multim.objectives = [obj1, obj2]
+
+optimize!(mmodel, method = WeightedSum())
+
+# Get the Utopia and Nadir points
+utopiapoint = getutopia(multim)
+nadirpoint = getnadir(multim)
+"><pre><span class="pl-k">using</span> MultiJuMP, JuMP
+<span class="pl-k">using</span> Clp
+
+<span class="pl-k">const</span> mmodel <span class="pl-k">=</span> <span class="pl-c1">multi_model</span>(Clp<span class="pl-k">.</span>Optimizer, linear <span class="pl-k">=</span> <span class="pl-c1">true</span>)
 <span class="pl-k">const</span> y <span class="pl-k">=</span> <span class="pl-c1">@variable</span>(mmodel, <span class="pl-c1">0</span> <span class="pl-k">&lt;=</span> y <span class="pl-k">&lt;=</span> <span class="pl-c1">10.0</span>)
 <span class="pl-k">const</span> z <span class="pl-k">=</span> <span class="pl-c1">@variable</span>(mmodel, <span class="pl-c1">0</span> <span class="pl-k">&lt;=</span> z <span class="pl-k">&lt;=</span> <span class="pl-c1">10.0</span>)
 <span class="pl-c1">@constraint</span>(mmodel, y <span class="pl-k">+</span> z <span class="pl-k">&lt;=</span> <span class="pl-c1">15.0</span>)
@@ -45,13 +68,22 @@ and <code>WeightedSum()</code> methods are supported for linear problems.</p>
 <span class="pl-k">const</span> multim <span class="pl-k">=</span> <span class="pl-c1">get_multidata</span>(mmodel)
 multim<span class="pl-k">.</span>objectives <span class="pl-k">=</span> [obj1, obj2]
 
-<span class="pl-c1">solve</span>(mmodel, method <span class="pl-k">=</span> <span class="pl-c1">WeightedSum</span>())
+<span class="pl-c1">optimize!</span>(mmodel, method <span class="pl-k">=</span> <span class="pl-c1">WeightedSum</span>())
 
 <span class="pl-c"><span class="pl-c">#</span> Get the Utopia and Nadir points</span>
 utopiapoint <span class="pl-k">=</span> <span class="pl-c1">getutopia</span>(multim)
 nadirpoint <span class="pl-k">=</span> <span class="pl-c1">getnadir</span>(multim)</pre></div>
 <p>Plotting  with <code>Plots.jl</code> is supported via recipes:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Plots<span class="pl-k">:</span> plot, title!
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Plots: plot, title!, scatter!
+pltlin = plot(multim)
+title!(pltlin, &quot;Extrema of the Pareto front&quot;)
+
+# Show Utopia and Nadir points
+# (This is probably a hacky way to do this)
+scatter!(pltlin,
+    [utopiapoint[1], nadirpoint[1]], [utopiapoint[2], nadirpoint[2]],
+    label=&quot;Utopia/Nadir&quot;)
+"><pre><span class="pl-k">using</span> Plots<span class="pl-k">:</span> plot, title!, scatter!
 pltlin <span class="pl-k">=</span> <span class="pl-c1">plot</span>(multim)
 <span class="pl-c1">title!</span>(pltlin, <span class="pl-s"><span class="pl-pds">"</span>Extrema of the Pareto front<span class="pl-pds">"</span></span>)
 
@@ -64,10 +96,37 @@ pltlin <span class="pl-k">=</span> <span class="pl-c1">plot</span>(multim)
 <p>As a non-linear usage example, we implement the test from
 <em>Das and Dennis, 1998: Normal-boundary intersection: A new method for
 generating the Pareto surface in nonlinear multicriteria optimization problems</em>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> MultiJuMP, JuMP
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using MultiJuMP, JuMP
+using Ipopt
+
+m = multi_model(Ipopt.Optimizer)
+@variable(m, x[i=1:5])
+@NLexpression(m, f1, sum(x[i]^2 for i=1:5))
+@NLexpression(m, f2, 3x[1]+2x[2]-x[3]/3+0.01*(x[4]-x[5])^3)
+@NLconstraint(m, x[1]+2x[2]-x[3]-0.5x[4]+x[5]==2)
+@NLconstraint(m, 4x[1]-2x[2]+0.8x[3]+0.6x[4]+0.5x[5]^2 == 0)
+@NLconstraint(m, sum(x[i]^2 for i=1:5) &lt;= 10)
+
+iv1 = [0.3, 0.5, -0.26, -0.13, 0.28] # Initial guess
+obj1 = SingleObjective(f1, sense = MOI.MIN_SENSE,
+                       iv = Dict{String,Any}(&quot;x[$i]&quot; =&gt; iv1[i] for i in 1:length(iv1)))
+obj2 = SingleObjective(f2, sense = MOI.MIN_SENSE)
+
+md = get_multidata(m)
+md.objectives = [obj1, obj2]
+md.pointsperdim = 20
+optimize!(m, method = NBI(false)) # or method = WeightedSum() or method = EpsilonCons()
+
+# Get the Utopia and Nadir points
+utopiapoint = getutopia(md)
+nadirpoint = getnadir(md)
+
+using Plots
+pltnbi = plot(md)
+"><pre><span class="pl-k">using</span> MultiJuMP, JuMP
 <span class="pl-k">using</span> Ipopt
 
-m <span class="pl-k">=</span> <span class="pl-c1">multi_model</span>(solver <span class="pl-k">=</span> <span class="pl-c1">IpoptSolver</span>())
+m <span class="pl-k">=</span> <span class="pl-c1">multi_model</span>(Ipopt<span class="pl-k">.</span>Optimizer)
 <span class="pl-c1">@variable</span>(m, x[i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>])
 <span class="pl-c1">@NLexpression</span>(m, f1, <span class="pl-c1">sum</span>(x[i]<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>))
 <span class="pl-c1">@NLexpression</span>(m, f2, <span class="pl-c1">3</span>x[<span class="pl-c1">1</span>]<span class="pl-k">+</span><span class="pl-c1">2</span>x[<span class="pl-c1">2</span>]<span class="pl-k">-</span>x[<span class="pl-c1">3</span>]<span class="pl-k">/</span><span class="pl-c1">3</span><span class="pl-k">+</span><span class="pl-c1">0.01</span><span class="pl-k">*</span>(x[<span class="pl-c1">4</span>]<span class="pl-k">-</span>x[<span class="pl-c1">5</span>])<span class="pl-k">^</span><span class="pl-c1">3</span>)
@@ -76,14 +135,14 @@ m <span class="pl-k">=</span> <span class="pl-c1">multi_model</span>(solver <spa
 <span class="pl-c1">@NLconstraint</span>(m, <span class="pl-c1">sum</span>(x[i]<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>) <span class="pl-k">&lt;=</span> <span class="pl-c1">10</span>)
 
 iv1 <span class="pl-k">=</span> [<span class="pl-c1">0.3</span>, <span class="pl-c1">0.5</span>, <span class="pl-k">-</span><span class="pl-c1">0.26</span>, <span class="pl-k">-</span><span class="pl-c1">0.13</span>, <span class="pl-c1">0.28</span>] <span class="pl-c"><span class="pl-c">#</span> Initial guess</span>
-obj1 <span class="pl-k">=</span> <span class="pl-c1">SingleObjective</span>(f1, sense <span class="pl-k">=</span> <span class="pl-c1">:Min</span>,
-                       iv <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{Symbol,Any}</span>(<span class="pl-c1">:x</span> <span class="pl-k">=&gt;</span> iv1))
-obj2 <span class="pl-k">=</span> <span class="pl-c1">SingleObjective</span>(f2, sense <span class="pl-k">=</span> <span class="pl-c1">:Min</span>)
+obj1 <span class="pl-k">=</span> <span class="pl-c1">SingleObjective</span>(f1, sense <span class="pl-k">=</span> MOI<span class="pl-k">.</span>MIN_SENSE,
+                       iv <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{String,Any}</span>(<span class="pl-s"><span class="pl-pds">"</span>x[<span class="pl-v">$i</span>]<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> iv1[i] <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(iv1)))
+obj2 <span class="pl-k">=</span> <span class="pl-c1">SingleObjective</span>(f2, sense <span class="pl-k">=</span> MOI<span class="pl-k">.</span>MIN_SENSE)
 
 md <span class="pl-k">=</span> <span class="pl-c1">get_multidata</span>(m)
 md<span class="pl-k">.</span>objectives <span class="pl-k">=</span> [obj1, obj2]
 md<span class="pl-k">.</span>pointsperdim <span class="pl-k">=</span> <span class="pl-c1">20</span>
-<span class="pl-c1">solve</span>(m, method <span class="pl-k">=</span> <span class="pl-c1">NBI</span>(<span class="pl-c1">false</span>)) <span class="pl-c"><span class="pl-c">#</span> or method = WeightedSum() or method = EpsilonCons()</span>
+<span class="pl-c1">optimize!</span>(m, method <span class="pl-k">=</span> <span class="pl-c1">NBI</span>(<span class="pl-c1">false</span>)) <span class="pl-c"><span class="pl-c">#</span> or method = WeightedSum() or method = EpsilonCons()</span>
 
 <span class="pl-c"><span class="pl-c">#</span> Get the Utopia and Nadir points</span>
 utopiapoint <span class="pl-k">=</span> <span class="pl-c1">getutopia</span>(md)

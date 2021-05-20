@@ -1,8 +1,55 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p>This is alpha-quality software. It is under active development. Optimistically, I hope to have it and its dependencies reasonably well documented and tested, and all the libraries registered, by the end of the year. There is a roadmap issue <a href="https://github.com/chriselrod/ProbabilityModels.jl/issues/5">here</a>.</p>
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-probabilitymodels" class="anchor" aria-hidden="true" href="#probabilitymodels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ProbabilityModels</h1>
+<p><a href="https://github.com/chriselrod/ProbabilityModels.jl/actions?query=workflow%3ACI"><img src="https://github.com/chriselrod/ProbabilityModels.jl/workflows/CI/badge.svg" alt="CI" style="max-width:100%;"></a>
+<a href="https://github.com/chriselrod/ProbabilityModels.jl/actions?query=workflow%3A%22CI+%28Julia+nightly%29%22"><img src="https://github.com/chriselrod/ProbabilityModels.jl/workflows/CI%20(Julia%20nightly)/badge.svg" alt="CI (Julia nightly)" style="max-width:100%;"></a></p>
+<p>This is alpha-quality software. It is under active development. Optimistically, I hope to have it and its dependencies reasonably well documented and tested, and all the libraries registered, by the end of the year. There is a roadmap issue <a href="https://github.com/chriselrod/ProbabilityModels.jl/issues/5">here</a>.</p>
 <p>The primary goal of this library is to make it as easy as possible to specify models that run as quickly as possible $-$ providing both log densities and the associated gradients. This allows the library to be a front end to Hamiltonian Monte Carlo backends, such as <a href="https://github.com/tpapp/DynamicHMC.jl">DynamicHMC.jl</a>. <a href="https://github.com/TuringLang/AdvancedHMC.jl">AdvancedHMC.jl</a>/<a href="https://github.com/TuringLang/Turing.jl">Turing's NUTS</a> is also probably worth looking into, as it <a href="https://discourse.julialang.org/t/mcmc-landscape/25654/11?u=elrod" rel="nofollow">reportedly converges the most reliably</a>, at least within DiffEqBayes.</p>
 <p><em>A brief introduction.</em></p>
 <p>First, you specify a model using a DSL:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> PaddedMatrices, StructuredMatrices, DistributionParameters, LoopVectorization
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using PaddedMatrices, StructuredMatrices, DistributionParameters, LoopVectorization
+using InplaceDHMC, VectorizedRNG
+using Random, SpecialFunctions, MCMCChainSummaries, LinearAlgebra
+using ProbabilityModels, LoopVectorization, SLEEFPirates, SIMDPirates, ProbabilityDistributions, PaddedMatrices
+using ProbabilityModels: HierarchicalCentering, ∂HierarchicalCentering, ITPExpectedValue, ∂ITPExpectedValue
+using DistributionParameters: CovarianceMatrix, MissingDataVector#, add
+using PaddedMatrices: vexp
+BLAS.set_num_threads(1)
+
+@model ITPModel begin
+    # Non-hierarchical Priors
+    ρ ~ Beta(3, 1)
+    lκ ~ lsgg(8.5, 1.5, 3.0, 1.5271796258079011) # μ = 1, σ² = 10
+    σ ~ Gamma(1.5, 0.25) # μ = 6, σ² = 2.4
+    θ ~ Normal(10)
+    L ~ LKJ(2.0)
+    # Hierarchical Priors.
+    # h subscript, for highest in the hierarhcy.
+    μₕ₁ ~ Normal(10) # μ = 0
+    μₕ₂ ~ Normal(10) # μ = 0
+    σₕ ~ Normal(10) # μ = 0
+    # Raw μs; non-cenetered parameterization
+    μᵣ₁ ~ Normal() # μ = 0, σ = 1
+    μᵣ₂ ~ Normal() # μ = 0, σ = 1
+    # Center the μs
+    μᵦ₁ = HierarchicalCentering(μᵣ₁, μₕ₁, σₕ)
+    μᵦ₂ = HierarchicalCentering(μᵣ₂, μₕ₂, σₕ)
+    σᵦ ~ Normal(10) # μ = 0
+    # Raw βs; non-cenetered parameterization
+    βᵣ₁ ~ Normal()
+    βᵣ₂ ~ Normal()
+    # Center the βs.
+    β₁ = HierarchicalCentering(βᵣ₁, μᵦ₁, σᵦ, domains)
+    β₂ = HierarchicalCentering(βᵣ₂, μᵦ₂, σᵦ, domains)
+    # Likelihood
+    κ = vexp(lκ)
+    μ₁ = vec(ITPExpectedValue(time, β₁, κ, θ))
+    μ₂ = vec(ITPExpectedValue(time, β₂, κ, θ))
+    Σ = CovarianceMatrix(ρ, Diagonal(σ) * L, time)
+    # Tuple (Y₁, Y₂)
+    (Y₁, Y₂) ~ Normal((μ₁, μ₂)[AvailableData], Σ[AvailableData])
+end
+# Defined model: ITPModel.
+# Unknowns: Y₂, domains, μₕ₂, μᵣ₁, time, σ, AvailableData, σᵦ, θ, μᵣ₂, ρ, σₕ, lκ, μₕ₁, L, Y₁, βᵣ₂, βᵣ₁.
+"><pre><span class="pl-k">using</span> PaddedMatrices, StructuredMatrices, DistributionParameters, LoopVectorization
 <span class="pl-k">using</span> InplaceDHMC, VectorizedRNG
 <span class="pl-k">using</span> Random, SpecialFunctions, MCMCChainSummaries, LinearAlgebra
 <span class="pl-k">using</span> ProbabilityModels, LoopVectorization, SLEEFPirates, SIMDPirates, ProbabilityDistributions, PaddedMatrices
@@ -51,7 +98,28 @@ The struct has one field for each unknown.</p>
 <p>We can then define an instance of the struct, where we specify each of these unknowns either with an instance (e.g. assign a piece of data), or with a type.
 Those specified with a type are unknown parameters (of that type); those specified with an instance treat that instance as known priors or data. For example,
 (if we had the appropriate functions defined in scope), we could create an instance with:</p>
-<div class="highlight highlight-source-julia"><pre>K <span class="pl-k">=</span> <span class="pl-c1">7</span>; D <span class="pl-k">=</span> <span class="pl-c1">3</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="K = 7; D = 3
+data = ITPModel(
+    domains = domains,
+    AvailableData = missingness,
+    Y₁ = Y₁,
+    Y₂ = Y₂,
+    time = time_vector,
+    L = LKJCorrCholesky{K},
+    ρ = RealVector{K,Bounds(0,1)},
+    lκ = RealVector{K},
+    θ = RealVector{K},
+    μₕ₁ = RealFloat,
+    μₕ₂ = RealFloat,
+    μᵣ₁ = RealVector{D},
+    μᵣ₂ = RealVector{D},
+    βᵣ₁ = RealVector{K},
+    βᵣ₂ = RealVector{K},
+    σᵦ = RealFloat{Bounds(0,Inf)},
+    σₕ = RealFloat{Bounds(0,Inf)},
+    σ = RealVector{K,Bounds(0,Inf)}
+)
+"><pre>K <span class="pl-k">=</span> <span class="pl-c1">7</span>; D <span class="pl-k">=</span> <span class="pl-c1">3</span>
 data <span class="pl-k">=</span> <span class="pl-c1">ITPModel</span>(
     domains <span class="pl-k">=</span> domains,
     AvailableData <span class="pl-k">=</span> missingness,
@@ -78,7 +146,169 @@ We have longitudinal multivariate observations for some number of subjects. Howe
 Therefore, we subset the full covariance matrix (produced from a vector of autocorrelations, and the Cholesky factor of a covariance matrix across measurements) to find the marginal.</p>
 <p>The expected value is function of time (<code>ITPExpectedValue</code>). This function returns a matrix  (<code>time x measurement</code>), so we <code>vec</code> it and subset it.</p>
 <p>We also expect some measurements to bare more in common than others, so we group them into "domains", and provide hierarchical priors. We use a non-cenetered parameterization, and the function <code>HierarchicalCentering</code> then centers our parameters for us. There are two methods we use above: one takes scalars, to transform a vector. The other accepts different domain means and standard deviations, and uses these to transform a vector, taking the indices from the <code>Domains</code> argument. That is, if the first element of <code>Domains</code> is 2, indicating that the first 2 measurements belong to the first domain, it will transform the first two elements of <code>βᵣ₁</code> with the first element of <code>μᵦ₁</code> and <code>σᵦ</code> (if either <code>μᵦ₁</code> or <code>σᵦ</code> are scalars, they will be broadcasted across each domain).</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">rinvscaledgamma</span>(<span class="pl-k">::</span><span class="pl-c1">Val{N}</span>,a<span class="pl-k">::</span><span class="pl-c1">T</span>,b<span class="pl-k">::</span><span class="pl-c1">T</span>,c<span class="pl-k">::</span><span class="pl-c1">T</span>) <span class="pl-k">where</span> {N,T}
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function rinvscaledgamma(::Val{N},a::T,b::T,c::T) where {N,T}
+    rg = MutableFixedSizeVector{N,T}(undef)
+    log100 = log(100)
+    @inbounds for n ∈ 1:N
+        rg[n] = log100 / exp(log(VectorizedRNG.randgamma(a/c)) / c + b)
+    end
+    rg
+end
+
+const domains = ProbabilityModels.Domains(2,2,3)
+
+const n_endpoints = sum(domains)
+
+const times = MutableFixedSizeVector{36,Float64,36}(undef); times .= 0:35;
+
+structured_missing_pattern = push!(vcat(([1,0,0,0,0] for i ∈ 1:7)...), 1);
+missing_pattern = vcat(
+    structured_missing_pattern, fill(1, 4length(times)), structured_missing_pattern, structured_missing_pattern
+);
+
+const availabledata = MissingDataVector{Float64}(missing_pattern);
+
+const κ₀ = (8.5, 1.5, 3.0)
+
+AR1(ρ, t) = @. ρ ^ abs(t - t')
+
+
+function generate_true_parameters(domains, times, κ₀)
+    K = sum(domains)
+    D = length(domains)
+    T = length(times)
+    μ = MutableFixedSizeVector{K,Float64}(undef)
+    offset = 0
+    for i ∈ domains
+        domain_mean = 5randn()
+        for j ∈ 1+offset:i+offset
+            μ[j] = domain_mean + 5randn()
+        end
+        offset += i
+    end
+    σ = VectorizedRNG.randgamma( 6.0, 1/6.0)
+    ρ = VectorizedRNG.randbeta(4.0,4.0)
+    κ = rinvscaledgamma(Val(K), κ₀...)
+    lt = last(times)
+    β = MutableFixedSizeVector{7,Float64,7}(( 0.0625,  0.0575,  0.0525,  0.0475,  0.0425,  0.04,  0.0375))
+    θ₁ = @. μ' - β' * ( 1.0 - exp( - κ' * times) ) / (1.0 - exp( - κ' * lt) ) 
+    θ₂ = @. μ' + β' * ( 1.0 - exp( - κ' * times) ) / (1.0 - exp( - κ' * lt) ) 
+    
+    L_T, info = LAPACK.potrf!('L', AR1(ρ, times))
+    @inbounds for tc ∈ 2:T, tr ∈ 1:tc-1
+        L_T[tr,tc] = 0.0
+    end
+    X = PaddedMatrices.MutableFixedSizeMatrix{K,K+3,Float64,K}(undef); randn!(X)
+    U_K, info = LAPACK.potrf!('U', BLAS.syrk!('U', 'N', σ, X, 0.0, zero(MutableFixedSizeMatrix{K,K,Float64,K})))
+    (
+        U_K = U_K, L_T = L_T, μ = μ, θ₁ = θ₁, θ₂ = θ₂, domains = domains, time = times
+    )
+end
+
+@generated function randomize!(
+    sp::PaddedMatrices.StackPointer,
+    A::AbstractArray{T,P},
+    B::PaddedMatrices.AbstractMutableFixedSizeMatrix{M,M,T},
+    C::PaddedMatrices.AbstractMutableFixedSizeMatrix{N,N,T},
+    D::PaddedMatrices.AbstractMutableFixedSizeMatrix{M,N,T}
+) where {M,N,T,P}
+    quote
+        @boundscheck begin
+            d = size(A,1)
+            for p ∈ 2:$(P-1)
+                d *= size(A,p)
+            end
+            d == M*N || PaddedMatrices.ThrowBoundsError(&quot;Earlier dims size(A) == $(size(A)) does not match size(D) == ($M,$N)&quot;)
+        end
+        ptr = pointer(sp, $T)
+        E = PtrMatrix{$M,$N,$T,$M}( ptr )
+        F = PtrMatrix{$M,$N,$T,$M}( ptr + $(sizeof(T) * M * N) )
+        ptr_A = pointer(A)
+        GC.@preserve A begin
+            for n ∈ 0:size(A,$P)-1
+                Aₙ = PtrMatrix{$M,$N,$T,$M}( ptr_A + n*$(sizeof(T)*M*N) )
+                randn!(ProbabilityModels.GLOBAL_PCGs[1], E)
+                mul!(F, B, E)
+                Aₙ .= D
+                PaddedMatrices.gemm!(Aₙ, F, C)
+            end
+        end
+        sp
+    end
+end
+
+sample_data( N, truth, missingness, missingvals = (Val{0}(),Val{0}()) ) = sample_data( N, truth, missingness, missingvals, truth.domains )
+@generated function sample_data(
+    N::Tuple{Int,Int},
+	truth, missingness,
+	::Tuple{Val{M1},Val{M2}},
+	::ProbabilityModels.Domains{S}
+) where {S,M1,M2}
+    K = sum(S)
+    D = length(S)
+    quote
+        N₁, N₂ = N
+        L_T = truth.L_T
+        U_K = truth.U_K
+        T = size(L_T,1)
+
+        sp = ProbabilityModels.STACK_POINTER_REF[]
+        (sp,Y₁) = PaddedMatrices.DynamicPtrArray{Float64,3}(sp, (T, $K, N₁), T)
+        (sp,Y₂) = PaddedMatrices.DynamicPtrArray{Float64,3}(sp, (T, $K, N₂), T)
+        randomize!(sp, Y₁, L_T, U_K, truth.θ₁)
+        randomize!(sp, Y₂, L_T, U_K, truth.θ₂)
+        
+        c = length(missingness.indices)
+        inds = missingness.indices
+        
+        Y₁sub = reshape(Y₁, (T * $K, N₁))[inds, :]
+        $(M1 &gt; 0 ? quote
+            Y₁union = Array{Union{Missing,Float64}}(Y₁sub)
+            perm = randperm(length(Y₁sub))
+            @inbounds for m in 1:$M1
+                Y₁union[perm[m]] = Base.missing
+	    	end
+    		Y₁ = convert(MissingDataArray{$M1,Bounds(-Inf,Inf)}, Y₁union)
+		end : quote
+			Y₁ = Y₁sub
+		end)
+
+        Y₂sub = reshape(Y₂, (T * $K, N₂))[inds, :]
+		$(M2 &gt; 0 ? quote
+            Y₂union = Array{Union{Missing,Float64}}(Y₂sub)
+            perm = randperm(length(Y₂sub))
+			@inbounds for m in 1:$M2
+                Y₂union[perm[m]] = Base.missing
+            end
+            Y₂ = convert(MissingDataArray{$M2,Bounds(-Inf,Inf)},Y₂union)
+		end : quote
+		    Y₂ = Y₂sub
+		end)
+		
+        ITPModel(
+            domains = truth.domains,
+	        AvailableData = missingness,
+            Y₁ = Y₁,
+            Y₂ = Y₂,
+            time = truth.time,
+            L = LKJCorrCholesky{$K},
+            ρ = RealVector{$K,Bounds(0,1)},
+            lκ = RealVector{$K},
+            θ = RealVector{$K},
+            μₕ₁ = RealFloat,
+            μₕ₂ = RealFloat,
+            μᵣ₁ = RealVector{$D},
+            μᵣ₂ = RealVector{$D},
+            βᵣ₁ = RealVector{$K},
+            βᵣ₂ = RealVector{$K},
+            σᵦ = RealFloat{Bounds(0,Inf)},
+            σₕ = RealFloat{Bounds(0,Inf)},
+            σ = RealVector{$K,Bounds(0,Inf)}
+        )
+    end
+end
+
+"><pre><span class="pl-k">function</span> <span class="pl-en">rinvscaledgamma</span>(<span class="pl-k">::</span><span class="pl-c1">Val{N}</span>,a<span class="pl-k">::</span><span class="pl-c1">T</span>,b<span class="pl-k">::</span><span class="pl-c1">T</span>,c<span class="pl-k">::</span><span class="pl-c1">T</span>) <span class="pl-k">where</span> {N,T}
     rg <span class="pl-k">=</span> <span class="pl-c1">MutableFixedSizeVector</span><span class="pl-c1">{N,T}</span>(undef)
     log100 <span class="pl-k">=</span> <span class="pl-c1">log</span>(<span class="pl-c1">100</span>)
     <span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> n <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span>N
@@ -123,8 +353,8 @@ missing_pattern <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(
     κ <span class="pl-k">=</span> <span class="pl-c1">rinvscaledgamma</span>(<span class="pl-c1">Val</span>(K), κ₀<span class="pl-k">...</span>)
     lt <span class="pl-k">=</span> <span class="pl-c1">last</span>(times)
     β <span class="pl-k">=</span> <span class="pl-c1">MutableFixedSizeVector</span><span class="pl-c1">{7,Float64,7}</span>(( <span class="pl-c1">0.0625</span>,  <span class="pl-c1">0.0575</span>,  <span class="pl-c1">0.0525</span>,  <span class="pl-c1">0.0475</span>,  <span class="pl-c1">0.0425</span>,  <span class="pl-c1">0.04</span>,  <span class="pl-c1">0.0375</span>))
-    θ₁ <span class="pl-k">=</span> <span class="pl-c1">@.</span> μ<span class="pl-s"><span class="pl-pds">'</span> - β<span class="pl-pds">'</span></span> <span class="pl-k">*</span> ( <span class="pl-c1">1.0</span> <span class="pl-k">-</span> <span class="pl-c1">exp</span>( <span class="pl-k">-</span> κ<span class="pl-s"><span class="pl-pds">'</span> * times) ) / (1.0 - exp( - κ<span class="pl-pds">'</span></span> <span class="pl-k">*</span> lt) ) 
-    θ₂ <span class="pl-k">=</span> <span class="pl-c1">@.</span> μ<span class="pl-s"><span class="pl-pds">'</span> + β<span class="pl-pds">'</span></span> <span class="pl-k">*</span> ( <span class="pl-c1">1.0</span> <span class="pl-k">-</span> <span class="pl-c1">exp</span>( <span class="pl-k">-</span> κ<span class="pl-s"><span class="pl-pds">'</span> * times) ) / (1.0 - exp( - κ<span class="pl-pds">'</span></span> <span class="pl-k">*</span> lt) ) 
+    θ₁ <span class="pl-k">=</span> <span class="pl-c1">@.</span> μ<span class="pl-k">'</span> <span class="pl-k">-</span> β<span class="pl-k">'</span> <span class="pl-k">*</span> ( <span class="pl-c1">1.0</span> <span class="pl-k">-</span> <span class="pl-c1">exp</span>( <span class="pl-k">-</span> κ<span class="pl-k">'</span> <span class="pl-k">*</span> times) ) <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">-</span> <span class="pl-c1">exp</span>( <span class="pl-k">-</span> κ<span class="pl-k">'</span> <span class="pl-k">*</span> lt) ) 
+    θ₂ <span class="pl-k">=</span> <span class="pl-c1">@.</span> μ<span class="pl-k">'</span> <span class="pl-k">+</span> β<span class="pl-k">'</span> <span class="pl-k">*</span> ( <span class="pl-c1">1.0</span> <span class="pl-k">-</span> <span class="pl-c1">exp</span>( <span class="pl-k">-</span> κ<span class="pl-k">'</span> <span class="pl-k">*</span> times) ) <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">-</span> <span class="pl-c1">exp</span>( <span class="pl-k">-</span> κ<span class="pl-k">'</span> <span class="pl-k">*</span> lt) ) 
     
     L_T, info <span class="pl-k">=</span> LAPACK<span class="pl-k">.</span><span class="pl-c1">potrf!</span>(<span class="pl-s"><span class="pl-pds">'</span>L<span class="pl-pds">'</span></span>, <span class="pl-c1">AR1</span>(ρ, times))
     <span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> tc <span class="pl-k">∈</span> <span class="pl-c1">2</span><span class="pl-k">:</span>T, tr <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span>tc<span class="pl-k">-</span><span class="pl-c1">1</span>
@@ -194,26 +424,26 @@ missing_pattern <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(
         inds <span class="pl-k">=</span> missingness<span class="pl-k">.</span>indices
         
         Y₁sub <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(Y₁, (T <span class="pl-k">*</span> <span class="pl-k">$</span>K, N₁))[inds, :]
-        <span class="pl-k">$</span>(M1 <span class="pl-k">&gt;</span> <span class="pl-c1">0</span> ? <span class="pl-k">quote</span>
+        <span class="pl-k">$</span>(M1 <span class="pl-k">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">?</span> <span class="pl-k">quote</span>
             Y₁union <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{Union{Missing,Float64}}</span>(Y₁sub)
             perm <span class="pl-k">=</span> <span class="pl-c1">randperm</span>(<span class="pl-c1">length</span>(Y₁sub))
             <span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> m <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-k">$</span>M1
                 Y₁union[perm[m]] <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">missing</span>
 	    	<span class="pl-k">end</span>
     		Y₁ <span class="pl-k">=</span> <span class="pl-c1">convert</span>(MissingDataArray{<span class="pl-k">$</span>M1,<span class="pl-c1">Bounds</span>(<span class="pl-k">-</span><span class="pl-c1">Inf</span>,<span class="pl-c1">Inf</span>)}, Y₁union)
-		<span class="pl-k">end</span> : <span class="pl-k">quote</span>
+		<span class="pl-k">end</span> <span class="pl-k">:</span> <span class="pl-k">quote</span>
 			Y₁ <span class="pl-k">=</span> Y₁sub
 		<span class="pl-k">end</span>)
 
         Y₂sub <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(Y₂, (T <span class="pl-k">*</span> <span class="pl-k">$</span>K, N₂))[inds, :]
-		<span class="pl-k">$</span>(M2 <span class="pl-k">&gt;</span> <span class="pl-c1">0</span> ? <span class="pl-k">quote</span>
+		<span class="pl-k">$</span>(M2 <span class="pl-k">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">?</span> <span class="pl-k">quote</span>
             Y₂union <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{Union{Missing,Float64}}</span>(Y₂sub)
             perm <span class="pl-k">=</span> <span class="pl-c1">randperm</span>(<span class="pl-c1">length</span>(Y₂sub))
 			<span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> m <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-k">$</span>M2
                 Y₂union[perm[m]] <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">missing</span>
             <span class="pl-k">end</span>
             Y₂ <span class="pl-k">=</span> <span class="pl-c1">convert</span>(MissingDataArray{<span class="pl-k">$</span>M2,<span class="pl-c1">Bounds</span>(<span class="pl-k">-</span><span class="pl-c1">Inf</span>,<span class="pl-c1">Inf</span>)},Y₂union)
-		<span class="pl-k">end</span> : <span class="pl-k">quote</span>
+		<span class="pl-k">end</span> <span class="pl-k">:</span> <span class="pl-k">quote</span>
 		    Y₂ <span class="pl-k">=</span> Y₂sub
 		<span class="pl-k">end</span>)
 		
@@ -243,17 +473,113 @@ missing_pattern <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(
 <p>The library <a href="https://github.com/chriselrod/DistributionParameters.jl">DistributionParameters.jl</a> provides a variety of parameter types.
 These types define constrianing transformations, to transform an unconstrained parameter vector and add the appropriate jacobians.</p>
 <p>All parameters are typed by size. The library currently provides a DynamicHMC interface, defining <code>logdensity(::Value,::ITPModel)</code> and <code>logdensity(::ValueGradient,::ITPModel)</code> methods.</p>
-<div class="highlight highlight-source-julia"><pre></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+
+"><pre></pre></div>
 <p>For comparison, a Stan implementation of this model takes about to 13ms to evaluate the gradient.</p>
 <p>The <code>@model</code> macro also defines a helper function for <a href="https://mc-stan.org/docs/2_19/reference-manual/variable-transforms-chapter.html" rel="nofollow">constraining</a> unconstrained parameter vectors:</p>
-<div class="highlight highlight-source-julia"><pre></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+
+"><pre></pre></div>
 <p>So you can use this to constrain the unconstrained parameter vectors <code>DynamicHMC</code> sampled and proceed with your convergence assessments and posterior analysis as normal.</p>
 <p>Alternatively, it also supports <a href="https://github.com/chriselrod/MCMCChainSummaries.jl">MCMCChainSummaries.jl</a>, constraining the parameters for you and providing posterior summaries as well as plotting methods:</p>
-<div class="highlight highlight-source-julia"><pre></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+"><pre></pre></div>
 <p>The difference in time between the slowest chain (748 s) and the overall time (775 s) roughly yields the compilation time. If we refit the model, the total time would roughly equal the length of time to sample from the slowest chain.</p>
 <p>If you don't pass the sampler a tuner object, it'll create one by default with <code>M=5</code> and <code>term=50</code>. The section on <a href="https://mc-stan.org/docs/2_19/reference-manual/hmc-algorithm-parameters.html" rel="nofollow">Automatic Parameter Tuning</a> in the Stan reference manual explains what these mean. I added an extra slow adaptation step (with twice the length of the previous step) and doubled the length of the terminal adaptation window (a final window calculating step size), as this makes adaptation more consistent.
 The idea is to try and decrease the probability of one or two chains being much slower than the others. We can look at NUTS statistics of the chains:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">NUTS_statistics</span>.(chains)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; NUTS_statistics.(chains)
+18-element Array{DynamicHMC.NUTS_Statistics{Float64,DataStructures.Accumulator{DynamicHMC.Termination,Int64},DataStructures.Accumulator{Int64,Int64}},1}:
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.94, min/25%/median/75%/max: 0.0 0.94 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 6% DoubledTurn =&gt; 93%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 13% 6 =&gt; 87%
+                         
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.96 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 0% DoubledTurn =&gt; 100%
+  depth: 4 =&gt; 0% 5 =&gt; 1% 6 =&gt; 99% 7 =&gt; 0%
+                                 
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.96 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 0% DoubledTurn =&gt; 99%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 1% 6 =&gt; 99% 7 =&gt; 0%
+                  
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.97 0.99 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 0% DoubledTurn =&gt; 99%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 0% 6 =&gt; 100% 7 =&gt; 0%
+                 
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.98, min/25%/median/75%/max: 0.0 0.98 0.99 1.0 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 17% DoubledTurn =&gt; 83%
+  depth: 4 =&gt; 0% 5 =&gt; 0% 6 =&gt; 93% 7 =&gt; 7% 8 =&gt; 0%
+                          
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.97 0.99 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 0% DoubledTurn =&gt; 100%
+  depth: 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 0% 6 =&gt; 100% 7 =&gt; 0%
+                        
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.94, min/25%/median/75%/max: 0.0 0.95 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 4% DoubledTurn =&gt; 96%
+  depth: 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 8% 6 =&gt; 92% 7 =&gt; 0%
+                          
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.95, min/25%/median/75%/max: 0.0 0.96 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 1% DoubledTurn =&gt; 99%
+  depth: 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 1% 6 =&gt; 99% 7 =&gt; 0%
+                          
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.94, min/25%/median/75%/max: 0.0 0.95 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 3% DoubledTurn =&gt; 97%
+  depth: 1 =&gt; 0% 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 6% 6 =&gt; 94% 7 =&gt; 0%
+          
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.94, min/25%/median/75%/max: 0.0 0.94 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 2% DoubledTurn =&gt; 98%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 4% 6 =&gt; 96% 8 =&gt; 0%
+                  
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.91, min/25%/median/75%/max: 0.0 0.92 0.97 0.99 1.0
+  termination: AdjacentDivergent =&gt; 1% AdjacentTurn =&gt; 12% DoubledTurn =&gt; 87%
+  depth: 1 =&gt; 0% 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 28% 6 =&gt; 71% 7 =&gt; 0%
+        
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.96 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 0% DoubledTurn =&gt; 100%
+  depth: 1 =&gt; 0% 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 1% 6 =&gt; 99% 7 =&gt; 0% 8 =&gt; 0%
+ 
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.96 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 0% DoubledTurn =&gt; 100%
+  depth: 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 1% 6 =&gt; 99% 7 =&gt; 0% 8 =&gt; 0%
+                 
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.94, min/25%/median/75%/max: 0.0 0.94 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 4% DoubledTurn =&gt; 96%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 8% 6 =&gt; 92% 7 =&gt; 0%
+                  
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.95, min/25%/median/75%/max: 0.0 0.95 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 1% DoubledTurn =&gt; 99%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 3% 6 =&gt; 97% 7 =&gt; 0%
+                  
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.96, min/25%/median/75%/max: 0.0 0.96 0.98 0.99 1.0
+  termination: AdjacentDivergent =&gt; 0% AdjacentTurn =&gt; 1% DoubledTurn =&gt; 99%
+  depth: 2 =&gt; 0% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 1% 6 =&gt; 99% 7 =&gt; 0% 8 =&gt; 0%
+          
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.91, min/25%/median/75%/max: 0.0 0.92 0.97 0.99 1.0
+  termination: AdjacentDivergent =&gt; 1% AdjacentTurn =&gt; 16% DoubledTurn =&gt; 83%
+  depth: 1 =&gt; 0% 2 =&gt; 1% 3 =&gt; 0% 4 =&gt; 1% 5 =&gt; 39% 6 =&gt; 60% 7 =&gt; 0% 8 =&gt; 0%
+
+ Hamiltonian Monte Carlo sample of length 10000
+  acceptance rate mean: 0.91, min/25%/median/75%/max: 0.0 0.92 0.97 0.99 1.0
+  termination: AdjacentDivergent =&gt; 2% AdjacentTurn =&gt; 9% DoubledTurn =&gt; 89%
+  depth: 1 =&gt; 0% 2 =&gt; 1% 3 =&gt; 0% 4 =&gt; 0% 5 =&gt; 20% 6 =&gt; 78% 7 =&gt; 0%
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">NUTS_statistics</span>.(chains)
 <span class="pl-c1">18</span><span class="pl-k">-</span>element Array{DynamicHMC<span class="pl-k">.</span>NUTS_Statistics{Float64,DataStructures<span class="pl-k">.</span>Accumulator{DynamicHMC<span class="pl-k">.</span>Termination,Int64},DataStructures<span class="pl-k">.</span>Accumulator{Int64,Int64}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
  Hamiltonian Monte Carlo sample of length <span class="pl-c1">10000</span>
   acceptance rate mean<span class="pl-k">:</span> <span class="pl-c1">0.94</span>, min<span class="pl-k">/</span><span class="pl-c1">25</span><span class="pl-k">%/</span>median<span class="pl-k">/</span><span class="pl-c1">75</span><span class="pl-k">%/</span>max<span class="pl-k">:</span> <span class="pl-c1">0.0</span> <span class="pl-c1">0.94</span> <span class="pl-c1">0.98</span> <span class="pl-c1">0.99</span> <span class="pl-c1">1.0</span>
@@ -350,7 +676,48 @@ The idea is to try and decrease the probability of one or two chains being much 
 <p><code>logdensity</code> and <code>constrain</code> are defined as generated functions, so that they can compile appropriate code given these parameteric types. The <code>@model</code> macro does a little preprocessing of the expression; most of the code generation occurs within these generated functions.</p>
 <p>The macro's preprocessing consists of simply translating the sampling statements into log probability increments (<code>target</code>, terminology taken from the <a href="https://mc-stan.org/users/documentation/" rel="nofollow">Stan</a> language), and lowering the expression.</p>
 <p>We can manually perform these passes on the expression (note that variables with <code>#</code> in their names are NOT comments -- they're hygienic names, guaranteeing all the variables I add don't clash with any of the model's variables):</p>
-<div class="highlight highlight-source-julia"><pre>itp_q <span class="pl-k">=</span> <span class="pl-k">quote</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="itp_q = quote
+    # Non-hierarchical Priors
+    ρ ~ Beta(3, 1)
+    κ ~ Gamma(0.1, 0.1) # μ = 1, σ² = 10
+    σ ~ Gamma(1.5, 0.25) # μ = 6, σ² = 2.4
+    θ ~ Normal(10)
+    L ~ LKJ(2.0)
+
+    # Hierarchical Priors.
+    # h subscript, for highest in the hierarhcy.
+    μₕ₁ ~ Normal(10) # μ = 0
+    μₕ₂ ~ Normal(10) # μ = 0
+    σₕ ~ Normal(10) # μ = 0
+    # Raw μs; non-cenetered parameterization
+    μᵣ₁ ~ Normal() # μ = 0, σ = 1
+    μᵣ₂ ~ Normal() # μ = 0, σ = 1
+    # Center the μs
+    μᵦ₁ = HierarchicalCentering(μᵣ₁, μₕ₁, σₕ)
+    μᵦ₂ = HierarchicalCentering(μᵣ₂, μₕ₂, σₕ)
+    σᵦ ~ Normal(10) # μ = 0
+    # Raw βs; non-cenetered parameterization
+    βᵣ₁ ~ Normal()
+    βᵣ₂ ~ Normal()
+    # Center the βs.
+    β₁ = HierarchicalCentering(βᵣ₁, μᵦ₁, σᵦ, domains)
+    β₂ = HierarchicalCentering(βᵣ₂, μᵦ₂, σᵦ, domains)
+
+    # Likelihood
+    μ₁ = vec(ITPExpectedValue(time, β₁, κ, θ))
+    μ₂ = vec(ITPExpectedValue(time, β₂, κ, θ))
+    Σ = CovarianceMatrix(ρ, Diagonal(σ) * L, time)
+
+    (Y₁, Y₂) ~ Normal((μ₁, μ₂)[AvailableData], Σ[AvailableData])
+
+end
+
+itp_preprocessed = itp_q |&gt; ProbabilityModels.translate_sampling_statements |&gt; ProbabilityModels.flatten_expression;
+
+using MacroTools: striplines
+
+striplines(itp_preprocessed)
+"><pre>itp_q <span class="pl-k">=</span> <span class="pl-k">quote</span>
     <span class="pl-c"><span class="pl-c">#</span> Non-hierarchical Priors</span>
     ρ <span class="pl-k">~</span> <span class="pl-c1">Beta</span>(<span class="pl-c1">3</span>, <span class="pl-c1">1</span>)
     κ <span class="pl-k">~</span> <span class="pl-c1">Gamma</span>(<span class="pl-c1">0.1</span>, <span class="pl-c1">0.1</span>) <span class="pl-c"><span class="pl-c">#</span> μ = 1, σ² = 10</span>
@@ -392,7 +759,73 @@ itp_preprocessed <span class="pl-k">=</span> itp_q <span class="pl-k">|&gt;</spa
 
 <span class="pl-c1">striplines</span>(itp_preprocessed)</pre></div>
 <p>This yields the following expression:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">quote</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="quote
+    ##SSAValue##1## = Beta(ρ, 3, 1)
+    ##SSAValue##2## = vadd(target, ##SSAValue##1##)
+    target = ##SSAValue##2##
+    ##SSAValue##4## = Gamma(κ, 0.1, 0.1)
+    ##SSAValue##5## = vadd(target, ##SSAValue##4##)
+    target = ##SSAValue##5##
+    ##SSAValue##7## = Gamma(σ, 1.5, 0.25)
+    ##SSAValue##8## = vadd(target, ##SSAValue##7##)
+    target = ##SSAValue##8##
+    ##SSAValue##10## = Normal(θ, 10)
+    ##SSAValue##11## = vadd(target, ##SSAValue##10##)
+    target = ##SSAValue##11##
+    ##SSAValue##13## = LKJ(L, 2.0)
+    ##SSAValue##14## = vadd(target, ##SSAValue##13##)
+    target = ##SSAValue##14##
+    ##SSAValue##16## = Normal(μₕ₁, 10)
+    ##SSAValue##17## = vadd(target, ##SSAValue##16##)
+    target = ##SSAValue##17##
+    ##SSAValue##19## = Normal(μₕ₂, 10)
+    ##SSAValue##20## = vadd(target, ##SSAValue##19##)
+    target = ##SSAValue##20##
+    ##SSAValue##22## = Normal(σₕ, 10)
+    ##SSAValue##23## = vadd(target, ##SSAValue##22##)
+    target = ##SSAValue##23##
+    ##SSAValue##25## = Normal(μᵣ₁)
+    ##SSAValue##26## = vadd(target, ##SSAValue##25##)
+    target = ##SSAValue##26##
+    ##SSAValue##28## = Normal(μᵣ₂)
+    ##SSAValue##29## = vadd(target, ##SSAValue##28##)
+    target = ##SSAValue##29##
+    ##SSAValue##31## = HierarchicalCentering(μᵣ₁, μₕ₁, σₕ)
+    μᵦ₁ = ##SSAValue##31##
+    ##SSAValue##33## = HierarchicalCentering(μᵣ₂, μₕ₂, σₕ)
+    μᵦ₂ = ##SSAValue##33##
+    ##SSAValue##35## = Normal(σᵦ, 10)
+    ##SSAValue##36## = vadd(target, ##SSAValue##35##)
+    target = ##SSAValue##36##
+    ##SSAValue##38## = Normal(βᵣ₁)
+    ##SSAValue##39## = vadd(target, ##SSAValue##38##)
+    target = ##SSAValue##39##
+    ##SSAValue##41## = Normal(βᵣ₂)
+    ##SSAValue##42## = vadd(target, ##SSAValue##41##)
+    target = ##SSAValue##42##
+    ##SSAValue##44## = HierarchicalCentering(βᵣ₁, μᵦ₁, σᵦ, domains)
+    β₁ = ##SSAValue##44##
+    ##SSAValue##46## = HierarchicalCentering(βᵣ₂, μᵦ₂, σᵦ, domains)
+    β₂ = ##SSAValue##46##
+    ##SSAValue##48## = ITPExpectedValue(time, β₁, κ, θ)
+    ##SSAValue##49## = vec(##SSAValue##48##)
+    μ₁ = ##SSAValue##49##
+    ##SSAValue##51## = ITPExpectedValue(time, β₂, κ, θ)
+    ##SSAValue##52## = vec(##SSAValue##51##)
+    μ₂ = ##SSAValue##52##
+    ##SSAValue##54## = Diagonal(σ)
+    ##SSAValue##55## = ##SSAValue##54## * L
+    ##SSAValue##56## = CovarianceMatrix(ρ, ##SSAValue##55##, time)
+    Σ = ##SSAValue##56##
+    ##SSAValue##58## = Core.tuple(Y₁, Y₂)
+    ##SSAValue##59## = Core.tuple(μ₁, μ₂)
+    ##SSAValue##60## = Base.getindex(##SSAValue##59##, AvailableData)
+    ##SSAValue##61## = Base.getindex(Σ, AvailableData)
+    ##SSAValue##62## = Normal(##SSAValue##58##, ##SSAValue##60##, ##SSAValue##61##)
+    ##SSAValue##63## = vadd(target, ##SSAValue##62##)
+    target = ##SSAValue##63##
+end
+"><pre><span class="pl-k">quote</span>
     <span class="pl-c"><span class="pl-c">#</span>#SSAValue##1## = Beta(ρ, 3, 1)</span>
     <span class="pl-c"><span class="pl-c">#</span>#SSAValue##2## = vadd(target, ##SSAValue##1##)</span>
     target <span class="pl-k">=</span> <span class="pl-c"><span class="pl-c">#</span>#SSAValue##2##</span>
@@ -461,13 +894,84 @@ itp_preprocessed <span class="pl-k">=</span> itp_q <span class="pl-k">|&gt;</spa
 <p>After translating the sampling statements into function calls, the code is transformed with <code>Meta.lower</code>. The resulting <code>Code.Info</code> is then transformed back into a Julia expression, as you see above. This has the advantage of flattening the expression, so that there is at most only a single function call per line.</p>
 <p>The <code>logdensity</code> generated functions are defined with the above expressions assigned to a variable, so that they can apply additional transformations.</p>
 <p>I'll focus on the <code>ValueGradient</code> method, as this one performs the more interesting transformations. Aside from loading and constraining all the parameters from an input vector, it performs a <code>reverse_diff!</code> pass on the expression.</p>
-<div class="highlight highlight-source-julia"><pre>forward_pass <span class="pl-k">=</span> <span class="pl-k">quote</span> <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="forward_pass = quote end
+reverse_pass = quote end
+tracked_vars = Set([:ρ, :κ, :σ, :θ, :L, :μₕ₁, :μₕ₂, :σₕ, :μᵣ₁, :μᵣ₂, :σᵦ, :βᵣ₁, :βᵣ₂, ]);
+ProbabilityModels.reverse_diff_pass!(forward_pass, reverse_pass, itp_preprocessed, tracked_vars);
+striplines(forward_pass)
+"><pre>forward_pass <span class="pl-k">=</span> <span class="pl-k">quote</span> <span class="pl-k">end</span>
 reverse_pass <span class="pl-k">=</span> <span class="pl-k">quote</span> <span class="pl-k">end</span>
-tracked_vars <span class="pl-k">=</span> <span class="pl-c1">Set</span>([:ρ, :κ, :σ, :θ, <span class="pl-c1">:L</span>, :μₕ₁, :μₕ₂, :σₕ, :μᵣ₁, :μᵣ₂, :σᵦ, :βᵣ₁, :βᵣ₂, ]);
+tracked_vars <span class="pl-k">=</span> <span class="pl-c1">Set</span>([<span class="pl-c1">:ρ</span>, <span class="pl-c1">:κ</span>, <span class="pl-c1">:σ</span>, <span class="pl-c1">:θ</span>, <span class="pl-c1">:L</span>, <span class="pl-c1">:μₕ₁</span>, <span class="pl-c1">:μₕ₂</span>, <span class="pl-c1">:σₕ</span>, <span class="pl-c1">:μᵣ₁</span>, <span class="pl-c1">:μᵣ₂</span>, <span class="pl-c1">:σᵦ</span>, <span class="pl-c1">:βᵣ₁</span>, <span class="pl-c1">:βᵣ₂</span>, ]);
 ProbabilityModels<span class="pl-k">.</span><span class="pl-c1">reverse_diff_pass!</span>(forward_pass, reverse_pass, itp_preprocessed, tracked_vars);
 <span class="pl-c1">striplines</span>(forward_pass)</pre></div>
 <p>It walks the expression, replacing each function with a function that also returns the adjoint; the forward pass becomes:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">quote</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="quote
+    (##SSAValue##1##, ###adjoint###_##∂##SSAValue##1####∂ρ##) = ProbabilityDistributions.∂Beta(ρ, 3, 1, Val{(true, false, false)}())
+    ##SSAValue##2## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##1##)
+    target = ##SSAValue##2##
+    (##SSAValue##4##, ###adjoint###_##∂##SSAValue##4####∂κ##) = ProbabilityDistributions.∂Gamma(κ, 0.1, 0.1, Val{(true, false, false)}())
+    ##SSAValue##5## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##4##)
+    target = ##SSAValue##5##
+    (##SSAValue##7##, ###adjoint###_##∂##SSAValue##7####∂σ##) = ProbabilityDistributions.∂Gamma(σ, 1.5, 0.25, Val{(true, false, false)}())
+    ##SSAValue##8## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##7##)
+    target = ##SSAValue##8##
+    (##SSAValue##10##, ###adjoint###_##∂##SSAValue##10####∂θ##) = ProbabilityDistributions.∂Normal(θ, 10, Val{(true, false)}())
+    ##SSAValue##11## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##10##)
+    target = ##SSAValue##11##
+    (##SSAValue##13##, ###adjoint###_##∂##SSAValue##13####∂L##) = ProbabilityDistributions.∂LKJ(L, 2.0, Val{(true, false)}())
+    ##SSAValue##14## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##13##)
+    target = ##SSAValue##14##
+    (##SSAValue##16##, ###adjoint###_##∂##SSAValue##16####∂μₕ₁##) = ProbabilityDistributions.∂Normal(μₕ₁, 10, Val{(true, false)}())
+    ##SSAValue##17## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##16##)
+    target = ##SSAValue##17##
+    (##SSAValue##19##, ###adjoint###_##∂##SSAValue##19####∂μₕ₂##) = ProbabilityDistributions.∂Normal(μₕ₂, 10, Val{(true, false)}())
+    ##SSAValue##20## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##19##)
+    target = ##SSAValue##20##
+    (##SSAValue##22##, ###adjoint###_##∂##SSAValue##22####∂σₕ##) = ProbabilityDistributions.∂Normal(σₕ, 10, Val{(true, false)}())
+    ##SSAValue##23## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##22##)
+    target = ##SSAValue##23##
+    (##SSAValue##25##, ###adjoint###_##∂##SSAValue##25####∂μᵣ₁##) = ProbabilityDistributions.∂Normal(μᵣ₁, Val{(true,)}())
+    ##SSAValue##26## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##25##)
+    target = ##SSAValue##26##
+    (##SSAValue##28##, ###adjoint###_##∂##SSAValue##28####∂μᵣ₂##) = ProbabilityDistributions.∂Normal(μᵣ₂, Val{(true,)}())
+    ##SSAValue##29## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##28##)
+    target = ##SSAValue##29##
+    (##SSAValue##31##, ###adjoint###_##∂##SSAValue##31####∂μᵣ₁##, ###adjoint###_##∂##SSAValue##31####∂μₕ₁##, ###adjoint###_##∂##SSAValue##31####∂σₕ##) = ∂HierarchicalCentering(μᵣ₁, μₕ₁, σₕ, Val{(true, true, true)}())
+    μᵦ₁ = ##SSAValue##31##
+    (##SSAValue##33##, ###adjoint###_##∂##SSAValue##33####∂μᵣ₂##, ###adjoint###_##∂##SSAValue##33####∂μₕ₂##, ###adjoint###_##∂##SSAValue##33####∂σₕ##) = ∂HierarchicalCentering(μᵣ₂, μₕ₂, σₕ, Val{(true, true, true)}())
+    μᵦ₂ = ##SSAValue##33##
+    (##SSAValue##35##, ###adjoint###_##∂##SSAValue##35####∂σᵦ##) = ProbabilityDistributions.∂Normal(σᵦ, 10, Val{(true, false)}())
+    ##SSAValue##36## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##35##)
+    target = ##SSAValue##36##
+    (##SSAValue##38##, ###adjoint###_##∂##SSAValue##38####∂βᵣ₁##) = ProbabilityDistributions.∂Normal(βᵣ₁, Val{(true,)}())
+    ##SSAValue##39## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##38##)
+    target = ##SSAValue##39##
+    (##SSAValue##41##, ###adjoint###_##∂##SSAValue##41####∂βᵣ₂##) = ProbabilityDistributions.∂Normal(βᵣ₂, Val{(true,)}())
+    ##SSAValue##42## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##41##)
+    target = ##SSAValue##42##
+    (##SSAValue##44##, ###adjoint###_##∂##SSAValue##44####βᵣ₁##, ###adjoint###_##∂##SSAValue##44####∂μᵦ₁##, ###adjoint###_##∂##SSAValue##44####∂σᵦ##) = ∂HierarchicalCentering(βᵣ₁, μᵦ₁, σᵦ, domains, Val{(true, true, true)}())
+    β₁ = ##SSAValue##44##
+    (##SSAValue##46##, ###adjoint###_##∂##SSAValue##46####∂βᵣ₂##, ###adjoint###_##∂##SSAValue##46####∂μᵦ₂##, ###adjoint###_##∂##SSAValue##46####∂σᵦ##) = ∂HierarchicalCentering(βᵣ₂, μᵦ₂, σᵦ, domains, Val{(true, true, true)}())
+    β₂ = ##SSAValue##46##
+    (##SSAValue##48##, ###adjoint###_##∂##SSAValue##48####∂β₁##, ###adjoint###_##∂##SSAValue##48####∂κ##, ###adjoint###_##∂##SSAValue##48####∂θ##) = ProbabilityModels.∂ITPExpectedValue(time, β₁, κ, θ, Val{(true, true, true)}())
+    (##SSAValue##49##, ###adjoint###_##∂##SSAValue##49####∂##SSAValue##48####) = ProbabilityModels.∂vec(##SSAValue##48##)
+    μ₁ = ##SSAValue##49##
+    (##SSAValue##51##, ###adjoint###_##∂##SSAValue##51####∂β₂##, ###adjoint###_##∂##SSAValue##51####∂κ##, ###adjoint###_##∂##SSAValue##51####∂θ##) = ProbabilityModels.∂ITPExpectedValue(time, β₂, κ, θ, Val{(true, true, true)}())
+    (##SSAValue##52##, ###adjoint###_##∂##SSAValue##52####∂##SSAValue##51####) = ProbabilityModels.∂vec(##SSAValue##51##)
+    μ₂ = ##SSAValue##52##
+    ##SSAValue##54## = LinearAlgebra.Diagonal(σ)
+    ##SSAValue##55## = ##SSAValue##54## * L
+    (##SSAValue##56##, ###adjoint###_##∂##SSAValue##56####∂ρ##, ###adjoint###_##∂##SSAValue##56####∂##SSAValue##55####) = ProbabilityModels.DistributionParameters.∂CovarianceMatrix(ρ, ##SSAValue##55##, time, Val{(true, true)}())
+    Σ = ##SSAValue##56##
+    ##SSAValue##58## = Core.tuple(Y₁, Y₂)
+    ##SSAValue##59## = Core.tuple(μ₁, μ₂)
+    (##SSAValue##60##, ###adjoint###_##∂##SSAValue##60####∂##SSAValue##59####) = PaddedMatrices.∂getindex(##SSAValue##59##, AvailableData)
+    (##SSAValue##61##, ###adjoint###_##∂##SSAValue##61####∂Σ##) = PaddedMatrices.∂getindex(Σ, AvailableData)
+    (##SSAValue##62##, ###adjoint###_##∂##SSAValue##62####∂##SSAValue##60####, ###adjoint###_##∂##SSAValue##62####∂##SSAValue##61####) = ProbabilityDistributions.∂Normal(##SSAValue##58##, ##SSAValue##60##, ##SSAValue##61##, Val{(false, true, true)}())
+    ##SSAValue##63## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##62##)
+    target = ##SSAValue##63##
+end
+"><pre><span class="pl-k">quote</span>
     (<span class="pl-c"><span class="pl-c">#</span>#SSAValue##1##, ###adjoint###_##∂##SSAValue##1####∂ρ##) = ProbabilityDistributions.∂Beta(ρ, 3, 1, Val{(true, false, false)}())</span>
     <span class="pl-c"><span class="pl-c">#</span>#SSAValue##2## = ProbabilityModels.SIMDPirates.vadd(target, ##SSAValue##1##)</span>
     target <span class="pl-k">=</span> <span class="pl-c"><span class="pl-c">#</span>#SSAValue##2##</span>
@@ -534,9 +1038,105 @@ ProbabilityModels<span class="pl-k">.</span><span class="pl-c1">reverse_diff_pas
     target <span class="pl-k">=</span> <span class="pl-c"><span class="pl-c">#</span>#SSAValue##63##</span>
 <span class="pl-k">end</span></pre></div>
 <p>It also prepends the corresponding operations to a second expression for the reverse diff pass:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">striplines</span>(reverse_pass)</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="striplines(reverse_pass)
+"><pre><span class="pl-c1">striplines</span>(reverse_pass)</pre></div>
 <p>yielding:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">quote</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="quote
+    ###seed#####SSAValue##63## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##63##)
+    ###seed#####SSAValue##62## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##63##, ###seed#####SSAValue##62##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##63##, ###seed###target)
+    ###seed#####SSAValue##61## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##62##, ###adjoint###_##∂##SSAValue##62####∂##SSAValue##61####, ###seed#####SSAValue##61##)
+    ###seed#####SSAValue##60## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##62##, ###adjoint###_##∂##SSAValue##62####∂##SSAValue##60####, ###seed#####SSAValue##60##)
+    ###seed###Σ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##61##, ###adjoint###_##∂##SSAValue##61####∂Σ##, ###seed###Σ)
+    ###seed#####SSAValue##59## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##60##, ###adjoint###_##∂##SSAValue##60####∂##SSAValue##59####, ###seed#####SSAValue##59##)
+    ###seed###μ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##59##[2], ###seed###μ₂)
+    ###seed###μ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##59##[1], ###seed###μ₁)
+    ###seed#####SSAValue##56## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###Σ, ###seed#####SSAValue##56##)
+    ###seed#####SSAValue##55## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##56##, ###adjoint###_##∂##SSAValue##56####∂##SSAValue##55####, ###seed#####SSAValue##55##)
+    ###seed###ρ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##56##, ###adjoint###_##∂##SSAValue##56####∂ρ##, ###seed###ρ)
+    (###adjoint###_##∂##SSAValue##55####∂##SSAValue##54####, ###adjoint###_##∂##SSAValue##55####∂L##) = ProbabilityModels.∂mul(##SSAValue##54##, L, Val{(true, true)}())
+    ###seed###L = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##55##, ###adjoint###_##∂##SSAValue##55####∂L##, ###seed###L)
+    ###seed#####SSAValue##54## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##55##, ###adjoint###_##∂##SSAValue##55####∂##SSAValue##54####, ###seed#####SSAValue##54##)
+    ###seed###σ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##54##, ###seed###σ)
+    ###seed#####SSAValue##52## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###μ₂, ###seed#####SSAValue##52##)
+    ###seed#####SSAValue##51## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##52##, ###adjoint###_##∂##SSAValue##52####∂##SSAValue##51####, ###seed#####SSAValue##51##)
+    ###seed###θ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##51##, ###adjoint###_##∂##SSAValue##51####∂θ##, ###seed###θ)
+    ###seed###κ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##51##, ###adjoint###_##∂##SSAValue##51####∂κ##, ###seed###κ)
+    ###seed###β₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##51##, ###adjoint###_##∂##SSAValue##51####∂β₂##, ###seed###β₂)
+    ###seed#####SSAValue##49## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###μ₁, ###seed#####SSAValue##49##)
+    ###seed#####SSAValue##48## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##49##, ###adjoint###_##∂##SSAValue##49####∂##SSAValue##48####, ###seed#####SSAValue##48##)
+    ###seed###θ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##48##, ###adjoint###_##∂##SSAValue##48####∂θ##, ###seed###θ)
+    ###seed###κ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##48##, ###adjoint###_##∂##SSAValue##48####∂κ##, ###seed###κ)
+    ###seed###β₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##48##, ###adjoint###_##∂##SSAValue##48####∂β₁##, ###seed###β₁)
+    ###seed#####SSAValue##46## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###β₂, ###seed#####SSAValue##46##)
+    ###seed###σᵦ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##46##, ###adjoint###_##∂##SSAValue##46####∂σᵦ##, ###seed###σᵦ)
+    ###seed###μᵦ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##46##, ###adjoint###_##∂##SSAValue##46####∂μᵦ₂##, ###seed###μᵦ₂)
+    ###seed###βᵣ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##46##, ###adjoint###_##∂##SSAValue##46####∂βᵣ₂##, ###seed###βᵣ₂)
+    ###seed#####SSAValue##44## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###β₁, ###seed#####SSAValue##44##)
+    ###seed###σᵦ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##44##, ###adjoint###_##∂##SSAValue##44####∂σᵦ##, ###seed###σᵦ)
+    ###seed###μᵦ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##44##, ###adjoint###_##∂##SSAValue##44####∂μᵦ₁##, ###seed###μᵦ₁)
+    ###seed###βᵣ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##44##, ###adjoint###_##∂##SSAValue##44####∂βᵣ₁##, ###seed###βᵣ₁)
+    ###seed#####SSAValue##42## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##42##)
+    ###seed#####SSAValue##41## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##42##, ###seed#####SSAValue##41##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##42##, ###seed###target)
+    ###seed###βᵣ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##41##, ###adjoint###_##∂##SSAValue##41####∂βᵣ₂##, ###seed###βᵣ₂)
+    ###seed#####SSAValue##39## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##39##)
+    ###seed#####SSAValue##38## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##39##, ###seed#####SSAValue##38##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##39##, ###seed###target)
+    ###seed###βᵣ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##38##, ###adjoint###_##∂##SSAValue##38####∂βᵣ₁##, ###seed###βᵣ₁)
+    ###seed#####SSAValue##36## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##36##)
+    ###seed#####SSAValue##35## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##36##, ###seed#####SSAValue##35##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##36##, ###seed###target)
+    ###seed###σᵦ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##35##, ###adjoint###_##∂##SSAValue##35####∂σᵦ##, ###seed###σᵦ)
+    ###seed#####SSAValue##33## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###μᵦ₂, ###seed#####SSAValue##33##)
+    ###seed###σₕ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##33##, ###adjoint###_##∂##SSAValue##33####∂σₕ##, ###seed###σₕ)
+    ###seed###μₕ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##33##, ###adjoint###_##∂##SSAValue##33####∂μₕ₂##, ###seed###μₕ)
+    ###seed###μᵣ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##33##, ###adjoint###_##∂##SSAValue##33####∂μᵣ₂##, ###seed###μᵣ₂)
+    ###seed#####SSAValue##31## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###μᵦ₁, ###seed#####SSAValue##31##)
+    ###seed###σₕ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##31##, ###adjoint###_##∂##SSAValue##31####∂σₕ##, ###seed###σₕ)
+    ###seed###μₕ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##31##, ###adjoint###_##∂##SSAValue##31####∂μₕ₁##, ###seed###μₕ₁)
+    ###seed###μᵣ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##31##, ###adjoint###_##∂##SSAValue##31####∂μᵣ₁##, ###seed###μᵣ₁)
+    ###seed#####SSAValue##29## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##29##)
+    ###seed#####SSAValue##28## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##29##, ###seed#####SSAValue##28##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##29##, ###seed###target)
+    ###seed###μᵣ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##28##, ###adjoint###_##∂##SSAValue##28####∂μᵣ₂##, ###seed###μᵣ₂)
+    ###seed#####SSAValue##26## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##26##)
+    ###seed#####SSAValue##25## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##26##, ###seed#####SSAValue##25##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##26##, ###seed###target)
+    ###seed###μᵣ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##25##, ###adjoint###_##∂##SSAValue##25####∂μᵣ₁##, ###seed###μᵣ₁)
+    ###seed#####SSAValue##23## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##23##)
+    ###seed#####SSAValue##22## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##23##, ###seed#####SSAValue##22##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##23##, ###seed###target)
+    ###seed###σₕ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##22##, ###adjoint###_##∂##SSAValue##22####∂σₕ##, ###seed###σₕ)
+    ###seed#####SSAValue##20## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##20##)
+    ###seed#####SSAValue##19## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##20##, ###seed#####SSAValue##19##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##20##, ###seed###target)
+    ###seed###μₕ₂ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##19##, ###adjoint###_##∂##SSAValue##19####∂μₕ₂##, ###seed###μₕ₂)
+    ###seed#####SSAValue##17## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##17##)
+    ###seed#####SSAValue##16## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##17##, ###seed#####SSAValue##16##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##17##, ###seed###target)
+    ###seed###μₕ₁ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##16##, ###adjoint###_##∂##SSAValue##16####∂μₕ₁##, ###seed###μₕ₁)
+    ###seed#####SSAValue##14## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##14##)
+    ###seed#####SSAValue##13## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##14##, ###seed#####SSAValue##13##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##14##, ###seed###target)
+    ###seed###L = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##13##, ###adjoint###_##∂##SSAValue##13####∂L##, ###seed###L)
+    ###seed#####SSAValue##11## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##11##)
+    ###seed#####SSAValue##10## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##11##, ###seed#####SSAValue##10##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##11##, ###seed###target)
+    ###seed###θ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##10##, ###adjoint###_##∂##SSAValue##10####∂θ##, ###seed###θ)
+    ###seed#####SSAValue##8## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##8##)
+    ###seed#####SSAValue##7## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##8##, ###seed#####SSAValue##7##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##8##, ###seed###target)
+    ###seed###σ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##7##, ###adjoint###_##∂##SSAValue##7####∂σ##, ###seed###σ)
+    ###seed#####SSAValue##5## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##5##)
+    ###seed#####SSAValue##4## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##5##, ###seed#####SSAValue##4##)
+    ###seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##5##, ###seed###target)
+    ###seed###κ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##4##, ###adjoint###_##∂##SSAValue##4####∂κ##, ###seed###κ)
+    ###seed#####SSAValue##2## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##2##)
+    ###seed#####SSAValue##1## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##2##, ###seed#####SSAValue##1##)
+    ###seed###ρ = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##1##, ###adjoint###_##∂##SSAValue##1####∂ρ##, ###seed###ρ)
+end
+"><pre><span class="pl-k">quote</span>
     <span class="pl-c"><span class="pl-c">#</span>##seed#####SSAValue##63## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed###target, ###seed#####SSAValue##63##)</span>
     <span class="pl-c"><span class="pl-c">#</span>##seed#####SSAValue##62## = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##63##, ###seed#####SSAValue##62##)</span>
     <span class="pl-c"><span class="pl-c">#</span>##seed###target = ProbabilityModels.PaddedMatrices.RESERVED_INCREMENT_SEED_RESERVED(###seed#####SSAValue##63##, ###seed###target)</span>

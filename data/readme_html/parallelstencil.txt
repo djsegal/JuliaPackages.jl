@@ -1,0 +1,582 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content---parallelstenciljl-" class="anchor" aria-hidden="true" href="#--parallelstenciljl-"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a> <a target="_blank" rel="noopener noreferrer" href="docs/logo/logo_ParallelStencil.png"><img src="docs/logo/logo_ParallelStencil.png" alt="ParallelStencil.jl" width="50" style="max-width:100%;"></a> ParallelStencil.jl </h1>
+<p>ParallelStencil empowers domain scientists to write architecture-agnostic high-level code for parallel high-performance stencil computations on GPUs and CPUs. Performance similar to CUDA C can be achieved, which is typically a large improvement over the performance reached when using only <a href="https://juliagpu.github.io/CUDA.jl/stable/usage/array/#Array-programming" rel="nofollow">CUDA.jl Array programming</a>. For example, a 2-D shallow ice solver presented at JuliaCon 2020 [<a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">1</a>] achieved a nearly 20 times better performance than a corresponding <a href="https://juliagpu.github.io/CUDA.jl/stable/usage/array/#Array-programming" rel="nofollow">CUDA.jl Array programming</a> implementation; in absolute terms, it reached 70% of the theoretical upper performance bound of the used Nvidia P100 GPU, as defined by the effective throughput metric, <code>T_eff</code> (note that <code>T_eff</code> is very different from common throughput metrics, see section <a href="#performance-metric">Performance metric</a>). The GPU performance of the solver is reported in green, the CPU performance in blue:</p>
+<p><a id="user-content-fig_teff"><img src="docs/images/perf_ps2.png" alt="Performance ParallelStencil Teff" style="max-width:100%;"></a></p>
+<p>ParallelStencil relies on the native kernel programming capabilities of <a href="https://github.com/JuliaGPU/CUDA.jl">CUDA.jl</a> and on <a href="https://docs.julialang.org/en/v1/base/multi-threading/" rel="nofollow">Base.Threads</a> for high-performance computations on GPUs and CPUs, respectively. It is seamlessly interoperable with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a>, which renders the distributed parallelization of stencil-based GPU and CPU applications on a regular staggered grid almost trivial and enables close to ideal weak scaling of real-world applications on thousands of GPUs [<a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">1</a>, <a href="https://www.youtube.com/watch?v=1t1AKnnGRqA" rel="nofollow">2</a>, <a href="https://www.youtube.com/watch?v=b90qqbYJ58Q" rel="nofollow">3</a>, <a href="https://pasc19.pasc-conference.org/program/schedule/presentation/?id=msa218&amp;sess=sess144" rel="nofollow">4</a>]. Moreover, ParallelStencil enables hiding communication behind computation with a simple macro call and without any particular restrictions on the package used for communication. ParallelStencil has been designed in conjunction with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> for simplest possible usage by domain-scientists, rendering fast and interactive development of massively scalable high performance multi-GPU applications readily accessible to them. Furthermore, we have developed a self-contained approach for "Solving Nonlinear Multi-Physics on GPU Supercomputers with Julia" relying on ParallelStencil and <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> [<a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">1</a>]. ParallelStencil's feature to hide communication behind computation was showcased when a close to ideal weak scaling was demonstrated for a 3-D poro-hydro-mechanical real-world application on up to 1024 GPUs on the Piz Daint Supercomputer [<a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">1</a>]:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="docs/images/par_eff_c_julia2.png"><img src="docs/images/par_eff_c_julia2.png" alt="Parallel efficiency of ParallelStencil with CUDA C backend" style="max-width:100%;"></a></p>
+<p>A particularity of ParallelStencil is that it enables writing a single high-level Julia code that can be deployed both on a CPU or a GPU. In conjuction with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> the same Julia code can even run on a single CPU thread or on thousands of GPUs/CPUs.</p>
+<h2><a id="user-content-contents" class="anchor" aria-hidden="true" href="#contents"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Contents</h2>
+<ul>
+<li><a href="#parallelization-with-one-macro-call">Parallelization with one macro call</a></li>
+<li><a href="#stencil-computations-with-math-close-notation">Stencil computations with math-close notation</a></li>
+<li><a href="#50-lines-example-deployable-on-GPU-and-CPU">50-lines example deployable on GPU and CPU</a></li>
+<li><a href="#50-lines-multi-xpu-example">50-lines multi-XPU example</a></li>
+<li><a href="#seamless-interoperability-with-communication-packages-and-hiding-communication">Seamless interoperability with communication packages and hiding communication</a></li>
+<li><a href="#module-documentation-callable-from-the-julia-repl--ijulia">Module documentation callable from the Julia REPL / IJulia</a></li>
+<li><a href="#concise-singlemulti-xpu-miniapps">Concise single/multi-XPU miniapps</a></li>
+<li><a href="#dependencies">Dependencies</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#questions-comments-and-discussions">Questions, comments and discussions</a></li>
+<li><a href="#references">References</a></li>
+</ul>
+<h2><a id="user-content-parallelization-with-one-macro-call" class="anchor" aria-hidden="true" href="#parallelization-with-one-macro-call"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Parallelization with one macro call</h2>
+<p>A simple call to <code>@parallel</code> is enough to parallelize a function and to launch it. The package used underneath for parallelization is defined in a call to <code>@init_parallel_stencil</code> beforehand. Supported are <a href="https://github.com/JuliaGPU/CUDA.jl">CUDA.jl</a> for running on GPU and <a href="https://docs.julialang.org/en/v1/base/multi-threading/" rel="nofollow">Base.Threads</a> for CPU. The following example outlines how to run parallel computations on a GPU using the native kernel programming capabilities of <a href="https://github.com/JuliaGPU/CUDA.jl">CUDA.jl</a> underneath (omitted lines are represented with <code>#(...)</code>, omitted arguments with <code>...</code>):</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="#(...)
+@init_parallel_stencil(CUDA,...);
+#(...)
+@parallel function diffusion3D_step!(...)
+    #(...)
+end
+#(...)
+@parallel diffusion3D_step!(...)
+"><pre><span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-c1">@init_parallel_stencil</span>(CUDA,<span class="pl-k">...</span>);
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-c1">@parallel</span> <span class="pl-k">function</span> <span class="pl-en">diffusion3D_step!</span>(<span class="pl-k">...</span>)
+    <span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-c1">@parallel</span> <span class="pl-c1">diffusion3D_step!</span>(<span class="pl-k">...</span>)</pre></div>
+<p>Note that arrays are automatically allocated on the hardware chosen for the computations (GPU or CPU) when using the provided allocation macros:</p>
+<ul>
+<li><code>@zeros</code></li>
+<li><code>@ones</code></li>
+<li><code>@rand</code></li>
+</ul>
+<h2><a id="user-content-stencil-computations-with-math-close-notation" class="anchor" aria-hidden="true" href="#stencil-computations-with-math-close-notation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Stencil computations with math-close notation</h2>
+<p>ParallelStencil provides submodules for computing finite differences in 1-D, 2-D and 3-D with a math-close notation (<code>FiniteDifferences1D</code>, <code>FiniteDifferences2D</code> and <code>FiniteDifferences3D</code>). Custom macros to extend the finite differences submodules or for other stencil-based numerical methods can be readily plugged in. The following example shows a complete function for computing a time step of a 3-D heat diffusion solver using <code>FiniteDifferences3D</code>.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="#(...)
+using ParallelStencil.FiniteDifferences3D
+#(...)
+@parallel function diffusion3D_step!(T2, T, Ci, lam, dt, dx, dy, dz)
+    @inn(T2) = @inn(T) + dt*(lam*@inn(Ci)*(@d2_xi(T)/dx^2 + @d2_yi(T)/dy^2 + @d2_zi(T)/dz^2));
+    return
+end
+"><pre><span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-k">using</span> ParallelStencil<span class="pl-k">.</span>FiniteDifferences3D
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-c1">@parallel</span> <span class="pl-k">function</span> <span class="pl-en">diffusion3D_step!</span>(T2, T, Ci, lam, dt, dx, dy, dz)
+    <span class="pl-c1">@inn</span>(T2) <span class="pl-k">=</span> <span class="pl-c1">@inn</span>(T) <span class="pl-k">+</span> dt<span class="pl-k">*</span>(lam<span class="pl-k">*</span><span class="pl-c1">@inn</span>(Ci)<span class="pl-k">*</span>(<span class="pl-c1">@d2_xi</span>(T)<span class="pl-k">/</span>dx<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">@d2_yi</span>(T)<span class="pl-k">/</span>dy<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">@d2_zi</span>(T)<span class="pl-k">/</span>dz<span class="pl-k">^</span><span class="pl-c1">2</span>));
+    <span class="pl-k">return</span>
+<span class="pl-k">end</span></pre></div>
+<p>The macros used in this example are described in the <a href="#module-documentation-callable-from-the-julia-repl--ijulia">Module documentation callable from the Julia REPL / IJulia</a>:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; using ParallelStencil.FiniteDifferences3D
+julia&gt;?
+help?&gt; @inn
+  @inn(A): Select the inner elements of A. Corresponds to A[2:end-1,2:end-1,2:end-1].
+
+help?&gt; @d2_xi
+  @d2_xi(A): Compute the 2nd order differences between adjacent elements of A along the along dimension x and select the inner elements of A in the remaining dimensions. Corresponds to @inn_yz(@d2_xa(A)).
+"><pre lang="julia-repl"><code>julia&gt; using ParallelStencil.FiniteDifferences3D
+julia&gt;?
+help?&gt; @inn
+  @inn(A): Select the inner elements of A. Corresponds to A[2:end-1,2:end-1,2:end-1].
+
+help?&gt; @d2_xi
+  @d2_xi(A): Compute the 2nd order differences between adjacent elements of A along the along dimension x and select the inner elements of A in the remaining dimensions. Corresponds to @inn_yz(@d2_xa(A)).
+</code></pre></div>
+<p>Note that<code>@d2_yi</code> and <code>@d2_zi</code> perform the analogue operations as <code>@d2_xi</code> along the dimension y and z, respectively.</p>
+<p>Type <code>?FiniteDifferences3D</code> in the <a href="https://docs.julialang.org/en/v1/stdlib/REPL/" rel="nofollow">Julia REPL</a> to explore all provided macros.</p>
+<h2><a id="user-content-50-lines-example-deployable-on-gpu-and-cpu" class="anchor" aria-hidden="true" href="#50-lines-example-deployable-on-gpu-and-cpu"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>50-lines example deployable on GPU and CPU</h2>
+<p>This concise 3-D heat diffusion solver uses ParallelStencil and a a simple boolean <code>USE_GPU</code> defines whether it runs on GPU or CPU (the environment variable <a href="https://docs.julialang.org/en/v1.0.0/manual/environment-variables/#JULIA_NUM_THREADS-1" rel="nofollow">JULIA_NUM_THREADS</a> defines how many cores are used in the latter case):</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="const USE_GPU = true
+using ParallelStencil
+using ParallelStencil.FiniteDifferences3D
+@static if USE_GPU
+    @init_parallel_stencil(CUDA, Float64, 3);
+else
+    @init_parallel_stencil(Threads, Float64, 3);
+end
+
+@parallel function diffusion3D_step!(T2, T, Ci, lam, dt, dx, dy, dz)
+    @inn(T2) = @inn(T) + dt*(lam*@inn(Ci)*(@d2_xi(T)/dx^2 + @d2_yi(T)/dy^2 + @d2_zi(T)/dz^2));
+    return
+end
+
+function diffusion3D()
+# Physics
+lam        = 1.0;                                        # Thermal conductivity
+cp_min     = 1.0;                                        # Minimal heat capacity
+lx, ly, lz = 10.0, 10.0, 10.0;                           # Length of domain in dimensions x, y and z.
+
+# Numerics
+nx, ny, nz = 256, 256, 256;                              # Number of gridpoints dimensions x, y and z.
+nt         = 100;                                        # Number of time steps
+dx         = lx/(nx-1);                                  # Space step in x-dimension
+dy         = ly/(ny-1);                                  # Space step in y-dimension
+dz         = lz/(nz-1);                                  # Space step in z-dimension
+
+# Array initializations
+T   = @zeros(nx, ny, nz);
+T2  = @zeros(nx, ny, nz);
+Ci  = @zeros(nx, ny, nz);
+
+# Initial conditions (heat capacity and temperature with two Gaussian anomalies each)
+Ci .= 1.0./( cp_min .+ Data.Array([5*exp(-(((ix-1)*dx-lx/1.5))^2-(((iy-1)*dy-ly/2))^2-(((iz-1)*dz-lz/1.5))^2) +
+                                   5*exp(-(((ix-1)*dx-lx/3.0))^2-(((iy-1)*dy-ly/2))^2-(((iz-1)*dz-lz/1.5))^2) for ix=1:size(T,1), iy=1:size(T,2), iz=1:size(T,3)]) )
+T  .= Data.Array([100*exp(-(((ix-1)*dx-lx/2)/2)^2-(((iy-1)*dy-ly/2)/2)^2-(((iz-1)*dz-lz/3.0)/2)^2) +
+                   50*exp(-(((ix-1)*dx-lx/2)/2)^2-(((iy-1)*dy-ly/2)/2)^2-(((iz-1)*dz-lz/1.5)/2)^2) for ix=1:size(T,1), iy=1:size(T,2), iz=1:size(T,3)])
+T2 .= T;                                                 # Assign also T2 to get correct boundary conditions.
+
+# Time loop
+dt = min(dx^2,dy^2,dz^2)*cp_min/lam/8.1;                 # Time step for the 3D Heat diffusion
+for it = 1:nt
+    @parallel diffusion3D_step!(T2, T, Ci, lam, dt, dx, dy, dz);
+    T, T2 = T2, T;
+end
+
+end
+
+diffusion3D()
+"><pre><span class="pl-k">const</span> USE_GPU <span class="pl-k">=</span> <span class="pl-c1">true</span>
+<span class="pl-k">using</span> ParallelStencil
+<span class="pl-k">using</span> ParallelStencil<span class="pl-k">.</span>FiniteDifferences3D
+<span class="pl-c1">@static</span> <span class="pl-k">if</span> USE_GPU
+    <span class="pl-c1">@init_parallel_stencil</span>(CUDA, Float64, <span class="pl-c1">3</span>);
+<span class="pl-k">else</span>
+    <span class="pl-c1">@init_parallel_stencil</span>(Threads, Float64, <span class="pl-c1">3</span>);
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@parallel</span> <span class="pl-k">function</span> <span class="pl-en">diffusion3D_step!</span>(T2, T, Ci, lam, dt, dx, dy, dz)
+    <span class="pl-c1">@inn</span>(T2) <span class="pl-k">=</span> <span class="pl-c1">@inn</span>(T) <span class="pl-k">+</span> dt<span class="pl-k">*</span>(lam<span class="pl-k">*</span><span class="pl-c1">@inn</span>(Ci)<span class="pl-k">*</span>(<span class="pl-c1">@d2_xi</span>(T)<span class="pl-k">/</span>dx<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">@d2_yi</span>(T)<span class="pl-k">/</span>dy<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">@d2_zi</span>(T)<span class="pl-k">/</span>dz<span class="pl-k">^</span><span class="pl-c1">2</span>));
+    <span class="pl-k">return</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">diffusion3D</span>()
+<span class="pl-c"><span class="pl-c">#</span> Physics</span>
+lam        <span class="pl-k">=</span> <span class="pl-c1">1.0</span>;                                        <span class="pl-c"><span class="pl-c">#</span> Thermal conductivity</span>
+cp_min     <span class="pl-k">=</span> <span class="pl-c1">1.0</span>;                                        <span class="pl-c"><span class="pl-c">#</span> Minimal heat capacity</span>
+lx, ly, lz <span class="pl-k">=</span> <span class="pl-c1">10.0</span>, <span class="pl-c1">10.0</span>, <span class="pl-c1">10.0</span>;                           <span class="pl-c"><span class="pl-c">#</span> Length of domain in dimensions x, y and z.</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Numerics</span>
+nx, ny, nz <span class="pl-k">=</span> <span class="pl-c1">256</span>, <span class="pl-c1">256</span>, <span class="pl-c1">256</span>;                              <span class="pl-c"><span class="pl-c">#</span> Number of gridpoints dimensions x, y and z.</span>
+nt         <span class="pl-k">=</span> <span class="pl-c1">100</span>;                                        <span class="pl-c"><span class="pl-c">#</span> Number of time steps</span>
+dx         <span class="pl-k">=</span> lx<span class="pl-k">/</span>(nx<span class="pl-k">-</span><span class="pl-c1">1</span>);                                  <span class="pl-c"><span class="pl-c">#</span> Space step in x-dimension</span>
+dy         <span class="pl-k">=</span> ly<span class="pl-k">/</span>(ny<span class="pl-k">-</span><span class="pl-c1">1</span>);                                  <span class="pl-c"><span class="pl-c">#</span> Space step in y-dimension</span>
+dz         <span class="pl-k">=</span> lz<span class="pl-k">/</span>(nz<span class="pl-k">-</span><span class="pl-c1">1</span>);                                  <span class="pl-c"><span class="pl-c">#</span> Space step in z-dimension</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Array initializations</span>
+T   <span class="pl-k">=</span> <span class="pl-c1">@zeros</span>(nx, ny, nz);
+T2  <span class="pl-k">=</span> <span class="pl-c1">@zeros</span>(nx, ny, nz);
+Ci  <span class="pl-k">=</span> <span class="pl-c1">@zeros</span>(nx, ny, nz);
+
+<span class="pl-c"><span class="pl-c">#</span> Initial conditions (heat capacity and temperature with two Gaussian anomalies each)</span>
+Ci <span class="pl-k">.=</span> <span class="pl-c1">1.0</span><span class="pl-k">./</span>( cp_min <span class="pl-k">.+</span> Data<span class="pl-k">.</span><span class="pl-c1">Array</span>([<span class="pl-c1">5</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>(((ix<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dx<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iy<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dy<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iz<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dz<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">+</span>
+                                   <span class="pl-c1">5</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>(((ix<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dx<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">3.0</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iy<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dy<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iz<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dz<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> ix<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">1</span>), iy<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">2</span>), iz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">3</span>)]) )
+T  <span class="pl-k">.=</span> Data<span class="pl-k">.</span><span class="pl-c1">Array</span>([<span class="pl-c1">100</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>(((ix<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dx<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iy<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dy<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iz<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dz<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">3.0</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">+</span>
+                   <span class="pl-c1">50</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>(((ix<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dx<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iy<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dy<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>(((iz<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>dz<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> ix<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">1</span>), iy<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">2</span>), iz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">3</span>)])
+T2 <span class="pl-k">.=</span> T;                                                 <span class="pl-c"><span class="pl-c">#</span> Assign also T2 to get correct boundary conditions.</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Time loop</span>
+dt <span class="pl-k">=</span> <span class="pl-c1">min</span>(dx<span class="pl-k">^</span><span class="pl-c1">2</span>,dy<span class="pl-k">^</span><span class="pl-c1">2</span>,dz<span class="pl-k">^</span><span class="pl-c1">2</span>)<span class="pl-k">*</span>cp_min<span class="pl-k">/</span>lam<span class="pl-k">/</span><span class="pl-c1">8.1</span>;                 <span class="pl-c"><span class="pl-c">#</span> Time step for the 3D Heat diffusion</span>
+<span class="pl-k">for</span> it <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nt
+    <span class="pl-c1">@parallel</span> <span class="pl-c1">diffusion3D_step!</span>(T2, T, Ci, lam, dt, dx, dy, dz);
+    T, T2 <span class="pl-k">=</span> T2, T;
+<span class="pl-k">end</span>
+
+<span class="pl-k">end</span>
+
+<span class="pl-c1">diffusion3D</span>()</pre></div>
+<p>The corresponding file can be found <a href="/examples/diffusion3D_novis_noperf.jl">here</a>.</p>
+<h2><a id="user-content-50-lines-multi-xpu-example" class="anchor" aria-hidden="true" href="#50-lines-multi-xpu-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>50-lines multi-XPU example</h2>
+<p>This concise multi-XPU 3-D heat diffusion solver uses ParallelStencil in conjunction with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> and can be readily deployed on on a single CPU thread or on thousands of GPUs/CPUs. Again, a simple boolean <code>USE_GPU</code> defines whether it runs on GPU(s) or CPU(s) (<a href="https://docs.julialang.org/en/v1.0.0/manual/environment-variables/#JULIA_NUM_THREADS-1" rel="nofollow">JULIA_NUM_THREADS</a> defines how many cores are used in the latter case). The solver can be run with any number of processes. <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> creates automatically an implicit global computational grid based on the number of processes the solver is run with (and based on the process topology, which can be explicitly chosen by the user or automatically determined). Please refer to the documentation of <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> for more information.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="const USE_GPU = true
+using ImplicitGlobalGrid
+import MPI
+using ParallelStencil
+using ParallelStencil.FiniteDifferences3D
+@static if USE_GPU
+    @init_parallel_stencil(CUDA, Float64, 3);
+else
+    @init_parallel_stencil(Threads, Float64, 3);
+end
+
+@parallel function diffusion3D_step!(T2, T, Ci, lam, dt, dx, dy, dz)
+    @inn(T2) = @inn(T) + dt*(lam*@inn(Ci)*(@d2_xi(T)/dx^2 + @d2_yi(T)/dy^2 + @d2_zi(T)/dz^2));
+    return
+end
+
+function diffusion3D()
+# Physics
+lam        = 1.0;                                        # Thermal conductivity
+cp_min     = 1.0;                                        # Minimal heat capacity
+lx, ly, lz = 10.0, 10.0, 10.0;                           # Length of domain in dimensions x, y and z.
+
+# Numerics
+nx, ny, nz = 256, 256, 256;                              # Number of gridpoints dimensions x, y and z.
+nt         = 100;                                        # Number of time steps
+init_global_grid(nx, ny, nz);
+dx         = lx/(nx_g()-1);                              # Space step in x-dimension
+dy         = ly/(ny_g()-1);                              # Space step in y-dimension
+dz         = lz/(nz_g()-1);                              # Space step in z-dimension
+
+# Array initializations
+T   = @zeros(nx, ny, nz);
+T2  = @zeros(nx, ny, nz);
+Ci  = @zeros(nx, ny, nz);
+
+# Initial conditions (heat capacity and temperature with two Gaussian anomalies each)
+Ci .= 1.0./( cp_min .+ Data.Array([5*exp(-((x_g(ix,dx,Ci)-lx/1.5))^2-((y_g(iy,dy,Ci)-ly/2))^2-((z_g(iz,dz,Ci)-lz/1.5))^2) +
+                                   5*exp(-((x_g(ix,dx,Ci)-lx/3.0))^2-((y_g(iy,dy,Ci)-ly/2))^2-((z_g(iz,dz,Ci)-lz/1.5))^2) for ix=1:size(T,1), iy=1:size(T,2), iz=1:size(T,3)]) )
+T  .= Data.Array([100*exp(-((x_g(ix,dx,T)-lx/2)/2)^2-((y_g(iy,dy,T)-ly/2)/2)^2-((z_g(iz,dz,T)-lz/3.0)/2)^2) +
+                   50*exp(-((x_g(ix,dx,T)-lx/2)/2)^2-((y_g(iy,dy,T)-ly/2)/2)^2-((z_g(iz,dz,T)-lz/1.5)/2)^2) for ix=1:size(T,1), iy=1:size(T,2), iz=1:size(T,3)])
+T2 .= T;                                                 # Assign also T2 to get correct boundary conditions.
+
+# Time loop
+dt = min(dx^2,dy^2,dz^2)*cp_min/lam/8.1;                 # Time step for the 3D Heat diffusion
+for it = 1:nt
+    @parallel diffusion3D_step!(T2, T, Ci, lam, dt, dx, dy, dz);
+    update_halo!(T2);
+    T, T2 = T2, T;
+end
+
+finalize_global_grid();
+end
+
+diffusion3D()
+"><pre><span class="pl-k">const</span> USE_GPU <span class="pl-k">=</span> <span class="pl-c1">true</span>
+<span class="pl-k">using</span> ImplicitGlobalGrid
+<span class="pl-k">import</span> MPI
+<span class="pl-k">using</span> ParallelStencil
+<span class="pl-k">using</span> ParallelStencil<span class="pl-k">.</span>FiniteDifferences3D
+<span class="pl-c1">@static</span> <span class="pl-k">if</span> USE_GPU
+    <span class="pl-c1">@init_parallel_stencil</span>(CUDA, Float64, <span class="pl-c1">3</span>);
+<span class="pl-k">else</span>
+    <span class="pl-c1">@init_parallel_stencil</span>(Threads, Float64, <span class="pl-c1">3</span>);
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@parallel</span> <span class="pl-k">function</span> <span class="pl-en">diffusion3D_step!</span>(T2, T, Ci, lam, dt, dx, dy, dz)
+    <span class="pl-c1">@inn</span>(T2) <span class="pl-k">=</span> <span class="pl-c1">@inn</span>(T) <span class="pl-k">+</span> dt<span class="pl-k">*</span>(lam<span class="pl-k">*</span><span class="pl-c1">@inn</span>(Ci)<span class="pl-k">*</span>(<span class="pl-c1">@d2_xi</span>(T)<span class="pl-k">/</span>dx<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">@d2_yi</span>(T)<span class="pl-k">/</span>dy<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">@d2_zi</span>(T)<span class="pl-k">/</span>dz<span class="pl-k">^</span><span class="pl-c1">2</span>));
+    <span class="pl-k">return</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">diffusion3D</span>()
+<span class="pl-c"><span class="pl-c">#</span> Physics</span>
+lam        <span class="pl-k">=</span> <span class="pl-c1">1.0</span>;                                        <span class="pl-c"><span class="pl-c">#</span> Thermal conductivity</span>
+cp_min     <span class="pl-k">=</span> <span class="pl-c1">1.0</span>;                                        <span class="pl-c"><span class="pl-c">#</span> Minimal heat capacity</span>
+lx, ly, lz <span class="pl-k">=</span> <span class="pl-c1">10.0</span>, <span class="pl-c1">10.0</span>, <span class="pl-c1">10.0</span>;                           <span class="pl-c"><span class="pl-c">#</span> Length of domain in dimensions x, y and z.</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Numerics</span>
+nx, ny, nz <span class="pl-k">=</span> <span class="pl-c1">256</span>, <span class="pl-c1">256</span>, <span class="pl-c1">256</span>;                              <span class="pl-c"><span class="pl-c">#</span> Number of gridpoints dimensions x, y and z.</span>
+nt         <span class="pl-k">=</span> <span class="pl-c1">100</span>;                                        <span class="pl-c"><span class="pl-c">#</span> Number of time steps</span>
+<span class="pl-c1">init_global_grid</span>(nx, ny, nz);
+dx         <span class="pl-k">=</span> lx<span class="pl-k">/</span>(<span class="pl-c1">nx_g</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>);                              <span class="pl-c"><span class="pl-c">#</span> Space step in x-dimension</span>
+dy         <span class="pl-k">=</span> ly<span class="pl-k">/</span>(<span class="pl-c1">ny_g</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>);                              <span class="pl-c"><span class="pl-c">#</span> Space step in y-dimension</span>
+dz         <span class="pl-k">=</span> lz<span class="pl-k">/</span>(<span class="pl-c1">nz_g</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>);                              <span class="pl-c"><span class="pl-c">#</span> Space step in z-dimension</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Array initializations</span>
+T   <span class="pl-k">=</span> <span class="pl-c1">@zeros</span>(nx, ny, nz);
+T2  <span class="pl-k">=</span> <span class="pl-c1">@zeros</span>(nx, ny, nz);
+Ci  <span class="pl-k">=</span> <span class="pl-c1">@zeros</span>(nx, ny, nz);
+
+<span class="pl-c"><span class="pl-c">#</span> Initial conditions (heat capacity and temperature with two Gaussian anomalies each)</span>
+Ci <span class="pl-k">.=</span> <span class="pl-c1">1.0</span><span class="pl-k">./</span>( cp_min <span class="pl-k">.+</span> Data<span class="pl-k">.</span><span class="pl-c1">Array</span>([<span class="pl-c1">5</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,Ci)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,Ci)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,Ci)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">+</span>
+                                   <span class="pl-c1">5</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,Ci)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">3.0</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,Ci)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,Ci)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> ix<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">1</span>), iy<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">2</span>), iz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">3</span>)]) )
+T  <span class="pl-k">.=</span> Data<span class="pl-k">.</span><span class="pl-c1">Array</span>([<span class="pl-c1">100</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,T)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,T)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,T)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">3.0</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">+</span>
+                   <span class="pl-c1">50</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,T)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,T)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,T)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> ix<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">1</span>), iy<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">2</span>), iz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">3</span>)])
+T2 <span class="pl-k">.=</span> T;                                                 <span class="pl-c"><span class="pl-c">#</span> Assign also T2 to get correct boundary conditions.</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Time loop</span>
+dt <span class="pl-k">=</span> <span class="pl-c1">min</span>(dx<span class="pl-k">^</span><span class="pl-c1">2</span>,dy<span class="pl-k">^</span><span class="pl-c1">2</span>,dz<span class="pl-k">^</span><span class="pl-c1">2</span>)<span class="pl-k">*</span>cp_min<span class="pl-k">/</span>lam<span class="pl-k">/</span><span class="pl-c1">8.1</span>;                 <span class="pl-c"><span class="pl-c">#</span> Time step for the 3D Heat diffusion</span>
+<span class="pl-k">for</span> it <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nt
+    <span class="pl-c1">@parallel</span> <span class="pl-c1">diffusion3D_step!</span>(T2, T, Ci, lam, dt, dx, dy, dz);
+    <span class="pl-c1">update_halo!</span>(T2);
+    T, T2 <span class="pl-k">=</span> T2, T;
+<span class="pl-k">end</span>
+
+<span class="pl-c1">finalize_global_grid</span>();
+<span class="pl-k">end</span>
+
+<span class="pl-c1">diffusion3D</span>()</pre></div>
+<p>The corresponding file can be found <a href="/examples/diffusion3D_multigpucpu_novis_noperf.jl">here</a>.</p>
+<p>Thanks to <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a>, only a few function calls had to be added in order to turn the previous single GPU/CPU solver into a multi-XPU solver (omitted unmodified lines are represented with <code>#(...)</code>):</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="#(...)
+using ImplicitGlobalGrid
+#(...)
+function diffusion3D()
+# Physics
+#(...)
+# Numerics
+#(...)
+init_global_grid(nx, ny, nz);
+dx  = lx/(nx_g()-1);                                     # Space step in x-dimension
+dy  = ly/(ny_g()-1);                                     # Space step in y-dimension
+dz  = lz/(nz_g()-1);                                     # Space step in z-dimension
+
+# Array initializations
+#(...)
+
+# Initial conditions (heat capacity and temperature with two Gaussian anomalies each)
+Ci .= 1.0./( cp_min .+ Data.Array([5*exp(-((x_g(ix,dx,Ci)-lx/1.5))^2-((y_g(iy,dy,Ci)-ly/2))^2-((z_g(iz,dz,Ci)-lz/1.5))^2) +
+                                   5*exp(-((x_g(ix,dx,Ci)-lx/3.0))^2-((y_g(iy,dy,Ci)-ly/2))^2-((z_g(iz,dz,Ci)-lz/1.5))^2) for ix=1:size(T,1), iy=1:size(T,2), iz=1:size(T,3)]) )
+T  .= Data.Array([100*exp(-((x_g(ix,dx,T)-lx/2)/2)^2-((y_g(iy,dy,T)-ly/2)/2)^2-((z_g(iz,dz,T)-lz/3.0)/2)^2) +
+                   50*exp(-((x_g(ix,dx,T)-lx/2)/2)^2-((y_g(iy,dy,T)-ly/2)/2)^2-((z_g(iz,dz,T)-lz/1.5)/2)^2) for ix=1:size(T,1), iy=1:size(T,2), iz=1:size(T,3)])
+
+# Time loop
+#(...)
+for it = 1:nt
+    #(...)
+    update_halo!(T2);
+    #(...)
+end
+
+finalize_global_grid();
+end
+
+diffusion3D()
+"><pre><span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-k">using</span> ImplicitGlobalGrid
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-k">function</span> <span class="pl-en">diffusion3D</span>()
+<span class="pl-c"><span class="pl-c">#</span> Physics</span>
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-c"><span class="pl-c">#</span> Numerics</span>
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-c1">init_global_grid</span>(nx, ny, nz);
+dx  <span class="pl-k">=</span> lx<span class="pl-k">/</span>(<span class="pl-c1">nx_g</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>);                                     <span class="pl-c"><span class="pl-c">#</span> Space step in x-dimension</span>
+dy  <span class="pl-k">=</span> ly<span class="pl-k">/</span>(<span class="pl-c1">ny_g</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>);                                     <span class="pl-c"><span class="pl-c">#</span> Space step in y-dimension</span>
+dz  <span class="pl-k">=</span> lz<span class="pl-k">/</span>(<span class="pl-c1">nz_g</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>);                                     <span class="pl-c"><span class="pl-c">#</span> Space step in z-dimension</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Array initializations</span>
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Initial conditions (heat capacity and temperature with two Gaussian anomalies each)</span>
+Ci <span class="pl-k">.=</span> <span class="pl-c1">1.0</span><span class="pl-k">./</span>( cp_min <span class="pl-k">.+</span> Data<span class="pl-k">.</span><span class="pl-c1">Array</span>([<span class="pl-c1">5</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,Ci)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,Ci)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,Ci)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">+</span>
+                                   <span class="pl-c1">5</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,Ci)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">3.0</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,Ci)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>))<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,Ci)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>))<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> ix<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">1</span>), iy<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">2</span>), iz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">3</span>)]) )
+T  <span class="pl-k">.=</span> Data<span class="pl-k">.</span><span class="pl-c1">Array</span>([<span class="pl-c1">100</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,T)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,T)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,T)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">3.0</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">+</span>
+                   <span class="pl-c1">50</span><span class="pl-k">*</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span>((<span class="pl-c1">x_g</span>(ix,dx,T)<span class="pl-k">-</span>lx<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">y_g</span>(iy,dy,T)<span class="pl-k">-</span>ly<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>((<span class="pl-c1">z_g</span>(iz,dz,T)<span class="pl-k">-</span>lz<span class="pl-k">/</span><span class="pl-c1">1.5</span>)<span class="pl-k">/</span><span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> ix<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">1</span>), iy<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">2</span>), iz<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(T,<span class="pl-c1">3</span>)])
+
+<span class="pl-c"><span class="pl-c">#</span> Time loop</span>
+<span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-k">for</span> it <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nt
+    <span class="pl-c"><span class="pl-c">#</span>(...)</span>
+    <span class="pl-c1">update_halo!</span>(T2);
+    <span class="pl-c"><span class="pl-c">#</span>(...)</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">finalize_global_grid</span>();
+<span class="pl-k">end</span>
+
+<span class="pl-c1">diffusion3D</span>()</pre></div>
+<p>Here is the resulting movie when running the application on 8 GPUs, solving 3-D heat diffusion with heterogeneous heat capacity (two Gaussian anomalies) on a global computational grid of size 510x510x510 grid points. It shows the x-z-dimension plane in the middle of the dimension y:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="examples/movies/diffusion3D_8gpus.gif"><img src="examples/movies/diffusion3D_8gpus.gif" alt="3-D heat diffusion" style="max-width:100%;"></a></p>
+<p>The corresponding file can be found <a href="/examples/diffusion3D_multigpucpu_hidecomm.jl">here</a>.</p>
+<h2><a id="user-content-seamless-interoperability-with-communication-packages-and-hiding-communication" class="anchor" aria-hidden="true" href="#seamless-interoperability-with-communication-packages-and-hiding-communication"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Seamless interoperability with communication packages and hiding communication</h2>
+<p>The previous multi-XPU example shows that ParallelStencil is seamlessly interoperable with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a>. The same is a priori true for any communication package that allows to explicitly decide when the required communication occurs; an example is <a href="https://github.com/JuliaParallel/MPI.jl">MPI.jl</a> (besides, <a href="https://github.com/JuliaParallel/MPI.jl">MPI.jl</a> is also seamlessly interoperable with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> and can extend its functionality).</p>
+<p>Moreover, ParallelStencil enables hiding communication behind computation with as simple call to <code>@hide_communication</code>. In the following example, the communication performed by <code>update_halo!</code> (from the package <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a>) is hidden behind the computations done with by <code>@parallel diffusion3D_step!</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@hide_communication (16, 2, 2) begin
+    @parallel diffusion3D_step!(T2, Te Ci, lam, dt, dx, dy, dz);
+    update_halo!(T2);
+end
+"><pre><span class="pl-c1">@hide_communication</span> (<span class="pl-c1">16</span>, <span class="pl-c1">2</span>, <span class="pl-c1">2</span>) <span class="pl-k">begin</span>
+    <span class="pl-c1">@parallel</span> <span class="pl-c1">diffusion3D_step!</span>(T2, Te Ci, lam, dt, dx, dy, dz);
+    <span class="pl-c1">update_halo!</span>(T2);
+<span class="pl-k">end</span></pre></div>
+<p>This enables close to ideal weak scaling of real-world applications on thousands of GPUs/CPUs [<a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">1</a>, <a href="https://www.youtube.com/watch?v=1t1AKnnGRqA" rel="nofollow">2</a>]. Type <code>?@hide_communication</code> in the <a href="https://docs.julialang.org/en/v1/stdlib/REPL/" rel="nofollow">Julia REPL</a> to obtain an explanation of the arguments. Profiling a 3-D viscous Stokes flow application using the Nvidia visual profiler (nvvp) graphically exemplifies how the update velocities kernel is split up in boundary and inner domain computations and how the latter overlap with point-to-point MPI communication for halo exchange:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="docs/images/mpi_overlap2.png"><img src="docs/images/mpi_overlap2.png" alt="Communication computation overlap ParallelStencil" style="max-width:100%;"></a></p>
+<h2><a id="user-content-module-documentation-callable-from-the-julia-repl--ijulia" class="anchor" aria-hidden="true" href="#module-documentation-callable-from-the-julia-repl--ijulia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Module documentation callable from the Julia REPL / IJulia</h2>
+<p>The module documentation can be called from the <a href="https://docs.julialang.org/en/v1/stdlib/REPL/" rel="nofollow">Julia REPL</a> or in <a href="https://github.com/JuliaLang/IJulia.jl">IJulia</a>:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; using ParallelStencil
+julia&gt;?
+help?&gt; ParallelStencil
+search: ParallelStencil @init_parallel_stencil
+
+  Module ParallelStencil
+
+  Enables domain scientists to write high-level code for parallel high-performance stencil computations that can be deployed on both GPUs and CPUs.
+
+  General overview and examples
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+
+  https://github.com/omlins/ParallelStencil.jl
+
+  Macros and functions
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+
+    •    @init_parallel_stencil
+
+    •    @parallel
+
+    •    @hide_communication
+
+    •    @zeros
+
+    •    @ones
+
+    •    @rand
+
+  │ Advanced
+  │
+  │    •    @parallel_indices
+  │
+  │    •    @parallel_async
+  │
+  │    •    @synchronize
+
+  Submodules
+  ≡≡≡≡≡≡≡≡≡≡≡≡
+
+    •    ParallelStencil.FiniteDifferences1D
+
+    •    ParallelStencil.FiniteDifferences2D
+
+    •    ParallelStencil.FiniteDifferences3D
+
+  Modules generated in caller
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+
+    •    Data
+
+  To see a description of a function, macro or module type ?&lt;functionname&gt;, ?&lt;macroname&gt; (including the @) or ?&lt;modulename&gt;, respectively.
+"><pre lang="julia-repl"><code>julia&gt; using ParallelStencil
+julia&gt;?
+help?&gt; ParallelStencil
+search: ParallelStencil @init_parallel_stencil
+
+  Module ParallelStencil
+
+  Enables domain scientists to write high-level code for parallel high-performance stencil computations that can be deployed on both GPUs and CPUs.
+
+  General overview and examples
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+
+  https://github.com/omlins/ParallelStencil.jl
+
+  Macros and functions
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+
+    •    @init_parallel_stencil
+
+    •    @parallel
+
+    •    @hide_communication
+
+    •    @zeros
+
+    •    @ones
+
+    •    @rand
+
+  │ Advanced
+  │
+  │    •    @parallel_indices
+  │
+  │    •    @parallel_async
+  │
+  │    •    @synchronize
+
+  Submodules
+  ≡≡≡≡≡≡≡≡≡≡≡≡
+
+    •    ParallelStencil.FiniteDifferences1D
+
+    •    ParallelStencil.FiniteDifferences2D
+
+    •    ParallelStencil.FiniteDifferences3D
+
+  Modules generated in caller
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+
+    •    Data
+
+  To see a description of a function, macro or module type ?&lt;functionname&gt;, ?&lt;macroname&gt; (including the @) or ?&lt;modulename&gt;, respectively.
+</code></pre></div>
+<h2><a id="user-content-concise-singlemulti-xpu-miniapps" class="anchor" aria-hidden="true" href="#concise-singlemulti-xpu-miniapps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Concise single/multi-XPU miniapps</h2>
+<p>The miniapps regroup a collection of various 2-D and 3-D codes that leverage ParallelStencil to implement architecture-agnostic high-level code for parallel high-performance stencil computations on GPUs and CPUs. The miniapps target various challenging domain science case studies where multi-physics coupling and important nonlinearities challenge existing solving strategies. In most cases, second order pseudo-transient relaxation delivers implicit solutions of the differential equations. Some miniapps feature a multi-XPU version, which combines the capabilities of ParallelStencil and <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> in order to enable multi-GPU and multi-CPU executions, unleashing <em>Julia-at-scale</em>.</p>
+<h4><a id="user-content-performance-metric" class="anchor" aria-hidden="true" href="#performance-metric"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Performance metric</h4>
+<p>Many-core processors as GPUs are throughput-oriented systems that use their massive parallelism to hide latency. On the scientific application side, most algorithms require only a few operations or flops compared to the amount of numbers or bytes accessed from main memory, and thus are significantly memory bound. The Flop/s metric is no longer the most adequate for reporting the application performance of many modern applications. This  status  motivated us to develop a memory throughput-based performance evaluation metric, <code>T_eff</code>, to evaluate the performance of iterative stencil-based solvers [<a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">1</a>].</p>
+<p>The effective memory access, <code>A_eff</code> [GB], is the the sum of twice the memory footprint of the unknown fields, <code>D_u</code>, (fields that depend on their own history and that need to be updated every iteration) and the known fields, <code>D_k</code>, that do not change in time. The effective memory access divided by the execution time per iteration, <code>t_it</code> [sec], defines the effective memory throughput, <code>T_eff</code> [GB/s].</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/docs/images/T_eff.png"><img src="/docs/images/T_eff.png" alt="Effective memory throughput metric" style="max-width:100%;"></a></p>
+<p>The upper bound of <code>T_eff</code> is <code>T_peak</code> as measured e.g. by the [<a href="https://www.researchgate.net/publication/51992086_Memory_bandwidth_and_machine_balance_in_high_performance_computers" rel="nofollow">7</a>] for CPUs or a GPU analogue. Defining the <code>T_eff</code> metric, we assume that 1) we evaluate an iterative stencil-based solver, 2) the problem size is much larger than the cache sizes and 3) the usage of time blocking is not feasible or advantageous (which is a reasonable assumption for real-world applications). An important concept is not to include fields within the effective memory access that do not depend on their own history (e.g. fluxes); such fields can be re-computed on the fly or stored on-chip. Defining a theoretical upper bound for <code>T_eff</code> that is closer to the real upper bound is work in progress.</p>
+<p>Using simple array broadcasting capabilities both with GPU and CPU arrays within Julia does not enable close to optimal performance; ParallelStencil.jl permits to overcome this limitation (see <a href="#fig_teff">top figure</a>) at similar ease of programming.</p>
+<h4><a id="user-content-miniapp-content" class="anchor" aria-hidden="true" href="#miniapp-content"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Miniapp content</h4>
+<ul>
+<li><a href="#thermo-mechanical-convection-2-d-app">Thermo-mechanical convection 2-D app</a></li>
+<li><a href="#viscous-stokes-2-d-app">Viscous Stokes 2-D app</a></li>
+<li><a href="#viscous-stokes-3-d-app">Viscous Stokes 3-D app</a></li>
+<li><a href="#acoustic-wave-2-d-app">Acoustic wave 2-D app</a></li>
+<li><a href="#acoustic-wave-3-d-app">Acoustic wave 3-D app</a></li>
+<li><a href="#scalar-porosity-waves-2-d-app">Scalar porosity waves 2-D app</a></li>
+<li><a href="#hydro-mechanical-porosity-waves-2-d-app">Hydro-mechanical porosity waves 2-D app</a></li>
+<li>More to come, stay tuned...</li>
+</ul>
+<p>All miniapp codes follow a similar structure and permit serial and threaded CPU as well as Nvidia GPU execution. The first line of each miniapp code permits to enable the CUDA GPU backend upon setting the <code>USE_GPU</code> flag to <code>true</code>.</p>
+<p>All the miniapps can be interactively executed within the <a href="https://docs.julialang.org/en/v1/stdlib/REPL/" rel="nofollow">Julia REPL</a> (this includes the multi-XPU versions when using a single CPU or GPU). Note that for optimal performance the miniapp script of interest <code>&lt;miniapp_code&gt;</code> should be launched from the shell using the project's dependencies <code>--project</code>, disabling array bound checking <code>--check-bounds=no</code>, and using optimization level 3 <code>-O3</code>.</p>
+<div class="highlight highlight-source-shell position-relative" data-snippet-clipboard-copy-content="$ julia --project --check-bound=no -O3 &lt;miniapp_code&gt;.jl
+"><pre>$ julia --project --check-bound=no -O3 <span class="pl-k">&lt;</span>miniapp_code<span class="pl-k">&gt;</span>.jl</pre></div>
+<p>Note: refer to the documentation of your Supercomputing Centre for instructions to run Julia at scale. Instructions for running on the Piz Daint GPU supercomputer at the <a href="https://www.cscs.ch/computers/piz-daint/" rel="nofollow">Swiss National Supercomputing Centre</a> can be found <a href="https://user.cscs.ch/tools/interactive/julia/" rel="nofollow">here</a> and for running on the octopus GPU supercomputer at the <a href="https://wp.unil.ch/geocomputing/octopus/" rel="nofollow">Swiss Geocomputing Centre</a> can be found <a href="https://gist.github.com/luraess/45a7a4059d8ace694812e7e301f1a258">here</a>.</p>
+<h4><a id="user-content-thermo-mechanical-convection-2-d-app" class="anchor" aria-hidden="true" href="#thermo-mechanical-convection-2-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Thermo-mechanical convection 2-D app</h4>
+<blockquote>
+<p>app: <a href="/miniapps/ThermalConvection2D.jl">ThermalConvection2D.jl</a></p>
+</blockquote>
+<p>This thermal convection example in 2-D combines a viscous Stokes flow to advection-diffusion of heat including a temperature-dependent shear viscosity. The miniapp resolves thermal convection cells (e.g. Earth's mantle convection and plumes):</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/ThermalConvect2D.gif"><img src="/miniapps/ThermalConvect2D.gif" alt="thermal convection 2-D" style="max-width:100%;"></a></p>
+<p><em>The gif depicts non-dimensional temperature field as evolving into convection cells and plumes</em>. Results are obtained by running the miniapp <a href="/miniapps/ThermalConvection2D.jl">ThermalConvection2D.jl</a>.</p>
+<h4><a id="user-content-viscous-stokes-2-d-app" class="anchor" aria-hidden="true" href="#viscous-stokes-2-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Viscous Stokes 2-D app</h4>
+<blockquote>
+<p>app: <a href="/miniapps/Stokes2D.jl">Stokes2D.jl</a></p>
+</blockquote>
+<p>The viscous Stokes flow example solves the incompressible Stokes equations with linear shear rheology in 2-D. The model configuration represents a buoyant inclusion within a less buoyant matrix:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/Stokes2D.gif"><img src="/miniapps/Stokes2D.gif" alt="viscous Stokes 2-D" style="max-width:100%;"></a></p>
+<p><em>The figure depicts - Upper panels: the dynamical pressure field, the vertical Vy velocity. Lower pannels: the log10 of the vertical momentum balance residual Ry and the log10 of the error norm evolution as function of pseudo-transient iterations</em>. Results are obtained by running the miniapp <a href="/miniapps/Stokes2D.jl">Stokes2D.jl</a>.</p>
+<h4><a id="user-content-viscous-stokes-3-d-app" class="anchor" aria-hidden="true" href="#viscous-stokes-3-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Viscous Stokes 3-D app</h4>
+<blockquote>
+<p>apps: <a href="/miniapps/Stokes3D.jl">Stokes3D.jl</a>, <a href="/miniapps/stokes_multixpu/Stokes3D_multixpu.jl">Stokes3D_multixpu.jl</a></p>
+</blockquote>
+<p>The viscous Stokes flow example solves the incompressible Stokes equations with linear shear rheology in 3-D. The model configuration represents a buoyant spherical inclusion within a less buoyant matrix:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/stokes_multixpu/Stokes3D.gif"><img src="/miniapps/stokes_multixpu/Stokes3D.gif" alt="viscous Stokes 3-D multi-XPU" style="max-width:100%;"></a></p>
+<p><em>The figure depicts vertically sliced cross-sections of - Upper panels: the dynamical pressure field, the vertical Vz velocity. Lower panels: the log10 of the vertical momentum balance residual Rz and the log10 of the error norm evolution as function of pseudo-transient iterations. <strong>The numerical resolution is 252x252x252 grid points in 3-D on 8 GPUs (i.e. a local domain size of 127x127x127 per GPU).</strong></em> The <a href="/miniapps/Stokes3D.jl">Stokes3D.jl</a> and <a href="/miniapps/stokes_multixpu/Stokes3D_multixpu.jl">Stokes3D_multixpu.jl</a> are single- and multi-XPU implementations, respectively. The multi-XPU implementation demonstrates ParallelStencil's capabilities to hide computations behind communication, which is performed with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> in this case. Results are obtained by running the multi-XPU miniapp <a href="/miniapps/stokes_multixpu/Stokes3D_multixpu.jl">Stokes3D_multixpu.jl</a> on 8 Nvidia Titan Xm GPUs distributed across two physically distinct compute nodes.</p>
+<p>This multi-XPU application permits to leverage distributed memory parallelisation to enable large-scale 3-D calculations.</p>
+<h4><a id="user-content-acoustic-wave-2-d-app" class="anchor" aria-hidden="true" href="#acoustic-wave-2-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Acoustic wave 2-D app</h4>
+<blockquote>
+<p>app: <a href="/miniapps/acoustic2D.jl">acoustic2D.jl</a></p>
+</blockquote>
+<p>The acoustic wave example solves acoustic waves in 2-D using the split velocity-pressure formulation:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/acoustic2D.gif"><img src="/miniapps/acoustic2D.gif" alt="Acoustic wave 2-D" style="max-width:100%;"></a></p>
+<p><em>The animation depicts the dynamical pressure field evolution as function of explicit time steps</em>. Results are obtained by running the miniapp <a href="/miniapps/acoustic2D.jl">acoustic2D.jl</a>.</p>
+<h4><a id="user-content-acoustic-wave-3-d-app" class="anchor" aria-hidden="true" href="#acoustic-wave-3-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Acoustic wave 3-D app</h4>
+<blockquote>
+<p>apps: <a href="/miniapps/acoustic3D.jl">acoustic3D.jl</a>, <a href="/miniapps/acoustic_waves_multixpu/acoustic3D_multixpu.jl">acoustic3D_multixpu.jl</a></p>
+</blockquote>
+<p>The acoustic wave examples solves acoustic waves in 3-D using the split velocity-pressure formulation:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/acoustic_waves_multixpu/acoustic3D.gif"><img src="/miniapps/acoustic_waves_multixpu/acoustic3D.gif" alt="Acoustic wave 3-D multi-XPU" style="max-width:100%;"></a></p>
+<p><em>The animation depicts the y-slice of the dynamical pressure field evolution as function of explicit time steps. <strong>The achieved numerical resolution is 1020x1020x1020 grid points in 3-D on 8 GPUs (i.e. a local domain size of 511x511x511 per GPU).</strong></em> The <a href="/miniapps/acoustic3D.jl">acoustic3D.jl</a> and <a href="/miniapps/acoustic_waves_multixpu/acoustic3D_multixpu.jl">acoustic3D_multixpu.jl</a> are single- and multi-XPU implementation, respectively. The multi-XPU implementation demonstrates ParallelStencil's capabilities to hide computations behind communication, which is performed with <a href="https://github.com/eth-cscs/ImplicitGlobalGrid.jl">ImplicitGlobalGrid.jl</a> in this case. Results are obtained by running the multi-XPU miniapp <a href="/miniapps/acoustic_waves_multixpu/acoustic3D_multixpu.jl">acoustic3D_multixpu.jl</a> on 8 Nvidia Titan Xm GPUs distributed across two physically distinct compute nodes.</p>
+<p>This multi-XPU application permits to leverage distributed memory parallelisation to enable large-scale 3-D calculations.</p>
+<h4><a id="user-content-scalar-porosity-waves-2-d-app" class="anchor" aria-hidden="true" href="#scalar-porosity-waves-2-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Scalar porosity waves 2-D app</h4>
+<blockquote>
+<p>app: <a href="/miniapps/scalar_porowaves2D.jl">scalar_porowaves2D.jl</a></p>
+</blockquote>
+<p>The scalar porosity waves example solves the scalar solitary wave equations in 2-D assuming total pressure to be lithostatic, thus eliminating the need to solve for the total pressure explicitly:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/porowaves2D_blob.gif"><img src="/miniapps/porowaves2D_blob.gif" alt="scalar porosity waves 2-D - blobs" style="max-width:100%;"></a>
+<a target="_blank" rel="noopener noreferrer" href="/miniapps/porowaves2D_chan.gif"><img src="/miniapps/porowaves2D_chan.gif" alt="scalar porosity waves 2-D - channels" style="max-width:100%;"></a></p>
+<p><em>The animation depicts the normalised porosity and effective pressure fields evolution as function of explicit time steps. Top row: compaction and decompaction rheology are identical, resulting in circular solitary waves rearranging into solitons of characteristic size. Bottom row: decompaction occurs at much faster rate compared to compaction, resulting in chimney-shaped features.</em></p>
+<h4><a id="user-content-hydro-mechanical-porosity-waves-2-d-app" class="anchor" aria-hidden="true" href="#hydro-mechanical-porosity-waves-2-d-app"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Hydro-mechanical porosity waves 2-D app</h4>
+<blockquote>
+<p>app: <a href="/miniapps/HydroMech2D.jl">HydroMech2D.jl</a></p>
+</blockquote>
+<p>The hydro-mechanical porosity wave example resolves solitary waves in 2-D owing to hydro-mechanical coupling, removing the lithostatic pressure assumption. The total and fluid pressure are explicitly computed from nonlinear Stokes and Darcy flow solvers, respectively [<a href="https://doi.org/10.1093/gji/ggz239" rel="nofollow">8</a>]:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="/miniapps/HydroMech2D.gif"><img src="/miniapps/HydroMech2D.gif" alt="Hydro-mechanical porosity waves 2-D" style="max-width:100%;"></a></p>
+<p><em>The animation depicts the formation of fluid escape pipes in two-phase media, owing to decompaction weakening running the miniapp <a href="/miniapps/HydroMech2D.jl">HydroMech2D.jl</a>. Top row: evolution of the porosity distribution and effective pressure. Bottom row: Darcy flux (relative fluid to solid motion) and solid (porous matrix) deformation.</em></p>
+<h2><a id="user-content-dependencies" class="anchor" aria-hidden="true" href="#dependencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Dependencies</h2>
+<p>ParallelStencil relies on the Julia CUDA package (<a href="https://github.com/JuliaGPU/CUDA.jl">CUDA.jl</a> [<a href="https://doi.org/10.1109/TPDS.2018.2872064" rel="nofollow">5</a>, <a href="https://doi.org/10.1016/j.advengsoft.2019.02.002" rel="nofollow">6</a>]) and <a href="https://github.com/FluxML/MacroTools.jl">MacroTools.jl</a>.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>ParallelStencil may be installed directly with the <a href="https://docs.julialang.org/en/v1/stdlib/Pkg/index.html" rel="nofollow">Julia package manager</a> from the REPL:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt;]
+  pkg&gt; add ParallelStencil
+  pkg&gt; test ParallelStencil
+"><pre lang="julia-repl"><code>julia&gt;]
+  pkg&gt; add ParallelStencil
+  pkg&gt; test ParallelStencil
+</code></pre></div>
+<h2><a id="user-content-questions-comments-and-discussions" class="anchor" aria-hidden="true" href="#questions-comments-and-discussions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Questions, comments and discussions</h2>
+<p>To discuss technical issues, please post on Julia Discourse in the <a href="https://discourse.julialang.org/c/domain/gpu/" rel="nofollow">GPU topic</a> or the <a href="https://discourse.julialang.org/c/domain/parallel/" rel="nofollow">Julia at Scale topic</a> or in the <code>#gpu</code> or <code>#distributed</code> channels on the <a href="https://julialang.slack.com/" rel="nofollow">Julia Slack</a> (to join, visit <a href="https://julialang.org/slack/" rel="nofollow">https://julialang.org/slack/</a>).
+To discuss numerical/domain-science issues, please post on Julia Discourse in the <a href="https://discourse.julialang.org/c/domain/numerics/" rel="nofollow">Numerics topic</a> or the <a href="https://discourse.julialang.org/c/domain/models" rel="nofollow">Modelling &amp; Simulations topic</a> or whichever other topic fits best your issue.</p>
+<h2><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>References</h2>
+<p>[1] <a href="https://www.youtube.com/watch?v=vPsfZUqI4_0" rel="nofollow">Omlin, S., Räss, L., Kwasniewski, G., Malvoisin, B., &amp; Podladchikov, Y. Y. (2020). Solving Nonlinear Multi-Physics on GPU Supercomputers with Julia. JuliaCon Conference, virtual.</a></p>
+<p>[2] <a href="https://www.youtube.com/watch?v=1t1AKnnGRqA" rel="nofollow">Räss, L., Reuber, G., Omlin, S. (2020). Multi-Physics 3-D Inversion on GPU Supercomputers with Julia. JuliaCon Conference, virtual.</a></p>
+<p>[3] <a href="https://www.youtube.com/watch?v=b90qqbYJ58Q" rel="nofollow">Räss, L., Omlin, S., &amp; Podladchikov, Y. Y. (2019). Porting a Massively Parallel Multi-GPU Application to Julia: a 3-D Nonlinear Multi-Physics Flow Solver. JuliaCon Conference, Baltimore, USA.</a></p>
+<p>[4] <a href="https://pasc19.pasc-conference.org/program/schedule/presentation/?id=msa218&amp;sess=sess144" rel="nofollow">Räss, L., Omlin, S., &amp; Podladchikov, Y. Y. (2019). A Nonlinear Multi-Physics 3-D Solver: From CUDA C + MPI to Julia. PASC19 Conference, Zurich, Switzerland.</a></p>
+<p>[5] <a href="https://doi.org/10.1109/TPDS.2018.2872064" rel="nofollow">Besard, T., Foket, C., &amp; De Sutter, B. (2018). Effective Extensible Programming: Unleashing Julia on GPUs. IEEE Transactions on Parallel and Distributed Systems, 30(4), 827-841. doi: 10.1109/TPDS.2018.2872064</a></p>
+<p>[6] <a href="https://doi.org/10.1016/j.advengsoft.2019.02.002" rel="nofollow">Besard, T., Churavy, V., Edelman, A., &amp; De Sutter B. (2019). Rapid software prototyping for heterogeneous and distributed platforms. Advances in Engineering Software, 132, 29-46. doi: 10.1016/j.advengsoft.2019.02.002</a></p>
+<p>[7] <a href="https://www.researchgate.net/publication/51992086_Memory_bandwidth_and_machine_balance_in_high_performance_computers" rel="nofollow">McCalpin, J. D. (1995). Memory Bandwidth and Machine Balance in Current High Performance Computers. IEEE Computer Society Technical Committee on Computer Architecture (TCCA) Newsletter, December 1995.</a></p>
+<p>[8] <a href="https://doi.org/10.1093/gji/ggz239" rel="nofollow">Räss, L., Duretz, T., &amp; Podladchikov, Y. Y. (2019). Resolving hydromechanical coupling in two and three dimensions: spontaneous channelling of porous fluids owing to de-compaction weakening. Geophysical Journal International, ggz239.</a></p>
+</article></div>

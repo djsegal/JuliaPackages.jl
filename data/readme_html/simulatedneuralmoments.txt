@@ -1,0 +1,177 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-simulatedneuralmoments" class="anchor" aria-hidden="true" href="#simulatedneuralmoments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>SimulatedNeuralMoments</h1>
+<p>A package for estimation and inference based on statistics that are filtered through a trained neural net. The methods lead to reliable inferences, in the sense that confidence intervals or credible intervals based on quantiles of MCMC chains contain true parameters at a proportion close to the nominal level, in addition to point estimators having low bias and RMSE. From a Bayesian perspective, the methods can be interpreted as a properly calibrated Approximate Bayesian Computing estimator, in the sense of Fearnhead, P. and Prangle, D. (2012), Journal of the Royal Statistical Society: Series B (Statistical Methodology), 74: 419-474. From a frequentist perspective, the methods may be interpreted as a simulated method of moments estimator implemented using the methods of V. Chernozhukov, H. Hong (2003) Journal of Econometrics 115 (2003) 293 – 346. The approximate likelihood that is used for MCMC sampling is the asymptotic Gaussian likelihood of the selected statistics, and this satisfies the generalized information equality requirement of Theorem 3 of Chernozhukov and Hong. Finally, the use of a neural net to reduce the dimension of the vector of statistics to the minimum needed to maintain identification is an important factor in obtaining reliable inferences. The evidence is reported in the working paper <a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/08868f17ffa226e9e73961cc543748656d952f83e07f03d8ffbc2fc1c20a598f/68747470733a2f2f7777772e62617263656c6f6e616773652e65752f72657365617263682f776f726b696e672d7061706572732f696e666572656e63652d7573696e672d73696d756c617465642d6e657572616c2d6d6f6d656e7473"><img src="https://camo.githubusercontent.com/08868f17ffa226e9e73961cc543748656d952f83e07f03d8ffbc2fc1c20a598f/68747470733a2f2f7777772e62617263656c6f6e616773652e65752f72657365617263682f776f726b696e672d7061706572732f696e666572656e63652d7573696e672d73696d756c617465642d6e657572616c2d6d6f6d656e7473" alt="&quot;Inference Using Simulated Neural Moments&quot;" data-canonical-src="https://www.barcelonagse.eu/research/working-papers/inference-using-simulated-neural-moments" style="max-width:100%;"></a>.</p>
+<p><a href="https://travis-ci.org/mcreel/SimulatedNeuralMoments.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ab030f204809bb5fbe77ade637ee1bdbc733376bf5b7938d0cdc8f29bc9f3530/68747470733a2f2f7472617669732d63692e6f72672f6d637265656c2f53696d756c617465644e657572616c4d6f6d656e74732e6a6c2e7376673f6272616e63683d6d61696e" alt="Build Status" data-canonical-src="https://travis-ci.org/mcreel/SimulatedNeuralMoments.jl.svg?branch=main" style="max-width:100%;"></a>
+<a href="https://github.com/mcreel/SimulatedNeuralMoments.jl/blob/main/docs/API.md"><img src="https://camo.githubusercontent.com/56f8252ba8e9d3f0b810769543f77823d2fe031ce560d4c2d69fb1fcad800383/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6c61746573742d626c75652e737667" alt="Documentation" data-canonical-src="https://img.shields.io/badge/docs-latest-blue.svg" style="max-width:100%;"></a></p>
+<p>By way of documentation, there is an explanation of the API in the docs directory, and here's a run through the MNexample.jl file, in examples/MN, which estimates the parameters of a Gaussian Mixture model. This example can serve as a template of how to use the package. See also the README.md in the examples/SV directory.</p>
+<p>To use the MNexample.jl file, start Julia from its directory, and, if you do not have MCMCChains and/or StatsPlots installed, activate the environment with <code>] activate .</code></p>
+<p>First, we train a neural net to recognize the parameters, given a vector of statistics:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="using SimulatedNeuralMoments, MCMCChains, StatsPlots
+using BSON:@save
+using BSON:@load
+
+# get the things to define the structure for the statistical model we wish to estimate
+# For your own models, you will need to supply the functions
+# found in MNlib.jl, using the same formats
+include(&quot;MNlib.jl&quot;)
+lb, ub = PriorSupport()
+
+# fill in the structure that defines the model
+model = SNMmodel(&quot;Mixture of Normals example model&quot;, lb, ub, InSupport, Prior, PriorDraw, auxstat)
+
+# train the net, and save it and the transformation info
+nnmodel, nninfo = MakeNeuralMoments(model, Epochs=10)
+"><pre><code>using SimulatedNeuralMoments, MCMCChains, StatsPlots
+using BSON:@save
+using BSON:@load
+
+# get the things to define the structure for the statistical model we wish to estimate
+# For your own models, you will need to supply the functions
+# found in MNlib.jl, using the same formats
+include("MNlib.jl")
+lb, ub = PriorSupport()
+
+# fill in the structure that defines the model
+model = SNMmodel("Mixture of Normals example model", lb, ub, InSupport, Prior, PriorDraw, auxstat)
+
+# train the net, and save it and the transformation info
+nnmodel, nninfo = MakeNeuralMoments(model, Epochs=10)
+</code></pre></div>
+<p>Then we can make one sample draw of the statistics at a given parameter vector, and use the statistics to estimate the parameters, to see how well we do:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="θ = TrueParameters() # this is defined in MNlib.jl
+
+# illustrate basic NN point estimation
+m = NeuralMoments(θ, 1, model, nnmodel, nninfo) # the estimate
+cnames = [&quot;true&quot;, &quot;estimate&quot;]
+println(&quot;Basic NN estimation, true parameters (a draw from prior) and estimates&quot;)
+prettyprint([θ m], cnames)
+
+"><pre><code>θ = TrueParameters() # this is defined in MNlib.jl
+
+# illustrate basic NN point estimation
+m = NeuralMoments(θ, 1, model, nnmodel, nninfo) # the estimate
+cnames = ["true", "estimate"]
+println("Basic NN estimation, true parameters (a draw from prior) and estimates")
+prettyprint([θ m], cnames)
+
+</code></pre></div>
+<p>The point estimates are:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="Basic NN estimation, true parameters and estimates
+┌──────────────┬──────────────┐
+│         true │     estimate │
+├──────────────┼──────────────┤
+│      1.00000 │      0.73289 │
+│      1.00000 │      0.88155 │
+│      0.20000 │      0.25068 │
+│      1.80000 │      1.72031 │
+│      0.40000 │      0.44932 │
+└──────────────┴──────────────┘
+"><pre><code>Basic NN estimation, true parameters and estimates
+┌──────────────┬──────────────┐
+│         true │     estimate │
+├──────────────┼──────────────┤
+│      1.00000 │      0.73289 │
+│      1.00000 │      0.88155 │
+│      0.20000 │      0.25068 │
+│      1.80000 │      1.72031 │
+│      0.40000 │      0.44932 │
+└──────────────┴──────────────┘
+</code></pre></div>
+<p>Then, we sample from the posterior, using the neural net point estimate as the statistic for ABC or GMM-like inference:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="# draw a chain of length 10000, and get the extremum estimator
+chain, θhat = MCMC(m, 10000, model, nnmodel, nninfo, verbosity=true)
+
+# visualize results
+chn = Chains(chain, [&quot;μ₁&quot;,&quot;μ₂&quot;,&quot;σ₁&quot;,&quot;σ₂&quot;,&quot;p&quot;])
+display(chn)
+plot(chn)
+println(&quot;SNM estimation, true parameters (a draw from prior) and extremum estimates&quot;)
+prettyprint([θ θhat], cnames)
+"><pre><code># draw a chain of length 10000, and get the extremum estimator
+chain, θhat = MCMC(m, 10000, model, nnmodel, nninfo, verbosity=true)
+
+# visualize results
+chn = Chains(chain, ["μ₁","μ₂","σ₁","σ₂","p"])
+display(chn)
+plot(chn)
+println("SNM estimation, true parameters (a draw from prior) and extremum estimates")
+prettyprint([θ θhat], cnames)
+</code></pre></div>
+<p>We obtain</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="Chains MCMC chain (10000×5×1 Array{Float64,3}):
+
+Iterations        = 1:10000
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 10000
+parameters        = μ₁, μ₂, σ₁, σ₂, p
+
+Summary Statistics
+  parameters      mean       std   naive_se      mcse        ess      rhat 
+      Symbol   Float64   Float64    Float64   Float64    Float64   Float64 
+
+          μ₁    0.8922    0.0587     0.0006    0.0037   156.7766    1.0049
+          μ₂    0.9412    0.1248     0.0012    0.0046   696.6367    1.0002
+          σ₁    0.2350    0.0378     0.0004    0.0023   188.1651    1.0056
+          σ₂    1.7322    0.0967     0.0010    0.0049   291.5987    1.0019
+           p    0.4162    0.0428     0.0004    0.0023   248.6760    1.0039
+
+Quantiles
+  parameters      2.5%     25.0%     50.0%     75.0%     97.5% 
+      Symbol   Float64   Float64   Float64   Float64   Float64 
+
+          μ₁    0.7733    0.8535    0.8939    0.9322    1.0001
+          μ₂    0.7042    0.8562    0.9406    1.0250    1.1972
+          σ₁    0.1600    0.2121    0.2338    0.2586    0.3137
+          σ₂    1.5542    1.6682    1.7288    1.7920    1.9381
+           p    0.3343    0.3877    0.4154    0.4423    0.5037 
+"><pre><code>Chains MCMC chain (10000×5×1 Array{Float64,3}):
+
+Iterations        = 1:10000
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 10000
+parameters        = μ₁, μ₂, σ₁, σ₂, p
+
+Summary Statistics
+  parameters      mean       std   naive_se      mcse        ess      rhat 
+      Symbol   Float64   Float64    Float64   Float64    Float64   Float64 
+
+          μ₁    0.8922    0.0587     0.0006    0.0037   156.7766    1.0049
+          μ₂    0.9412    0.1248     0.0012    0.0046   696.6367    1.0002
+          σ₁    0.2350    0.0378     0.0004    0.0023   188.1651    1.0056
+          σ₂    1.7322    0.0967     0.0010    0.0049   291.5987    1.0019
+           p    0.4162    0.0428     0.0004    0.0023   248.6760    1.0039
+
+Quantiles
+  parameters      2.5%     25.0%     50.0%     75.0%     97.5% 
+      Symbol   Float64   Float64   Float64   Float64   Float64 
+
+          μ₁    0.7733    0.8535    0.8939    0.9322    1.0001
+          μ₂    0.7042    0.8562    0.9406    1.0250    1.1972
+          σ₁    0.1600    0.2121    0.2338    0.2586    0.3137
+          σ₂    1.5542    1.6682    1.7288    1.7920    1.9381
+           p    0.3343    0.3877    0.4154    0.4423    0.5037 
+</code></pre></div>
+<p>The extremum estimator results are:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="┌──────────────┬──────────────┐
+│         true │     estimate │
+├──────────────┼──────────────┤
+│      1.00000 │      0.96377 │
+│      1.00000 │      0.92010 │
+│      0.20000 │      0.17996 │
+│      1.80000 │      1.77447 │
+│      0.40000 │      0.40204 │
+└──────────────┴──────────────┘
+"><pre><code>┌──────────────┬──────────────┐
+│         true │     estimate │
+├──────────────┼──────────────┤
+│      1.00000 │      0.96377 │
+│      1.00000 │      0.92010 │
+│      0.20000 │      0.17996 │
+│      1.80000 │      1.77447 │
+│      0.40000 │      0.40204 │
+└──────────────┴──────────────┘
+</code></pre></div>
+<p>A plot of the chain, and nonparametric plots of marginal posteriors are
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/mcreel/SimulatedNeuralMoments.jl/blob/main/examples/MN/chain.png"><img src="https://github.com/mcreel/SimulatedNeuralMoments.jl/raw/main/examples/MN/chain.png" alt="MNchain" style="max-width:100%;"></a></p>
+</article></div>

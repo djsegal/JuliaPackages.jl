@@ -1,5 +1,4 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://travis-ci.org/matthieugomez/EconPDEs.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c4a69fbc8d22770c48da57287e0e21fb34ef7b4b/68747470733a2f2f7472617669732d63692e6f72672f6d61747468696575676f6d657a2f45636f6e504445732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/matthieugomez/EconPDEs.jl.svg?branch=master" style="max-width:100%;"></a>
-<a href="https://coveralls.io/r/matthieugomez/EconPDEs.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/33725775d51dcd1c31d18bcf9100f6edaf266ceb/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6d61747468696575676f6d657a2f45636f6e504445732e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/matthieugomez/EconPDEs.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://github.com/matthieugomez/EconPDEs.jl/actions"><img src="https://github.com/matthieugomez/EconPDEs.jl/workflows/CI/badge.svg" alt="Build status" style="max-width:100%;"></a></p>
 <p>This package provides the function <code>pdesolve</code> that solves (system of) nonlinear ODEs/PDEs arising in economic models (i.e. parabolic/elliptic PDEs arising from HJB equations). It is:</p>
 <ul>
 <li>robust: upwinding + fully implicit time stepping (see <a href="https://github.com/matthieugomez/EconPDEs.jl/blob/master/examples/details.pdf">here</a>)</li>
@@ -20,11 +19,51 @@
 <p>For instance, to solve the PDE giving the price-dividend ratio in the Long Run Risk model with time-varying drift:</p>
 
 <p><a target="_blank" rel="noopener noreferrer" href="img/by.png"><img src="img/by.png" style="max-width:100%;"></a></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> EconPDEs
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using EconPDEs
+
+# Define a discretized state space
+# An OrderedDict in which each key corresponds to a dimension of the state space.
+stategrid = OrderedDict(:μ =&gt; range(-0.05, stop = 0.1, length = 500))
+
+# Define an initial guess for the value functions
+# An OrderedDict in which each key corresponds to a value function to solve for, 
+# specified as an array with the same dimension as the state space
+y0 = OrderedDict(:V =&gt; ones(500))
+
+# Define a function that encodes the PDE. 
+# The function takes three arguments:
+# 1. A named tuple giving the current value of the state. 
+# 2. A named tuple giving the value function(s) (as well as its derivatives)
+# at the current value of the state. 
+# 3. (Optional) Current time t
+# It returns two tuples:
+# 1. a tuple with the opposite of the time derivative of each value function
+# 2. a tuple with the drift of each state variable (internally used for upwinding)
+function f(state::NamedTuple, sol::NamedTuple)
+	μbar = 0.018 ; ϑ = 0.00073 ; θμ = 0.252 ; νμ = 0.528 ; ρ = 0.025 ; ψ = 1.5 ; γ = 7.5
+	Vt = 1  - ρ * sol.V + (1 - 1 / ψ) * (state.μ - 0.5 * γ * ϑ) * sol.V + θμ * (μbar - state.μ) * sol.Vμ +
+	0.5 * νμ^2 * ϑ * sol.Vμμ  + 0.5 * (1 / ψ - γ) / (1- 1 / ψ) * νμ^2 *  ϑ * sol.Vμ^2/sol.V
+	(Vt,), (θμ * (μbar - state.μ),)
+end
+
+# The function `pdesolve` takes four arguments:
+# 1. the function encoding the PDE
+# 2. the discretized state space
+# 3. the initial guess for the value functions
+# 4. a time grid with decreasing values 
+@time pdesolve(f, stategrid, y0, range(1000, stop = 0, length = 100))
+#&gt; 0.220390 seconds (3.07 M allocations: 219.883 MiB, 18.28% gc time)
+
+# To solve directly for the stationary solution, 
+# i.e. the solution of the PDE with ∂tV = 0,
+# simply omit the time grid
+@time pdesolve(f, stategrid, y0)
+#&gt;  0.018544 seconds (301.91 k allocations: 20.860 MiB)
+"><pre><span class="pl-k">using</span> EconPDEs
 
 <span class="pl-c"><span class="pl-c">#</span> Define a discretized state space</span>
 <span class="pl-c"><span class="pl-c">#</span> An OrderedDict in which each key corresponds to a dimension of the state space.</span>
-stategrid <span class="pl-k">=</span> <span class="pl-c1">OrderedDict</span>(:μ <span class="pl-k">=&gt;</span> <span class="pl-c1">range</span>(<span class="pl-k">-</span><span class="pl-c1">0.05</span>, stop <span class="pl-k">=</span> <span class="pl-c1">0.1</span>, length <span class="pl-k">=</span> <span class="pl-c1">500</span>))
+stategrid <span class="pl-k">=</span> <span class="pl-c1">OrderedDict</span>(<span class="pl-c1">:μ</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">range</span>(<span class="pl-k">-</span><span class="pl-c1">0.05</span>, stop <span class="pl-k">=</span> <span class="pl-c1">0.1</span>, length <span class="pl-k">=</span> <span class="pl-c1">500</span>))
 
 <span class="pl-c"><span class="pl-c">#</span> Define an initial guess for the value functions</span>
 <span class="pl-c"><span class="pl-c">#</span> An OrderedDict in which each key corresponds to a value function to solve for, </span>

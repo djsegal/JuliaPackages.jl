@@ -5,7 +5,121 @@
 <p>Depends on the PyCall julia package and the <a href="https://pypi.python.org/pypi/ply" rel="nofollow">PLY</a> and <a href="https://pypi.python.org/pypi/attrdict" rel="nofollow">attrdict</a> Python packages (both available from PyPI).</p>
 <h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
 <p>This example mirrors <a href="http://www.dabeaz.com/ply/example.html" rel="nofollow">this one</a>, in Python.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> PyLexYacc
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using PyLexYacc
+
+
+module rules
+	using PyLexYacc
+
+	tokens = (
+		&quot;NAME&quot;,&quot;NUMBER&quot;,
+		&quot;PLUS&quot;,&quot;MINUS&quot;,&quot;TIMES&quot;,&quot;DIVIDE&quot;,&quot;EQUALS&quot;,
+		&quot;LPAREN&quot;,&quot;RPAREN&quot;
+		)
+
+	# Tokens
+
+	t_PLUS    = &quot;\\+&quot;
+	t_MINUS   = &quot;-&quot;
+	t_TIMES   = &quot;\\*&quot;
+	t_DIVIDE  = &quot;/&quot;
+	t_EQUALS  = &quot;=&quot;
+	t_LPAREN  = &quot;\\(&quot;
+	t_RPAREN  = &quot;\\)&quot;
+	t_NAME    = &quot;[a-zA-Z_][a-zA-Z0-9_]*&quot;
+	
+	t_NUMBER = rule(&quot;\\d+&quot;) do t, lexer
+			t[&quot;value&quot;] = int(t[&quot;value&quot;])
+			return t
+		end
+
+	t_ignore  = &quot; \t&quot;
+
+	t_newline = rule(&quot;[\\r\\n]+&quot;) do t, lexer
+			lexer[&quot;lineno&quot;] += count((x)-&gt;(x == '\n'),t[&quot;value&quot;])
+			return nothing
+		end
+
+	t_error = rule() do t, lexer
+			@printf(&quot;Illegal character '%s'\n&quot;, t[&quot;value&quot;][1])
+			skip(lexer, 1)
+			return t
+		end
+
+	precedence = (
+			(&quot;left&quot;, &quot;PLUS&quot;, &quot;MINUS&quot;),
+			(&quot;left&quot;, &quot;TIMES&quot;, &quot;DIVIDE&quot;),
+			(&quot;right&quot;, &quot;UMINUS&quot;)
+		)
+	
+	vars = Dict()  # symbol table
+
+	p_statement_assign = parserule(&quot;statement : NAME EQUALS expression&quot;) do t
+			vars[t[2]] = t[4]
+		end
+
+	p_statement_expr = parserule(&quot;statement : expression&quot;) do t
+			println(t[2])
+		end
+
+	p_expression_binop = parserule(
+			&quot;&quot;&quot;expression : expression PLUS expression
+			              | expression MINUS expression
+			              | expression TIMES expression
+			              | expression DIVIDE expression&quot;&quot;&quot;) do t
+			if t[3] == &quot;+&quot;
+				t[1] = t[2] + t[4]
+			elseif t[3] == &quot;-&quot;
+				t[1] = t[2] - t[4]
+			elseif t[3] == &quot;*&quot;
+				t[1] = t[2] * t[4]
+			elseif t[3] == &quot;/&quot;
+				t[1] = t[2] / t[4]
+			end
+		end
+
+	p_expression_uminus = parserule(&quot;expression : MINUS expression %prec UMINUS&quot;) do t
+			t[1] = -t[3]
+		end
+
+	p_expression_group = parserule(&quot;expression : LPAREN expression RPAREN&quot;) do t
+			t[1] = t[3]
+		end
+
+	p_expression_number = parserule(&quot;expression : NUMBER&quot;) do t
+			t[1] = t[2]
+		end
+
+	p_expression_name = parserule(&quot;expression : NAME&quot;) do t
+			try
+				t[1] = vars[t[2]]
+			catch
+				@printf(&quot;Undefined name '%s'\n&quot;, t[2])
+				t[1] = 0
+			end
+		end
+
+	p_error = rule() do t, lexer  # the error rule actually takes a LexToken so make it a rule()
+			@printf(&quot;Syntax error at '%s'\n&quot;, t[&quot;value&quot;][1])
+		end
+end
+
+l = lexer(rules)
+p = parser(rules, &quot;statement&quot;)  # specifiy start rule here or through start variable in module
+
+# replicates the input function using in calc.py
+function input(str::String)
+	print(str)
+	return readline(STDIN)
+end
+
+println(&quot;\\q to quit&quot;)
+line = input(&quot;calc &gt; &quot;)
+while chomp(line) != &quot;\\q&quot;
+	parse(p, l, line)
+	line = input(&quot;calc &gt; &quot;)
+end
+"><pre><span class="pl-k">using</span> PyLexYacc
 
 
 <span class="pl-k">module</span> rules

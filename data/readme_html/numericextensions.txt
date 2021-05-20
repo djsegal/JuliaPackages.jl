@@ -1,5 +1,5 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h2><a id="user-content-numericextensionsjl" class="anchor" aria-hidden="true" href="#numericextensionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>NumericExtensions.jl</h2>
-<p><a href="https://travis-ci.org/lindahua/NumericExtensions.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/702cee22ff89c377082795ad4416bbf391b49dc6/68747470733a2f2f7472617669732d63692e6f72672f6c696e64616875612f4e756d65726963457874656e73696f6e732e6a6c2e706e67" alt="Build Status" data-canonical-src="https://travis-ci.org/lindahua/NumericExtensions.jl.png" style="max-width:100%;"></a></p>
+<p><a href="https://travis-ci.org/lindahua/NumericExtensions.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/1f3e5fcc80c659a3011d85773b549dc055fb5a297385b804c0bd3b0c9a5ee18d/68747470733a2f2f7472617669732d63692e6f72672f6c696e64616875612f4e756d65726963457874656e73696f6e732e6a6c2e706e67" alt="Build Status" data-canonical-src="https://travis-ci.org/lindahua/NumericExtensions.jl.png" style="max-width:100%;"></a></p>
 <p>Julia extensions to provide high performance computational support.</p>
 <p><strong>Notes:</strong></p>
 <p>Some of the implementations that were originally in this package has been migrated to the Julia base:</p>
@@ -11,17 +11,27 @@
 <hr>
 <p>Julia is a fantastic technical computing environment that allows you to write codes that are both performant and generic. However, as it is still at its early stage, some functions are not as performant as they can be and writing computational algorithms directly based on builtin functions may not give you the best performance. This package provides you with a variety of tools to address such issues.</p>
 <p>To see how this package may help you, let's first consider a simple example, that is, to compute the sum of squared difference between two vectors. This can be easily done in Julia in one line as follows</p>
-<div class="highlight highlight-source-julia"><pre>r <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">abs2</span>(x <span class="pl-k">-</span> y))</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="r = sum(abs2(x - y))
+"><pre>r <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">abs2</span>(x <span class="pl-k">-</span> y))</pre></div>
 <p>Whereas this expression is simple, it involves some unnecessary operations that lead to suboptimal performance: (1) it creates two temporary arrays respectively to store <code>x - y</code> and <code>abs(x - y)</code>, (2) it completes the computation through three passes over the data -- computing <code>x - y</code>, computing <code>abs2(x - y)</code>, and finally computing the sum. Julia provides a <code>mapreduce</code> function which allows you to complete the operation in a single pass without creating any temporaries:</p>
-<div class="highlight highlight-source-julia"><pre>r <span class="pl-k">=</span> <span class="pl-c1">mapreduce</span>((x, y) <span class="pl-k">-&gt;</span> <span class="pl-c1">abs2</span>(x <span class="pl-k">-</span> y), <span class="pl-k">+</span>, x, y)</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="r = mapreduce((x, y) -&gt; abs2(x - y), +, x, y)
+"><pre>r <span class="pl-k">=</span> <span class="pl-c1">mapreduce</span>((x, y) <span class="pl-k">-&gt;</span> <span class="pl-c1">abs2</span>(x <span class="pl-k">-</span> y), <span class="pl-k">+</span>, x, y)</pre></div>
 <p>However, if you really run this you may probably find that this is even slower. The culprit here is that the anonymous function <code>(x, y) -&gt; abs2(x - y)</code> is not inlined, which will be resolved and called at each iteration. Therefore, to compute this efficiently, one has to write loops as below</p>
-<div class="highlight highlight-source-julia"><pre>s <span class="pl-k">=</span> <span class="pl-c1">0.</span>
-<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span> : <span class="pl-c1">length</span>(x)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="s = 0.
+for i = 1 : length(x)
+	s += abs2(x[i] - y[i])
+end
+"><pre>s <span class="pl-k">=</span> <span class="pl-c1">0.</span>
+<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-k">:</span> <span class="pl-c1">length</span>(x)
 	s <span class="pl-k">+=</span> <span class="pl-c1">abs2</span>(x[i] <span class="pl-k">-</span> y[i])
 <span class="pl-k">end</span></pre></div>
 <p>This is not too bad though, until you have more complex needs, e.g. computing this along each row/column of the matrix. Then writing the loops can become more involved, and it is more tricky to implement it in a cache-friendly way.</p>
 <p>With this package, we can compute this efficiently without writing loops, as</p>
-<div class="highlight highlight-source-julia"><pre>r <span class="pl-k">=</span> <span class="pl-c1">sumfdiff</span>(<span class="pl-c1">Abs2Fun</span>(), x, y)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="r = sumfdiff(Abs2Fun(), x, y)
+
+# to compute this along a specific dimension
+r = sumfdiff(Abs2Fun(), x, y, dim)
+"><pre>r <span class="pl-k">=</span> <span class="pl-c1">sumfdiff</span>(<span class="pl-c1">Abs2Fun</span>(), x, y)
 
 <span class="pl-c"><span class="pl-c">#</span> to compute this along a specific dimension</span>
 r <span class="pl-k">=</span> <span class="pl-c1">sumfdiff</span>(<span class="pl-c1">Abs2Fun</span>(), x, y, dim)</pre></div>

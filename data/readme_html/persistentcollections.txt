@@ -1,0 +1,141 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-persistentcollectionsjl" class="anchor" aria-hidden="true" href="#persistentcollectionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>PersistentCollections.jl</h1>
+<p><a href="https://travis-ci.com/blenessy/PersistentCollections.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c9049b46156177b46b09229b94e9570ed4999ad734e0f2359291db85879926d8/68747470733a2f2f7472617669732d63692e636f6d2f626c656e657373792f50657273697374656e74436f6c6c656374696f6e732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/blenessy/PersistentCollections.jl.svg?branch=master" style="max-width:100%;"></a> <a href="https://coveralls.io/github/blenessy/PersistentCollections.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/d36f2cc39ab3adf72097e18aa4fa9a8ed377c294f177c588bb9a3662150475cf/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f626c656e657373792f50657273697374656e74436f6c6c656374696f6e732e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/github/blenessy/PersistentCollections.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<p>Julia <code>Dict</code> and <code>Set</code> data structures safely persisted to disk.</p>
+<p>All collections are backed by <a href="https://en.wikipedia.org/wiki/Lightning_Memory-Mapped_Database" rel="nofollow">LMDB</a> - a super fast B-Tree based embedded KV database with ACID guaranties.
+As with other B-Tree based databases reads are faster than writes. However, write performance is still decent (expect 1k-10k TPS).</p>
+<p>Care was taken to make the data structures thread-safe. LMDB handles most of the locking well - we just have to exclusively lock the <code>LMDB.Environment</code> when writing
+to prevent multiple threads opening multile write transactions (deadlock will occur).</p>
+<h2><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Quick Start</h2>
+<ol>
+<li>Install this package:
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.add(&quot;https://github.com/blenessy/PersistentCollections.jl.git&quot;)
+"><pre><span class="pl-k">import</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>https://github.com/blenessy/PersistentCollections.jl.git<span class="pl-pds">"</span></span>)</pre></div>
+</li>
+<li>Create an <code>LMDB.Environment</code> in a directory called <code>data</code> (in your current working directory):
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using PersistentCollections
+env = LMDB.Environment(&quot;data&quot;)
+"><pre><span class="pl-k">using</span> PersistentCollections
+env <span class="pl-k">=</span> LMDB<span class="pl-k">.</span><span class="pl-c1">Environment</span>(<span class="pl-s"><span class="pl-pds">"</span>data<span class="pl-pds">"</span></span>)</pre></div>
+</li>
+<li>Create an <code>AbstractDict</code> in your LMDB environment:
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="dict = PersistentDict{String,String}(env)
+"><pre>dict <span class="pl-k">=</span> <span class="pl-c1">PersistentDict</span><span class="pl-c1">{String,String}</span>(env)</pre></div>
+</li>
+<li>Use it as any other dict:
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="dict[&quot;foo&quot;] = &quot;bar&quot;
+@assert dict[&quot;foo&quot;] == &quot;bar&quot;
+@assert collect(keys(dict)) == [&quot;foo&quot;]
+@assert collect(values(dict)) == [&quot;bar&quot;]
+"><pre>dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>
+<span class="pl-c1">@assert</span> dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>
+<span class="pl-c1">@assert</span> <span class="pl-c1">collect</span>(<span class="pl-c1">keys</span>(dict)) <span class="pl-k">==</span> [<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>]
+<span class="pl-c1">@assert</span> <span class="pl-c1">collect</span>(<span class="pl-c1">values</span>(dict)) <span class="pl-k">==</span> [<span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>]</pre></div>
+</li>
+<li>(Optional) note the asymetric performance characteristic of LMDB (B-Tree) based database:
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@time dict[&quot;bar&quot;] = &quot;baz&quot;;  # Writes to LMDB (B-Tree) are relatively slow
+@time dict[&quot;bar&quot;];          # Reads are very fast though :)
+"><pre><span class="pl-c1">@time</span> dict[<span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>baz<span class="pl-pds">"</span></span>;  <span class="pl-c"><span class="pl-c">#</span> Writes to LMDB (B-Tree) are relatively slow</span>
+<span class="pl-c1">@time</span> dict[<span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>];          <span class="pl-c"><span class="pl-c">#</span> Reads are very fast though :)</span></pre></div>
+</li>
+</ol>
+<h2><a id="user-content-user-guide" class="anchor" aria-hidden="true" href="#user-guide"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>User Guide</h2>
+<h3><a id="user-content-dynamic-types" class="anchor" aria-hidden="true" href="#dynamic-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Dynamic types</h3>
+<p>It is possible to create persistent collection of <code>Any</code> type although some methods will not be able to convert the value to the correct type because no metadata is stored for this in DB.
+Most notably the <code>getindex</code> method (e.g. <code>dict["foo"]</code>) will not return a converted value. To mitigate this limitation, use the <code>get</code> method, which includes a default value.
+The type of the default value (if other than <code>nothing</code>) will be used to convert the value to the desired type.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="env = LMDB.Environment(&quot;data&quot;)
+dict = PersistentDict{Any,Any}(env)
+dict[&quot;foo&quot;] == &quot;bar&quot;
+dict[&quot;foo&quot;]                  # PersistentCollections.LMDB.MDBValue{Nothing}(0x0000000000000003, Ptr{Nothing} @0x000000012c806ffd, nothing)
+get(dict, &quot;foo&quot;, &quot;&quot;)         # &quot;bar&quot;
+convert(String, dict[&quot;foo&quot;]) # &quot;bar&quot;
+"><pre>env <span class="pl-k">=</span> LMDB<span class="pl-k">.</span><span class="pl-c1">Environment</span>(<span class="pl-s"><span class="pl-pds">"</span>data<span class="pl-pds">"</span></span>)
+dict <span class="pl-k">=</span> <span class="pl-c1">PersistentDict</span><span class="pl-c1">{Any,Any}</span>(env)
+dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>
+dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>]                  <span class="pl-c"><span class="pl-c">#</span> PersistentCollections.LMDB.MDBValue{Nothing}(0x0000000000000003, Ptr{Nothing} @0x000000012c806ffd, nothing)</span>
+<span class="pl-c1">get</span>(dict, <span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>)         <span class="pl-c"><span class="pl-c">#</span> "bar"</span>
+<span class="pl-c1">convert</span>(String, dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>]) <span class="pl-c"><span class="pl-c">#</span> "bar"</span></pre></div>
+<h3><a id="user-content-multiple-persistent-collections-in-the-same-lmdb-environment" class="anchor" aria-hidden="true" href="#multiple-persistent-collections-in-the-same-lmdb-environment"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Multiple persistent collections in the same LMDB Environment</h3>
+<p>It is possible if you need transactional consistency between multiple persistent collections:</p>
+<ol>
+<li>Create your <code>LMDB.Environment</code> with "named database" support by specifying the number of persistent collections yoy want with the <code>maxdbs</code> keyword argument:
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="env = LMDB.Environment(&quot;data&quot;, maxdbs=2)
+"><pre>env <span class="pl-k">=</span> LMDB<span class="pl-k">.</span><span class="pl-c1">Environment</span>(<span class="pl-s"><span class="pl-pds">"</span>data<span class="pl-pds">"</span></span>, maxdbs<span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+</li>
+<li>Instantiate your persistent collections with a unique (within LMDB env.) id:
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="dict1 = PersistentDict{String,String}(env, id=&quot;mydict1&quot;)
+dict2 = PersistentDict{String,Int}(env, id=&quot;mydict2&quot;)
+"><pre>dict1 <span class="pl-k">=</span> <span class="pl-c1">PersistentDict</span><span class="pl-c1">{String,String}</span>(env, id<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>mydict1<span class="pl-pds">"</span></span>)
+dict2 <span class="pl-k">=</span> <span class="pl-c1">PersistentDict</span><span class="pl-c1">{String,Int}</span>(env, id<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>mydict2<span class="pl-pds">"</span></span>)</pre></div>
+</li>
+</ol>
+<h3><a id="user-content-danger-zone-manual-sync-writes-to-disc" class="anchor" aria-hidden="true" href="#danger-zone-manual-sync-writes-to-disc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Danger Zone: Manual sync writes to disc</h3>
+<p>Yes, you can expect significant increase with write throughput if you are willing to risk loosing your last written transactions.
+Please note that database integrity (risk of curruption) is not in danger here.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="unsafe_env = LMDB.Environment(&quot;data&quot;, flags=LMDB.MDB_NOSYNC)
+unsafe_dict = PersistentDict{String,String}(unsafe_env)
+flush(unsafe_env) do 
+    unsafe_dict[&quot;foo&quot;] = &quot;bar&quot;
+    unsafe_dict[&quot;foo&quot;] = &quot;baz&quot;
+end # &lt;== data is flushed to disk here
+"><pre>unsafe_env <span class="pl-k">=</span> LMDB<span class="pl-k">.</span><span class="pl-c1">Environment</span>(<span class="pl-s"><span class="pl-pds">"</span>data<span class="pl-pds">"</span></span>, flags<span class="pl-k">=</span>LMDB<span class="pl-k">.</span>MDB_NOSYNC)
+unsafe_dict <span class="pl-k">=</span> <span class="pl-c1">PersistentDict</span><span class="pl-c1">{String,String}</span>(unsafe_env)
+<span class="pl-c1">flush</span>(unsafe_env) <span class="pl-k">do</span> 
+    unsafe_dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>
+    unsafe_dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>baz<span class="pl-pds">"</span></span>
+<span class="pl-k">end</span> <span class="pl-c"><span class="pl-c">#</span> &lt;== data is flushed to disk here</span></pre></div>
+<p>This is equvalent to:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="unsafe_env = LMDB.Environment(&quot;data&quot;, flags=LMDB.MDB_NOSYNC)
+unsafe_dict = PersistentDict{String,String}(unsafe_env)
+try
+    unsafe_dict[&quot;foo&quot;] = &quot;bar&quot;
+    unsafe_dict[&quot;foo&quot;] = &quot;baz&quot;
+finally
+    flush(unsafe_env)
+end
+"><pre>unsafe_env <span class="pl-k">=</span> LMDB<span class="pl-k">.</span><span class="pl-c1">Environment</span>(<span class="pl-s"><span class="pl-pds">"</span>data<span class="pl-pds">"</span></span>, flags<span class="pl-k">=</span>LMDB<span class="pl-k">.</span>MDB_NOSYNC)
+unsafe_dict <span class="pl-k">=</span> <span class="pl-c1">PersistentDict</span><span class="pl-c1">{String,String}</span>(unsafe_env)
+<span class="pl-k">try</span>
+    unsafe_dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>
+    unsafe_dict[<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>baz<span class="pl-pds">"</span></span>
+<span class="pl-k">finally</span>
+    <span class="pl-c1">flush</span>(unsafe_env)
+<span class="pl-k">end</span></pre></div>
+<h2><a id="user-content-running-tests" class="anchor" aria-hidden="true" href="#running-tests"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running Tests</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="make test
+"><pre>make test</pre></div>
+<h3><a id="user-content-analyzing-code-coverage" class="anchor" aria-hidden="true" href="#analyzing-code-coverage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Analyzing Code Coverage</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="make coverage
+"><pre>make coverage</pre></div>
+<h2><a id="user-content-benchmarks" class="anchor" aria-hidden="true" href="#benchmarks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Benchmarks</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="make bench
+"><pre>make bench</pre></div>
+<h2><a id="user-content-status" class="anchor" aria-hidden="true" href="#status"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Status</h2>
+<h3><a id="user-content-cicd" class="anchor" aria-hidden="true" href="#cicd"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>CI/CD</h3>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Travis CI integration</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Coveralls integration (when public)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> All platforms supported</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Part of Julia Registry</li>
+</ul>
+<h3><a id="user-content-persistentdict" class="anchor" aria-hidden="true" href="#persistentdict"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>PersistentDict</h3>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Optimised implementation</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Thread Safe</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> MDB_NOSYNC support</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Named database support</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Manual flush (sync) to disk</li>
+</ul>
+<h3><a id="user-content-persistentset" class="anchor" aria-hidden="true" href="#persistentset"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>PersistentSet</h3>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Implemented</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Thread Safe</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> MDB_NOSYNC support</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Named database support</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Manual flush (sync) to disk</li>
+</ul>
+<h2><a id="user-content-credits" class="anchor" aria-hidden="true" href="#credits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Credits</h2>
+<p>Lots of LMDB wrapping magic was pinched from <a href="https://github.com/wildart/LMDB.jl">wildart/LMDB.jl</a> - who deserves lots of credits.</p>
+</article></div>

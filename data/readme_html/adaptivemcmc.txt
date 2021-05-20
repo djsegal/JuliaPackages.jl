@@ -9,10 +9,24 @@
 <p>The aim of the package is to provide a simple and modular general-purpose implementation, which may be easily used to sample from a log-target density, but also used in a variety of custom settings.</p>
 <p>See also <a href="https://github.com/mvihola/AdaptiveParticleMCMC.jl">AdaptiveParticleMCMC.jl</a> which uses this package with <a href="https://github.com/awllee/SequentialMonteCarlo.jl">SequentialMonteCarlo.jl</a> for adaptive particle MCMC.</p>
 <h2><a id="user-content-getting-the-package" class="anchor" aria-hidden="true" href="#getting-the-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Getting the package</h2>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Pkg
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(&quot;AdaptiveMCMC&quot;)
+"><pre><span class="pl-k">using</span> Pkg
 Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>AdaptiveMCMC<span class="pl-pds">"</span></span>)</pre></div>
 <h2><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Quick start</h2>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Load the package</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Load the package
+using AdaptiveMCMC
+
+# Define a function which returns log-density values:
+log_p(x) = -.5*sum(x.^2)
+
+# Run 10k iterations of the Adaptive Metropolis:
+out = adaptive_rwm(zeros(2), log_p, 10_000; algorithm=:am)
+
+# Calculate '95% credible intervals':
+using Statistics
+mapslices(x-&gt;&quot;$(mean(x)) ± $(1.96std(x))&quot;, out.X, dims=2)
+"><pre><span class="pl-c"><span class="pl-c">#</span> Load the package</span>
 <span class="pl-k">using</span> AdaptiveMCMC
 
 <span class="pl-c"><span class="pl-c">#</span> Define a function which returns log-density values:</span>
@@ -28,7 +42,37 @@ out <span class="pl-k">=</span> <span class="pl-c1">adaptive_rwm</span>(<span cl
 which does sampling for a given log-target density with the chosen method.</p>
 <h2><a id="user-content-adaptive-parallel-tempering" class="anchor" aria-hidden="true" href="#adaptive-parallel-tempering"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Adaptive parallel tempering</h2>
 <p>The <code>adaptive_rwm</code> also implements tempering, which is used if an optional argument <code>L≥2</code> (number of temperature levels) is supplied. Here is a simple multimodal distribution sampled with APT:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Multimodal target of dimension d.</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Multimodal target of dimension d.
+function multimodalTarget(d::Int, sigma2=0.1^2, sigman=sigma2)
+    # The means of mixtures
+    m = [2.18 5.76; 3.25 3.47; 5.41 2.65; 4.93 1.50; 8.67 9.59;
+         1.70 0.50; 2.70 7.88; 1.83 0.09; 4.24 8.48; 4.59 5.60;
+         4.98 3.70; 2.26 0.31; 8.41 1.68; 6.91 5.81; 1.14 2.39;
+         5.54 6.86; 3.93 8.82; 6.87 5.40; 8.33 9.50; 1.69 8.11]'
+    n_m = size(m,2)
+    @assert d&gt;=2 &quot;Dimension should be &gt;= 2&quot;
+    let m=m, n_m=size(m,2), d=d
+        function log_p(x::Vector{Float64})
+            l_dens = -0.5*(mapslices(sum, (m.-x[1:2]).^2, dims=1)/sigma2)
+            if d&gt;2
+                l_dens .-= 0.5*mapslices(sum, x[3:d].^2, dims=1)/sigman
+            end
+            l_max = maximum(l_dens) # Prevent underflow by log-sum trick
+            l_max + log(sum(exp.(l_dens.-l_max)))
+        end
+    end
+end
+
+using AdaptiveMCMC
+n = 100_000; L = 2
+rwm = adaptive_rwm(zeros(2), multimodalTarget(2), n; thin=10)
+apt = adaptive_rwm(zeros(2), multimodalTarget(2), div(n,L); L = L, thin=10)
+
+# Assuming you have 'Plots' installed:
+using Plots
+plot(scatter(rwm.X[1,:], rwm.X[2,:], title=&quot;w/o tempering&quot;, legend=:none),
+scatter(apt.X[1,:], apt.X[2,:], title=&quot;w/ tempering&quot;, legend=:none), layout=(1,2))
+"><pre><span class="pl-c"><span class="pl-c">#</span> Multimodal target of dimension d.</span>
 <span class="pl-k">function</span> <span class="pl-en">multimodalTarget</span>(d<span class="pl-k">::</span><span class="pl-c1">Int</span>, sigma2<span class="pl-k">=</span><span class="pl-c1">0.1</span><span class="pl-k">^</span><span class="pl-c1">2</span>, sigman<span class="pl-k">=</span>sigma2)
     <span class="pl-c"><span class="pl-c">#</span> The means of mixtures</span>
     m <span class="pl-k">=</span> [<span class="pl-c1">2.18</span> <span class="pl-c1">5.76</span>; <span class="pl-c1">3.25</span> <span class="pl-c1">3.47</span>; <span class="pl-c1">5.41</span> <span class="pl-c1">2.65</span>; <span class="pl-c1">4.93</span> <span class="pl-c1">1.50</span>; <span class="pl-c1">8.67</span> <span class="pl-c1">9.59</span>;
@@ -60,7 +104,41 @@ apt <span class="pl-k">=</span> <span class="pl-c1">adaptive_rwm</span>(<span cl
 <span class="pl-c1">scatter</span>(apt<span class="pl-k">.</span>X[<span class="pl-c1">1</span>,:], apt<span class="pl-k">.</span>X[<span class="pl-c1">2</span>,:], title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>w/ tempering<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:none</span>), layout<span class="pl-k">=</span>(<span class="pl-c1">1</span>,<span class="pl-c1">2</span>))</pre></div>
 <h2><a id="user-content-using-with-distributions-and-labelledarrays" class="anchor" aria-hidden="true" href="#using-with-distributions-and-labelledarrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using with Distributions and LabelledArrays</h2>
 <p>MCMC is often useful with hierarchical models. These may be conveniently built using <code>Distributions</code> and <code>LabelledArrays</code> packages. The following example assumes these packages to be installed.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Distributions, LabelledArrays, AdaptiveMCMC
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Distributions, LabelledArrays, AdaptiveMCMC
+# Define convenience log-transform for continuous univariate distributions
+struct LogTransformedDistribution{Dist &lt;: ContinuousUnivariateDistribution}
+        d::Dist
+end
+import Distributions.logpdf
+logpdf(d::LogTransformedDistribution, x) = logpdf(d.d, exp(x)) + x
+import Base.log
+log(d::ContinuousUnivariateDistribution) = LogTransformedDistribution(d)
+
+# This example is modified from Turing Getting Started:
+# https://turing.ml/dev/docs/using-turing/get-started
+function buildModel(x=0.0, y=1.0)
+    let x=x, y=y
+        function(v)
+            p = 0.0
+            p += logpdf(log(InverseGamma(2,3)), v.log_s)
+            ss = exp(.5*v.log_s)
+            p += logpdf(Normal(0, ss), v.m)
+            p += logpdf(Normal(v.m, ss), x)
+            p += logpdf(Normal(v.m, ss), y)
+            p
+        end
+    end
+end
+
+# Initial state vector (labelled with keys `s` and `m`)
+x0 = LVector(log_s=1.0, m=0.0); log_p = buildModel(3.3, 4.14)
+# Hint: If you do not have a good guess of the mode of log_p (which is
+# a good initial value for MCMC), you may use optimisation:
+#using Optim; o = optimize(x -&gt; -log_p(x), x0); x0 = o.minimizer
+out = adaptive_rwm(x0, log_p, 1_000_000; thin=20)
+using StatsPlots # Assuming installed
+corrplot(out.X', labels=[keys(x0)...])
+"><pre><span class="pl-k">using</span> Distributions, LabelledArrays, AdaptiveMCMC
 <span class="pl-c"><span class="pl-c">#</span> Define convenience log-transform for continuous univariate distributions</span>
 <span class="pl-k">struct</span> LogTransformedDistribution{Dist <span class="pl-k">&lt;:</span> <span class="pl-c1">ContinuousUnivariateDistribution</span>}
         d<span class="pl-k">::</span><span class="pl-c1">Dist</span>
@@ -96,7 +174,51 @@ out <span class="pl-k">=</span> <span class="pl-c1">adaptive_rwm</span>(x0, log_
 <span class="pl-c1">corrplot</span>(out<span class="pl-k">.</span>X<span class="pl-k">'</span>, labels<span class="pl-k">=</span>[<span class="pl-c1">keys</span>(x0)<span class="pl-k">...</span>])</pre></div>
 <h2><a id="user-content-custom-sampler" class="anchor" aria-hidden="true" href="#custom-sampler"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Custom sampler</h2>
 <p>The package provides also simple building blocks which you can use within a 'custom' MCMC sampler. Here is an example:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> AdaptiveMCMC
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using AdaptiveMCMC
+
+# Sampler in R^d
+function mySampler(log_p, n, x0)
+
+    # Initialise random walk sampler state: r.x current state, r.y proposal
+    r = RWMState(x0)
+
+    # Initialise Adaptive Metropolis state (with default parameters)
+    s = AdaptiveMetropolis(x0)
+    # Other adaptations are: AdaptiveScalingMetropolis,
+    # AdaptiveScalingWithinAdaptiveMetropolis, and RobustAdaptiveMetropolis
+
+    X = zeros(eltype(x0), length(x0), n) # Allocate output storage
+    p_x = log_p(r.x)                     # = log_p(x0); the initial log target
+    for k = 1:n
+
+        # Draw new proposal r.x -&gt; r.y:
+        draw!(r, s)
+
+        p_y = log_p(r.y)                      # Calculate log target at proposal
+        alpha = min(one(p_x), exp(p_y - p_x)) # The Metropolis acceptance probability
+
+        if rand() &lt;= alpha
+            p_x = p_y
+
+            # This 'accepts', or interchanges r.x &lt;-&gt; r.y:
+            # (NB: do not do r.x = r.y; these are (pointers to) vectors!)
+            accept!(r)
+        end
+
+        # Do the adaptation update:
+        adapt!(s, r, alpha, k)
+
+        X[:,k] = r.x   # Save the current sample
+     end
+    X
+end
+
+# Standard normal target for testing
+normal_log_p(x) = -mapreduce(e-&gt;e*e, +, x)/2
+
+# Run 1M iterations of the sampler targetting 30d standard Normal:
+X = mySampler(normal_log_p, 1_000_000, zeros(30))
+"><pre><span class="pl-k">using</span> AdaptiveMCMC
 
 <span class="pl-c"><span class="pl-c">#</span> Sampler in R^d</span>
 <span class="pl-k">function</span> <span class="pl-en">mySampler</span>(log_p, n, x0)
@@ -143,7 +265,8 @@ X <span class="pl-k">=</span> <span class="pl-c1">mySampler</span>(normal_log_p,
 <h2><a id="user-content-more-information--citations" class="anchor" aria-hidden="true" href="#more-information--citations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>More information &amp; citations</h2>
 <p>The algorithms implemented in the package are discussed in the following reference:</p>
 <ul>
-<li>M. Vihola. Ergonomic and reliable Bayesian inference with adaptive Markov chain Monte Carlo. In W. W. Piegrorsch, R. Levine,  H. H. Zhang, and T. C. M. Lee, editors, <em>Handbook of Computational Statistics and Data Science</em>, Wiley, to appear.</li>
+<li>M. Vihola. Ergonomic and reliable Bayesian inference with adaptive Markov chain Monte Carlo. In W. W. Piegrorsch, R. Levine,  H. H. Zhang, and T. C. M. Lee, editors, <em>Handbook of Computational Statistics and Data Science</em>, Wiley, to appear. <br>
+(Electronic version available in Wiley StatsRef: <a href="https://doi.org/10.1002/9781118445112.stat08286" rel="nofollow">https://doi.org/10.1002/9781118445112.stat08286</a>)</li>
 </ul>
 <p>If you use the package, please cite this publication.</p>
 <p>Details of the implementation, such as about arguments and options, there are help fields written to the functions, which you may access, for instance, by typing <code>? adaptive_mcmc</code> in the Julia REPL.</p>

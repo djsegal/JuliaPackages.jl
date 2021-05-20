@@ -16,7 +16,59 @@ It implements:</p>
 <p><em>The same demo as above implemented in Julia can be found in</em> <a href="https://github.com/Andy-P/RecurrentNN.jl/blob/master/example/example.jl">example/example.jl</a></p>
 <h2><a id="user-content-example-code" class="anchor" aria-hidden="true" href="#example-code"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example code</h2>
 <p>To construct and train an LSTM for example, you would proceed as follows:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> RecurrentNN
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using RecurrentNN
+
+# takes as input Mat of 10x1, contains 2 hidden layers of
+# 20 neurons each, and outputs a Mat of size 2x1
+hiddensizes = [20, 20]
+outputsize = 2
+cost = 0.
+lstm = LSTM(10, hiddensizes, outputsize)
+x1 = randNNMat(10, 1) # example input #1
+x2 = randNNMat(10, 1) # example input #2
+x3 = randNNMat(10, 1) # example input #3
+
+# pass 3 examples through the LSTM
+G = Graph()
+# build container to hold output after each time step
+prevhd   = Array(NNMatrix,0) # holds final hidden layer of the recurrent model
+prevcell = Array(NNMatrix,0) #  holds final cell output of the LSTM model
+out  = NNMatrix(outputsize,1) # output of the recurrent model
+prev = (prevhd, prevcell, out)
+
+out1 = forwardprop(G, lstm, x1, prev)
+out2 = forwardprop(G, lstm, x2, out1);
+out3 = forwardprop(G, lstm, x3, out2);
+
+# the last part of the tuple contains the outputs:
+outMat =  prev[end]
+
+# for example lets assume we have binary classification problem
+# so the output of the LSTM are the log probabilities of the
+# two classes. Lets first get the probabilities:
+probs = softmax(outMat)
+ix_target = 1 # suppose first input has target class
+
+# cross-entropy loss for softmax is simply the probabilities:
+outMat.dw = probs.w
+# but the correct class gets an extra -1:
+outMat.dw[ix_target] -= 1;
+
+# in real application you'd probably have a desired class
+# for every input, so you'd iteratively se the .dw loss on each
+# one. In the example provided demo we are, for example,
+# predicting the index of the next letter in an input sentence.
+
+# update the LSTM parameters
+backprop(G)
+s = Solver() # RMSProp optimizer
+
+# perform RMSprop update with
+# step size of 0.01
+# L2 regularization of 0.00001
+# and clipping the gradients at 5.0 elementwise
+step(s, lstm, 0.01, 0.00001, 5.0);
+"><pre><span class="pl-k">using</span> RecurrentNN
 
 <span class="pl-c"><span class="pl-c">#</span> takes as input Mat of 10x1, contains 2 hidden layers of</span>
 <span class="pl-c"><span class="pl-c">#</span> 20 neurons each, and outputs a Mat of size 2x1</span>

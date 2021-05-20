@@ -2,13 +2,34 @@
 <p>A package for easily interfacing with <a href="https://github.com/haampie/ArnoldiMethod.jl">ArnoldiMethod</a>, using the suggested <a href="https://haampie.github.io/ArnoldiMethod.jl/stable/usage/02_spectral_transformations.html" rel="nofollow">transformations</a> suggested in the <a href="https://haampie.github.io/ArnoldiMethod.jl/stable/index.html" rel="nofollow">documentation</a>.</p>
 <h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
 <p>In REPL, type either <code>] add ArnoldiMethodTransformations</code> or</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Pkg
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(&quot;ArnoldiMethodTransformations&quot;)
+"><pre><span class="pl-k">using</span> Pkg
 Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>ArnoldiMethodTransformations<span class="pl-pds">"</span></span>)</pre></div>
 <p>This package mainly extends some methods of <a href="https://github.com/haampie/ArnoldiMethod.jl">ArnoldiMethod</a>, which needs to be separately installed.
 It exports three constants: <code>USOLVER</code>, <code>PSOLVER</code>, and <code>MSOLVER</code>, used to indicate whether to use UMFPACK, Pardiso, or MUMPS.</p>
 <h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
 <p>Ordinary eigenvalue problem <code>Ax=λx</code></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LinearAlgebra
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using LinearAlgebra
+using ArnoldiMethod
+using ArnoldiMethodTransformations
+
+# construct fixed eval matrix in random basis
+D = diagm(0=&gt;[0,1,2,3,4,5,6,7,8,9])
+S = randn(10,10)
+A = S\D*S
+
+# find eigenpairs closest to 5.001 (cannot be 5 as algorithm is unstable if σ is exactly an eval)
+σ = 5.001
+decomp, hist = partialschur(A,σ)
+
+# get evecs
+λ, v = partialeigen(decomp,σ)
+
+display(λ)
+norm(A*v-v*diagm(0=&gt;λ))
+# should be ~1e-11 or smaller
+"><pre><span class="pl-k">using</span> LinearAlgebra
 <span class="pl-k">using</span> ArnoldiMethod
 <span class="pl-k">using</span> ArnoldiMethodTransformations
 
@@ -28,7 +49,25 @@ decomp, hist <span class="pl-k">=</span> <span class="pl-c1">partialschur</span>
 <span class="pl-c1">norm</span>(A<span class="pl-k">*</span>v<span class="pl-k">-</span>v<span class="pl-k">*</span><span class="pl-c1">diagm</span>(<span class="pl-c1">0</span><span class="pl-k">=&gt;</span>λ))
 <span class="pl-c"><span class="pl-c">#</span> should be ~1e-11 or smaller</span></pre></div>
 <p>Generalized eigenvalue problem <code>Ax=λBx</code></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LinearAlgebra
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using LinearAlgebra
+using ArnoldiMethod
+using ArnoldiMethodTransformations
+
+# construct fixed eval matrix in random basis
+A = rand(ComplexF64,10,10)
+B = rand(ComplexF64,10,10)
+
+# find eigenpairs closest to .5
+σ = .5
+decomp, hist = partialschur(A,B,σ)
+
+# get evecs
+λ, v = partialeigen(decomp,σ)
+
+display(λ)
+norm(A*v-B*v*diagm(0=&gt;λ))
+# should be ~1e-14 or smaller
+"><pre><span class="pl-k">using</span> LinearAlgebra
 <span class="pl-k">using</span> ArnoldiMethod
 <span class="pl-k">using</span> ArnoldiMethodTransformations
 
@@ -51,8 +90,9 @@ decomp, hist <span class="pl-k">=</span> <span class="pl-c1">partialschur</span>
 <p>This package exports none of its own methods, but extends <code>partialschur</code>  and <code>partialeigen</code> from <a href="https://github.com/haampie/ArnoldiMethod.jl">ArnoldiMethod</a>.</p>
 <p>It does export three constants: <code>USOLVER</code>, <code>PSOLVER</code>, <code>MSOLVER</code>.</p>
 <hr>
-<pre><code>`partialschur(A, [B], σ; [diag_inv_B, lupack=USOLVER, kwargs...]) -&gt; decomp, history`
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="`partialschur(A, [B], σ; [diag_inv_B, lupack=USOLVER, kwargs...]) -&gt; decomp, history`
+"><pre><code>`partialschur(A, [B], σ; [diag_inv_B, lupack=USOLVER, kwargs...]) -&gt; decomp, history`
+</code></pre></div>
 <p>Partial Schur decomposition of <code>A</code>, with shift <code>σ</code> and mass matrix <code>B</code>, solving <code>A*v=(λ-σ)*B*v</code> for its smallest eigenvalues.</p>
 <p>Keyword <code>diag_inv_B</code> defaults to <code>true</code> if <code>B</code> is both diagonal and invertible. This enables
 a simplified shift-and-invert scheme.</p>
@@ -60,8 +100,9 @@ a simplified shift-and-invert scheme.</p>
 <p>The relevant solver must be explicitly loaded at the top level to use it (e.g., <code>using Pardiso</code> must be called before <code>lupack=PSOLVER</code> can be used).</p>
 <p>For other keywords, see <code>ArnoldiMethod.partialschur</code></p>
 <hr>
-<pre><code>partialeigen(decomp, σ) -&gt; λ, v
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="partialeigen(decomp, σ) -&gt; λ, v
+"><pre><code>partialeigen(decomp, σ) -&gt; λ, v
+</code></pre></div>
 <p>Transforms a partial Schur decomposition into an eigendecomposition, outputting evals <code>λ</code> and evecs <code>v</code>.
 It undoes the shift-and-invert of the eigenvalues by <code>σ</code>.</p>
 <hr>

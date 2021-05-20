@@ -1,6 +1,5 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://github.com/baggepinnen/TotalLeastSquares.jl/actions"><img src="https://github.com/baggepinnen/TotalLeastSquares.jl/workflows/CI/badge.svg" alt="CI" style="max-width:100%;"></a>
-<a href="https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html" rel="nofollow"><img src="https://camo.githubusercontent.com/9eaf0bcdca2b18d25a7141dfa4a958eda67e214d/68747470733a2f2f6a756c696163692e6769746875622e696f2f4e616e6f736f6c646965725265706f7274732f706b676576616c5f6261646765732f542f546f74616c4c65617374537175617265732e737667" alt="PkgEval" data-canonical-src="https://juliaci.github.io/NanosoldierReports/pkgeval_badges/T/TotalLeastSquares.svg" style="max-width:100%;"></a>
-<a href="https://codecov.io/gh/baggepinnen/TotalLeastSquares.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6045dbc3f64ed4a0925d4f4bac619dafafee1d36/68747470733a2f2f636f6465636f762e696f2f67682f626167676570696e6e656e2f546f74616c4c65617374537175617265732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/baggepinnen/TotalLeastSquares.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<a href="https://codecov.io/gh/baggepinnen/TotalLeastSquares.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/017d4ca071733b7cb7488d403c4774b426ddd0d997175e33b2b8c9f4d2ce751e/68747470733a2f2f636f6465636f762e696f2f67682f626167676570696e6e656e2f546f74616c4c65617374537175617265732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/baggepinnen/TotalLeastSquares.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
 <h1><a id="user-content-totalleastsquaresjl" class="anchor" aria-hidden="true" href="#totalleastsquaresjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>TotalLeastSquares.jl</h1>
 <p>Solve (weighted or robust) total least-squares problems, impute missing data and robustly filter time series.</p>
 <p>These functions are exported:</p>
@@ -17,6 +16,7 @@ Takes row-wise covariance matrices <code>QAy[i]</code> and returns the full (spa
 <li><code>x = rtls(A,y)</code> Solves a robust TLS problem. Both <code>A</code> and <code>y</code> are assumed to be corrupted with high magnitude, but sparse, noise. See analysis below.</li>
 <li><code>x = irls(A,y; tolx=0.001, tol=1.0e-6, verbose=false, iters=100)</code> minimizeₓ ||Ax-y||₁ using iteratively reweighted least squares.</li>
 <li><code>x = sls(A,y; r = 1, iters = 100, verbose = false, tol = 1.0e-8)</code> Simplex least-squares: minimizeₓ ||Ax-y||₂ s.t. sum(x) = r</li>
+<li><code>x = flts(A,y; outlier = 0.5, N = 500, maxiter = 100, return_set = false, verbose = true)</code> Fast least trimmed squares: Minimizing the sum of squared residuals by finding an outlier free subset among N initial subsets. Robust up to 50 % outlier.</li>
 </ul>
 <h4><a id="user-content-matrix-recovery" class="anchor" aria-hidden="true" href="#matrix-recovery"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Matrix recovery</h4>
 <ul>
@@ -25,10 +25,36 @@ Takes row-wise covariance matrices <code>QAy[i]</code> and returns the full (spa
 </ul>
 <h4><a id="user-content-time-series-filtering" class="anchor" aria-hidden="true" href="#time-series-filtering"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Time-series filtering</h4>
 <ul>
-<li><code>yf = lowrankfilter(y, n; kwargs...)</code> Filter time series <code>y</code> by forming a lag-embedding H (a Hankel matrix) and using <a href="@ref"><code>rpca</code></a> to recover a low-rank matrix from which the a filtered signal <code>yf</code> can be extracted. Robustly filters large sparse outliers.</li>
+<li><code>yf = lowrankfilter(y, n; kwargs...)</code> Filter time series <code>y</code> by forming a lag-embedding H of length <code>n</code> (a Hankel matrix) and using <a href="@ref"><code>rpca</code></a> to recover a low-rank matrix from which the a filtered signal <code>yf</code> can be extracted. Robustly filters large sparse outliers. See <a href="https://nbviewer.jupyter.org/github/baggepinnen/julia_examples/blob/master/identification_robust.ipynb" rel="nofollow">example notebook</a> for more info.</li>
 </ul>
 <h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> TotalLeastSquares, FillArrays, Random, Printf
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using TotalLeastSquares, FillArrays, Random, Printf
+Random.seed!(0)
+x   = randn(3)
+A   = randn(50,3)
+σa  = 1
+σy  = 0.01
+An  = A + σa*randn(size(A))
+y   = A*x
+yn  = y + σy*randn(size(y))
+Qaa = σa^2*Eye(prod(size(A)))
+Qay = 0Eye(prod(size(A)),length(y))
+Qyy = σy^2*Eye(prod(size(y)))
+
+
+x̂ = An\yn
+@printf &quot;Least squares error: %25.3e %10.3e %10.3e, Norm: %10.3e\n&quot; (x-x̂)... norm(x-x̂)
+
+x̂ = wls(An,yn,Qyy)
+@printf &quot;Weighted Least squares error: %16.3e %10.3e %10.3e, Norm: %10.3e\n&quot; (x-x̂)... norm(x-x̂)
+
+x̂ = tls(An,yn)
+@printf &quot;Total Least squares error: %19.3e %10.3e %10.3e, Norm: %10.3e\n&quot; (x-x̂)... norm(x-x̂)
+
+x̂ = wtls(An,yn,Qaa,Qay,Qyy,iters=10)
+@printf &quot;Weighted Total Least squares error: %10.3e %10.3e %10.3e, Norm: %10.3e\n&quot; (x-x̂)... norm(x-x̂)
+println(&quot;----------------------------&quot;)
+"><pre><span class="pl-k">using</span> TotalLeastSquares, FillArrays, Random, Printf
 Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">0</span>)
 x   <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">3</span>)
 A   <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">50</span>,<span class="pl-c1">3</span>)
@@ -54,7 +80,12 @@ x̂ <span class="pl-k">=</span> <span class="pl-c1">tls</span>(An,yn)
 x̂ <span class="pl-k">=</span> <span class="pl-c1">wtls</span>(An,yn,Qaa,Qay,Qyy,iters<span class="pl-k">=</span><span class="pl-c1">10</span>)
 <span class="pl-c1">@printf</span> <span class="pl-s"><span class="pl-pds">"</span>Weighted Total Least squares error: %10.3e %10.3e %10.3e, Norm: %10.3e<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> (x<span class="pl-k">-</span>x̂)<span class="pl-k">...</span> <span class="pl-c1">norm</span>(x<span class="pl-k">-</span>x̂)
 <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>----------------------------<span class="pl-pds">"</span></span>)</pre></div>
-<div class="highlight highlight-source-julia"><pre>Least squares error<span class="pl-k">:</span>                 <span class="pl-c1">3.753e-01</span>  <span class="pl-c1">2.530e-01</span> <span class="pl-k">-</span><span class="pl-c1">3.637e-01</span>, Norm<span class="pl-k">:</span>  <span class="pl-c1">5.806e-01</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Least squares error:                 3.753e-01  2.530e-01 -3.637e-01, Norm:  5.806e-01
+Weighted Least squares error:        3.753e-01  2.530e-01 -3.637e-01, Norm:  5.806e-01
+Total Least squares error:           2.897e-01  1.062e-01 -2.976e-01, Norm:  4.287e-01
+Weighted Total Least squares error:  1.213e-01 -1.933e-01 -9.527e-02, Norm:  2.473e-01
+----------------------------
+"><pre>Least squares error<span class="pl-k">:</span>                 <span class="pl-c1">3.753e-01</span>  <span class="pl-c1">2.530e-01</span> <span class="pl-k">-</span><span class="pl-c1">3.637e-01</span>, Norm<span class="pl-k">:</span>  <span class="pl-c1">5.806e-01</span>
 Weighted Least squares error<span class="pl-k">:</span>        <span class="pl-c1">3.753e-01</span>  <span class="pl-c1">2.530e-01</span> <span class="pl-k">-</span><span class="pl-c1">3.637e-01</span>, Norm<span class="pl-k">:</span>  <span class="pl-c1">5.806e-01</span>
 Total Least squares error<span class="pl-k">:</span>           <span class="pl-c1">2.897e-01</span>  <span class="pl-c1">1.062e-01</span> <span class="pl-k">-</span><span class="pl-c1">2.976e-01</span>, Norm<span class="pl-k">:</span>  <span class="pl-c1">4.287e-01</span>
 Weighted Total Least squares error<span class="pl-k">:</span>  <span class="pl-c1">1.213e-01</span> <span class="pl-k">-</span><span class="pl-c1">1.933e-01</span> <span class="pl-k">-</span><span class="pl-c1">9.527e-02</span>, Norm<span class="pl-k">:</span>  <span class="pl-c1">2.473e-01</span>
@@ -68,27 +99,64 @@ Weighted Total Least squares error<span class="pl-k">:</span>  <span class="pl-c
 <p>The results indicate that the robust method is to be preferred when the noise is large but sparse.</p>
 <h2><a id="user-content-missing-data-imputation" class="anchor" aria-hidden="true" href="#missing-data-imputation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Missing data imputation</h2>
 <p>The robust methods handle missing data the same way as they handle outliers. You may indicate that an entry is missing simply by setting it to a very large value, e.g.,</p>
-<div class="highlight highlight-source-julia"><pre>N <span class="pl-k">=</span> <span class="pl-c1">500</span>
-y <span class="pl-k">=</span> <span class="pl-c1">sin</span>.(<span class="pl-c1">0.1</span> <span class="pl-k">.*</span> (<span class="pl-c1">1</span><span class="pl-k">:</span>N)) <span class="pl-c"><span class="pl-c">#</span> Sinus</span>
-miss <span class="pl-k">=</span> <span class="pl-c1">rand</span>(N) <span class="pl-k">.&lt;</span> <span class="pl-c1">0.1</span>  <span class="pl-c"><span class="pl-c">#</span> 10% missing values</span>
-yn <span class="pl-k">=</span> y <span class="pl-k">.+</span> miss <span class="pl-k">.*</span> <span class="pl-c1">1e2</span> <span class="pl-k">.+</span> <span class="pl-c1">0.1</span><span class="pl-k">*</span><span class="pl-c1">randn</span>(N)   <span class="pl-c"><span class="pl-c">#</span> Set missing values to very large number and add noise</span>
-yf <span class="pl-k">=</span> <span class="pl-c1">lowrankfilter</span>(yn,<span class="pl-c1">40</span>)    <span class="pl-c"><span class="pl-c">#</span> Filter</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="N    = 500
+y    = sin.(0.1 .* (1:N))   # Sinus
+miss = rand(N) .&lt; 0.1       # 10% missing values
+yn   = y .+ miss .* 1e2 .+ 0.1*randn(N) # Set missing values to very large number and add noise
+yf   = lowrankfilter(yn,40) # Filter
+mean(abs2,y-yf)/mean(abs2,y) # Normalized error
+# 0.001500 # Less than 1 percent error in the recovery of y
+"><pre>N    <span class="pl-k">=</span> <span class="pl-c1">500</span>
+y    <span class="pl-k">=</span> <span class="pl-c1">sin</span>.(<span class="pl-c1">0.1</span> <span class="pl-k">.*</span> (<span class="pl-c1">1</span><span class="pl-k">:</span>N))   <span class="pl-c"><span class="pl-c">#</span> Sinus</span>
+miss <span class="pl-k">=</span> <span class="pl-c1">rand</span>(N) <span class="pl-k">.&lt;</span> <span class="pl-c1">0.1</span>       <span class="pl-c"><span class="pl-c">#</span> 10% missing values</span>
+yn   <span class="pl-k">=</span> y <span class="pl-k">.+</span> miss <span class="pl-k">.*</span> <span class="pl-c1">1e2</span> <span class="pl-k">.+</span> <span class="pl-c1">0.1</span><span class="pl-k">*</span><span class="pl-c1">randn</span>(N) <span class="pl-c"><span class="pl-c">#</span> Set missing values to very large number and add noise</span>
+yf   <span class="pl-k">=</span> <span class="pl-c1">lowrankfilter</span>(yn,<span class="pl-c1">40</span>) <span class="pl-c"><span class="pl-c">#</span> Filter</span>
 <span class="pl-c1">mean</span>(abs2,y<span class="pl-k">-</span>yf)<span class="pl-k">/</span><span class="pl-c1">mean</span>(abs2,y) <span class="pl-c"><span class="pl-c">#</span> Normalized error</span>
 <span class="pl-c"><span class="pl-c">#</span> 0.001500 # Less than 1 percent error in the recovery of y</span></pre></div>
 <p>To impute missing data in a matrix, we make use of <code>rpca</code>:</p>
-<div class="highlight highlight-source-julia"><pre>H <span class="pl-k">=</span> <span class="pl-c1">hankel</span>(<span class="pl-c1">sin</span>.(<span class="pl-c1">0.1</span> <span class="pl-k">.*</span> (<span class="pl-c1">1</span><span class="pl-k">:</span>N)), <span class="pl-c1">5</span>)  <span class="pl-c"><span class="pl-c">#</span> A low-rank matrix</span>
-miss <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">size</span>(H)<span class="pl-k">...</span>) <span class="pl-k">.&lt;</span> <span class="pl-c1">0.1</span>     <span class="pl-c"><span class="pl-c">#</span> 10% missing values</span>
-Hn <span class="pl-k">=</span> H <span class="pl-k">.+</span> <span class="pl-c1">0.1</span><span class="pl-c1">randn</span>(<span class="pl-c1">size</span>(H)) <span class="pl-k">.+</span> miss <span class="pl-k">.*</span> <span class="pl-c1">1e2</span>    <span class="pl-c"><span class="pl-c">#</span> Set missing values to very large number</span>
-Ĥ, E <span class="pl-k">=</span> <span class="pl-c1">rpca</span>(Hn)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="H     = hankel(sin.(0.1 .* (1:N)), 5)         # A low-rank matrix
+miss  = rand(size(H)...) .&lt; 0.1               # 10% missing values
+Hn    = H .+ 0.1randn(size(H)) .+ miss .* 1e2 # Set missing values to very large number
+Ĥ, E  = rpca(Hn)
+mean(abs2,H-Ĥ)/mean(abs2,H) # Normalized error
+# 0.06 # Six percent error in the recovery of H
+"><pre>H     <span class="pl-k">=</span> <span class="pl-c1">hankel</span>(<span class="pl-c1">sin</span>.(<span class="pl-c1">0.1</span> <span class="pl-k">.*</span> (<span class="pl-c1">1</span><span class="pl-k">:</span>N)), <span class="pl-c1">5</span>)         <span class="pl-c"><span class="pl-c">#</span> A low-rank matrix</span>
+miss  <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">size</span>(H)<span class="pl-k">...</span>) <span class="pl-k">.&lt;</span> <span class="pl-c1">0.1</span>               <span class="pl-c"><span class="pl-c">#</span> 10% missing values</span>
+Hn    <span class="pl-k">=</span> H <span class="pl-k">.+</span> <span class="pl-c1">0.1</span><span class="pl-c1">randn</span>(<span class="pl-c1">size</span>(H)) <span class="pl-k">.+</span> miss <span class="pl-k">.*</span> <span class="pl-c1">1e2</span> <span class="pl-c"><span class="pl-c">#</span> Set missing values to very large number</span>
+Ĥ, E  <span class="pl-k">=</span> <span class="pl-c1">rpca</span>(Hn)
 <span class="pl-c1">mean</span>(abs2,H<span class="pl-k">-</span>Ĥ)<span class="pl-k">/</span><span class="pl-c1">mean</span>(abs2,H) <span class="pl-c"><span class="pl-c">#</span> Normalized error</span>
 <span class="pl-c"><span class="pl-c">#</span> 0.06 # Six percent error in the recovery of H</span></pre></div>
 <p>The matrix <code>E</code> contains the estimated outliers</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">vec</span>(E)<span class="pl-k">'</span><span class="pl-c1">vec</span>(miss)<span class="pl-k">/</span>(<span class="pl-c1">norm</span>(E)<span class="pl-k">*</span><span class="pl-c1">norm</span>(miss)) <span class="pl-c"><span class="pl-c">#</span> These should correlate if all missing values were identified</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="vec(E)'vec(miss)/(norm(E)*norm(miss)) # These should correlate if all missing values were identified
+# 1.00
+"><pre><span class="pl-c1">vec</span>(E)<span class="pl-k">'</span><span class="pl-c1">vec</span>(miss)<span class="pl-k">/</span>(<span class="pl-c1">norm</span>(E)<span class="pl-k">*</span><span class="pl-c1">norm</span>(miss)) <span class="pl-c"><span class="pl-c">#</span> These should correlate if all missing values were identified</span>
 <span class="pl-c"><span class="pl-c">#</span> 1.00</span></pre></div>
+<h2><a id="user-content-speeding-up-robust-factorization" class="anchor" aria-hidden="true" href="#speeding-up-robust-factorization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Speeding up robust factorization</h2>
+<p>The function <code>rpca</code> internally performs several SVDs, which make up the bulk of the computation time. In order to speed this up, you may provide a custom <code>svd</code> function. An example using a randomized method from <a href="https://haampie.github.io/RandomizedLinAlg.jl/latest/index.html#RandomizedLinAlg.rsvd" rel="nofollow">RandomizedLinAlg.jl</a>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using TotalLeastSquares, RandomizedLinAlg
+lowrankfilter(x, L, svd = rsvd_fnkz, opnorm=x-&gt;rnorm(x,10)) # The same keywords are accepted by rpca
+"><pre><span class="pl-k">using</span> TotalLeastSquares, RandomizedLinAlg
+<span class="pl-c1">lowrankfilter</span>(x, L, svd <span class="pl-k">=</span> rsvd_fnkz, opnorm<span class="pl-k">=</span>x<span class="pl-k">-&gt;</span><span class="pl-c1">rnorm</span>(x,<span class="pl-c1">10</span>)) <span class="pl-c"><span class="pl-c">#</span> The same keywords are accepted by rpca</span></pre></div>
+<p>here, we provide both a randomized svd function as well as one for calculating the operator norm, which also takes a long time. Other alternative svd functions to consider are</p>
+<ul>
+<li><code>RandomizedLinAlg.rsvd</code></li>
+<li><code>TSVD.tsvd</code></li>
+</ul>
 <h1><a id="user-content-notes" class="anchor" aria-hidden="true" href="#notes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Notes</h1>
 <p>This package was developed for the thesis<br>
 <a href="https://www.control.lth.se/staff/fredrik-bagge-carlson/" rel="nofollow">Bagge Carlson, F.</a>, <a href="https://lup.lub.lu.se/search/publication/ffb8dc85-ce12-4f75-8f2b-0881e492f6c0" rel="nofollow">"Machine Learning and System Identification for Estimation in Physical Systems"</a> (PhD Thesis 2018).</p>
-<div class="highlight highlight-text-bibtex"><pre><span class="pl-k">@thesis</span>{<span class="pl-en">bagge2018</span>,
+<div class="highlight highlight-text-bibtex position-relative" data-snippet-clipboard-copy-content="@thesis{bagge2018,
+  title        = {Machine Learning and System Identification for Estimation in Physical Systems},
+  author       = {Bagge Carlson, Fredrik},
+  keyword      = {Machine Learning,System Identification,Robotics,Spectral estimation,Calibration,State estimation},
+  month        = {12},
+  type         = {PhD Thesis},
+  number       = {TFRT-1122},
+  institution  = {Dept. Automatic Control, Lund University, Sweden},
+  year         = {2018},
+  url          = {https://lup.lub.lu.se/search/publication/ffb8dc85-ce12-4f75-8f2b-0881e492f6c0},
+}
+"><pre><span class="pl-k">@thesis</span>{<span class="pl-en">bagge2018</span>,
   <span class="pl-s">title</span>        = <span class="pl-s"><span class="pl-pds">{</span>Machine Learning and System Identification for Estimation in Physical Systems<span class="pl-pds">}</span></span>,
   <span class="pl-s">author</span>       = <span class="pl-s"><span class="pl-pds">{</span>Bagge Carlson, Fredrik<span class="pl-pds">}</span></span>,
   <span class="pl-s">keyword</span>      = <span class="pl-s"><span class="pl-pds">{</span>Machine Learning,System Identification,Robotics,Spectral estimation,Calibration,State estimation<span class="pl-pds">}</span></span>,

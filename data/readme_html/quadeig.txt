@@ -1,0 +1,120 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-quadeig" class="anchor" aria-hidden="true" href="#quadeig"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>QuadEig</h1>
+<p>The QuadEig package implements the <code>quadeig</code> algorithm to deflate zero and infinite
+eigenvalues of quadratic pencils. The algorithm is published in:</p>
+<p>"An Algorithm for the Complete Solution of Quadratic Eigenvalue Problems"
+S. Hammarling, C. J. Munro, and F. Tisseur. <a href="https://dl.acm.org/doi/10.1145/2450153.2450156" rel="nofollow">ACM Trans. Math. Softw. 39, (2013)</a></p>
+<p>Given a quadratic pencil <code>Q(λ) = A₀ + λ A₁ + λ² A₂</code>, where <code>Aᵢ</code> are square matrices of size
+<code>N</code>, we want to solve the quadratic right-eigenvalue problem <code>Q(λ)φ = 0</code>. A powerful approach is
+to linearize <code>Q(λ)</code> into an equivalent linear pencil <code>L(λ) = A - λB</code> of size <code>2N</code>, and solve
+the generalized eigenvalue problem <code>L(λ)φ´ = (A - λ B)φ´ = 0</code> instead. There are many
+possible linearizations. The eigenvectors <code>φ´</code> of <code>L</code> will be related to the original <code>φ</code> in
+a way that depends on the chosen linearization.</p>
+<p>The <code>quadeig</code> algorithm helps to more efficiently solve the <code>L(λ)φ´ = 0</code> problem by
+transforming <code>L(λ)</code> into a smaller <code>L₋(λ) = Q L(λ) V</code> with orthogonal <code>Q</code> and <code>V</code> operators.
+<code>L₋(λ)</code> shares the same finite eigenvalues as <code>L</code>, but has less (or no) <code>λ = 0</code> and <code>λ = ∞</code>
+eigenvalues which one wants to discard. This process is called "deflation".</p>
+<p>The algorithm relies on the specific structure of the so-called second companion
+linearization, defined by matrices <code>A = [A₁ -I; A₀ 0], B = [-A₂ 0; 0 -I]</code> of size <code>2N</code>. The
+right-eigenvectors of the original problem <code>Q</code> are obtained from those of <code>L</code> (deflated or
+not) by <code>φ = V * φ´[1:N]</code>, where <code>V</code> is the deflation transformation on the right. For
+undeflated linearizations, <code>V</code> is not the identity, because a non-deflating transformation
+of the second companion linearization is performed for performance reasons.</p>
+<p>The QuadEig package exports a <code>linearize</code> function to build <code>L</code>, and a <code>deflate</code> function to
+transform an <code>L</code> into a deflated <code>L₋</code>. The <code>A</code>, <code>B</code> and <code>V</code> matrices of a linearization <code>l</code>
+can be accessed by <code>l.A</code>, <code>l.B</code> and <code>l.V</code>, or through destructuring <code>A, B, V = l</code>.</p>
+<p>Example</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using QuadEig, LinearAlgebra
+
+julia&gt; A₀ = rand(6,6); A₁ = rand(6, 6); A₂ = rand(6, 6);
+
+julia&gt; A₀[:, 1:3] .= A₀[:, 4:6];  # This creates 3 λ = 0 eigenvalues
+
+julia&gt; A₂[:, 2:3] .= A₂[:, 4:5];  # This creates 2 λ = ∞ eigenvalues
+
+julia&gt; l = linearize(A₀, A₁, A₂)
+Linearization{T}: second companion linearization of quadratic pencil
+  Matrix size    : 20 × 20
+  Matrix type    : Matrix{ComplexF64}
+  Scalings γ, δ  : (1.0, 1.0)
+  Deflated       : false
+
+julia&gt; eigvals(l.A, l.B)  # Note the 3 zero (within machine precision) and 2 infinite (NaN) eigenvalues
+12-element Vector{ComplexF64}:
+     -10.86932670379268 - 7.26632452718938e-15im
+    -0.9585605368704543 - 1.3660371264720934im
+    -0.9585605368704528 + 1.3660371264720919im
+    -0.4087545396926745 + 0.8719854788559378im
+    -0.4087545396926742 - 0.8719854788559386im
+ -8.591313021709173e-16 + 0.0im
+ -7.180754871717689e-17 + 0.0im
+ 2.0338957932144944e-17 - 0.0im
+    0.32412827713495224 - 4.9149302039555125e-17im
+      1.281810969835058 + 7.879489919456524e-16im
+                    NaN + NaN*im
+                    NaN + NaN*im
+
+julia&gt; d = deflate(l)  # or deflate(A₀, A₁, A₂)
+Linearization{T}: second companion linearization of quadratic pencil
+  Matrix size    : 7 × 7
+  Matrix type    : Matrix{ComplexF64}
+  Scalings γ, δ  : (1.0, 1.0)
+  Deflated       : true (12 -&gt; 7)
+
+julia&gt; eigvals(d.A, d.B)  # The finite eigenvalues are the same, within machine precision
+7-element Vector{ComplexF64}:
+  -10.869326703792948 - 4.237043003816544e-20im
+  -0.9585605368704537 + 1.366037126472092im
+  -0.9585605368704532 - 1.366037126472091im
+ -0.40875453969267517 + 0.8719854788559379im
+ -0.40875453969267417 - 0.8719854788559379im
+  0.32412827713495357 - 0.0im
+    1.281810969835057 + 1.0657465373859974e-16im
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> QuadEig, LinearAlgebra
+
+julia<span class="pl-k">&gt;</span> A₀ <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">6</span>,<span class="pl-c1">6</span>); A₁ <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">6</span>, <span class="pl-c1">6</span>); A₂ <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">6</span>, <span class="pl-c1">6</span>);
+
+julia<span class="pl-k">&gt;</span> A₀[:, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>] <span class="pl-k">.=</span> A₀[:, <span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">6</span>];  <span class="pl-c"><span class="pl-c">#</span> This creates 3 λ = 0 eigenvalues</span>
+
+julia<span class="pl-k">&gt;</span> A₂[:, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">3</span>] <span class="pl-k">.=</span> A₂[:, <span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">5</span>];  <span class="pl-c"><span class="pl-c">#</span> This creates 2 λ = ∞ eigenvalues</span>
+
+julia<span class="pl-k">&gt;</span> l <span class="pl-k">=</span> <span class="pl-c1">linearize</span>(A₀, A₁, A₂)
+Linearization{T}<span class="pl-k">:</span> second companion linearization of quadratic pencil
+  Matrix size    <span class="pl-k">:</span> <span class="pl-c1">20</span> <span class="pl-k">×</span> <span class="pl-c1">20</span>
+  Matrix type    <span class="pl-k">:</span> Matrix{ComplexF64}
+  Scalings γ, δ  <span class="pl-k">:</span> (<span class="pl-c1">1.0</span>, <span class="pl-c1">1.0</span>)
+  Deflated       <span class="pl-k">:</span> <span class="pl-c1">false</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">eigvals</span>(l<span class="pl-k">.</span>A, l<span class="pl-k">.</span>B)  <span class="pl-c"><span class="pl-c">#</span> Note the 3 zero (within machine precision) and 2 infinite (NaN) eigenvalues</span>
+<span class="pl-c1">12</span><span class="pl-k">-</span>element Vector{ComplexF64}<span class="pl-k">:</span>
+     <span class="pl-k">-</span><span class="pl-c1">10.86932670379268</span> <span class="pl-k">-</span> <span class="pl-c1">7.26632452718938e-15im</span>
+    <span class="pl-k">-</span><span class="pl-c1">0.9585605368704543</span> <span class="pl-k">-</span> <span class="pl-c1">1.3660371264720934im</span>
+    <span class="pl-k">-</span><span class="pl-c1">0.9585605368704528</span> <span class="pl-k">+</span> <span class="pl-c1">1.3660371264720919im</span>
+    <span class="pl-k">-</span><span class="pl-c1">0.4087545396926745</span> <span class="pl-k">+</span> <span class="pl-c1">0.8719854788559378im</span>
+    <span class="pl-k">-</span><span class="pl-c1">0.4087545396926742</span> <span class="pl-k">-</span> <span class="pl-c1">0.8719854788559386im</span>
+ <span class="pl-k">-</span><span class="pl-c1">8.591313021709173e-16</span> <span class="pl-k">+</span> <span class="pl-c1">0.0im</span>
+ <span class="pl-k">-</span><span class="pl-c1">7.180754871717689e-17</span> <span class="pl-k">+</span> <span class="pl-c1">0.0im</span>
+ <span class="pl-c1">2.0338957932144944e-17</span> <span class="pl-k">-</span> <span class="pl-c1">0.0im</span>
+    <span class="pl-c1">0.32412827713495224</span> <span class="pl-k">-</span> <span class="pl-c1">4.9149302039555125e-17im</span>
+      <span class="pl-c1">1.281810969835058</span> <span class="pl-k">+</span> <span class="pl-c1">7.879489919456524e-16im</span>
+                    <span class="pl-c1">NaN</span> <span class="pl-k">+</span> <span class="pl-c1">NaN</span><span class="pl-k">*</span>im
+                    <span class="pl-c1">NaN</span> <span class="pl-k">+</span> <span class="pl-c1">NaN</span><span class="pl-k">*</span>im
+
+julia<span class="pl-k">&gt;</span> d <span class="pl-k">=</span> <span class="pl-c1">deflate</span>(l)  <span class="pl-c"><span class="pl-c">#</span> or deflate(A₀, A₁, A₂)</span>
+Linearization{T}<span class="pl-k">:</span> second companion linearization of quadratic pencil
+  Matrix size    <span class="pl-k">:</span> <span class="pl-c1">7</span> <span class="pl-k">×</span> <span class="pl-c1">7</span>
+  Matrix type    <span class="pl-k">:</span> Matrix{ComplexF64}
+  Scalings γ, δ  <span class="pl-k">:</span> (<span class="pl-c1">1.0</span>, <span class="pl-c1">1.0</span>)
+  Deflated       <span class="pl-k">:</span> <span class="pl-c1">true</span> (<span class="pl-c1">12</span> <span class="pl-k">-&gt;</span> <span class="pl-c1">7</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">eigvals</span>(d<span class="pl-k">.</span>A, d<span class="pl-k">.</span>B)  <span class="pl-c"><span class="pl-c">#</span> The finite eigenvalues are the same, within machine precision</span>
+<span class="pl-c1">7</span><span class="pl-k">-</span>element Vector{ComplexF64}<span class="pl-k">:</span>
+  <span class="pl-k">-</span><span class="pl-c1">10.869326703792948</span> <span class="pl-k">-</span> <span class="pl-c1">4.237043003816544e-20im</span>
+  <span class="pl-k">-</span><span class="pl-c1">0.9585605368704537</span> <span class="pl-k">+</span> <span class="pl-c1">1.366037126472092im</span>
+  <span class="pl-k">-</span><span class="pl-c1">0.9585605368704532</span> <span class="pl-k">-</span> <span class="pl-c1">1.366037126472091im</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.40875453969267517</span> <span class="pl-k">+</span> <span class="pl-c1">0.8719854788559379im</span>
+ <span class="pl-k">-</span><span class="pl-c1">0.40875453969267417</span> <span class="pl-k">-</span> <span class="pl-c1">0.8719854788559379im</span>
+  <span class="pl-c1">0.32412827713495357</span> <span class="pl-k">-</span> <span class="pl-c1">0.0im</span>
+    <span class="pl-c1">1.281810969835057</span> <span class="pl-k">+</span> <span class="pl-c1">1.0657465373859974e-16im</span></pre></div>
+<p>The <code>deflate</code> function admits an <code>atol</code> keyword argument to specify a threshold for
+eigenvalues to deflate (<code>|λ| &lt; atol</code> for zeros and <code>|λ| &gt; atol⁻¹</code> for infinities).</p>
+</article></div>

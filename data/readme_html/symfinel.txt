@@ -1,0 +1,260 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-symfineljl" class="anchor" aria-hidden="true" href="#symfineljl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>SymFinel.jl</h1>
+<p><code>SymFinel.jl</code> is a package written to ease the programming of versatile Generalized Finite Element Method formulations for any element geometry.</p>
+<p>It allows you to generate integration functions for equations in finite elements of any geometry, number of dimensions, order and interpolation function, without having to rewrite your code to change these details once the residual definition is made.</p>
+<p><strong>Use SymFinel if you want to enjoy Julia's metaprogramming capabilities to generate finite element residuals for a great variety of formulations, with a small amout of changes to your code.</strong></p>
+<h2><a id="user-content-an-example" class="anchor" aria-hidden="true" href="#an-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>An Example</h2>
+<p>To obtain the residual of</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/e4692268ae9fc18b8ce33e9e85fba4bc6223cdca1af5b627163c493f45ccff50/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f2535437061727469616c253230752f2535437061727469616c253230782d7625334430"><img src="https://camo.githubusercontent.com/e4692268ae9fc18b8ce33e9e85fba4bc6223cdca1af5b627163c493f45ccff50/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f2535437061727469616c253230752f2535437061727469616c253230782d7625334430" alt="equation" data-canonical-src="https://latex.codecogs.com/gif.latex?%5Cpartial%20u/%5Cpartial%20x-v%3D0" style="max-width:100%;"></a></p>
+<p>In a triangular, simplex element using <code>SymFinel</code>, you can follow the steps below.</p>
+<h3><a id="user-content-interpolation-functions" class="anchor" aria-hidden="true" href="#interpolation-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Interpolation Functions</h3>
+<p>We'll need an interpolation function in the local coordinate system and one in the global coordinate system. To define them, we can use:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="loc_coords=InterpolationFunction(
+    :(a0+a1*xi+a2*eta), # expression
+    [:xi, :eta], # symbols for coordinates
+    [:a0, :a1, :a2], # symbols for interpolation coefficients
+    [ # degrees of freedom
+        [0, 0] # values at corners (see explanation below)
+    ];
+    maximum_derivative=1 # we'll only really need first order derivatives
+)
+
+abs_coords=InterpolationFunction(
+    :(a0+a1*x+a2*y),
+    [:x, :y],
+    [:a0, :a1, :a2],
+    [
+        [0, 0]
+    ];
+    maximum_derivative=1
+)
+"><pre><code>loc_coords=InterpolationFunction(
+    :(a0+a1*xi+a2*eta), # expression
+    [:xi, :eta], # symbols for coordinates
+    [:a0, :a1, :a2], # symbols for interpolation coefficients
+    [ # degrees of freedom
+        [0, 0] # values at corners (see explanation below)
+    ];
+    maximum_derivative=1 # we'll only really need first order derivatives
+)
+
+abs_coords=InterpolationFunction(
+    :(a0+a1*x+a2*y),
+    [:x, :y],
+    [:a0, :a1, :a2],
+    [
+        [0, 0]
+    ];
+    maximum_derivative=1
+)
+</code></pre></div>
+<ul>
+<li>The first argument is an expression for the interpolation function;</li>
+<li>The second argument lists coordinate symbols;</li>
+<li>The third argument lists symbols for coefficients used to interpolate desired variables over a domain;</li>
+<li>The fourth and last variable indicates degrees of freedom used for obtaining an interpolation. For example:</li>
+</ul>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="DOFs=[
+    [0, 0],
+    [1, 0],
+    [0, 1]
+]
+"><pre><code>DOFs=[
+    [0, 0],
+    [1, 0],
+    [0, 1]
+]
+</code></pre></div>
+<p>would incur that input such as the following should be used for interpolation of variable <code>u</code>:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="us=[
+    u_1, du!dx_1, du!dy_1, # first point
+    u_2, du!dx_2, du!dy_2, # second point
+    # ... goes on until enough impositions to 
+    # determine all coefficients are provided
+]
+"><pre><code>us=[
+    u_1, du!dx_1, du!dy_1, # first point
+    u_2, du!dx_2, du!dy_2, # second point
+    # ... goes on until enough impositions to 
+    # determine all coefficients are provided
+]
+</code></pre></div>
+<p>Since, for this example, only first order elements will be used, <code>[[0, 0]]</code>should be enough.</p>
+<h3><a id="user-content-defining-a-domain" class="anchor" aria-hidden="true" href="#defining-a-domain"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Defining a Domain</h3>
+<p>We can define our integration domain as reproduced below:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="dmn=Domain(
+    loc_coords, # local coordinates' InterpolationFunction struct
+    [ # frontier of the domain in each coordinate of loc_coords
+        ( # xi
+            0.0, 1.0
+        ),
+        ( # eta
+            0.0, :(1.0-xi) # linear triangular element
+        )
+    ],
+    [ # points at which the interpolation from local to absolute coordinates
+        [0.0, 0.0], # is imposed (triangle corners)
+        [1.0, 0.0],
+        [0.0, 1.0] # (xi, eta)
+    ]
+)
+"><pre><code>dmn=Domain(
+    loc_coords, # local coordinates' InterpolationFunction struct
+    [ # frontier of the domain in each coordinate of loc_coords
+        ( # xi
+            0.0, 1.0
+        ),
+        ( # eta
+            0.0, :(1.0-xi) # linear triangular element
+        )
+    ],
+    [ # points at which the interpolation from local to absolute coordinates
+        [0.0, 0.0], # is imposed (triangle corners)
+        [1.0, 0.0],
+        [0.0, 1.0] # (xi, eta)
+    ]
+)
+</code></pre></div>
+<ul>
+<li>The first argument is an <code>InterpolationFunction</code> struct with a definition for our local coordinate system;</li>
+<li>The second argument is a list of tuples defining boundaries for each coordinate, as expressions or literals;</li>
+<li>The last argument indicates points at which coordinates (in a format compatible with the one described in the "Interpolation Functions" section) will be imposed for interpolation - in this case, the positions of element corners in local coordinates.</li>
+</ul>
+<h3><a id="user-content-creating-finite-elements" class="anchor" aria-hidden="true" href="#creating-finite-elements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Creating Finite Elements</h3>
+<p>To create a finite element with corners</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/54e2e8d51d43fbfb5e7c1c5144d93cc4caaa9d2ec0d64e86e83c2ecf6d4d6e9b/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f25323878253243253230792532392533442532383125324325323031253239"><img src="https://camo.githubusercontent.com/54e2e8d51d43fbfb5e7c1c5144d93cc4caaa9d2ec0d64e86e83c2ecf6d4d6e9b/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f25323878253243253230792532392533442532383125324325323031253239" alt="equation" data-canonical-src="https://latex.codecogs.com/gif.latex?%28x%2C%20y%29%3D%281%2C%201%29" style="max-width:100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/4ff2355d8a75983669b5bd5d6219830579b7f2da874c592cbd47c8025c8f36ce/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f2532383225324325323031253239"><img src="https://camo.githubusercontent.com/4ff2355d8a75983669b5bd5d6219830579b7f2da874c592cbd47c8025c8f36ce/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f2532383225324325323031253239" alt="equation" data-canonical-src="https://latex.codecogs.com/gif.latex?%282%2C%201%29" style="max-width:100%;"></a></p>
+<p>And</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/9f0289156e88e2f00abc8f56885140abc5cffc35fcea061fbfc60bde96e9db4a/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f2532383225324325323032253239"><img src="https://camo.githubusercontent.com/9f0289156e88e2f00abc8f56885140abc5cffc35fcea061fbfc60bde96e9db4a/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f2532383225324325323032253239" alt="equation" data-canonical-src="https://latex.codecogs.com/gif.latex?%282%2C%202%29" style="max-width:100%;"></a></p>
+<p>We can use:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="fin=Finel(
+    [ # corners
+        [1.0, 1.0],
+        [2.0, 1.0],
+        [2.0, 2.0]
+    ],
+    dmn # domain of integration
+)
+"><pre><code>fin=Finel(
+    [ # corners
+        [1.0, 1.0],
+        [2.0, 1.0],
+        [2.0, 2.0]
+    ],
+    dmn # domain of integration
+)
+</code></pre></div>
+<h3><a id="user-content-defining-residuals" class="anchor" aria-hidden="true" href="#defining-residuals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Defining Residuals</h3>
+<p>To obtain the following integral:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/2eccb5fbb61cc4ed1f4616bacf894dd4679d45c86bf7793e1c92c3bd70b03f7e/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f253543696e74253230772532382535437061727469616c253230752f2535437061727469616c253230782d76253239253230642535434f6d656761"><img src="https://camo.githubusercontent.com/2eccb5fbb61cc4ed1f4616bacf894dd4679d45c86bf7793e1c92c3bd70b03f7e/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f253543696e74253230772532382535437061727469616c253230752f2535437061727469616c253230782d76253239253230642535434f6d656761" alt="equation" data-canonical-src="https://latex.codecogs.com/gif.latex?%5Cint%20w%28%5Cpartial%20u/%5Cpartial%20x-v%29%20d%5COmega" style="max-width:100%;"></a></p>
+<p>In which w is a weight function, we can use function <code>resfun</code>, defined below:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="resd=Residual(
+    [
+        ( # first variable: weight function
+            :w, abs_interp, [] # no derivatives calculated
+        ),
+        ( # second variable: u
+            :u, abs_interp, [
+                (:du!dx, [1, 0]) # first order derivative in x axis calculated
+            ]
+        )
+    ],
+    :(w*(du!dx-v)), # expression for the residual
+    3; # Gauss-Legendre quadrature order
+    extra_args=[:v] # v, a constant
+)
+
+resfunc=get_volume_residual_function(resd)
+"><pre><code>resd=Residual(
+    [
+        ( # first variable: weight function
+            :w, abs_interp, [] # no derivatives calculated
+        ),
+        ( # second variable: u
+            :u, abs_interp, [
+                (:du!dx, [1, 0]) # first order derivative in x axis calculated
+            ]
+        )
+    ],
+    :(w*(du!dx-v)), # expression for the residual
+    3; # Gauss-Legendre quadrature order
+    extra_args=[:v] # v, a constant
+)
+
+resfunc=get_volume_residual_function(resd)
+</code></pre></div>
+<p>The argument structure is reasonably self-explanatory. For any reference, however, check the docstring for <code>Residual</code>! :)</p>
+<p>Function <code>resfunc</code> can be evaluated with:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="ws=[0.0, 1.0, 1.0] # format compatible with abs_coords InterpolationFunction,
+us=[0.5, 1.0, 1.0] # as detailed before
+v=-1.0
+
+R=resfunc([ws, us], fin, v) # and any other extra_args symbols
+
+# Test it!! :)
+@assert isapprox(R, 0.5)
+"><pre><code>ws=[0.0, 1.0, 1.0] # format compatible with abs_coords InterpolationFunction,
+us=[0.5, 1.0, 1.0] # as detailed before
+v=-1.0
+
+R=resfunc([ws, us], fin, v) # and any other extra_args symbols
+
+# Test it!! :)
+@assert isapprox(R, 0.5)
+</code></pre></div>
+<p>For some formulations, one may need to obtain integrals such as:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/d355ce6d137387291b29365489c1e3cd8c0206967365ac70fd04ffc9228d5461/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f253543696e745f2537422535437061727469616c2532302535434f6d656761253744253230772532302532382535437061727469616c253230752f2535437061727469616c253230782532432532307625323925323025354363646f742532302535436861742537426e2537442532306425354347616d6d61"><img src="https://camo.githubusercontent.com/d355ce6d137387291b29365489c1e3cd8c0206967365ac70fd04ffc9228d5461/68747470733a2f2f6c617465782e636f6465636f67732e636f6d2f6769662e6c617465783f253543696e745f2537422535437061727469616c2532302535434f6d656761253744253230772532302532382535437061727469616c253230752f2535437061727469616c253230782532432532307625323925323025354363646f742532302535436861742537426e2537442532306425354347616d6d61" alt="equation" data-canonical-src="https://latex.codecogs.com/gif.latex?%5Cint_%7B%5Cpartial%20%5COmega%7D%20w%20%28%5Cpartial%20u/%5Cpartial%20x%2C%20v%29%20%5Ccdot%20%5Chat%7Bn%7D%20d%5CGamma" style="max-width:100%;"></a></p>
+<p>Evaluated at the frontier of the domain, n being an outward facing vector. One can do this by defining a <code>Residual</code> function with a vectorial expression:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="surface_resd=Residual(
+    [
+        ( # first variable: weight function
+            :w, abs_coords, [] # no derivatives calculated
+        ),
+        ( # second variable: u
+            :u, abs_coords, [
+                (:du!dx, [1, 0]) # first order derivative in x axis calculated
+            ]
+        )
+    ],
+    :(w.*[du!dx, v]), # expression for the residual (now a vector!!)
+    3; # Gauss-Legendre quadrature order, now at domain faces
+    extra_args=[:v] # v, a constant
+)
+
+surface_resfunc=get_surface_residual_function(surface_resd)
+
+R=surface_resfunc([ws, us], fin, v)
+
+# test it!! :)
+@assert isapprox(R, 0.25)
+"><pre><code>surface_resd=Residual(
+    [
+        ( # first variable: weight function
+            :w, abs_coords, [] # no derivatives calculated
+        ),
+        ( # second variable: u
+            :u, abs_coords, [
+                (:du!dx, [1, 0]) # first order derivative in x axis calculated
+            ]
+        )
+    ],
+    :(w.*[du!dx, v]), # expression for the residual (now a vector!!)
+    3; # Gauss-Legendre quadrature order, now at domain faces
+    extra_args=[:v] # v, a constant
+)
+
+surface_resfunc=get_surface_residual_function(surface_resd)
+
+R=surface_resfunc([ws, us], fin, v)
+
+# test it!! :)
+@assert isapprox(R, 0.25)
+</code></pre></div>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>SymFinel should be installed from git using:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="] add https://github.com/pedrosecchi67/SymFinel.jl
+"><pre><code>] add https://github.com/pedrosecchi67/SymFinel.jl
+</code></pre></div>
+<h2><a id="user-content-troubleshooting" class="anchor" aria-hidden="true" href="#troubleshooting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Troubleshooting</h2>
+<p>Make sure all expressions passed to <code>Domain</code> and <code>InterpolationFunction</code> are friendly to function <code>Calculus.differentiate</code>, from Calculus.jl.</p>
+<p>If any other problem is experienced, please leave an issue statement at our repository page.</p>
+</article></div>

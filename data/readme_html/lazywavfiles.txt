@@ -1,8 +1,46 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://github.com/baggepinnen/LazyWAVFiles.jl/actions"><img src="https://github.com/baggepinnen/LazyWAVFiles.jl/workflows/CI/badge.svg" alt="CI" style="max-width:100%;"></a>
-<a href="https://codecov.io/gh/baggepinnen/LazyWAVFiles.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4661d706a973d175f0b7773744b32bb3ace94561/68747470733a2f2f636f6465636f762e696f2f67682f626167676570696e6e656e2f4c617a7957415646696c65732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/baggepinnen/LazyWAVFiles.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<a href="https://codecov.io/gh/baggepinnen/LazyWAVFiles.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c48418ee1e6e537ca46a5c8747be9c5c5b40fd0f8cbb241c1dffee8427b71403/68747470733a2f2f636f6465636f762e696f2f67682f626167676570696e6e656e2f4c617a7957415646696c65732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/baggepinnen/LazyWAVFiles.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
 <h1><a id="user-content-lazywavfiles" class="anchor" aria-hidden="true" href="#lazywavfiles"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>LazyWAVFiles</h1>
 <p>This package let's you treat a wav-file on disk as an <code>AbstractArray</code>. Access to the data is lazy, i.e., nothing (but size) is read from the file until the array is indexed into. You can also specify a folder containing many wav-files and treat them all as a single large array! This lets you work using files that are too large to fit in memory. Some examples</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> LazyWAVFiles, WAV
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using LazyWAVFiles, WAV
+
+# Create some files to work with
+d   = mktempdir()
+a,b = randn(Float32,10), randn(Float32,10)
+WAV.wavwrite(a, joinpath(d,&quot;f1.wav&quot;), Fs=8000)
+WAV.wavwrite(b, joinpath(d,&quot;f2.wav&quot;), Fs=8000)
+
+# Indexing into the array loads data from disk
+f1 = LazyWAVFile(joinpath(d,&quot;f1.wav&quot;)) # This command only reads the size of the file.
+f1[1]   == a[1]
+f1[1:5] == a[1:5]
+f1.fs   == 8000
+size(f1)
+
+# We can create an array from all files in a folder
+df = DistributedWAVFile(d)       # This reads the size from all files.
+df[1]    == a[1]                 # Indexing works the same
+df[1:12] == [a; b[1:2]]          # We can even index over both arrays
+df[:]    == [a;b]                # Or load all files as one long vector
+df.fs    == 8000
+
+size(df) # Other array functions are defined as well
+length(df)
+
+# To work using chunks of the entire distributed array, we can use Iterators.partition
+julia&gt; Iterators.partition(df, 2) |&gt; collect
+10-element Array{Array{Float32,1},1}:
+ [0.44920132, -1.1176418]
+ [-2.0420709, 0.11797007]
+ [1.4723421, -0.32837275]
+ [2.3656073, 0.4933495]   
+ [-1.0910473, -0.18483315]
+ [-0.5574947, -0.46916208]
+ [0.27721304, -0.39077175]
+ [-0.05172622, -0.715703]
+ [0.5821298, 1.6757511]   
+ [1.0726295, 0.23483518]
+"><pre><span class="pl-k">using</span> LazyWAVFiles, WAV
 
 <span class="pl-c"><span class="pl-c">#</span> Create some files to work with</span>
 d   <span class="pl-k">=</span> <span class="pl-c1">mktempdir</span>()
@@ -44,7 +82,10 @@ julia<span class="pl-k">&gt;</span> Iterators<span class="pl-k">.</span><span cl
 <ul>
 <li>Creating a distributed file based on a folder with a really large number of files can take a while due to the size of each audio clip being read from each file. The size information is required in order to have the files appear as one large array. As an example:</li>
 </ul>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> df <span class="pl-k">=</span> <span class="pl-c1">DistributedWAVFile</span>(<span class="pl-s"><span class="pl-pds">"</span>folder_with_21551_files/<span class="pl-pds">"</span></span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @time df = DistributedWAVFile(&quot;folder_with_21551_files/&quot;)
+ 25.518655 seconds (2.47 M allocations: 144.085 MiB, 0.18% gc time)
+ DistributedWAVFile{Float32, 1} with 21551 files, 657735677 total datapoints and samplerate 44100.0
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> df <span class="pl-k">=</span> <span class="pl-c1">DistributedWAVFile</span>(<span class="pl-s"><span class="pl-pds">"</span>folder_with_21551_files/<span class="pl-pds">"</span></span>)
  <span class="pl-c1">25.518655</span> seconds (<span class="pl-c1">2.47</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">144.085</span> MiB, <span class="pl-c1">0.18</span><span class="pl-k">%</span> gc time)
  DistributedWAVFile{Float32, <span class="pl-c1">1</span>} with <span class="pl-c1">21551</span> files, <span class="pl-c1">657735677</span> total datapoints and samplerate <span class="pl-c1">44100.0</span></pre></div>
 </article></div>

@@ -1,0 +1,383 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-selectionsjl" class="anchor" aria-hidden="true" href="#selectionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Selections.jl</h1>
+<p>This package is a working API proposal for a unified <code>SELECT</code> operations on columnar <a href="https://github.com/JuliaData/Tables.jl">Tables</a>.</p>
+<p>The main function is <code>select(tab, args...; kwargs...)</code> which allows you to apply complex transformations to your table. Use <code>args...</code> to apply layered transformations to your current columns and <code>kwargs...</code> to create new columns.</p>
+<h2><a id="user-content-install" class="anchor" aria-hidden="true" href="#install"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Install</h2>
+<p>The package is not yet registered. To install it, use:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="] add https://github.com/Drvi/Selections.jl
+"><pre><code>] add https://github.com/Drvi/Selections.jl
+</code></pre></div>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
+<p>The key goal of the package is to be able to refer to columns not by just their names or positions, but also by their properties (like their <code>eltype</code> or fraction of values missing) and use this increased expressivity to ease data munging activities.</p>
+<h3><a id="user-content-simple-things-are-simple" class="anchor" aria-hidden="true" href="#simple-things-are-simple"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Simple things are simple</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# selects the :a column (select always returns a table)
+select(tab, :a)
+# selects the first and the :g column. If they coincide, only one column is returned
+select(tab, 1, :g)  
+# select all the columns except those between :f and :h
+select(tab, -colrange(:f, :h))
+# create new column :timestamp from :year, :month and :day columns
+select(tab, timestamp = (:year, :month, :day) =&gt; byrow.((row, _) -&gt; Date(row...)))
+"><pre><span class="pl-c"><span class="pl-c">#</span> selects the :a column (select always returns a table)</span>
+<span class="pl-c1">select</span>(tab, <span class="pl-c1">:a</span>)
+<span class="pl-c"><span class="pl-c">#</span> selects the first and the :g column. If they coincide, only one column is returned</span>
+<span class="pl-c1">select</span>(tab, <span class="pl-c1">1</span>, <span class="pl-c1">:g</span>)  
+<span class="pl-c"><span class="pl-c">#</span> select all the columns except those between :f and :h</span>
+<span class="pl-c1">select</span>(tab, <span class="pl-k">-</span><span class="pl-c1">colrange</span>(<span class="pl-c1">:f</span>, <span class="pl-c1">:h</span>))
+<span class="pl-c"><span class="pl-c">#</span> create new column :timestamp from :year, :month and :day columns</span>
+<span class="pl-c1">select</span>(tab, timestamp <span class="pl-k">=</span> (<span class="pl-c1">:year</span>, <span class="pl-c1">:month</span>, <span class="pl-c1">:day</span>) <span class="pl-k">=&gt;</span> <span class="pl-c1">byrow</span>.((row, _) <span class="pl-k">-&gt;</span> <span class="pl-c1">Date</span>(row<span class="pl-k">...</span>)))</pre></div>
+<h3><a id="user-content-complex-things-are-possible" class="anchor" aria-hidden="true" href="#complex-things-are-possible"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Complex things are possible</h3>
+<p>The <code>args...</code> can be used to chain commands to modify to the current columns of a table, these commands are of form:</p>
+<p align="center">
+    <code><strong>
+        selection =&gt; renaming =&gt; transformation
+    </strong></code>
+</p>
+<p><a href="https://github.com/Drvi/Selections.jl#selections"><code>selection</code>s</a> are expressions that identify which columns to work with. <a href="https://github.com/Drvi/Selections.jl#renamings"><code>renaming</code>s</a> are functions applied to the corresponding column names and <a href="https://github.com/Drvi/Selections.jl#transformations"><code>transformation</code>s</a> are functions applied to the corresponding column values.</p>
+<p>You can also provide multiple such commands and combine them together with <code>|</code>, <code>&amp;</code> or <code>-</code>. This will apply the renaming and transforming operations on the union, intersection or set difference of the columns selected. To make sure to avoid type piracy, you can wrap your selection statements in <code>cols</code>.</p>
+<p>Using <code>kwargs...</code> you can create new columns as a function of of all other columns present in the table (including those you've just defined using a any previous key word arguments). These expressions have the following form:</p>
+<p align="center">
+    <code><strong>
+        column_name = selection =&gt; transformation
+    </strong></code>
+</p>
+<p>You can also provide multiple such expressions, and all the columns that were created will be available to the expressions that are evaluated after them.</p>
+<p>That being said, let's have a look at a more complex example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using DataFrames: DataFrame
+using Statistics
+using Selections
+
+df = DataFrame(a = 1.0:4.0, b = 'a':'d', A = 10:13)
+# 4×3 DataFrame
+# │ Row │ a       │ b    │ A     │
+# │     │ Float64 │ Char │ Int64 │
+# ├─────┼─────────┼──────┼───────┤
+# │ 1   │ 1.0     │ 'a'  │ 10    │
+# │ 2   │ 2.0     │ 'b'  │ 11    │
+# │ 3   │ 3.0     │ 'c'  │ 12    │
+# │ 4   │ 4.0     │ 'd'  │ 13    │
+
+select(df,
+    # Select the column :a and mark the other columns with a &quot;prefix_&quot; and increment their values
+    col(:a) | (else_cols() =&gt; key_prefix(&quot;prefix_&quot;) =&gt; bycol.(x-&gt;x + 1)),
+    # Select the column :b and mark the other columns with a &quot;_suffix&quot; and double their values
+    col(:b) | (else_cols() =&gt; key_suffix(&quot;_suffix&quot;) =&gt; bycol.(x-&gt;2x))
+)
+# 4×3 DataFrame
+# │ Row │ a_suffix │ prefix_b │ prefix_A_suffix │
+# │     │ Float64  │ Char     │ Int64           │
+# ├─────┼──────────┼──────────┼─────────────────┤
+# │ 1   │ 2.0      │ 'b'      │ 22              │
+# │ 2   │ 4.0      │ 'c'      │ 24              │
+# │ 3   │ 6.0      │ 'd'      │ 26              │
+# │ 4   │ 8.0      │ 'e'      │ 28              │
+
+scale(x) = (m = mean(x); (x .- m) ./ std(x, mean=m))
+
+select(df,
+    # To generalize, we might want to add &quot;prefix_&quot; to all non Float64 columns, not just :a.
+    # While we're at it, we can standardize the float columns.
+    (cols(Float64) =&gt; bycol(scale)) | (else_cols() =&gt; key_prefix(&quot;prefix_&quot;) =&gt; bycol.(x-&gt;x + 1)),
+    # To generalize, we might want to add &quot;_suffix&quot; to all non Numeric columns, not just :b.
+    # While we're at it, we can also add a suffix to the non Numeric columns.
+    (not(Number) =&gt; key_suffix(&quot;_id&quot;)) | (else_cols() =&gt; key_suffix(&quot;_suffix&quot;) =&gt; bycol.(x-&gt;2x))
+)
+# 4×3 DataFrame
+# │ Row │ a_suffix  │ prefix_b_id │ prefix_A_suffix │
+# │     │ Float64   │ Char        │ Int64           │
+# ├─────┼───────────┼─────────────┼─────────────────┤
+# │ 1   │ -2.32379  │ 'b'         │ 22              │
+# │ 2   │ -0.774597 │ 'c'         │ 24              │
+# │ 3   │ 0.774597  │ 'd'         │ 26              │
+# │ 4   │ 2.32379   │ 'e'         │ 28              │
+"><pre><span class="pl-k">using</span> DataFrames<span class="pl-k">:</span> DataFrame
+<span class="pl-k">using</span> Statistics
+<span class="pl-k">using</span> Selections
+
+df <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>(a <span class="pl-k">=</span> <span class="pl-c1">1.0</span><span class="pl-k">:</span><span class="pl-c1">4.0</span>, b <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>:<span class="pl-s"><span class="pl-pds">'</span>d<span class="pl-pds">'</span></span>, A <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">:</span><span class="pl-c1">13</span>)
+<span class="pl-c"><span class="pl-c">#</span> 4×3 DataFrame</span>
+<span class="pl-c"><span class="pl-c">#</span> │ Row │ a       │ b    │ A     │</span>
+<span class="pl-c"><span class="pl-c">#</span> │     │ Float64 │ Char │ Int64 │</span>
+<span class="pl-c"><span class="pl-c">#</span> ├─────┼─────────┼──────┼───────┤</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 1   │ 1.0     │ 'a'  │ 10    │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 2   │ 2.0     │ 'b'  │ 11    │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 3   │ 3.0     │ 'c'  │ 12    │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 4   │ 4.0     │ 'd'  │ 13    │</span>
+
+<span class="pl-c1">select</span>(df,
+    <span class="pl-c"><span class="pl-c">#</span> Select the column :a and mark the other columns with a "prefix_" and increment their values</span>
+    <span class="pl-c1">col</span>(<span class="pl-c1">:a</span>) <span class="pl-k">|</span> (<span class="pl-c1">else_cols</span>() <span class="pl-k">=&gt;</span> <span class="pl-c1">key_prefix</span>(<span class="pl-s"><span class="pl-pds">"</span>prefix_<span class="pl-pds">"</span></span>) <span class="pl-k">=&gt;</span> <span class="pl-c1">bycol</span>.(x<span class="pl-k">-&gt;</span>x <span class="pl-k">+</span> <span class="pl-c1">1</span>)),
+    <span class="pl-c"><span class="pl-c">#</span> Select the column :b and mark the other columns with a "_suffix" and double their values</span>
+    <span class="pl-c1">col</span>(<span class="pl-c1">:b</span>) <span class="pl-k">|</span> (<span class="pl-c1">else_cols</span>() <span class="pl-k">=&gt;</span> <span class="pl-c1">key_suffix</span>(<span class="pl-s"><span class="pl-pds">"</span>_suffix<span class="pl-pds">"</span></span>) <span class="pl-k">=&gt;</span> <span class="pl-c1">bycol</span>.(x<span class="pl-k">-&gt;</span><span class="pl-c1">2</span>x))
+)
+<span class="pl-c"><span class="pl-c">#</span> 4×3 DataFrame</span>
+<span class="pl-c"><span class="pl-c">#</span> │ Row │ a_suffix │ prefix_b │ prefix_A_suffix │</span>
+<span class="pl-c"><span class="pl-c">#</span> │     │ Float64  │ Char     │ Int64           │</span>
+<span class="pl-c"><span class="pl-c">#</span> ├─────┼──────────┼──────────┼─────────────────┤</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 1   │ 2.0      │ 'b'      │ 22              │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 2   │ 4.0      │ 'c'      │ 24              │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 3   │ 6.0      │ 'd'      │ 26              │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 4   │ 8.0      │ 'e'      │ 28              │</span>
+
+<span class="pl-en">scale</span>(x) <span class="pl-k">=</span> (m <span class="pl-k">=</span> <span class="pl-c1">mean</span>(x); (x <span class="pl-k">.-</span> m) <span class="pl-k">./</span> <span class="pl-c1">std</span>(x, mean<span class="pl-k">=</span>m))
+
+<span class="pl-c1">select</span>(df,
+    <span class="pl-c"><span class="pl-c">#</span> To generalize, we might want to add "prefix_" to all non Float64 columns, not just :a.</span>
+    <span class="pl-c"><span class="pl-c">#</span> While we're at it, we can standardize the float columns.</span>
+    (<span class="pl-c1">cols</span>(Float64) <span class="pl-k">=&gt;</span> <span class="pl-c1">bycol</span>(scale)) <span class="pl-k">|</span> (<span class="pl-c1">else_cols</span>() <span class="pl-k">=&gt;</span> <span class="pl-c1">key_prefix</span>(<span class="pl-s"><span class="pl-pds">"</span>prefix_<span class="pl-pds">"</span></span>) <span class="pl-k">=&gt;</span> <span class="pl-c1">bycol</span>.(x<span class="pl-k">-&gt;</span>x <span class="pl-k">+</span> <span class="pl-c1">1</span>)),
+    <span class="pl-c"><span class="pl-c">#</span> To generalize, we might want to add "_suffix" to all non Numeric columns, not just :b.</span>
+    <span class="pl-c"><span class="pl-c">#</span> While we're at it, we can also add a suffix to the non Numeric columns.</span>
+    (<span class="pl-c1">not</span>(Number) <span class="pl-k">=&gt;</span> <span class="pl-c1">key_suffix</span>(<span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span>)) <span class="pl-k">|</span> (<span class="pl-c1">else_cols</span>() <span class="pl-k">=&gt;</span> <span class="pl-c1">key_suffix</span>(<span class="pl-s"><span class="pl-pds">"</span>_suffix<span class="pl-pds">"</span></span>) <span class="pl-k">=&gt;</span> <span class="pl-c1">bycol</span>.(x<span class="pl-k">-&gt;</span><span class="pl-c1">2</span>x))
+)
+<span class="pl-c"><span class="pl-c">#</span> 4×3 DataFrame</span>
+<span class="pl-c"><span class="pl-c">#</span> │ Row │ a_suffix  │ prefix_b_id │ prefix_A_suffix │</span>
+<span class="pl-c"><span class="pl-c">#</span> │     │ Float64   │ Char        │ Int64           │</span>
+<span class="pl-c"><span class="pl-c">#</span> ├─────┼───────────┼─────────────┼─────────────────┤</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 1   │ -2.32379  │ 'b'         │ 22              │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 2   │ -0.774597 │ 'c'         │ 24              │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 3   │ 0.774597  │ 'd'         │ 26              │</span>
+<span class="pl-c"><span class="pl-c">#</span> │ 4   │ 2.32379   │ 'e'         │ 28              │</span></pre></div>
+<h2><a id="user-content-how-it-works" class="anchor" aria-hidden="true" href="#how-it-works"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How it works</h2>
+<p>What follows is a short reference of the exported functions.</p>
+<h3><a id="user-content-selections" class="anchor" aria-hidden="true" href="#selections"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Selections</h3>
+<table>
+<thead>
+<tr>
+<th>Example in <code>select(tab, ...)</code></th>
+<th>Selects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td>the first column</td>
+</tr>
+<tr>
+<td><code>:a</code></td>
+<td>the column <code>:a</code></td>
+</tr>
+<tr>
+<td><code>cols(:a, :b)</code>  # or  <code>cols(:a) | cols(:b)</code></td>
+<td>the columns <code>:a</code> and <code>:b</code></td>
+</tr>
+<tr>
+<td><code>not(:a, :b)</code>  # or  <code>-cols(:a) &amp; -cols(:b)</code></td>
+<td>the columns other than <code>:a</code> and <code>:b</code></td>
+</tr>
+<tr>
+<td><code>1:2:3</code></td>
+<td>the first and third columns</td>
+</tr>
+<tr>
+<td><code>colrange(:d, :a, 2)</code></td>
+<td>every other column between <code>:d</code> and <code>:a</code></td>
+</tr>
+<tr>
+<td><code>[true, false, true]</code></td>
+<td>the first and third columns</td>
+</tr>
+<tr>
+<td><code>if_values(v -&gt; mean(ismissing.(v)) &gt; 0.5)</code></td>
+<td>columns having more than 50 % missing values</td>
+</tr>
+<tr>
+<td><code>if_eltype(Real)</code>  # or just <code>Real</code></td>
+<td>all columns with eltype <code>T &lt;: Union{Real,Missing}</code></td>
+</tr>
+<tr>
+<td><code>if_keys(k -&gt; length(k) &gt; 5)</code></td>
+<td>columns with names longer than 5 letters</td>
+</tr>
+<tr>
+<td><code>if_matches(r"\d")</code>  # or just <code>r"\d"</code></td>
+<td>column whose name contains a digit</td>
+</tr>
+<tr>
+<td><code>if_pairs((k,v) -&gt; occursin("id", k) &amp;&amp; minimum(v) &gt; 0)</code></td>
+<td>columns whose names contains "id" and that also have a positive minimum values</td>
+</tr>
+</tbody>
+</table>
+<p>All these selections can be inverted/negated with a minus sign or a <code>not()</code> function so that they match the complement of the columns they would match otherwise. There are also special selections like <code>all_cols()</code>, <code>other_cols()</code> (the columns that were not selected in any other part of the selection query) and <code>else_cols()</code> (the columns that the previous selection query didn't capture).</p>
+<p>The thing to remember about chaining selections is that they behave according to as boolean operators applied to sets:
+<code>cols(:a) | cols(:b)</code> give you both <code>:a</code> and <code>:b</code>, but <code>cols(:a) | -cols(:b)</code> or <code>cols(:a) | not(:b)</code> will return all the columns as one of the conditions must be true for each of them.</p>
+<h3><a id="user-content-renamings" class="anchor" aria-hidden="true" href="#renamings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Renamings</h3>
+<table>
+<thead>
+<tr>
+<th>Example in <code>select(tab, ...)</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s =&gt; :A</code></td>
+<td>Rename column to <code>:A</code></td>
+</tr>
+<tr>
+<td><code>s =&gt; [:A, :C]</code></td>
+<td>Rename columns to <code>:A</code>, <code>:B</code> (ignore if <code>s</code> doesn't match 2 columns)</td>
+</tr>
+<tr>
+<td><code>s =&gt; key_replace(r"a" =&gt; s"b")</code></td>
+<td>Replace the letter "a" with "b" in column names of <code>s</code></td>
+</tr>
+<tr>
+<td><code>s =&gt; key_map(uppercase)</code></td>
+<td>Map names of <code>s</code> to upper case</td>
+</tr>
+<tr>
+<td><code>s =&gt; key_prefix("pre_")</code></td>
+<td>Add prefix "pre_" to column names of <code>s</code></td>
+</tr>
+<tr>
+<td><code>s =&gt; key_suffix("_dt")</code></td>
+<td>Add suffix "_dt" to column names of <code>s</code></td>
+</tr>
+</tbody>
+</table>
+<p>If renaming results in non-unique names, a integer suffix will be added to modified column names that will ensure uniqueness and a warning describing these changes will be issued. If you supply an array of new column names that is of different length than the corresponding selection, the renaming will be skipped and a warning will be issued.</p>
+<h3><a id="user-content-transformations" class="anchor" aria-hidden="true" href="#transformations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Transformations</h3>
+<table>
+<thead>
+<tr>
+<th>Example in <code>select(tab, ...)</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s =&gt; bycol(x -&gt; x .- mean(x))</code></td>
+<td>Center every selected column</td>
+</tr>
+<tr>
+<td><code>s =&gt; bycol!(x -&gt; x .- mean(x)) </code></td>
+<td>^ inplace (if the resulting type permits)</td>
+</tr>
+<tr>
+<td><code>s =&gt; bycol.(x -&gt; x + 1)</code></td>
+<td>Add 1 to every element of selected columns</td>
+</tr>
+<tr>
+<td><code>s =&gt; bycol!.(x -&gt; x + 1)</code></td>
+<td>^ inplace (if the resulting type permits)</td>
+</tr>
+<tr>
+<td><code>s =&gt; byrow((rowtable, name) -&gt; f(rowtable, name)</code></td>
+<td>Apply <code>f</code> to a vector of namedtuples (the <code>rowtable</code>), with <code>name</code> being the name of the current column</td>
+</tr>
+<tr>
+<td><code>s =&gt; byrow!((rowtable, name) -&gt; f(rowtable, name))</code></td>
+<td>^ inplace (if the resulting type permits)</td>
+</tr>
+<tr>
+<td><code>s =&gt; byrow.((row, name) -&gt; row[name] - row.a</code></td>
+<td>Subtract <code>:a</code> from each selected column</td>
+</tr>
+<tr>
+<td><code>s =&gt; byrow!.((row, name) -&gt; row[name] - row.a</code></td>
+<td>^ inplace (if the resulting type permits)</td>
+</tr>
+<tr>
+<td><code>s =&gt; bytab((coltable, name) -&gt; coltable.a .+ coltable[name])</code></td>
+<td>Add the column <code>:a</code> to the current column</td>
+</tr>
+<tr>
+<td><code>s =&gt; bytab!((coltable, name) -&gt; coltable.a .+ coltable[name])</code></td>
+<td>^ inplace (if the resulting type permits)</td>
+</tr>
+</tbody>
+</table>
+<p>Broadcasting plays nicely with your ability to chain multiple selections together (you can e.g. <code>if_matches(r"a") | if_eltype(Number)</code> to select all the columns that contain the letter "a" or are numeric) in a sense that when you chain multiple broadcasted transformations like <code>(a: =&gt; bycol.(x-&gt;x+1)) | (all_cols() =&gt; bycol.(x -&gt; 2x))</code> then in the case of column <code>:a</code>, the transformations will be fused as if there was only one transformation <code>x -&gt; (x + 1) * 2</code>.</p>
+<h2><a id="user-content-implementation" class="anchor" aria-hidden="true" href="#implementation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Implementation</h2>
+<p>Here is the source code of <code>select</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function select(tab, args...; kwargs...)
+    has_args = !isempty(args)
+    has_kwargs = !isempty(kwargs)
+
+    if has_args
+        # Selection queries -&gt; triplets of selections, renamings and transforms that are generic,
+        # can be applied to any Table. Multiple `args` are chained with an `|`.
+        # The translate_types function also tries to guess the correct meaning of inputs,
+        # i.e. that `:a =&gt; :A` is a `selection(:a) =&gt; renaming(:A)`.
+        queries = mapfoldl(translate_types, OrSelection, ensure_tuple(args))
+        # Selection results -&gt; triplets of column names, renamings and transforms that are fitted
+        # to this particular table, the generic selections are replaced with actual column names.
+        # If multiple selections were overlapping, their renamings and transformations were combined.
+        plans = resolve_nested(tab, queries)::SelectionResult
+        # the other_cols() are resolved if present
+        process_other!(tab, plans)
+        # Prepare renamings -- produces unique output names to be applied later
+        outnames = rename_colnames(colnames(plans), keyfuncs(plans))
+        # Apply transformations to tables columns
+        outcols = transform_columns(tab, colnames(plans), valfuncs(plans))
+        # At this point, results are in a form of a NamedTuple
+        nt = NamedTuple{outnames}(outcols)
+    else
+        nt = columntable(tab)
+    end
+    if has_kwargs
+        for (new_column_name, _args) in pairs(kwargs)
+            # Produce source_columns =&gt; transformation pairs.
+            plan = resolve_flat(nt, _args)
+            # Create the new column
+            new_column = apply_trans_flat(last(plan), first(plan), new_column_name, nt)
+            # Add the result to our table (NamedTuple), so the next column definition can use them
+            nt = merge(nt, (; new_column_name =&gt; newcolfunc(new_column)))
+        end
+    end
+    materializer(tab)(nt) # Return a Table of the same &quot;kind&quot; as the input.
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">select</span>(tab, args<span class="pl-k">...</span>; kwargs<span class="pl-k">...</span>)
+    has_args <span class="pl-k">=</span> <span class="pl-k">!</span><span class="pl-c1">isempty</span>(args)
+    has_kwargs <span class="pl-k">=</span> <span class="pl-k">!</span><span class="pl-c1">isempty</span>(kwargs)
+
+    <span class="pl-k">if</span> has_args
+        <span class="pl-c"><span class="pl-c">#</span> Selection queries -&gt; triplets of selections, renamings and transforms that are generic,</span>
+        <span class="pl-c"><span class="pl-c">#</span> can be applied to any Table. Multiple `args` are chained with an `|`.</span>
+        <span class="pl-c"><span class="pl-c">#</span> The translate_types function also tries to guess the correct meaning of inputs,</span>
+        <span class="pl-c"><span class="pl-c">#</span> i.e. that `:a =&gt; :A` is a `selection(:a) =&gt; renaming(:A)`.</span>
+        queries <span class="pl-k">=</span> <span class="pl-c1">mapfoldl</span>(translate_types, OrSelection, <span class="pl-c1">ensure_tuple</span>(args))
+        <span class="pl-c"><span class="pl-c">#</span> Selection results -&gt; triplets of column names, renamings and transforms that are fitted</span>
+        <span class="pl-c"><span class="pl-c">#</span> to this particular table, the generic selections are replaced with actual column names.</span>
+        <span class="pl-c"><span class="pl-c">#</span> If multiple selections were overlapping, their renamings and transformations were combined.</span>
+        plans <span class="pl-k">=</span> <span class="pl-c1">resolve_nested</span>(tab, queries)<span class="pl-k">::</span><span class="pl-c1">SelectionResult</span>
+        <span class="pl-c"><span class="pl-c">#</span> the other_cols() are resolved if present</span>
+        <span class="pl-c1">process_other!</span>(tab, plans)
+        <span class="pl-c"><span class="pl-c">#</span> Prepare renamings -- produces unique output names to be applied later</span>
+        outnames <span class="pl-k">=</span> <span class="pl-c1">rename_colnames</span>(<span class="pl-c1">colnames</span>(plans), <span class="pl-c1">keyfuncs</span>(plans))
+        <span class="pl-c"><span class="pl-c">#</span> Apply transformations to tables columns</span>
+        outcols <span class="pl-k">=</span> <span class="pl-c1">transform_columns</span>(tab, <span class="pl-c1">colnames</span>(plans), <span class="pl-c1">valfuncs</span>(plans))
+        <span class="pl-c"><span class="pl-c">#</span> At this point, results are in a form of a NamedTuple</span>
+        nt <span class="pl-k">=</span> <span class="pl-c1">NamedTuple</span><span class="pl-c1">{outnames}</span>(outcols)
+    <span class="pl-k">else</span>
+        nt <span class="pl-k">=</span> <span class="pl-c1">columntable</span>(tab)
+    <span class="pl-k">end</span>
+    <span class="pl-k">if</span> has_kwargs
+        <span class="pl-k">for</span> (new_column_name, _args) <span class="pl-k">in</span> <span class="pl-c1">pairs</span>(kwargs)
+            <span class="pl-c"><span class="pl-c">#</span> Produce source_columns =&gt; transformation pairs.</span>
+            plan <span class="pl-k">=</span> <span class="pl-c1">resolve_flat</span>(nt, _args)
+            <span class="pl-c"><span class="pl-c">#</span> Create the new column</span>
+            new_column <span class="pl-k">=</span> <span class="pl-c1">apply_trans_flat</span>(<span class="pl-c1">last</span>(plan), <span class="pl-c1">first</span>(plan), new_column_name, nt)
+            <span class="pl-c"><span class="pl-c">#</span> Add the result to our table (NamedTuple), so the next column definition can use them</span>
+            nt <span class="pl-k">=</span> <span class="pl-c1">merge</span>(nt, (; new_column_name <span class="pl-k">=&gt;</span> <span class="pl-c1">newcolfunc</span>(new_column)))
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    <span class="pl-c1">materializer</span>(tab)(nt) <span class="pl-c"><span class="pl-c">#</span> Return a Table of the same "kind" as the input.</span>
+<span class="pl-k">end</span></pre></div>
+<p>As you can see, <code>renamings</code> and <code>transformations</code> are applied after the <code>selections</code> are resolved, so you don't have to worry about renamings messing up your subsequent selections.</p>
+<h2><a id="user-content-todos-and-ideas" class="anchor" aria-hidden="true" href="#todos-and-ideas"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>TODOs and ideas:</h2>
+<ul>
+<li><code>select_colnames(tab, args...)</code> -- function that returns the names of columns matching selections in <code>args...</code></li>
+<li><code>select_renames(tab, args...)</code> -- function that returns the symbol pairs of columns matching selections and renamings in <code>args...</code></li>
+<li><code>rename(tab, args...)</code> -- function that always selects all columns in their original order, but can change column names</li>
+<li><code>transform(tab, args..., kwargs...)</code> -- function that always selects columns in their original order, but can change column values and add new columns</li>
+<li>add macro version of all transformations that will guess which source columns to use and that would allow some special behaviour for closures based on their arguments name (<code>row -&gt; f</code> vs <code>(row, name) -&gt; f</code>). Maybe even support things similar to <a href="https://rdrr.io/cran/data.table/man/special-symbols.html" rel="nofollow">data.tables special symbols</a>.</li>
+<li>column name hints in keyerrors (what DataFrames.jl already does)</li>
+<li>Allow <code>all_cols()</code>, <code>other_cols()</code> and <code>else_cols()</code> to accept <code>args...</code> to make them more flexible.</li>
+<li>proper docs</li>
+</ul>
+<h2><a id="user-content-disclaimer" class="anchor" aria-hidden="true" href="#disclaimer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Disclaimer</h2>
+<p>This package started as and still is an experiment, a search for a flexible and powerful API for <em>SELECT</em>-like operations. At this point, the API still may evolve and change in a breaking manner.</p>
+<h2><a id="user-content-acknowledgement" class="anchor" aria-hidden="true" href="#acknowledgement"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Acknowledgement</h2>
+<p>This work was heavily inspired by the R <a href="https://github.com/tidyverse/tidyselect">tidyselect</a>, <a href="https://github.com/tidyverse/dplyr">dplyr</a> and <a href="https://github.com/Rdatatable/data.table">data.table</a> packages as well as by the design of <a href="https://github.com/JuliaData/DataFrames.jl">DataFrames.jl</a> and <a href="https://github.com/JuliaComputing/JuliaDB.jl">JuliaDB.jl</a>.</p>
+</article></div>

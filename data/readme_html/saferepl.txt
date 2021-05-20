@@ -1,0 +1,782 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://travis-ci.org/rfourquet/SafeREPL.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/9d3d4b18ba0043151ed6a5d8da14bcc07a6da65d18101762128585ec65915af6/68747470733a2f2f7472617669732d63692e6f72672f72666f7572717565742f536166655245504c2e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/rfourquet/SafeREPL.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<h2><a id="user-content-saferepl" class="anchor" aria-hidden="true" href="#saferepl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>SafeREPL</h2>
+<p>The <code>SafeREPL</code> package allows to swap, in the REPL, the meaning of Julia's
+literals (in particular numbers).
+Upon loading, the default is to replace <code>Float64</code> literals with <code>BigFloat</code>,
+and <code>Int</code> and <code>Int128</code> literals with <code>BigInt</code>.
+A literal prefixed with <code>$</code> is left unchanged.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using SafeREPL
+
+julia&gt; 2^200
+1606938044258990275541962092341162602522202993782792835301376
+
+julia&gt; sqrt(2.0)
+1.414213562373095048801688724209698078569671875376948073176679737990732478462102
+
+julia&gt; typeof($2)
+Int64
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SafeREPL
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">200</span>
+<span class="pl-c1">1606938044258990275541962092341162602522202993782792835301376</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">sqrt</span>(<span class="pl-c1">2.0</span>)
+<span class="pl-c1">1.414213562373095048801688724209698078569671875376948073176679737990732478462102</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-k">$</span>2)
+Int64</pre></div>
+<h3><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h3>
+<p>This package requires Julia version at least 1.5. It depends on a sub-package,
+<code>SwapLiterals</code>, described below, which requires only Julia 1.1.
+Both packages are registered and can be installed via</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Pkg
+pkg&quot;add SafeREPL&quot;
+pkg&quot;add SwapLiterals&quot;
+"><pre><span class="pl-k">using</span> Pkg
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">pkg</span>"</span>add SafeREPL<span class="pl-pds">"</span></span>
+<span class="pl-s"><span class="pl-pds"><span class="pl-c1">pkg</span>"</span>add SwapLiterals<span class="pl-pds">"</span></span></pre></div>
+<h3><a id="user-content-custom-types" class="anchor" aria-hidden="true" href="#custom-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Custom types</h3>
+<p>What literals mean is specified via <code>SafeREPL.swapliterals!</code>.</p>
+<p>The four arguments of this function correspond to
+<code>Float64</code>, <code>Int</code>, <code>Int128</code>, <code>BigInt</code>.
+Passing <code>nothing</code> means not transforming literals of this type, and
+a symbol is interpreted as the name of a function to be applied to the value.
+The last argument defaults to <code>nothing</code>.</p>
+<p>A single boolean value can also be passed: <code>swapliterals!(false)</code> deactivates
+<code>SafeREPL</code> and <code>swapliterals!(true)</code> re-activates it with the previous setting.
+Finally, <code>swapliterals!()</code> activates the default setting
+(what is enabled with <code>using SafeREPL</code>, which is equivalent to
+<code>swapliterals!("@big_str", :big, :big)</code>, see <a href="#string-macros">below</a>
+for the meaning of <code>"@big_str"</code>).</p>
+<h4><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h4>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using BitIntegers, BitFloats
+
+julia&gt; swapliterals!(:Float128, :Int256, :Int256)
+
+julia&gt; log2(factorial(60))
+254.8391546883338
+
+julia&gt; sqrt(2.0)
+1.41421356237309504880168872420969798
+
+julia&gt; using SaferIntegers, DoubleFloats
+
+julia&gt; swapliterals!(:DoubleFloat, :SafeInt, :SafeInt128)
+
+julia&gt; typeof(2.0)
+Double64
+
+julia&gt; 2^64
+ERROR: OverflowError: 2^64
+Stacktrace:
+[...]
+
+julia&gt; 10000000000000000000^3
+ERROR: OverflowError: 10000000000000000000 * 100000000000000000000000000000000000000 overflowed for type Int128
+Stacktrace:
+[...]
+
+julia&gt; using Nemo; swapliterals!(nothing, :fmpz, :fmpz, :fmpz)
+
+julia&gt; factorial(100)
+93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000
+
+julia&gt; typeof(ans), typeof(1.2)
+(fmpz, Float64)
+
+julia&gt; [1, 2, 3][1] # fmpz is currently not &lt;: Integer ...
+ERROR: ArgumentError: invalid index: 1 of type fmpz
+[...]
+
+julia&gt; [1, 2, 3][$1] # ... so quote array indices
+1
+
+julia&gt; swapliterals!(false); typeof(1), typeof(1.0) # this swapliterals! doesn't act on this line!
+(fmpz, Float64)
+
+julia&gt; typeof(1), typeof(1.0)
+(Int64, Float64)
+
+julia&gt; swapliterals!(true)
+
+julia&gt; typeof(1), typeof(1.0)
+(fmpz, Float64)
+
+julia&gt; swapliterals!() # activate defaults
+
+julia&gt; typeof(1), typeof(1.0)
+(BigInt, BigFloat)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> BitIntegers, BitFloats
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">:Float128</span>, <span class="pl-c1">:Int256</span>, <span class="pl-c1">:Int256</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">log2</span>(<span class="pl-c1">factorial</span>(<span class="pl-c1">60</span>))
+<span class="pl-c1">254.8391546883338</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">sqrt</span>(<span class="pl-c1">2.0</span>)
+<span class="pl-c1">1.41421356237309504880168872420969798</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SaferIntegers, DoubleFloats
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">:DoubleFloat</span>, <span class="pl-c1">:SafeInt</span>, <span class="pl-c1">:SafeInt128</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-c1">2.0</span>)
+Double64
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">64</span>
+ERROR<span class="pl-k">:</span> OverflowError<span class="pl-k">:</span> <span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">64</span>
+Stacktrace<span class="pl-k">:</span>
+[<span class="pl-k">...</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">10000000000000000000</span><span class="pl-k">^</span><span class="pl-c1">3</span>
+ERROR<span class="pl-k">:</span> OverflowError<span class="pl-k">:</span> <span class="pl-c1">10000000000000000000</span> <span class="pl-k">*</span> <span class="pl-c1">100000000000000000000000000000000000000</span> overflowed <span class="pl-k">for</span> type Int128
+Stacktrace<span class="pl-k">:</span>
+[<span class="pl-k">...</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Nemo; <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">nothing</span>, <span class="pl-c1">:fmpz</span>, <span class="pl-c1">:fmpz</span>, <span class="pl-c1">:fmpz</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">factorial</span>(<span class="pl-c1">100</span>)
+<span class="pl-c1">93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(ans), <span class="pl-c1">typeof</span>(<span class="pl-c1">1.2</span>)
+(fmpz, Float64)
+
+julia<span class="pl-k">&gt;</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>][<span class="pl-c1">1</span>] <span class="pl-c"><span class="pl-c">#</span> fmpz is currently not &lt;: Integer ...</span>
+ERROR<span class="pl-k">:</span> ArgumentError<span class="pl-k">:</span> invalid index<span class="pl-k">:</span> <span class="pl-c1">1</span> of type fmpz
+[<span class="pl-k">...</span>]
+
+julia<span class="pl-k">&gt;</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>][<span class="pl-k">$</span>1] <span class="pl-c"><span class="pl-c">#</span> ... so quote array indices</span>
+<span class="pl-c1">1</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">false</span>); <span class="pl-c1">typeof</span>(<span class="pl-c1">1</span>), <span class="pl-c1">typeof</span>(<span class="pl-c1">1.0</span>) <span class="pl-c"><span class="pl-c">#</span> this swapliterals! doesn't act on this line!</span>
+(fmpz, Float64)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-c1">1</span>), <span class="pl-c1">typeof</span>(<span class="pl-c1">1.0</span>)
+(Int64, Float64)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">true</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-c1">1</span>), <span class="pl-c1">typeof</span>(<span class="pl-c1">1.0</span>)
+(fmpz, Float64)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>() <span class="pl-c"><span class="pl-c">#</span> activate defaults</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-c1">1</span>), <span class="pl-c1">typeof</span>(<span class="pl-c1">1.0</span>)
+(BigInt, BigFloat)</pre></div>
+<h3><a id="user-content-how-to-substitute-other-literals" class="anchor" aria-hidden="true" href="#how-to-substitute-other-literals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How to substitute other literals?</h3>
+<p>The more general API of <code>swapliterals!</code> is to pass a list of pairs
+<code>SourceType =&gt; converter</code>, where <code>SourceType</code> is the type on which <code>converter</code>
+should be applied. For example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(Char =&gt; :string, Float32 =&gt; :Float64, UInt8 =&gt; :UInt)
+
+julia&gt; 'a', 1.2f0, 0x12
+(&quot;a&quot;, 1.2000000476837158, 0x0000000000000012)
+
+julia&gt; using Strs; swapliterals!(String =&gt; :Str)
+
+julia&gt; typeof(&quot;a&quot;)
+ASCIIStr
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Char <span class="pl-k">=&gt;</span> <span class="pl-c1">:string</span>, Float32 <span class="pl-k">=&gt;</span> <span class="pl-c1">:Float64</span>, UInt8 <span class="pl-k">=&gt;</span> <span class="pl-c1">:UInt</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>, <span class="pl-c1">1.2f0</span>, <span class="pl-c1">0x12</span>
+(<span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>, <span class="pl-c1">1.2000000476837158</span>, <span class="pl-c1">0x0000000000000012</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Strs; <span class="pl-c1">swapliterals!</span>(String <span class="pl-k">=&gt;</span> <span class="pl-c1">:Str</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>)
+ASCIIStr</pre></div>
+<p>Notable exceptions are <code>Symbol</code> and <code>Bool</code> literals, which currently can't be
+converted with <code>swapliterals!</code> (open an issue if you really need this
+feature).</p>
+<h3><a id="user-content-string-macros" class="anchor" aria-hidden="true" href="#string-macros"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>String macros</h3>
+<p>For <code>Int128</code>, <code>UInt128</code> and <code>BigInt</code>, it's possible to pass the name of a
+string macro (as a <code>String</code>) instead of a symbol.
+In this case, the macro is used to directly interpret the number. For example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(Int128 =&gt; &quot;@int1024_str&quot;, BigInt =&gt; &quot;@int1024_str&quot;)
+
+julia&gt; typeof(111111111111111111111111111111111)
+Int1024
+
+julia&gt; 1234...(many digits).....789 # of course very big numbers can't be input anymore!
+ERROR: LoadError: OverflowError: overflow parsing &quot;1234...&quot;
+[...]
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Int128 <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>@int1024_str<span class="pl-pds">"</span></span>, BigInt <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>@int1024_str<span class="pl-pds">"</span></span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(<span class="pl-c1">111111111111111111111111111111111</span>)
+Int1024
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1234.</span><span class="pl-k">..</span>(many digits)<span class="pl-k">.....</span><span class="pl-c1">789</span> <span class="pl-c"><span class="pl-c">#</span> of course very big numbers can't be input anymore!</span>
+ERROR<span class="pl-k">:</span> LoadError<span class="pl-k">:</span> OverflowError<span class="pl-k">:</span> overflow parsing <span class="pl-s"><span class="pl-pds">"</span>1234...<span class="pl-pds">"</span></span>
+[<span class="pl-k">...</span>]</pre></div>
+<p>As an experimental feature, when a string macro is passed to interpret <code>Float64</code>,
+the input is then first converted to a <code>String</code> which is passed to the macro:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!()
+
+julia&gt; 2.6 - 0.7 - 1.9
+2.220446049250313e-16
+
+julia&gt; swapliterals!(Float64 =&gt; &quot;@big_str&quot;)
+
+julia&gt; 1.2
+1.200000000000000000000000000000000000000000000000000000000000000000000000000007
+
+julia&gt; 1.2 == big&quot;1.2&quot;
+true
+
+julia&gt; 1.1999999999999999 == big&quot;1.1999999999999999&quot;
+false
+
+julia&gt; 2.6 - 0.7 - 1.9
+-1.727233711018888925077270372560079914223200072887256277004740694033718360632485e-77
+
+julia&gt; using DecFP; swapliterals!(Float64 =&gt; &quot;@d64_str&quot;)
+
+julia&gt; 2.6 - 0.7 - 1.9
+0.0
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">2.6</span> <span class="pl-k">-</span> <span class="pl-c1">0.7</span> <span class="pl-k">-</span> <span class="pl-c1">1.9</span>
+<span class="pl-c1">2.220446049250313e-16</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Float64 <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>@big_str<span class="pl-pds">"</span></span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.2</span>
+<span class="pl-c1">1.200000000000000000000000000000000000000000000000000000000000000000000000000007</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.2</span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">big</span>"</span>1.2<span class="pl-pds">"</span></span>
+<span class="pl-c1">true</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.1999999999999999</span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">big</span>"</span>1.1999999999999999<span class="pl-pds">"</span></span>
+<span class="pl-c1">false</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">2.6</span> <span class="pl-k">-</span> <span class="pl-c1">0.7</span> <span class="pl-k">-</span> <span class="pl-c1">1.9</span>
+<span class="pl-k">-</span><span class="pl-c1">1.727233711018888925077270372560079914223200072887256277004740694033718360632485e-77</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> DecFP; <span class="pl-c1">swapliterals!</span>(Float64 <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>@d64_str<span class="pl-pds">"</span></span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">2.6</span> <span class="pl-k">-</span> <span class="pl-c1">0.7</span> <span class="pl-k">-</span> <span class="pl-c1">1.9</span>
+<span class="pl-c1">0.0</span></pre></div>
+<h3><a id="user-content-for-the-adventurous" class="anchor" aria-hidden="true" href="#for-the-adventurous"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>For the adventurous</h3>
+<details>
+    <summary>Are you sure?</summary>
+<p>Few more literals can be substituted: arrays and tuples, and the <code>{}</code> vector
+syntax, which are specified respectively as <code>:vect</code>, <code>:tuple</code>, <code>:braces</code>.
+For example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(:vect =&gt; :Set)
+
+julia&gt; [1, 2]
+Set{Int64} with 2 elements:
+  2
+  1
+
+julia&gt; :[1, 2]
+:(Set([1, 2]))
+
+julia&gt; $[1, 2]
+2-element Array{Int64,1}:
+ 1
+ 2
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">:vect</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:Set</span>)
+
+julia<span class="pl-k">&gt;</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]
+Set{Int64} with <span class="pl-c1">2</span> elements<span class="pl-k">:</span>
+  <span class="pl-c1">2</span>
+  <span class="pl-c1">1</span>
+
+julia<span class="pl-k">&gt;</span> :[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]
+:(<span class="pl-c1">Set</span>([<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">$</span>[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">2</span></pre></div>
+<p>The next question is: how to use the <code>:braces</code> syntax, given that it is not
+valid normal-Julia syntax? In addition to the previously mentioned
+converter types (<code>Symbol</code> and <code>String</code>), it's possible to pass a function
+which is used to transform the Julia AST:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; makeset(ex) = Expr(:call, :Set, Expr(:vect, ex.args...));
+
+julia&gt; swapliterals!(:braces =&gt; makeset)
+
+julia&gt; {1, 2, 3}
+Set{Int64} with 3 elements:
+  2
+  3
+  1
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">makeset</span>(ex) <span class="pl-k">=</span> <span class="pl-c1">Expr</span>(<span class="pl-c1">:call</span>, <span class="pl-c1">:Set</span>, <span class="pl-c1">Expr</span>(<span class="pl-c1">:vect</span>, ex<span class="pl-k">.</span>args<span class="pl-k">...</span>));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">:braces</span> <span class="pl-k">=&gt;</span> makeset)
+
+julia<span class="pl-k">&gt;</span> {<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>}
+Set{Int64} with <span class="pl-c1">3</span> elements<span class="pl-k">:</span>
+  <span class="pl-c1">2</span>
+  <span class="pl-c1">3</span>
+  <span class="pl-c1">1</span></pre></div>
+<p>For types which are stored directly in the AST, using a symbol or
+a function is roughly equivalent (and using <code>$</code>-quoting or <code>:</code>-quoting
+is similarly equivalent), for example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(Int =&gt; Float64)
+
+julia&gt; (1, :1, $1)
+1.0, 1, 1
+
+julia&gt; :(1 + 2)
+:(1.0 + 2.0)
+
+julia&gt; swapliterals!(Int =&gt; :Float64)
+
+julia&gt; (1, :1, $1)
+1.0, 1, 1
+
+julia&gt; :(1 + 2)
+:(Float64(1) + Float64(2))
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Int <span class="pl-k">=&gt;</span> Float64)
+
+julia<span class="pl-k">&gt;</span> (<span class="pl-c1">1</span>, :<span class="pl-c1">1</span>, <span class="pl-k">$</span>1)
+<span class="pl-c1">1.0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>
+
+julia<span class="pl-k">&gt;</span> :(<span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>)
+:(<span class="pl-c1">1.0</span> <span class="pl-k">+</span> <span class="pl-c1">2.0</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Int <span class="pl-k">=&gt;</span> <span class="pl-c1">:Float64</span>)
+
+julia<span class="pl-k">&gt;</span> (<span class="pl-c1">1</span>, :<span class="pl-c1">1</span>, <span class="pl-k">$</span>1)
+<span class="pl-c1">1.0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>
+
+julia<span class="pl-k">&gt;</span> :(<span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>)
+:(<span class="pl-c1">Float64</span>(<span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">Float64</span>(<span class="pl-c1">2</span>))</pre></div>
+<p>Note that using functions is a rather experimental feature.</p>
+<p>A natural question arising pretty quickly is how <code>$</code>-quoting interacts with
+other <code>$</code>-quoting contexts, in particular with <code>BenchmarkTools</code>. With
+scalar-substitutions, this is mostly a non-issue, as we usually do not
+<code>$</code>-quote literal numbers while benchmarking, but this is a bit more subtle
+when substituting container literals:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(false)
+
+julia&gt; @btime sum([1, 2]);
+  31.520 ns (1 allocation: 96 bytes)
+
+julia&gt; @btime sum($[1, 2]);
+  3.129 ns (0 allocations: 0 bytes)
+
+julia&gt; @btime sum($(Set([1, 2])));
+  20.090 ns (0 allocations: 0 bytes)
+
+julia&gt; swapliterals!(:vect =&gt; makeset)
+
+julia&gt; @btime sum($[1, 2]); # $[1, 2] is really a vector
+  31.459 ns (1 allocation: 96 bytes)
+
+julia&gt; @btime sum($$[1, 2]); # BenchmarkTools-$-quoting for real [1, 2]
+  3.480 ns (0 allocations: 0 bytes)
+
+julia&gt; @btime sum($(begin [1, 2] end)); # BenchmarkTools-$-quoting for real Set([1, 2])
+  19.786 ns (0 allocations: 0 bytes)
+
+julia&gt; @btime sum($:[1, 2]) # ???
+  20.077 ns (0 allocations: 0 bytes)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">false</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>([<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]);
+  <span class="pl-c1">31.520</span> ns (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">96</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(<span class="pl-k">$</span>[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]);
+  <span class="pl-c1">3.129</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(<span class="pl-k">$</span>(<span class="pl-c1">Set</span>([<span class="pl-c1">1</span>, <span class="pl-c1">2</span>])));
+  <span class="pl-c1">20.090</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">:vect</span> <span class="pl-k">=&gt;</span> makeset)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(<span class="pl-k">$</span>[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]); <span class="pl-c"><span class="pl-c">#</span> $[1, 2] is really a vector</span>
+  <span class="pl-c1">31.459</span> ns (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">96</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(<span class="pl-k">$$</span>[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]); <span class="pl-c"><span class="pl-c">#</span> BenchmarkTools-$-quoting for real [1, 2]</span>
+  <span class="pl-c1">3.480</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(<span class="pl-k">$</span>(<span class="pl-k">begin</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>] <span class="pl-k">end</span>)); <span class="pl-c"><span class="pl-c">#</span> BenchmarkTools-$-quoting for real Set([1, 2])</span>
+  <span class="pl-c1">19.786</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(<span class="pl-k">$</span>:[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>]) <span class="pl-c"><span class="pl-c">#</span> ???</span>
+  <span class="pl-c1">20.077</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)</pre></div>
+<p>Using a symbol versus a function can also have a subtle impact on benchmarking:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(false)
+
+julia&gt; @btime big(1) + big(2);
+  176.467 ns (6 allocations: 128 bytes)
+
+julia&gt; @btime $(big(1)) + $(big(2));
+  71.681 ns (2 allocations: 48 bytes)
+
+julia&gt; swapliterals!(Int =&gt; :big)
+
+julia&gt; :(1 + 2)
+:(big(1) + big(2))
+
+julia&gt; @btime 1 + 2
+  176.982 ns (6 allocations: 128 bytes)
+
+julia&gt; swapliterals!(Int =&gt; big)
+
+julia&gt; :(1 + 2)
+:(1 + 2)
+
+julia&gt; dump(:(1 + 2))
+Expr
+  head: Symbol call
+  args: Array{Any}((3,))
+    1: Symbol +
+    2: BigInt
+      alloc: Int32 1
+      size: Int32 1
+      d: Ptr{UInt64} @0x0000000004662760
+    3: BigInt
+      alloc: Int32 1
+      size: Int32 1
+      d: Ptr{UInt64} @0x000000000356d4a0
+
+julia&gt; @btime 1 + 2
+  63.765 ns (2 allocations: 48 bytes)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(<span class="pl-c1">false</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">big</span>(<span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">big</span>(<span class="pl-c1">2</span>);
+  <span class="pl-c1">176.467</span> ns (<span class="pl-c1">6</span> allocations<span class="pl-k">:</span> <span class="pl-c1">128</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">$</span>(<span class="pl-c1">big</span>(<span class="pl-c1">1</span>)) <span class="pl-k">+</span> <span class="pl-k">$</span>(<span class="pl-c1">big</span>(<span class="pl-c1">2</span>));
+  <span class="pl-c1">71.681</span> ns (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">48</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Int <span class="pl-k">=&gt;</span> <span class="pl-c1">:big</span>)
+
+julia<span class="pl-k">&gt;</span> :(<span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>)
+:(<span class="pl-c1">big</span>(<span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">big</span>(<span class="pl-c1">2</span>))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>
+  <span class="pl-c1">176.982</span> ns (<span class="pl-c1">6</span> allocations<span class="pl-k">:</span> <span class="pl-c1">128</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Int <span class="pl-k">=&gt;</span> big)
+
+julia<span class="pl-k">&gt;</span> :(<span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>)
+:(<span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">dump</span>(:(<span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>))
+Expr
+  head<span class="pl-k">:</span> Symbol call
+  args<span class="pl-k">:</span> <span class="pl-c1">Array</span><span class="pl-c1">{Any}</span>((<span class="pl-c1">3</span>,))
+    <span class="pl-c1">1</span><span class="pl-k">:</span> Symbol <span class="pl-k">+</span>
+    <span class="pl-c1">2</span><span class="pl-k">:</span> BigInt
+      alloc<span class="pl-k">:</span> Int32 <span class="pl-c1">1</span>
+      size<span class="pl-k">:</span> Int32 <span class="pl-c1">1</span>
+      d<span class="pl-k">:</span> Ptr{UInt64} @<span class="pl-c1">0x0000000004662760</span>
+    <span class="pl-c1">3</span><span class="pl-k">:</span> BigInt
+      alloc<span class="pl-k">:</span> Int32 <span class="pl-c1">1</span>
+      size<span class="pl-k">:</span> Int32 <span class="pl-c1">1</span>
+      d<span class="pl-k">:</span> Ptr{UInt64} @<span class="pl-c1">0x000000000356d4a0</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">1</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>
+  <span class="pl-c1">63.765</span> ns (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">48</span> bytes)</pre></div>
+<p>Finally, as an experimental feature, expressions involving <code>:=</code>
+can also be transformed, with the same mechanism, for example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(:(:=) =&gt; ex -&gt; Expr(:(=),
+                                         Symbol(uppercase(String(ex.args[1]))),
+                                         ex.args[2:end]...))
+
+julia&gt; a := 1; A # equivalent to `A = 1`
+1
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(:(<span class="pl-k">:=</span>) <span class="pl-k">=&gt;</span> ex <span class="pl-k">-&gt;</span> <span class="pl-c1">Expr</span>(:(<span class="pl-k">=</span>),
+                                         <span class="pl-c1">Symbol</span>(<span class="pl-c1">uppercase</span>(<span class="pl-c1">String</span>(ex<span class="pl-k">.</span>args[<span class="pl-c1">1</span>]))),
+                                         ex<span class="pl-k">.</span>args[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>]<span class="pl-k">.</span><span class="pl-k">..</span>))
+
+julia<span class="pl-k">&gt;</span> a <span class="pl-k">:=</span> <span class="pl-c1">1</span>; A <span class="pl-c"><span class="pl-c">#</span> equivalent to `A = 1`</span>
+<span class="pl-c1">1</span></pre></div>
+</details>
+<h3><a id="user-content-how-to-use-in-source-code" class="anchor" aria-hidden="true" href="#how-to-use-in-source-code"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How to use in source code?</h3>
+<p>Via the <code>@swapliterals</code> macro from the <code>SwapLiterals</code> package,
+which has roughly the same API as the <code>swapliterals!</code> function:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using SwapLiterals
+
+x = @swapliterals :big :big :big begin
+    1.0, 2^123
+end
+typeof(x) # Tuple{BigFloat,BigInt}
+
+x = @swapliterals (1.0, 2^123) # shorter version, uses :big as defaults
+"><pre><span class="pl-k">using</span> SwapLiterals
+
+x <span class="pl-k">=</span> <span class="pl-c1">@swapliterals</span> <span class="pl-c1">:big</span> <span class="pl-c1">:big</span> <span class="pl-c1">:big</span> <span class="pl-k">begin</span>
+    <span class="pl-c1">1.0</span>, <span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">123</span>
+<span class="pl-k">end</span>
+<span class="pl-c1">typeof</span>(x) <span class="pl-c"><span class="pl-c">#</span> Tuple{BigFloat,BigInt}</span>
+
+x <span class="pl-k">=</span> <span class="pl-c1">@swapliterals</span> (<span class="pl-c1">1.0</span>, <span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">123</span>) <span class="pl-c"><span class="pl-c">#</span> shorter version, uses :big as defaults</span></pre></div>
+<p>Note: if you try the above at the REPL while <code>SafeREPL</code> is also active, <code>typeof(x)</code>
+might be <code>Tuple{BigFloat,BigInt}</code>.
+Try first <code>swapliterals!(false)</code> to deactivate <code>SafeREPL</code>.</p>
+<p>The pair API is also available, as well as the possibility to pass converters in
+a (literal) array for more clarity:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@swapliterals Int =&gt; :big 1
+
+x = @swapliterals [Int =&gt; :big,
+                   Int128 =&gt; :big,
+                   Float64 =&gt; big
+                  ] begin
+       1.0, 1, 111111111111111111111
+end
+typeof(x) # Tuple{BigFloat,BigInt,BigInt}
+"><pre><span class="pl-c1">@swapliterals</span> Int <span class="pl-k">=&gt;</span> <span class="pl-c1">:big</span> <span class="pl-c1">1</span>
+
+x <span class="pl-k">=</span> <span class="pl-c1">@swapliterals</span> [Int <span class="pl-k">=&gt;</span> <span class="pl-c1">:big</span>,
+                   Int128 <span class="pl-k">=&gt;</span> <span class="pl-c1">:big</span>,
+                   Float64 <span class="pl-k">=&gt;</span> big
+                  ] <span class="pl-k">begin</span>
+       <span class="pl-c1">1.0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">111111111111111111111</span>
+<span class="pl-k">end</span>
+<span class="pl-c1">typeof</span>(x) <span class="pl-c"><span class="pl-c">#</span> Tuple{BigFloat,BigInt,BigInt}</span></pre></div>
+<p>Note that passing a non-global function as the converter
+(to transform the AST, cf. <a href="#for-the-adventurous">previous section</a>)
+is likely to fail.</p>
+<h3><a id="user-content-visual-indicator-that-saferepl-is-active" class="anchor" aria-hidden="true" href="#visual-indicator-that-saferepl-is-active"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Visual indicator that SafeREPL is active</h3>
+<p>The following can be put in the "startup.jl" file to modify the color of the
+prompt, or to modify the text in the prompt. Tweak as necessary.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using REPL
+
+atreplinit() do repl
+    repl.interface = REPL.setup_interface(repl)
+    julia_mode = repl.interface.modes[1]
+
+    old_prefix = julia_mode.prompt_prefix
+    julia_mode.prompt_prefix = function()
+        if isdefined(Main, :SafeREPL) &amp;&amp; SafeREPL.isactive()
+            Base.text_colors[:yellow]
+        else
+            old_prefix
+        end
+    end
+
+    old_prompt = julia_mode.prompt
+    julia_mode.prompt = function()
+        if isdefined(Main, :SafeREPL) &amp;&amp; SafeREPL.isactive()
+            &quot;safejulia&gt; &quot; # ;-)
+        else
+            old_prompt
+        end
+    end
+end
+"><pre><span class="pl-k">using</span> REPL
+
+<span class="pl-c1">atreplinit</span>() <span class="pl-k">do</span> repl
+    repl<span class="pl-k">.</span>interface <span class="pl-k">=</span> REPL<span class="pl-k">.</span><span class="pl-c1">setup_interface</span>(repl)
+    julia_mode <span class="pl-k">=</span> repl<span class="pl-k">.</span>interface<span class="pl-k">.</span>modes[<span class="pl-c1">1</span>]
+
+    old_prefix <span class="pl-k">=</span> julia_mode<span class="pl-k">.</span>prompt_prefix
+    julia_mode<span class="pl-k">.</span>prompt_prefix <span class="pl-k">=</span> <span class="pl-k">function</span>()
+        <span class="pl-k">if</span> <span class="pl-c1">isdefined</span>(Main, <span class="pl-c1">:SafeREPL</span>) <span class="pl-k">&amp;&amp;</span> SafeREPL<span class="pl-k">.</span><span class="pl-c1">isactive</span>()
+            Base<span class="pl-k">.</span>text_colors[<span class="pl-c1">:yellow</span>]
+        <span class="pl-k">else</span>
+            old_prefix
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    old_prompt <span class="pl-k">=</span> julia_mode<span class="pl-k">.</span>prompt
+    julia_mode<span class="pl-k">.</span>prompt <span class="pl-k">=</span> <span class="pl-k">function</span>()
+        <span class="pl-k">if</span> <span class="pl-c1">isdefined</span>(Main, <span class="pl-c1">:SafeREPL</span>) <span class="pl-k">&amp;&amp;</span> SafeREPL<span class="pl-k">.</span><span class="pl-c1">isactive</span>()
+            <span class="pl-s"><span class="pl-pds">"</span>safejulia&gt; <span class="pl-pds">"</span></span> <span class="pl-c"><span class="pl-c">#</span> ;-)</span>
+        <span class="pl-k">else</span>
+            old_prompt
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<h3><a id="user-content-switching-easily-back-and-forth" class="anchor" aria-hidden="true" href="#switching-easily-back-and-forth"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Switching easily back and forth</h3>
+<p>You can set up a keybinding to activate or de-activate <code>SafeREPL</code>, e.g.
+<code>Ctrl-x</code> followed by <code>Ctrl-s</code>, by putting the following in "startup.jl":</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using REPL
+
+const mykeys = Dict(
+    &quot;^x^s&quot; =&gt; function (s, o...)
+                  swapliterals!(!SafeREPL.isactive())
+                  REPL.LineEdit.refresh_line(s)
+              end
+)
+
+atreplinit() do repl
+    repl.interface = REPL.setup_interface(repl; extra_repl_keymap = mykeys)
+end
+"><pre><span class="pl-k">using</span> REPL
+
+<span class="pl-k">const</span> mykeys <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
+    <span class="pl-s"><span class="pl-pds">"</span>^x^s<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-k">function</span> (s, o<span class="pl-k">...</span>)
+                  <span class="pl-c1">swapliterals!</span>(<span class="pl-k">!</span>SafeREPL<span class="pl-k">.</span><span class="pl-c1">isactive</span>())
+                  REPL<span class="pl-k">.</span>LineEdit<span class="pl-k">.</span><span class="pl-c1">refresh_line</span>(s)
+              <span class="pl-k">end</span>
+)
+
+<span class="pl-c1">atreplinit</span>() <span class="pl-k">do</span> repl
+    repl<span class="pl-k">.</span>interface <span class="pl-k">=</span> REPL<span class="pl-k">.</span><span class="pl-c1">setup_interface</span>(repl; extra_repl_keymap <span class="pl-k">=</span> mykeys)
+<span class="pl-k">end</span></pre></div>
+<p>Cf. the
+<a href="https://docs.julialang.org/en/v1.4/stdlib/REPL/#Customizing-keybindings-1" rel="nofollow">manual</a>
+for details.
+Note that <code>REPL.setup_interface</code> should be called only once, so to set up
+a keybinding together with a custom prompt as shown in last section,
+both <code>atreplinit</code> calls must be combined, e.g.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="atreplinit() do repl
+    repl.interface = REPL.setup_interface(repl; extra_repl_keymap = mykeys)
+    julia_mode = repl.interface.modes[1]
+
+    # ... modify julia_mode
+end
+"><pre><span class="pl-c1">atreplinit</span>() <span class="pl-k">do</span> repl
+    repl<span class="pl-k">.</span>interface <span class="pl-k">=</span> REPL<span class="pl-k">.</span><span class="pl-c1">setup_interface</span>(repl; extra_repl_keymap <span class="pl-k">=</span> mykeys)
+    julia_mode <span class="pl-k">=</span> repl<span class="pl-k">.</span>interface<span class="pl-k">.</span>modes[<span class="pl-c1">1</span>]
+
+    <span class="pl-c"><span class="pl-c">#</span> ... modify julia_mode</span>
+<span class="pl-k">end</span></pre></div>
+<h3><a id="user-content-caveats" class="anchor" aria-hidden="true" href="#caveats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Caveats</h3>
+<ul>
+<li>
+<p>This package was not tested on 32-bits architectures, so use it at your own risks.
+By the way, there is no guarantee even on 64-bits architectures...</p>
+</li>
+<li>
+<p>Using new number types by default in the REPL might reveal many missing methods
+for these types and render the REPL less usable than ideal.
+Good opportunity for opening ticket/issues in the corresponding projects :)
+In the meantime, this can be mitigated by the use of <code>$</code>.</p>
+</li>
+<li>
+<p>It should be clear that using <code>BigInt</code> and <code>BigFloat</code> for literals instead
+of <code>Int</code> and <code>Float64</code> can make some function calls quite more expensive,
+time-wise and memory-wise. So <code>SafeREPL</code> just offers a different trade-off
+than the default Julia REPL, it's not a panacea.</p>
+</li>
+<li>
+<p>float literals are stored as <code>Float64</code> in the Julia AST, meaning that
+information can be lost:</p>
+</li>
+</ul>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using SafeREPL; swapliterals!(Float64 =&gt; :big)
+
+julia&gt; :(print(1.2))
+:(print(big(1.2)))
+
+julia&gt; 1.2 # this is equivalent to `big(1.2)`
+1.1999999999999999555910790149937383830547332763671875
+
+julia&gt; big&quot;1.2&quot;
+1.200000000000000000000000000000000000000000000000000000000000000000000000000007
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SafeREPL; <span class="pl-c1">swapliterals!</span>(Float64 <span class="pl-k">=&gt;</span> <span class="pl-c1">:big</span>)
+
+julia<span class="pl-k">&gt;</span> :(<span class="pl-c1">print</span>(<span class="pl-c1">1.2</span>))
+:(<span class="pl-c1">print</span>(<span class="pl-c1">big</span>(<span class="pl-c1">1.2</span>)))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.2</span> <span class="pl-c"><span class="pl-c">#</span> this is equivalent to `big(1.2)`</span>
+<span class="pl-c1">1.1999999999999999555910790149937383830547332763671875</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">big</span>"</span>1.2<span class="pl-pds">"</span></span>
+<span class="pl-c1">1.200000000000000000000000000000000000000000000000000000000000000000000000000007</span></pre></div>
+<p>As said earlier, one can pass <code>"@big_str"</code> for the <code>Float64</code> converter to try
+to mitigate this problem: this is currently the default.
+Another alternative (which does <em>not</em> always produce
+the same results as with <code>"@big_str"</code>) is to call <code>rationalize</code> before
+converting to a float.
+There is an experimental option to have <code>SafeREPL</code> implicitly insert
+calls to <code>rationalize</code>, which is enabled by calling
+<code>floats_use_rationalize!(true)</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; bigfloat(x) = BigFloat(rationalize(x));
+
+julia&gt; swapliterals!(Float64 =&gt; :bigfloat)
+
+julia&gt; 1.2
+1.200000000000000000000000000000000000000000000000000000000000000000000000000007
+
+julia&gt; swapliterals!(Float64 =&gt; :big); SafeREPL.floats_use_rationalize!(true);
+
+julia&gt; 1.2
+1.200000000000000000000000000000000000000000000000000000000000000000000000000007
+
+julia&gt; 1.20000000000001
+1.200000000000010169642905566151645987816694259698096594761182517957654980952429
+
+julia&gt; swapliterals!(Float64 =&gt; &quot;@big_str&quot;) # rationalize not used
+
+julia&gt; 1.20000000000001
+1.200000000000010000000000000000000000000000000000000000000000000000000000000006
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">bigfloat</span>(x) <span class="pl-k">=</span> <span class="pl-c1">BigFloat</span>(<span class="pl-c1">rationalize</span>(x));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Float64 <span class="pl-k">=&gt;</span> <span class="pl-c1">:bigfloat</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.2</span>
+<span class="pl-c1">1.200000000000000000000000000000000000000000000000000000000000000000000000000007</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Float64 <span class="pl-k">=&gt;</span> <span class="pl-c1">:big</span>); SafeREPL<span class="pl-k">.</span><span class="pl-c1">floats_use_rationalize!</span>(<span class="pl-c1">true</span>);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.2</span>
+<span class="pl-c1">1.200000000000000000000000000000000000000000000000000000000000000000000000000007</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.20000000000001</span>
+<span class="pl-c1">1.200000000000010169642905566151645987816694259698096594761182517957654980952429</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Float64 <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>@big_str<span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> rationalize not used</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.20000000000001</span>
+<span class="pl-c1">1.200000000000010000000000000000000000000000000000000000000000000000000000000006</span></pre></div>
+<h3><a id="user-content-how-safe-is-it" class="anchor" aria-hidden="true" href="#how-safe-is-it"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How "safe" is it?</h3>
+<p>This is totally up to the user. Some Julia users get disappointed when they
+encounter some "unsafe" arithmetic operations (due to integer overflow for
+example). "Safe" in <code>SafeREPL</code> must be understood tongue-in-cheek, and applies
+to the default setting where some overflows will disappear. This package can
+make Julia quite more unsafe; here is a "soft" example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; swapliterals!(Int =&gt; x -&gt; x % Int8)
+
+julia&gt; 1234
+-46
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">swapliterals!</span>(Int <span class="pl-k">=&gt;</span> x <span class="pl-k">-&gt;</span> x <span class="pl-k">%</span> Int8)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1234</span>
+<span class="pl-k">-</span><span class="pl-c1">46</span></pre></div>
+<h3><a id="user-content-alternatives" class="anchor" aria-hidden="true" href="#alternatives"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Alternatives</h3>
+<p>Before Julia 1.5, the easiest alternative was probably to use a custom REPL
+mode, and
+<a href="https://github.com/MasonProtter/ReplMaker.jl#example-3-big-mode">ReplMaker.jl</a>
+even has an example to set this up in few lines.
+Here is a way to use <code>SwapLiterals</code> as a backend for a <code>ReplMaker</code> mode,
+which uses the <code>valid_julia</code> function defined in its
+<a href="https://github.com/MasonProtter/ReplMaker.jl#example-1-expr-mode">README</a>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; literals_swapper = SwapLiterals.literals_swapper([Int=&gt;:big, Int128=&gt;:big, Float64=&gt;&quot;@big_str&quot;]);
+
+julia&gt; function Big_parse(s)
+           expr = Meta.parse(s)
+           literals_swapper(expr)
+       end
+
+julia&gt; initrepl(Big_parse,
+                prompt_text=&quot;BigJulia&gt; &quot;,
+                prompt_color = :red,
+                start_key='&gt;',
+                mode_name=&quot;Big-Mode&quot;,
+                valid_input_checker=valid_julia)
+"><pre>julia<span class="pl-k">&gt;</span> literals_swapper <span class="pl-k">=</span> SwapLiterals<span class="pl-k">.</span><span class="pl-c1">literals_swapper</span>([Int<span class="pl-k">=&gt;</span><span class="pl-c1">:big</span>, Int128<span class="pl-k">=&gt;</span><span class="pl-c1">:big</span>, Float64<span class="pl-k">=&gt;</span><span class="pl-s"><span class="pl-pds">"</span>@big_str<span class="pl-pds">"</span></span>]);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">Big_parse</span>(s)
+           expr <span class="pl-k">=</span> Meta<span class="pl-k">.</span><span class="pl-c1">parse</span>(s)
+           <span class="pl-c1">literals_swapper</span>(expr)
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">initrepl</span>(Big_parse,
+                prompt_text<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>BigJulia&gt; <span class="pl-pds">"</span></span>,
+                prompt_color <span class="pl-k">=</span> <span class="pl-c1">:red</span>,
+                start_key<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>&gt;<span class="pl-pds">'</span></span>,
+                mode_name<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Big-Mode<span class="pl-pds">"</span></span>,
+                valid_input_checker<span class="pl-k">=</span>valid_julia)</pre></div>
+<p>The <code>SwapLiterals.literals_swapper</code> function takes a list of pairs which have
+the same meaning as in <code>swapliterals!</code>. Note that it's currently not part of the
+public API of <code>SwapLiterals</code>.</p>
+<p>At least a couple of packages have a macro similar to <code>@swapliterals</code>:</p>
+<ul>
+<li><a href="https://github.com/stevengj/ChangePrecision.jl">ChangePrecision.jl</a>,
+with the <code>@changeprecision</code> macro which reinterprets floating-point literals
+but also some floats-producing functions like <code>rand()</code>.</li>
+<li><a href="https://github.com/JeffreySarnoff/SaferIntegers.jl">SaferIntegers.jl</a>,
+with the <code>@saferintegers</code> macro which wraps integers using <code>SaferIntegers</code>
+types.</li>
+</ul>
+</article></div>

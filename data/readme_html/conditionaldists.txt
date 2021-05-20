@@ -1,48 +1,100 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://travis-ci.com/aicenter/ConditionalDists.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/8929ed9f5f9a51d2e9be581ded8eba52bfd49d7e/68747470733a2f2f7472617669732d63692e636f6d2f616963656e7465722f436f6e646974696f6e616c44697374732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/aicenter/ConditionalDists.jl.svg?branch=master" style="max-width:100%;"></a>
-<a href="https://codecov.io/gh/aicenter/ConditionalDists.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c4dbae6fbf3496f2b93761a1dd495f7fe5847857/68747470733a2f2f636f6465636f762e696f2f67682f616963656e7465722f436f6e646974696f6e616c44697374732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/aicenter/ConditionalDists.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a target="_blank" rel="noopener noreferrer" href="https://github.com/aicenter/ConditionalDists.jl/workflows/Run%20tests/badge.svg"><img src="https://github.com/aicenter/ConditionalDists.jl/workflows/Run%20tests/badge.svg" alt="Run tests" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/aicenter/ConditionalDists.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/83eb91dd1fd8b7146e7e7c096c86a774ac9c2481de60b25b3bab38dc74b360f9/68747470733a2f2f636f6465636f762e696f2f67682f616963656e7465722f436f6e646974696f6e616c44697374732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/aicenter/ConditionalDists.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
 <h1><a id="user-content-conditionaldistsjl" class="anchor" aria-hidden="true" href="#conditionaldistsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ConditionalDists.jl</h1>
-<p>Conditional probability distributions powered by Flux.jl and Distributions.jl.</p>
+<p>Conditional probability distributions powered by Flux.jl and DistributionsAD.jl.</p>
 <p>The conditional PDFs that are defined in this package can be used in
 conjunction with Flux models to provide trainable mappings. As an example,
-consider a conditional Gaussian for which you want to learn a mapping and a
-shared variance:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ConditionalDists;
-julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Flux;
+assume you want to learn the mapping from a conditional to an MvNormal.  The
+mapping <code>m</code> takes a vector <code>x</code> and maps it to a mean <code>μ</code> and a variance <code>σ</code>,
+which can be achieved by using a <code>ConditionalDists.SplitLayer</code> as the last
+layer in the network.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; m = Chain(Dense(2,2,σ), SplitLayer(2, [3,4]))
+julia&gt; m(rand(2))
+(Float32[0.07946974, 0.13797458, 0.03939067], Float32[0.7006321, 0.37641272, 0.3586885, 0.82230335])
+"><pre>julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(<span class="pl-c1">Dense</span>(<span class="pl-c1">2</span>,<span class="pl-c1">2</span>,σ), <span class="pl-c1">SplitLayer</span>(<span class="pl-c1">2</span>, [<span class="pl-c1">3</span>,<span class="pl-c1">4</span>]))
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">m</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">2</span>))
+(Float32[<span class="pl-c1">0.07946974</span>, <span class="pl-c1">0.13797458</span>, <span class="pl-c1">0.03939067</span>], Float32[<span class="pl-c1">0.7006321</span>, <span class="pl-c1">0.37641272</span>, <span class="pl-c1">0.3586885</span>, <span class="pl-c1">0.82230335</span>])</pre></div>
+<p>With the mapping <code>m</code> we can create a conditional distribution with trainable
+mapping parameters:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using ConditionalDists, Distributions
+julia&gt; using ConditionalDists: SplitLayer
 
-julia<span class="pl-k">&gt;</span> xlen <span class="pl-k">=</span> <span class="pl-c1">3</span>; zlen <span class="pl-k">=</span> <span class="pl-c1">2</span>;
-julia<span class="pl-k">&gt;</span> T    <span class="pl-k">=</span> Float32;
+julia&gt; xlength = 3
+julia&gt; zlength = 2
+julia&gt; batchsize = 10
+julia&gt; m = SplitLayer(zlength, [xlength,xlength])
+julia&gt; p = ConditionalMvNormal(m)
 
-julia<span class="pl-k">&gt;</span> cpdf <span class="pl-k">=</span> <span class="pl-c1">CMeanGaussian</span><span class="pl-c1">{DiagVar}</span>(<span class="pl-c1">Dense</span>(xlen, zlen), <span class="pl-c1">ones</span>(T,zlen)<span class="pl-k">*</span><span class="pl-c1">10</span>)
-<span class="pl-c1">CMeanGaussian</span><span class="pl-c1">{DiagVar}</span>(mapping<span class="pl-k">=</span><span class="pl-c1">Dense</span>(<span class="pl-c1">3</span>, <span class="pl-c1">2</span>), σ<span class="pl-c1">2</span><span class="pl-k">=</span><span class="pl-c1">2</span><span class="pl-k">-</span>element Array{Float32,<span class="pl-c1">1</span>}
+julia&gt; res = condition(p, rand(zlength))  # this also works for batches!
+julia&gt; μ = mean(res)
+julia&gt; σ2 = var(res)
+julia&gt; @assert res isa DistributionsAD.TuringDiagMvNormal
 
-julia<span class="pl-k">&gt;</span> X <span class="pl-k">=</span> <span class="pl-c1">randn</span>(T, xlen, <span class="pl-c1">10</span>);
-julia<span class="pl-k">&gt;</span> Z <span class="pl-k">=</span> <span class="pl-c1">randn</span>(T, zlen, <span class="pl-c1">10</span>);
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf</span>(cpdf, X, Z)  <span class="pl-c"><span class="pl-c">#</span> compute p(X|Z)</span>
-<span class="pl-c1">1</span><span class="pl-k">×</span><span class="pl-c1">10</span> Array{Float32,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
- <span class="pl-k">-</span><span class="pl-c1">6.45847</span>  <span class="pl-k">-</span><span class="pl-c1">6.47164</span>  <span class="pl-k">-</span><span class="pl-c1">6.44917</span>  <span class="pl-k">-</span><span class="pl-c1">6.46053</span>  <span class="pl-k">-</span><span class="pl-c1">6.45961</span>  <span class="pl-k">-</span><span class="pl-c1">6.45457</span>  <span class="pl-k">-</span><span class="pl-c1">6.44526</span>  <span class="pl-k">-</span><span class="pl-c1">6.4592</span>  <span class="pl-k">-</span><span class="pl-c1">6.47359</span>  <span class="pl-k">-</span><span class="pl-c1">6.45476</span>
+julia&gt; x = rand(xlength, batchsize)
+julia&gt; z = rand(zlength, batchsize)
+julia&gt; logpdf(p,x,z)
+julia&gt; rand(p, randn(zlength, 10))
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ConditionalDists, Distributions
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ConditionalDists<span class="pl-k">:</span> SplitLayer
 
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">rand</span>(cpdf, <span class="pl-c1">randn</span>(T,xlen,<span class="pl-c1">10</span>))  <span class="pl-c"><span class="pl-c">#</span> sample from cpdf</span>
-<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">5</span> Array{Float32,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
- <span class="pl-k">-</span><span class="pl-c1">4.75223</span>  <span class="pl-k">-</span><span class="pl-c1">8.37436</span>   <span class="pl-k">-</span><span class="pl-c1">6.79707</span>  <span class="pl-k">-</span><span class="pl-c1">2.32712</span>   <span class="pl-c1">0.236871</span>
- <span class="pl-k">-</span><span class="pl-c1">6.60262</span>   <span class="pl-c1">0.119544</span>  <span class="pl-k">-</span><span class="pl-c1">2.40393</span>   <span class="pl-c1">7.17728</span>  <span class="pl-k">-</span><span class="pl-c1">9.87703</span> </pre></div>
-<p>The trainable parameters (W,b of the Dense layer and the shared variance of
-<code>cpdf</code>) are accesible as usual through <code>params</code>.  The next few lines show how
-to optimize <code>cpdf</code> to match a given Gaussian by using the <code>kl_divergence</code> defined
-in <a href="https://github.com/aicenter/IPMeasures.jl">IPMeasures.jl</a>.</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> IPMeasures;
+julia<span class="pl-k">&gt;</span> xlength <span class="pl-k">=</span> <span class="pl-c1">3</span>
+julia<span class="pl-k">&gt;</span> zlength <span class="pl-k">=</span> <span class="pl-c1">2</span>
+julia<span class="pl-k">&gt;</span> batchsize <span class="pl-k">=</span> <span class="pl-c1">10</span>
+julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-c1">SplitLayer</span>(zlength, [xlength,xlength])
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">=</span> <span class="pl-c1">ConditionalMvNormal</span>(m)
 
-julia<span class="pl-k">&gt;</span> pdf <span class="pl-k">=</span> <span class="pl-c1">Gaussian</span>(<span class="pl-c1">zeros</span>(T,zlen), <span class="pl-c1">ones</span>(T,zlen));
-julia<span class="pl-k">&gt;</span> <span class="pl-en">loss</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">kl_divergence</span>(cpdf, pdf, x));
-julia<span class="pl-k">&gt;</span> ps <span class="pl-k">=</span> <span class="pl-c1">params</span>(cpdf);
-julia<span class="pl-k">&gt;</span> opt <span class="pl-k">=</span> <span class="pl-c1">ADAM</span>(<span class="pl-c1">0.1</span>);
-julia<span class="pl-k">&gt;</span> data <span class="pl-k">=</span> [(<span class="pl-c1">randn</span>(T, xlen),) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2000</span>];
-julia<span class="pl-k">&gt;</span> Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(loss, ps, data, opt);</pre></div>
-<p>The learnt mean and variance are fairly close to a standard normal:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">mean_var</span>(cpdf, <span class="pl-c1">randn</span>(T,xlen))
-(Float32[<span class="pl-k">-</span><span class="pl-c1">0.03580121</span>, <span class="pl-c1">0.002174838</span>], Float32[<span class="pl-c1">1.0000002</span>; <span class="pl-c1">1.0000002</span>])
+julia<span class="pl-k">&gt;</span> res <span class="pl-k">=</span> <span class="pl-c1">condition</span>(p, <span class="pl-c1">rand</span>(zlength))  <span class="pl-c"><span class="pl-c">#</span> this also works for batches!</span>
+julia<span class="pl-k">&gt;</span> μ <span class="pl-k">=</span> <span class="pl-c1">mean</span>(res)
+julia<span class="pl-k">&gt;</span> σ2 <span class="pl-k">=</span> <span class="pl-c1">var</span>(res)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@assert</span> res <span class="pl-k">isa</span> DistributionsAD<span class="pl-k">.</span>TuringDiagMvNormal
 
-julia<span class="pl-k">&gt;</span> <span class="pl-c1">rand</span>(cpdf, <span class="pl-c1">rand</span>(T,xlen,<span class="pl-c1">10</span>))  <span class="pl-c"><span class="pl-c">#</span> sample from trained cpdf</span>
-<span class="pl-c1">2</span><span class="pl-k">×</span><span class="pl-c1">5</span> Array{Float32,<span class="pl-c1">2</span>}<span class="pl-k">:</span>
- <span class="pl-c1">1.44779</span>    <span class="pl-c1">0.437584</span>   <span class="pl-k">-</span><span class="pl-c1">0.047717</span>   <span class="pl-c1">1.47545</span>    <span class="pl-c1">0.436742</span>
- <span class="pl-c1">0.596167</span>  <span class="pl-k">-</span><span class="pl-c1">0.0327809</span>   <span class="pl-c1">0.327143</span>  <span class="pl-k">-</span><span class="pl-c1">0.591193</span>  <span class="pl-k">-</span><span class="pl-c1">2.62733</span></pre></div>
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(xlength, batchsize)
+julia<span class="pl-k">&gt;</span> z <span class="pl-k">=</span> <span class="pl-c1">rand</span>(zlength, batchsize)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">logpdf</span>(p,x,z)
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">rand</span>(p, <span class="pl-c1">randn</span>(zlength, <span class="pl-c1">10</span>))</pre></div>
+<p>The trainable parameters (of the <code>SplitLayer</code>) are accessible as usual through
+<code>Flux.params</code>. For different variance configurations (i.e. fixed/unit variance,
+etc) check the doc strings with <code>julia&gt;? ConditionalMvNormal</code>/<code>julia&gt;? SplitLayer</code>.</p>
+<p>The next few lines show how to optimize <code>p</code> to match a
+given Gaussian by using the <code>kl_divergence</code> defined in
+<a href="https://github.com/aicenter/IPMeasures.jl">IPMeasures.jl</a>.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using IPMeasures
+
+julia&gt; d = MvNormal(zeros(xlength), ones(xlength))
+julia&gt; loss(x) = sum(kl_divergence(p, d, x))
+julia&gt; opt = ADAM(0.1)
+julia&gt; data = [(randn(zlength),) for i in 1:2000]
+julia&gt; Flux.train!(loss, Flux.params(p), data, opt)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> IPMeasures
+
+julia<span class="pl-k">&gt;</span> d <span class="pl-k">=</span> <span class="pl-c1">MvNormal</span>(<span class="pl-c1">zeros</span>(xlength), <span class="pl-c1">ones</span>(xlength))
+julia<span class="pl-k">&gt;</span> <span class="pl-en">loss</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">kl_divergence</span>(p, d, x))
+julia<span class="pl-k">&gt;</span> opt <span class="pl-k">=</span> <span class="pl-c1">ADAM</span>(<span class="pl-c1">0.1</span>)
+julia<span class="pl-k">&gt;</span> data <span class="pl-k">=</span> [(<span class="pl-c1">randn</span>(zlength),) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2000</span>]
+julia<span class="pl-k">&gt;</span> Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(loss, Flux<span class="pl-k">.</span><span class="pl-c1">params</span>(p), data, opt)</pre></div>
+<p>The learnt mean and variance are close to a standard normal:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @assert condition(p, randn(zlength)) isa DistributionsAD.TuringDiagMvNormal
+julia&gt; mean(p,randn(zlength))
+3-element Array{Float32,1}:
+  0.003194877
+  1.7912015f-32
+ -1.6101733f-6
+
+julia&gt; var(p,randn(zlength))
+3-element Array{Float32,1}:
+ 1.000585
+ 1.0021493
+ 1.0000007
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@assert</span> <span class="pl-c1">condition</span>(p, <span class="pl-c1">randn</span>(zlength)) <span class="pl-k">isa</span> DistributionsAD<span class="pl-k">.</span>TuringDiagMvNormal
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">mean</span>(p,<span class="pl-c1">randn</span>(zlength))
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Float32,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+  <span class="pl-c1">0.003194877</span>
+  <span class="pl-c1">1.7912015f-32</span>
+ <span class="pl-k">-</span><span class="pl-c1">1.6101733f-6</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">var</span>(p,<span class="pl-c1">randn</span>(zlength))
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Float32,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1.000585</span>
+ <span class="pl-c1">1.0021493</span>
+ <span class="pl-c1">1.0000007</span></pre></div>
 </article></div>

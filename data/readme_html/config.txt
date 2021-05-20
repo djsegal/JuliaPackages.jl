@@ -4,7 +4,27 @@
 <h3><a id="user-content-initialize-a-configmanager" class="anchor" aria-hidden="true" href="#initialize-a-configmanager"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Initialize a ConfigManager</h3>
 <p>Suppose you have a configuration file called "tdlambda.json", specifying
 a set of parameter settings for an experiment</p>
-<div class="highlight highlight-source-json"><pre>{
+<div class="highlight highlight-source-json position-relative" data-snippet-clipboard-copy-content="{
+    &quot;save_path&quot;: &quot;RandomWalk19/tdlambda&quot;,
+
+    &quot;experiment&quot;: {
+        &quot;class&quot;: &quot;MarkovRewardProcess&quot;,
+        &quot;episodes&quot;: 10
+    },
+
+    &quot;environment&quot;: {
+        &quot;class&quot;: &quot;RandomWalk&quot;,
+        &quot;nstates&quot;: 19
+    },
+
+    &quot;agent&quot;: {
+        &quot;class&quot;: &quot;TDLambda&quot;,
+        &quot;gamma&quot;: 1.0,
+        &quot;metastep&quot;: [0.025, 0.05, 0.075, 0.1],
+        &quot;lambda&quot;: [0.0, 0.4, 0.8, 0.9]
+    }
+}
+"><pre>{
     <span class="pl-s"><span class="pl-pds">"</span>save_path<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>RandomWalk19/tdlambda<span class="pl-pds">"</span></span>,
 
     <span class="pl-s"><span class="pl-pds">"</span>experiment<span class="pl-pds">"</span></span>: {
@@ -28,7 +48,8 @@ a set of parameter settings for an experiment</p>
 specifies the directory in <code>data/output</code> which the data will be saved to. In this
 example, data will be saved to <code>data/output/RandomWalk19/tdlambda</code></p>
 <p>Initialize a manager to manage all the details of this config file</p>
-<div class="highlight highlight-source-julia"><pre>cfg <span class="pl-k">=</span> <span class="pl-c1">ConfigManager</span>(<span class="pl-s"><span class="pl-pds">"</span>tdlambda.json<span class="pl-pds">"</span></span>, <span class="pl-c1">@__DIR__</span>)</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="cfg = ConfigManager(&quot;tdlambda.json&quot;, @__DIR__)
+"><pre>cfg <span class="pl-k">=</span> <span class="pl-c1">ConfigManager</span>(<span class="pl-s"><span class="pl-pds">"</span>tdlambda.json<span class="pl-pds">"</span></span>, <span class="pl-c1">@__DIR__</span>)</pre></div>
 <p>The second argument specifies where the data directory should be
 setup. In this case, a directory <code>data/</code> will be setup in the same directory
 as the experiment which <code>ConfigManager</code> was instantiated in.</p>
@@ -38,10 +59,16 @@ as the experiment which <code>ConfigManager</code> was instantiated in.</p>
 The different parameter settings are linearized. In order to sweep all the
 parameters of this config, we can first check how many different parameters
 there are:</p>
-<div class="highlight highlight-source-julia"><pre>N <span class="pl-k">=</span> <span class="pl-c1">total_combinations</span>(cfg)</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="N = total_combinations(cfg)
+"><pre>N <span class="pl-k">=</span> <span class="pl-c1">total_combinations</span>(cfg)</pre></div>
 <p>Then, we need to parse each of the individual settings into a concrete
 parameterization:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">for</span> idx<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>N
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="for idx=1:N
+    parse!(cfg, idx)
+    
+    run_some_experiment(cfg)
+end
+"><pre><span class="pl-k">for</span> idx<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>N
     <span class="pl-c1">parse!</span>(cfg, idx)
     
     <span class="pl-c1">run_some_experiment</span>(cfg)
@@ -54,7 +81,14 @@ get the subconfiguration instead: <code>subcfg = get_subconfig(cfg, "agent")</co
 Then access parameters of the subconfig in the same way: <code>subcfg["metastep"]</code>.</p>
 <p>Note that <code>parse!</code> has a third argument -- the run number -- which defaults to 1.
 To do multiple runs of an experiment, you can therefore do:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">for</span> run<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="for run=1:100
+    for idx=1:N
+        parse!(cfg, idx, run)
+        
+        run_some_experiment(cfg)
+    end
+end
+"><pre><span class="pl-k">for</span> run<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>
     <span class="pl-k">for</span> idx<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>N
         <span class="pl-c1">parse!</span>(cfg, idx, run)
         
@@ -65,7 +99,16 @@ To do multiple runs of an experiment, you can therefore do:</p>
 <p>The <code>ConfigManager</code> also takes care of saving data to the right place.
 Just collect whatever data you want during your experiment in a <code>Dict()</code>
 and pass it to the ConfigManager.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">experiment</span>(cfg<span class="pl-k">::</span><span class="pl-c1">ConfigManager</span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function experiment(cfg::ConfigManager)
+    data = Dict()
+    data[&quot;ValueError&quot;] = Float64[]
+    for i=1:1000
+       push!(data[&quot;ValueError&quot;], rand()) 
+    end
+    
+    save(cfg, data)
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">experiment</span>(cfg<span class="pl-k">::</span><span class="pl-c1">ConfigManager</span>)
     data <span class="pl-k">=</span> <span class="pl-c1">Dict</span>()
     data[<span class="pl-s"><span class="pl-pds">"</span>ValueError<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> Float64[]
     <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>

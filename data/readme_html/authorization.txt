@@ -10,7 +10,14 @@ Clients may represent users, web apps, data storage clients, etc.</p>
 <h2><a id="user-content-permissions" class="anchor" aria-hidden="true" href="#permissions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Permissions</h2>
 <p>A client's access to a resource is determined by its <code>Permission</code> for the resource.
 The <code>Permission</code> type is defined as:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Permission
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct Permission
+    create::Bool
+    read::Bool
+    update::Bool
+    delete::Bool
+    expiry::DateTime
+end
+"><pre><span class="pl-k">struct</span> Permission
     create<span class="pl-k">::</span><span class="pl-c1">Bool</span>
     read<span class="pl-k">::</span><span class="pl-c1">Bool</span>
     update<span class="pl-k">::</span><span class="pl-c1">Bool</span>
@@ -45,7 +52,18 @@ This mapping allows access control for specific resources.</p>
 </ol>
 <p>This framework allows both fine-grained and somewhat coarse access control within the same client, provided the permissions don't conflict within a level of the hierarchy (test for conflicts via <code>permissions_conflict(client, resourceid)</code>).</p>
 <p>Here's a quick sample of the API:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> Allow cRud (read-only) access without expiry to resources with type resource_type</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Allow cRud (read-only) access without expiry to resources with type resource_type
+setpermission!(client, resource_type, Permission(false, true, false, false))
+
+# Allow CRUD (read/write) access for 5 minutes to resources with IDs starting with &quot;mycollection/&quot;
+setpermission!(client, r&quot;mycollection/*&quot;, Permission(true, true, true, true, now() + Minute(5)))
+
+p = getpermission(client, resource)  # Get the permission settings for the specific resource
+setexpiry!(client, now() + Hour(1))  # Set an expiry for all the resources that the client has access to
+
+haspermission(client, resource, :create)    # True if the client has :create access to the resource
+permissions_conflict(client, &quot;myresource&quot;)  # True if the rules that define the client's access to the resource with ID &quot;myresource&quot; conflict
+"><pre><span class="pl-c"><span class="pl-c">#</span> Allow cRud (read-only) access without expiry to resources with type resource_type</span>
 <span class="pl-c1">setpermission!</span>(client, resource_type, <span class="pl-c1">Permission</span>(<span class="pl-c1">false</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>, <span class="pl-c1">false</span>))
 
 <span class="pl-c"><span class="pl-c">#</span> Allow CRUD (read/write) access for 5 minutes to resources with IDs starting with "mycollection/"</span>

@@ -6,7 +6,7 @@ maintainable; also
 <a href="https://github.com/mauro3/SimpleTraits.jl">SimpleTraits.jl</a> package
 provides traits, although without the interface specification present
 in this package.</p>
-<p><a href="https://travis-ci.org/mauro3/Traits.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/20b0e4835d70e13e0372784f9e3f97345a9193fc/68747470733a2f2f7472617669732d63692e6f72672f6d6175726f332f5472616974732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/mauro3/Traits.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://travis-ci.org/mauro3/Traits.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/e02b53b6dbcc6b36115046c3ebca36f559f14e54eaa1e5d935b68f3fda1c2fdd/68747470733a2f2f7472617669732d63692e6f72672f6d6175726f332f5472616974732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/mauro3/Traits.jl.svg?branch=master" style="max-width:100%;"></a></p>
 <p><code>Traits.jl</code> allows to:</p>
 <ul>
 <li>
@@ -61,7 +61,34 @@ possibility to define traits by specifying required methods.  Instead
 types need to be added to a trait manually; the rest is almost
 identical to Traits.jl.</p>
 <p>Example <code>examples/ex1.jl</code>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Traits
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Traits
+# Check Cmp-trait (comparison) which is implemented in Traits.jl/src/commontraits.jl
+@assert istrait(Cmp{Int,Float64})        # Int and Float64 can be compared
+@assert istrait(Cmp{Int,String})==false  # Int and String cannot be compared
+
+# make a new trait and add a type to it:
+@traitdef MyTr{X,Y} begin
+    foobar(X,Y) -&gt; Bool # All type-tuples for which there is a method foo
+                        # with that signature belong to MyTr
+end
+type A
+    a::Int
+end
+@assert istrait(MyTr{A,A})==false  # foobar not implement yet
+foobar(a::A, b::A) = a.a==b.a      # implement it
+@assert istrait(MyTr{A,A})         # voila!
+@assert istrait(MyTr{Int,Int})==false
+
+# make a function which dispatches on traits:
+@traitfn ft1{X,Y; Cmp{X,Y}}(x::X,y::Y)  = x&gt;y ? 5 : 6
+@traitfn ft1{X,Y; MyTr{X,Y}}(x::X,y::Y) = foobar(x,y) ? -99 : -999
+
+ft1(4,5)        # ==6    i.e. dispatches to first definition
+ft1(A(5), A(6)) # ==-999 i.e. dispatches to second definition
+
+ft1(&quot;asdf&quot;, 6)
+# -&gt; ERROR: TraitException(&quot;No matching trait found for function ft1&quot;)
+"><pre><span class="pl-k">using</span> Traits
 <span class="pl-c"><span class="pl-c">#</span> Check Cmp-trait (comparison) which is implemented in Traits.jl/src/commontraits.jl</span>
 <span class="pl-c1">@assert</span> <span class="pl-c1">istrait</span>(Cmp{Int,Float64})        <span class="pl-c"><span class="pl-c">#</span> Int and Float64 can be compared</span>
 <span class="pl-c1">@assert</span> <span class="pl-c1">istrait</span>(Cmp{Int,String})<span class="pl-k">==</span><span class="pl-c1">false</span>  <span class="pl-c"><span class="pl-c">#</span> Int and String cannot be compared</span>
@@ -80,8 +107,8 @@ type A
 <span class="pl-c1">@assert</span> <span class="pl-c1">istrait</span>(MyTr{Int,Int})<span class="pl-k">==</span><span class="pl-c1">false</span>
 
 <span class="pl-c"><span class="pl-c">#</span> make a function which dispatches on traits:</span>
-<span class="pl-c1">@traitfn</span> <span class="pl-en">ft1</span><span class="pl-c1">{X,Y; Cmp{X,Y}}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>)  <span class="pl-k">=</span> x<span class="pl-k">&gt;</span>y ? <span class="pl-c1">5</span> : <span class="pl-c1">6</span>
-<span class="pl-c1">@traitfn</span> <span class="pl-en">ft1</span><span class="pl-c1">{X,Y; MyTr{X,Y}}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">foobar</span>(x,y) ? <span class="pl-k">-</span><span class="pl-c1">99</span> : <span class="pl-k">-</span><span class="pl-c1">999</span>
+<span class="pl-c1">@traitfn</span> <span class="pl-en">ft1</span><span class="pl-c1">{X,Y; Cmp{X,Y}}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>)  <span class="pl-k">=</span> x<span class="pl-k">&gt;</span>y <span class="pl-k">?</span> <span class="pl-c1">5</span> <span class="pl-k">:</span> <span class="pl-c1">6</span>
+<span class="pl-c1">@traitfn</span> <span class="pl-en">ft1</span><span class="pl-c1">{X,Y; MyTr{X,Y}}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">foobar</span>(x,y) <span class="pl-k">?</span> <span class="pl-k">-</span><span class="pl-c1">99</span> <span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">999</span>
 
 <span class="pl-c1">ft1</span>(<span class="pl-c1">4</span>,<span class="pl-c1">5</span>)        <span class="pl-c"><span class="pl-c">#</span> ==6    i.e. dispatches to first definition</span>
 <span class="pl-c1">ft1</span>(<span class="pl-c1">A</span>(<span class="pl-c1">5</span>), <span class="pl-c1">A</span>(<span class="pl-c1">6</span>)) <span class="pl-c"><span class="pl-c">#</span> ==-999 i.e. dispatches to second definition</span>
@@ -101,7 +128,34 @@ Traits.jl once Julia 0.5 is out.</p>
 <p>The source of below examples is in <code>examples/ex2.jl</code>.  Most of the
 important functions are documented and will respond to <code>?</code> in the REPL.</p>
 <p>Trait definition (for details see <a href="docs/traitdef.md">traitdef.md</a>):</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Traits
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Traits
+# simple
+@traitdef Tr1{X} begin
+    fun1(X) -&gt; Number   # this means a method with signature fun1(::X)
+                        # returning a Number
+end
+@traitdef Tr2{X,Y} begin
+    fun2(X,Y) -&gt; Number
+end
+# subtrait
+@traitdef Tr3{X,Y} &lt;: Tr1{X}, Tr2{X,Y} begin
+    fun3(X,Y,Int)
+end
+# with additional constraint on the types
+@traitdef Tr4{X,Y} begin
+    fun4(X,Y)
+    @constraints begin
+        # both Types need to start with the same letter:
+        string(X.name)[1]==string(Y.name)[1]
+    end
+end
+
+# using associated types
+@traitdef Tr5{X,Y} begin
+    Z = promote_type(X,Y) # calculates Z from X and Y
+    fun5(X,Y) -&gt; Z
+end
+"><pre><span class="pl-k">using</span> Traits
 <span class="pl-c"><span class="pl-c">#</span> simple</span>
 <span class="pl-c1">@traitdef</span> Tr1{X} <span class="pl-k">begin</span>
     <span class="pl-c1">fun1</span>(X) <span class="pl-k">-&gt;</span> Number   <span class="pl-c"><span class="pl-c">#</span> this means a method with signature fun1(::X)</span>
@@ -131,7 +185,57 @@ important functions are documented and will respond to <code>?</code> in the REP
 <p>Note that return-type checking is quite experimental.  It can be
 turned off with <code>check_return_types(false)</code>.</p>
 <p>Trait implementation and checking with <code>istrait</code>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> manual definiton, i.e. just define the functions</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# manual definiton, i.e. just define the functions
+fun1(x::Int) = 5x
+@assert istrait(Tr1{Int})
+
+# using @traitimpl
+@traitimpl Tr1{Float64} begin
+    fun1(x::Float64) = 7x # the explicit &quot;::Float64&quot; is needed at the moment
+end
+@assert istrait(Tr1{Float64})
+
+# wrong usage of @traitimpl
+try
+    @traitimpl Tr1{Float32} begin
+        fun1(x::Float64) = 7x # if the explicit type is wrong, it may error
+    end
+catch e
+    println(e)
+end
+
+# This gives an error because supertypes have not been defined yet:
+try
+    eval(:(
+    @traitimpl Tr3{Int, Int} begin
+        fun3(x::Int, y::Int, t::Int) = x+y+t
+    end))
+catch e
+    println(e)
+end
+
+# this works:
+@traitimpl Tr2{Int, Int} begin
+    fun2(x::Int, y::Int) = x+y
+end
+@traitimpl Tr3{Int, Int} begin
+    fun3(x::Int, y::Int, t::Int) = x+y+t
+end
+@traitimpl Tr4{Int, Int} begin
+    fun4(x::Int, y::Int) = x+y
+end
+
+# This gives an error because constraints are not satisfied:
+# Int starts with an &quot;I&quot; whereas Float64 with an &quot;F&quot;:
+try
+    eval(:(
+    @traitimpl Tr4{Int, Float64} begin
+        fun4(x::Int, y::Float64) = x+y
+    end))
+catch e
+    println(e)  # ErrorException(&quot;assertion failed: istrait(Tr4{Int,Float64})&quot;)
+end
+"><pre><span class="pl-c"><span class="pl-c">#</span> manual definiton, i.e. just define the functions</span>
 <span class="pl-en">fun1</span>(x<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">5</span>x
 <span class="pl-c1">@assert</span> <span class="pl-c1">istrait</span>(Tr1{Int})
 
@@ -182,7 +286,49 @@ turned off with <code>check_return_types(false)</code>.</p>
     <span class="pl-c1">println</span>(e)  <span class="pl-c"><span class="pl-c">#</span> ErrorException("assertion failed: istrait(Tr4{Int,Float64})")</span>
 <span class="pl-k">end</span></pre></div>
 <p>Trait functions &amp; dispatch (for details see <a href="docs/traitfns.md">traitfns.md</a>):</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@traitfn</span> <span class="pl-en">tf1</span><span class="pl-c1">{X, Y; Tr1{X}, Tr1{Y}}</span>(a<span class="pl-k">::</span><span class="pl-c1">X</span>, b<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">fun1</span>(a) <span class="pl-k">+</span> <span class="pl-c1">fun1</span>(b)             <span class="pl-c"><span class="pl-c">#</span> I</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@traitfn tf1{X, Y; Tr1{X}, Tr1{Y}}(a::X, b::Y) = fun1(a) + fun1(b)             # I
+@traitfn tf1{X, Y; Tr1{X}, Tr1{Y}}(a::X, b::Y, c::Int) = fun1(a) + fun1(b) + c # II
+@traitfn tf1{X, Y; Tr2{X,Y}}(a::X, b::Y) = fun2(a,b)                           # III
+# Note that all the type-parameters are in the {} and that all
+# arguments need a type parameter (a limitation of the
+# macro-parser). This doesn't work:
+#
+# julia&gt; @traitfn ttt1{X, Y; Tr1{X}, Tr1{Y}}(a::X, b::Y, c) = fun1(a) + fun1(b) + c
+# ERROR: type Symbol has no field args
+#
+# But this works:
+#
+# julia&gt; @traitfn ttt1{X, Y, Z; Tr1{X}, Tr1{Y}}(a::X, b::Y, c::Z) = fun1(a) + fun1(b) + c
+# ttt1 (generic function with 6 methods)
+
+
+# tf1 now dispatches on traits
+@assert tf1(5.,6.)==77. # -&gt; 77 ; dispatches to I because istrait(Tr1{Float64})
+                        #         but not istrait(Tr2{Float64,Float64})
+@assert tf1(5.,6.,77)==154. # -&gt; 154. ; dispatches to II because of the extra argument
+
+# Errors because of dispatch ambiguity:
+try
+    tf1(5,6)  # istrait(Tr1{Int}) and istrait(Tr2{Int,Int}) are both true!
+catch e
+    println(e)
+end
+
+# Implementing Tr1 for a type will make it work with tf1:
+type MyType
+    a::Int
+end
+try
+    tf1(MyType(8), 9) # not implemented yet
+catch e
+    println(e)
+end
+@traitimpl Tr1{MyType} begin
+    fun1(x::MyType) = x.a+9
+end
+
+@assert tf1(MyType(8), 9)==62 # -&gt; 62 ; dispatches to I
+"><pre><span class="pl-c1">@traitfn</span> <span class="pl-en">tf1</span><span class="pl-c1">{X, Y; Tr1{X}, Tr1{Y}}</span>(a<span class="pl-k">::</span><span class="pl-c1">X</span>, b<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">fun1</span>(a) <span class="pl-k">+</span> <span class="pl-c1">fun1</span>(b)             <span class="pl-c"><span class="pl-c">#</span> I</span>
 <span class="pl-c1">@traitfn</span> <span class="pl-en">tf1</span><span class="pl-c1">{X, Y; Tr1{X}, Tr1{Y}}</span>(a<span class="pl-k">::</span><span class="pl-c1">X</span>, b<span class="pl-k">::</span><span class="pl-c1">Y</span>, c<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">fun1</span>(a) <span class="pl-k">+</span> <span class="pl-c1">fun1</span>(b) <span class="pl-k">+</span> c <span class="pl-c"><span class="pl-c">#</span> II</span>
 <span class="pl-c1">@traitfn</span> <span class="pl-en">tf1</span><span class="pl-c1">{X, Y; Tr2{X,Y}}</span>(a<span class="pl-k">::</span><span class="pl-c1">X</span>, b<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">fun2</span>(a,b)                           <span class="pl-c"><span class="pl-c">#</span> III</span>
 <span class="pl-c"><span class="pl-c">#</span> Note that all the type-parameters are in the {} and that all</span>
@@ -227,18 +373,28 @@ type MyType
 <h1><a id="user-content-generated-code" class="anchor" aria-hidden="true" href="#generated-code"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Generated code</h1>
 <p>Continuing the example from last section, let's have a look at the
 llvm code:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">f</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">7</span>x <span class="pl-k">+</span> <span class="pl-c1">7</span>y
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="f(x,y) = 7x + 7y
+@code_llvm f(5.,6.)
+@code_llvm tf1(5.,6.)
+"><pre><span class="pl-en">f</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">7</span>x <span class="pl-k">+</span> <span class="pl-c1">7</span>y
 <span class="pl-c1">@code_llvm</span> <span class="pl-c1">f</span>(<span class="pl-c1">5.</span>,<span class="pl-c1">6.</span>)
 <span class="pl-c1">@code_llvm</span> <span class="pl-c1">tf1</span>(<span class="pl-c1">5.</span>,<span class="pl-c1">6.</span>)</pre></div>
 <p>both produces</p>
-<pre><code>define double @"julia_f;41342"(double, double) {
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="define double @&quot;julia_f;41342&quot;(double, double) {
 top:
   %2 = fmul double %0, 7.000000e+00, !dbg !1388
   %3 = fmul double %1, 7.000000e+00, !dbg !1388
   %4 = fadd double %2, %3, !dbg !1388
   ret double %4, !dbg !1388
 }
-</code></pre>
+"><pre><code>define double @"julia_f;41342"(double, double) {
+top:
+  %2 = fmul double %0, 7.000000e+00, !dbg !1388
+  %3 = fmul double %1, 7.000000e+00, !dbg !1388
+  %4 = fadd double %2, %3, !dbg !1388
+  ret double %4, !dbg !1388
+}
+</code></pre></div>
 <p>However, for more complicated functions code is not quite the same,
 see <code>test/perf/perf.jl</code>.</p>
 <h1><a id="user-content-inner-workings" class="anchor" aria-hidden="true" href="#inner-workings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Inner workings</h1>
@@ -260,7 +416,30 @@ I manually coded what the macros do.</p>
 @timholy's <a href="https://github.com/JuliaLang/julia/issues/2345#issuecomment-54537633">trick</a>.
 His trick uses a method to assign its arguments to a trait.  That trait-function is then used
 for dispatch in another function.  Example of Tim's trick (<code>examples/ex_tims_traits.jl</code>):</p>
-<div class="highlight highlight-source-julia"><pre>type Trait1 <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="type Trait1 end
+type Trait2 end
+type Trait3 end
+# Now define function f which should dispatch on those traits:
+f(x,y) = _f(x,y, traitfn(x,y))
+# Logic which dispatches on trait:
+_f(x,y,::Type{Trait1}) = x+y
+_f(x,y,::Type{Trait2}) = x-y
+_f(x,y,::Type{Trait3}) = x*y
+# Association of types with traits through method definitions:
+# Throw error as default
+traitfn{T,S}(x::T,y::S) = error(&quot;Function f not implemented for type ($T,$S)&quot;)
+# Add types-tuples to Trait1, Trait2 or Trait3
+traitfn(::Int, ::Int) = Trait1
+traitfn(::Int, ::FloatingPoint) = Trait2
+traitfn(::FloatingPoint, ::FloatingPoint) = Trait3
+# use
+@assert f(3,4)==7      # Trait1
+@assert f(3,4.)==-1.0  # Trait2
+@assert f(3.,4.)==12.0 # Trait3
+# add another type-tuple to Trait3
+traitfn(::String, ::String) = Trait3
+@assert f(&quot;Lorem &quot;, &quot;Ipsum&quot;)==&quot;Lorem Ipsum&quot;
+"><pre>type Trait1 <span class="pl-k">end</span>
 type Trait2 <span class="pl-k">end</span>
 type Trait3 <span class="pl-k">end</span>
 <span class="pl-c"><span class="pl-c">#</span> Now define function f which should dispatch on those traits:</span>
@@ -288,7 +467,9 @@ When a new type, say <code>A</code>, is created it can made to work with the
 function <code>f</code> without needing to re-define <code>f</code> for that particular
 type.  Instead all that is needed is to add it to the <code>traitfn</code>, and
 choosing the exact behavior of <code>f</code> by the type <code>traitfn</code> returns:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">traitfn</span>(<span class="pl-k">::</span><span class="pl-c1">A</span>, <span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">Trait1</span>()
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="traitfn(::A, ::Int) = Trait1()
+traitfn(::Int, ::A) = Trait1()
+"><pre><span class="pl-en">traitfn</span>(<span class="pl-k">::</span><span class="pl-c1">A</span>, <span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">Trait1</span>()
 <span class="pl-en">traitfn</span>(<span class="pl-k">::</span><span class="pl-c1">Int</span>, <span class="pl-k">::</span><span class="pl-c1">A</span>) <span class="pl-k">=</span> <span class="pl-c1">Trait1</span>()</pre></div>
 <p>Therefore <code>traitfn</code> is in effect a function that groups type-tuples
 into different <em>Traits</em> (via method definitions) and returns the
@@ -296,7 +477,17 @@ appropriate type when called (which is then used inside <code>f</code> for
 dispatch).  However, the limitation of this approach is that <code>traitfn</code>
 is married to <code>f</code> as can be seen from trying to reuse it for another
 function <code>g</code> which wants to dispatch in different traits:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">g</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">_g</span>(x,y, <span class="pl-c1">traitfn</span>(x,y))
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="g(x,y) = _g(x,y, traitfn(x,y))
+# Logic which dispatches on trait:
+_g(x,y,::Type{Trait1}) = 2x+2y
+_g(x,y,::Type{Trait4}) = 2x-2y  # g doesn't care about Trait2&amp;3 but about 4
+
+# However, say Trait4 should also be implemented by {Int, FloatingPoint} just
+# like Trait2:
+traitfn(::Int, ::FloatingPoint) = Trait4 # this will overwrite the
+                                         # Trait2 definition above!
+g(5, 6.) # doesn't work
+"><pre><span class="pl-en">g</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">_g</span>(x,y, <span class="pl-c1">traitfn</span>(x,y))
 <span class="pl-c"><span class="pl-c">#</span> Logic which dispatches on trait:</span>
 <span class="pl-en">_g</span>(x,y,<span class="pl-k">::</span><span class="pl-c1">Type{Trait1}</span>) <span class="pl-k">=</span> <span class="pl-c1">2</span>x<span class="pl-k">+</span><span class="pl-c1">2</span>y
 <span class="pl-en">_g</span>(x,y,<span class="pl-k">::</span><span class="pl-c1">Type{Trait4}</span>) <span class="pl-k">=</span> <span class="pl-c1">2</span>x<span class="pl-k">-</span><span class="pl-c1">2</span>y  <span class="pl-c"><span class="pl-c">#</span> g doesn't care about Trait2&amp;3 but about 4</span>
@@ -324,11 +515,43 @@ traits-tuple featuring in the method definitions of <code>f1</code> that type
 satisfies, and constructs a constant method returning that trait.
 This trait is then used for dispatch.  Time for an example!</p>
 <p>For methods definition like so</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@traitfn</span> <span class="pl-en">f1</span><span class="pl-c1">{X,Y&lt;:Integer; D1{Y}, D4{X,Y}}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">sin</span>(y)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@traitfn f1{X,Y&lt;:Integer; D1{Y}, D4{X,Y}}(x::X,y::Y) = x + sin(y)
+@traitfn f1{S,T&lt;:Integer; D1{S}, D1{T}  }(s::S,t::T) = sin(s) - sin(t)
+@traitfn f1{X,Y&lt;:FloatingPoint; D1{X}, D1{Y}  }(x::X,y::Y) = cos(x) - cos(y)
+"><pre><span class="pl-c1">@traitfn</span> <span class="pl-en">f1</span><span class="pl-c1">{X,Y&lt;:Integer; D1{Y}, D4{X,Y}}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">sin</span>(y)
 <span class="pl-c1">@traitfn</span> <span class="pl-en">f1</span><span class="pl-c1">{S,T&lt;:Integer; D1{S}, D1{T}  }</span>(s<span class="pl-k">::</span><span class="pl-c1">S</span>,t<span class="pl-k">::</span><span class="pl-c1">T</span>) <span class="pl-k">=</span> <span class="pl-c1">sin</span>(s) <span class="pl-k">-</span> <span class="pl-c1">sin</span>(t)
 <span class="pl-c1">@traitfn</span> <span class="pl-en">f1</span><span class="pl-c1">{X,Y&lt;:FloatingPoint; D1{X}, D1{Y}  }</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>,y<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">cos</span>(x) <span class="pl-k">-</span> <span class="pl-c1">cos</span>(y)</pre></div>
 <p>the underlying definitions are:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">f1</span><span class="pl-c1">{X,Y&lt;:Integer}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>, y<span class="pl-k">::</span><span class="pl-c1">Y</span>)       <span class="pl-k">=</span> <span class="pl-c1">f1</span>(<span class="pl-c1">f1</span>(_TraitDispatch,x, y), x, y)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="f1{X,Y&lt;:Integer}(x::X, y::Y)       = f1(f1(_TraitDispatch,x, y), x, y)
+f1{S,T&lt;:Integer}(s::S, t::T)       = f1(f1(_TraitDispatch,s, t), s, t)
+f1{X,Y&lt;:FloatingPoint}(x::X, y::Y) = f1(f1(_TraitDispatch,x, y), x, y)
+
+# The logic for different traits is:
+@inline f1{X,Y&lt;:Integer}(::Type{(D1{Y}, D4{X,Y})}, x::X, y::Y) = x + sin(y)
+@inline f1{S,T&lt;:Integer}(::Type{(D1{S}, D1{T})}, s::S, t::T) = sin(s) - sin(t)
+@inline f1{X,Y&lt;:FloatingPoint}(::Type{(D1{X}, D1{Y})}, x::X, y::Y) = cos(x) - cos(y)
+
+# Trait dispatch happens in these generated functions
+@generated function f1{X1,X2&lt;:Integer}(::Type{_TraitDispatch}, x1::X1, x2::X2)
+    # Figure out which trait matches.  Note below list is updated as more
+    # trait-dispatched methods are added to f1.
+    traittypes = [(D1{X2}, D4{X1,X2}), (D1{X1}, D1{X2})]
+
+    # errors if not a single match is found:
+    traittyp = Traits.traitdispatch(traittypes, $(fn.name))
+
+    out = :(())
+    for s in traittyp
+        push!(out.args, :($s))
+    end
+    return out
+end
+# For each type signature there is a trait-dispatch function
+@generated function f1{X1,X2&lt;:FloatingPoint}(::Type{_TraitDispatch}, x1::X1, x2::X2)
+...
+end
+
+"><pre><span class="pl-en">f1</span><span class="pl-c1">{X,Y&lt;:Integer}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>, y<span class="pl-k">::</span><span class="pl-c1">Y</span>)       <span class="pl-k">=</span> <span class="pl-c1">f1</span>(<span class="pl-c1">f1</span>(_TraitDispatch,x, y), x, y)
 <span class="pl-en">f1</span><span class="pl-c1">{S,T&lt;:Integer}</span>(s<span class="pl-k">::</span><span class="pl-c1">S</span>, t<span class="pl-k">::</span><span class="pl-c1">T</span>)       <span class="pl-k">=</span> <span class="pl-c1">f1</span>(<span class="pl-c1">f1</span>(_TraitDispatch,s, t), s, t)
 <span class="pl-en">f1</span><span class="pl-c1">{X,Y&lt;:FloatingPoint}</span>(x<span class="pl-k">::</span><span class="pl-c1">X</span>, y<span class="pl-k">::</span><span class="pl-c1">Y</span>) <span class="pl-k">=</span> <span class="pl-c1">f1</span>(<span class="pl-c1">f1</span>(_TraitDispatch,x, y), x, y)
 

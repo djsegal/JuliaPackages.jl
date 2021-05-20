@@ -1,0 +1,208 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-inventorymanagementjl" class="anchor" aria-hidden="true" href="#inventorymanagementjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>InventoryManagement.jl:</h1>
+<p><em>Discrete-time simulation environment for Inventory Management in Supply Networks.</em></p>
+<p><a target="_blank" rel="noopener noreferrer" href="logo.png"><img src="logo.png" alt="" style="max-width:100%;"></a></p>
+<h2><a id="user-content-table-of-contents" class="anchor" aria-hidden="true" href="#table-of-contents"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Table of Contents</h2>
+<ol>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#dependencies">Dependencies</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#sequence-of-events">Sequence of Events</a></li>
+<li><a href="#model-assumptions">Model Assumptions</a></li>
+<li><a href="#model-limitations">Model Limitations</a></li>
+<li><a href="#inventory-replenishment-policies">Inventory replenishment policies</a></li>
+<li><a href="#model-inputs">Model Inputs</a>
+<ul>
+<li><a href="#node-specific">Node-specific</a></li>
+<li><a href="#edge-specific">Edge-specific</a></li>
+<li><a href="#general-network">General (Network)</a></li>
+</ul>
+</li>
+<li><a href="#model-output">Model Output: SupplyChainEnv</a></li>
+<li><a href="#examples">Examples</a>
+<ul>
+<li><a href="#example-1">Example #1: alternate suppliers and continuous review (s,S) policy</a></li>
+<li><a href="#example-2">Example #2: unlimited upstream supply and periodic (r,Q) policy</a></li>
+<li><a href="#example-3">Example #3: chemical production facility</a></li>
+</ul>
+</li>
+<li><a href="#contact">Contact</a></li>
+</ol>
+<h2><a id="user-content-overview" class="anchor" aria-hidden="true" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Overview</h2>
+<p><em>InventoryManagement.jl</em> allows modeling a multi-period multi-product supply network. A supply network can be constructed using the following node types:</p>
+<ul>
+<li><code>Producers</code>: Nodes where inventory transformation takes place (e.g., intermediates or final materials are produced). Reactive systems, including those with co-products, can be modelled using <a href="https://en.wikipedia.org/wiki/Bill_of_materials" rel="nofollow">Bills of Materials</a> (see <a href="#graph-specific">Model Inputs section</a>).</li>
+<li><code>Distributors</code>: Intermediate nodes where inventory is stored and distributed (e.g., distribution centers).</li>
+<li><code>Markets</code>: Nodes where end-customers place final product orders (i.e., retailer). These are the last (sink) nodes in the network.</li>
+</ul>
+<p>The simplest network that can be modeled is one with a single market with one producer or distributor. However, more complex systems can be modelled as well.</p>
+<p>When defining a supply network, a <code>SupplyChainEnv</code> object is created based on system inputs and network structure. This object can then be used to execute a simulation of the inventory dynamics. During a simulation, stochastic demand at each of the markets can occur for each of the materials in each period. When product demand occurs at the market, sales are made based on available inventory. Any unfulfilled demand is either backlogged or considered a lost sale depending on the system definition. If no action is taken duirng the simulation, the inventory levels will eventually be depleted. To avoid this from happening, a decision-maker can interact with the system in each period by making inventory replenishment decisions (refered to as <code>actions</code>). Lead times for in-transit inventory as well as production lead times are accounted for in the simulation. Transportation lead times can be modelled stochastically to account for lead time uncertainty. From a service time perspective, demand at market nodes has zero service time, whereas non-market nodes have service time equal to the production lead time + transportation lead time.</p>
+<p>The <code>SupplyChainEnv</code> can also potentially be used in conjunction with <a href="https://github.com/JuliaReinforcementLearning/ReinforcementLearning.jl">ReinforcementLearning.jl</a> to train a Reinforcement Learning <code>agent</code>.</p>
+<p>This package generalizes and extends and the inventory management environment available in <a href="https://github.com/hubbs5/or-gym">OR-Gym</a>.</p>
+<h2><a id="user-content-dependencies" class="anchor" aria-hidden="true" href="#dependencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Dependencies</h2>
+<p><em>InventoryManagement.jl</em> mainly relies on the following packages:</p>
+<ul>
+<li><a href="https://github.com/JuliaGraphs/MetaGraphs.jl">MetaGraphs.jl</a>: Define supply network structure and specify node- and edge-specific parameters.</li>
+<li><a href="https://github.com/JuliaData/DataFrames.jl">DataFrames.jl</a>: Tabulate results.</li>
+<li><a href="https://github.com/JuliaStats/Distributions.jl">Distributions.jl</a>: Define probability distributions for the lead times in between nodes and the demands at the market nodes.</li>
+</ul>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>The package can be installed with the Julia package manager. From the Julia REPL, type <code>]</code> to enter the <code>Pkg</code> REPL mode and run:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="pkg&gt; add InventoryManagement
+"><pre>pkg<span class="pl-k">&gt;</span> add InventoryManagement</pre></div>
+<h2><a id="user-content-sequence-of-events" class="anchor" aria-hidden="true" href="#sequence-of-events"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sequence of Events</h2>
+<p>The following sequence of events occurs in each period of the simulation:</p>
+<ol>
+<li>Start period.</li>
+<li>Place inventory replenishment orders at each node. These are limited to the available production capacity (supplier is a producer) or available inventory. If <code>reallocate = true</code>, then any amount that cannot be satisfied is reallocated to the next priority supplier.
+<ul>
+<li>Distributors ship inventory.</li>
+<li>Producers attempt to satisfy the requested amount in the following order: 1) using any on-hand inventory, 2) using any uncommitted scheduled production (only relevant when there is co-production), and 3) manufacturing material. Materials scheduled for production have a production lead time. Production costs are incurred at the start of production.</li>
+<li>Producers send orders that have completed (after the production lead time).</li>
+</ul>
+</li>
+<li>Receive inventory that has arrived at each node (after the lead time has transpired).</li>
+<li>Pay suppliers for inventory received.</li>
+<li>Pay shipper for inventory shipped.</li>
+<li>Market demand occurs after tossing a weighted coin with the probability of demand occurring defined by the <code>demand_frequency</code>.</li>
+<li>Demand (including any backlog if <code>backlog = true</code>) is fulfilled up to available inventory at the markets.</li>
+<li>Unfulfilled demand is penalized and backlogged (if <code>backlog = true</code>).</li>
+<li>Each node pays a holding cost and a transportation cost for on-hand inventory and in-transit inventory at each period.</li>
+</ol>
+<h2><a id="user-content-model-assumptions" class="anchor" aria-hidden="true" href="#model-assumptions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Model Assumptions</h2>
+<p>The following assumptions hold in the current implementation, but can be modified in future releases.</p>
+<ul>
+<li><code>Producers</code> produce material on demand (<a href="https://en.wikipedia.org/wiki/Build_to_order" rel="nofollow">make-to-order</a> policy).</li>
+<li><code>Producers</code> can hold inventory. Downstream replenishment orders are fulfilled first with any on-hand inventory, and then via production only after there is no on-hand inventory left.</li>
+<li>Replenishment orders can only be satisfied with current on-hand inventory or available production capacity.</li>
+<li>Commited production orders count towards the inventory position of the downstream node, even if they haven't yet shipped (due to production lead time).</li>
+<li>Production lead times are fixed and independent of the amount being produced.</li>
+<li>Backlogging is only allowed at the <code>Markets</code>, it is not allowed for inventory replenishment decisions.</li>
+<li>Transportation costs are paid to a third party (not a node in the network).</li>
+</ul>
+<h2><a id="user-content-model-limitations" class="anchor" aria-hidden="true" href="#model-limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Model Limitations</h2>
+<p>The following features are not currently supported:</p>
+<ul>
+<li>Inventory capacity limits at the nodes is not currently supported.</li>
+<li><code>Producers</code> do not operate under a <a href="https://en.wikipedia.org/wiki/Build_to_stock" rel="nofollow">make-to-stock</a> policy since any material produced gets shipped downstream. However, this can be accomodated by adding a dumby node downstream of the <code>producer</code> that holds inventory produced by the <code>producer</code> with zero lead time in between the nodes. Thus, using a proper reorder policy, the <code>producer</code> can act as a <code>make-to-stock</code> system that pushes inventory to the inventory holding node.</li>
+<li><code>Producers</code> do not have market demand. However, this can be modelled by adding a <code>market</code> node downstream of the <code>producer</code> with zero lead time in between the nodes.</li>
+<li>Alternate bills of materials (see <a href="#graph-specific">Model Inputs</a>) for the same material are not currently supported. This is particularly relevant for chemical systems. However, the following workarounds can be done:
+<ul>
+<li>If the alternate reaction pathway has a byproduct, then the main product can be included as a co-product in the bill of materials of the byproduct. For example: A system with 5 materials (<code>:A - :E</code>) can have two ways to produce <code>:A</code>, <code>:B + :C -&gt; :A</code> and <code>:D -&gt; :A + :E</code>. The column for material <code>:A</code> can have the bill of material: <code>[0 -1 -1 0 0]</code>. The column for material <code>:E</code> can have the bill of materials: <code>[1 0 0 -1 0]</code>. However, <code>:A</code> will only be produced by the second pathway if a request for <code>:E</code> is made.</li>
+<li>Make a copy of the material to specify an alternate pathway. This will require specifying parameters for the copied material throughout the network.</li>
+</ul>
+</li>
+<li>Capacity limitations on shared inventory among producer nodes (e.g., shared inventory tanks) cannot be enforced directly. This is because the shared inventory is its own node and feeds the inventory holding area in the producer node. Thus the total inventory is the inventory at the inventory node plus the inventory positions at the producers. Capacity limitations must be enforced manually via the reorder actions (see <a href="#example-3">Kondili Example</a>).</li>
+<li>If a <code>producer</code> can produce more than 1 material, it is possible to produce all materials it is capable of producing simultaneously. This does not account for resource constraints (e.g., single reactor can only do reaction 1 or reaction 2, but not both simultaneously). However, these can be enforced manually with the reorder actions (see <a href="#example-3">Kondili Example</a>).</li>
+</ul>
+<h2><a id="user-content-inventory-replenishment-policies" class="anchor" aria-hidden="true" href="#inventory-replenishment-policies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Inventory replenishment policies</h2>
+<p>At each iteration in the simulation, an <code>action</code> can be provided to the system, which consists of the replenishment orders placed on every link in the supply network. This <code>action</code> must be of type <code>Vector{Real}</code> and must be <code>nonnegative</code> of the form: <code>[Edge1_Material1, Edge1_Material2, ..., Edge1_MaterialM, Edge2_Material1, ..., Edge2_MaterialM, ..., EdgeE_Material1, ..., EdgeE_MaterialM]</code>, where the ordering in the edges is given by <code>edges(env.network)</code> and the ordering in the materials by <code>env.materials</code>.</p>
+<p>An <code>action</code> vector can be visualized as a <code>DataFrame</code> using <code>show_action(action, env::SupplyChainEnv)</code>.</p>
+<p>The function <code>reorder_policy</code> can be used to implement an inventory reorder policy. The two most common policies used in industry are the <code>(s,S)</code> and <code>(r,Q)</code> <a href="https://smartcorp.com/inventory-control/inventory-control-policies-software/" rel="nofollow">policies</a>.</p>
+<p>The <code>reorder_policy</code> takes the following inputs and returns an <code>action</code> vector.</p>
+<ul>
+<li><code>env::SupplyChainEnv</code>: inventory management environment</li>
+<li><code>param1::Dict</code>: the <code>s</code> or <code>r</code> parameter in each node for each material in the system. The <code>keys</code> are of the form <code>(node, material)</code>.</li>
+<li><code>param2::Dict</code>: the <code>S</code> or <code>Q</code> parameter in each node for each material in the system. The <code>keys</code> are of the form <code>(node, material)</code>.</li>
+<li><code>level::Symbol</code>: <code>:position</code> if the policy is based on the node's inventory position, or <code>:on_hand</code> if the policy is based on the node's on-hand inventory level.</li>
+<li><code>kind::Symbol</code>: <code>:rQ</code> for an <code>(r,Q)</code> policy, or <code>:sS</code> for an <code>(s,S)</code> policy</li>
+<li><code>supplier_selection::Symbol</code>: evenly distribute reorder quantities among all suppliers if <code>:random</code>; otherwise (if <code>:priority</code>), assign reorder quantities based on supplier priority (e.g., if supplier 1 does not have enough capacity or inventory, then request as much as possible and then request any remaining amount from the next supplier, and so forth).</li>
+<li><code>review_period::Int</code>: number of periods between each inventory review (Default = <code>1</code> for continuous review. <em>Note</em>: only relevant when <code>level = :on_hand</code>)</li>
+</ul>
+<h2><a id="user-content-model-inputs" class="anchor" aria-hidden="true" href="#model-inputs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Model Inputs</h2>
+<p>The supply network topology must be mapped on a network graph using <a href="https://github.com/JuliaGraphs/MetaGraphs.jl">MetaGraphs.jl</a>. The system parameters are stored in the network's metadata.</p>
+<h3><a id="user-content-node-specific" class="anchor" aria-hidden="true" href="#node-specific"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Node-specific</h3>
+<p><code>Producers</code> will have the following fields in their node metadata:</p>
+<ul>
+<li><code>:initial_inventory::Dict</code>: initial inventory for each material (<code>keys</code>)</li>
+<li><code>:inventory_capacity::Dict</code>: maximum inventory for each material (<code>keys</code>)</li>
+<li><code>:holding_cost::Dict</code>: unit holding cost for each material (<code>keys</code>)</li>
+<li><code>:supplier_priority::Dict</code>: (<em>only when the node has at least 1 supplier</em>) <code>Vector</code> of supplier priorities (from high to low) for each material (<code>keys</code>). When a request cannot be fulfilled due to insufficient productio capacity or on-hand inventory, the system will try to reallocate it to the supplier that is next in line on the priority list (if <code>env.reallocate == true</code>).</li>
+<li><code>:production_cost::Dict</code>: unit production cost for each material (<code>keys</code>)</li>
+<li><code>:production_capacity::Dict</code>: maximum production capacity for each material (<code>keys</code>).</li>
+<li><code>:production_time::Dict</code>: production lead time for each material (<code>keys</code>).</li>
+</ul>
+<p><code>Distributors</code> will have the following fields in their node metadata:</p>
+<ul>
+<li><code>:initial_inventory::Dict</code>: initial inventory for each material (<code>keys</code>)</li>
+<li><code>:inventory_capacity::Dict</code>: maximum inventory for each material (<code>keys</code>)</li>
+<li><code>:holding_cost::Dict</code>: unit holding cost for each material (<code>keys</code>)</li>
+<li><code>:supplier_priority::Dict</code>: <code>Vector</code> of supplier priorities (from high to low) for each material (<code>keys</code>). When a request cannot be fulfilled due to insufficient productio capacity or on-hand inventory, the system will try to reallocate it to the supplier that is next in line on the priority list (if <code>env.reallocate == true</code>).</li>
+</ul>
+<p><code>Markets</code> will have the following fields in their node metadata:</p>
+<ul>
+<li><code>:initial_inventory::Dict</code>: initial inventory for each material (<code>keys</code>)</li>
+<li><code>:inventory_capacity::Dict</code>: maximum inventory for each material (<code>keys</code>)</li>
+<li><code>:holding_cost::Dict</code>: unit holding cost for each material (<code>keys</code>)</li>
+<li><code>:supplier_priority::Dict</code>: <code>Vector</code> of supplier priorities (from high to low) for each material (<code>keys</code>). When a request cannot be fulfilled due to insufficient productio capacity or on-hand inventory, the system will try to reallocate it to the supplier that is next in line on the priority list (if <code>env.reallocate == true</code>).</li>
+<li><code>:demand_distribution::Dict</code>: probability distributions from <a href="https://github.com/JuliaStats/Distributions.jl">Distributions.jl</a> for the market demands for each material (<code>keys</code>). For deterministic demand, instead of using a probability distribution, use <code>[D]</code> where <code>D</code> is a <code>Number</code>.</li>
+<li><code>:demand_frequency::Dict</code>: probability that demand will occur (value between <code>0.0</code> and <code>1.0</code>) for each material (<code>keys</code>)</li>
+<li><code>:sales_price::Dict</code>: market sales price for each material (<code>keys</code>)</li>
+<li><code>:demand_penalty::Dict</code>: unit penalty for unsatisfied market demand for each material (<code>keys</code>)</li>
+</ul>
+<h3><a id="user-content-edge-specific" class="anchor" aria-hidden="true" href="#edge-specific"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Edge-specific</h3>
+<p>All edges have the following fields in their metadata:</p>
+<ul>
+<li><code>:sales_price::Dict</code>: unit sales price for inventory sent on that edge (from supplier to receiver) for each material (<code>keys</code>)</li>
+<li><code>:transportation_cost::Dict</code>: unit transportation cost per period for inventory in-transit for each material (<code>keys</code>)</li>
+<li><code>:lead_time::Distribution{Univariate, Discrete}</code>: probability distributions from <a href="https://github.com/JuliaStats/Distributions.jl">Distributions.jl</a> for the lead times for each material (<code>keys</code>) on that edge. For deterministic lead times, instead of using a probability distribution, use <code>[L]</code> where <code>L</code> is a <code>Number</code>.</li>
+</ul>
+<h3><a id="user-content-general-network" class="anchor" aria-hidden="true" href="#general-network"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>General Network</h3>
+<p>The graph metadata should have the following fields in its metadata:</p>
+<ul>
+<li><code>:materials::Vector</code> with a list of all materials in the system.</li>
+<li><code>:bill_of_materials::Matrix</code>: bill of materials indicating the production recipies for the materials in the system. The row numbers correspond to the input materials and the column numbers to the output materials. The numbering matches that of the <code>materials</code> vector. The magnitude of each element is proportional to the production of one unit of output material. Each element can have one of three types of values:
+<ul>
+<li><code>zero</code>: input not involved in production of output.</li>
+<li><code>negative number</code>: input is consumed in the production of output.</li>
+<li><code>positive number</code>: input is a co-product of the output.</li>
+</ul>
+</li>
+</ul>
+<h2><a id="user-content-model-output" class="anchor" aria-hidden="true" href="#model-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Model Output</h2>
+<p>A <code>SupplyChainEnv</code> has the following fields:</p>
+<ul>
+<li><code>network::MetaDiGraph</code>: Supply Chain Network (metagraph)</li>
+<li><code>markets::Array</code>: list of market nodes</li>
+<li><code>producers::Array</code>: list of producer nodes</li>
+<li><code>distributors::Array</code>: list of distribution nodes (excludes end distributors where markets exist)</li>
+<li><code>materials::Array</code>: list of all material (material) names (strings)</li>
+<li><code>bill_of_materials::Matrix</code> square matrix with BOM (rows = input materials, cols = output materials; indices follow materials list; positive value is a co-product, negative is a feedstock)</li>
+<li><code>inv_on_hand::DataFrame</code>: timeseries On Hand Inventory @ each node at the end of each period</li>
+<li><code>inv_pipeline::DataFramet</code>: timeseries Pipeline Inventory on each edge at the end of each period</li>
+<li><code>inv_position::DataFrame</code>: timeseries Inventory Position for each node at the end of each period</li>
+<li><code>replenishments::DataFrame</code>: timeseries Replenishment orders placed on each edge at the end of each period</li>
+<li><code>shipments::DataFrame</code>: current shipments and time to arrival for each node</li>
+<li><code>production::DataFrame</code>: current material production committed to an edge and lead time to ship. Note: byproducts are scheduled to go to the producing node <code>n</code> (edge <code>(n,n)</code>).</li>
+<li><code>demand::DataFrame</code>: timeseries with realization of demand, sold units, unfulfilled demand, and backlog at each market</li>
+<li><code>profit::DataFrame</code>: timeseries with profit at each node</li>
+<li><code>reward::Float64</code>: reward in the system (used for RL)</li>
+<li><code>period::Int</code>: period in the simulation</li>
+<li><code>num_periods::Int</code>: number of periods in the simulation</li>
+<li><code>discount::Float64</code>: time discount factor (interest rate)</li>
+<li><code>backlog::Bool</code>: backlogging allowed if <code>true</code>; otherwise, unfulfilled demand is lost sales</li>
+<li><code>reallocate::Bool</code>: the system try to reallocate requests if they cannot be satisfied if <code>true</code>; otherwise, no reallocation is attempted.</li>
+<li><code>seed::Int</code>: random seed</li>
+</ul>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h2>
+<h3><a id="user-content-example-1" class="anchor" aria-hidden="true" href="#example-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example 1</h3>
+<p>This example is for a 100 period simulation of a supply network with one plant (node 1) that supplies a retailer (node 3), with stochastic demand for product <code>:A</code>. Node 3, has an alternate supplier, which is a distribution center (node 2). Node 3 prefers replenishing from the plant, which has a lower lead time. A <code>(s,S)</code> reorder policy is used at the retailer. When the on-hand level for material <code>:A</code> is depleted at the plant, the plant begins transforming raw material <code>:B</code> into <code>:A</code>. There is limited raw material supply at the plant. When the raw material stocks-out, node 3 switches to node 2 for its supply.</p>
+<p><em>See code <a href="https://github.com/hdavid16/InventoryManagement.jl/blob/master/examples/ex1.jl">here</a>.</em></p>
+<p><a target="_blank" rel="noopener noreferrer" href="examples/figs/ex1_profit.png"><img src="examples/figs/ex1_profit.png" alt="" style="max-width:100%;"></a>
+<a target="_blank" rel="noopener noreferrer" href="examples/figs/ex1_position.png"><img src="examples/figs/ex1_position.png" alt="" style="max-width:100%;"></a></p>
+<h3><a id="user-content-example-2" class="anchor" aria-hidden="true" href="#example-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example 2</h3>
+<p>This example is for a 100 period simulation of a supply network with one warehouse (node 1) that supplies a retailer (node 2) with stochastic demand for product <code>:A</code>. A <code>(r,Q)</code> reorder policy is used at the retailer every 25 periods.</p>
+<p><em>See code <a href="https://github.com/hdavid16/InventoryManagement.jl/blob/master/examples/ex2.jl">here</a>.</em></p>
+<p><a target="_blank" rel="noopener noreferrer" href="examples/figs/ex2_inventory.png"><img src="examples/figs/ex2_inventory.png" alt="" style="max-width:100%;"></a></p>
+<h3><a id="user-content-example-3" class="anchor" aria-hidden="true" href="#example-3"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example 3</h3>
+<p>This example shows how the simulator can be used for a chemical production system with co-production and material recycle. The system modeled is the batch plant described in <a href="https://www.sciencedirect.com/science/article/pii/009813549380015F?via%3Dihub" rel="nofollow">Kondili, et al. (1993)</a>, which can be modeled as the following supply network:</p>
+<p><a target="_blank" rel="noopener noreferrer" href="examples/figs/ex3_schematic_drawio.png"><img src="examples/figs/ex3_schematic_drawio.png" alt="" style="max-width:100%;"></a></p>
+<p><em>See code <a href="https://github.com/hdavid16/InventoryManagement.jl/blob/master/examples/ex3.jl">here</a>.</em></p>
+<p><a target="_blank" rel="noopener noreferrer" href="examples/figs/ex3_intermediate_tanks.png"><img src="examples/figs/ex3_intermediate_tanks.png" alt="" style="max-width:100%;"></a>
+<a target="_blank" rel="noopener noreferrer" href="examples/figs/ex3_product_tanks.png"><img src="examples/figs/ex3_product_tanks.png" alt="" style="max-width:100%;"></a>
+<a target="_blank" rel="noopener noreferrer" href="examples/figs/ex3_sales.png"><img src="examples/figs/ex3_sales.png" alt="" style="max-width:100%;"></a></p>
+<h2><a id="user-content-contact" class="anchor" aria-hidden="true" href="#contact"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Contact</h2>
+<p><strong>Author</strong>: Hector D. Perez<br>
+<strong>Position</strong>: Ph. D. Candidate @ Carnegie Mellon University<br>
+<strong>Email</strong>: <a href="mailto:hdperez@cmu.edu">hdperez@cmu.edu</a><br>
+<strong>Year</strong>: 2021</p>
+</article></div>

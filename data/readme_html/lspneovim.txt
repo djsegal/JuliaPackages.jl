@@ -17,7 +17,24 @@ be installed with the command <code>:LspInstall julials</code>.</p>
 <h3><a id="user-content-initvim-example" class="anchor" aria-hidden="true" href="#initvim-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><code>init.vim</code> Example</h3>
 <p>The following is an example of an <code>init.vim</code> using
 <a href="https://github.com/junegunn/vim-plug">vim-plug</a>.</p>
-<div class="highlight highlight-source-viml"><pre><span class="pl-c1">call</span> <span class="pl-en">plug#begin</span>(<span class="pl-s"><span class="pl-pds">'</span>~/.config/nvim/plugged<span class="pl-pds">'</span></span>)
+<div class="highlight highlight-source-viml position-relative" data-snippet-clipboard-copy-content="call plug#begin('~/.config/nvim/plugged')
+
+Plug 'neovim/nvim-lsp'
+&quot; the below is not required, but currently nvim-lsp is hard to configure without it
+Plug 'haorenW1025/diagnostic-nvim'
+
+call plug#end()
+
+&quot; the below is a Lua code block
+lua &lt;&lt; EOF
+    local nvim_lsp = require'nvim_lsp'
+    nvim_lsp.julials.setup({on_attach=require'diagnostic'.on_attach})
+EOF
+&quot; alternatively one can call `nvim_lsp.julials.setup()` above if not using diagnostic-nvim
+
+&quot; enable completion (requires separate plugin such as deoplete-lsp)
+autocmd Filetype julia setlocal omnifunc=v:lua.vim.lsp.omnifunc
+"><pre><span class="pl-c1">call</span> <span class="pl-en">plug#begin</span>(<span class="pl-s"><span class="pl-pds">'</span>~/.config/nvim/plugged<span class="pl-pds">'</span></span>)
 
 Plug <span class="pl-s"><span class="pl-pds">'</span>neovim/nvim-lsp<span class="pl-pds">'</span></span>
 <span class="pl-c"><span class="pl-c">"</span> the below is not required, but currently nvim-lsp is hard to configure without it</span>
@@ -40,7 +57,26 @@ neovim.</p>
 <p>LSPNeovim is normally run by nvim-lsp by running Julia in the LSPNeovim environment.  It
 is possible to explicitly define the Julia command run by nvim-lsp to start the language
 server.  For example</p>
-<div class="highlight highlight-source-lua"><pre><span class="pl-k">local</span> nvim_lsp <span class="pl-k">=</span> <span class="pl-c1">require</span><span class="pl-s"><span class="pl-pds">'</span>nvim_lsp<span class="pl-pds">'</span></span>
+<div class="highlight highlight-source-lua position-relative" data-snippet-clipboard-copy-content="local nvim_lsp = require'nvim_lsp'
+local configs = require'nvim_lsp/configs'
+-- Check if it's already defined for when I reload this file.
+if not nvim_lsp.julials then
+  configs.julials = {
+    default_config = {
+      cmd = {
+              &quot;julia&quot;, &quot;--project=/path/to/env&quot;, &quot;--startup-file=no&quot;, &quot;--history-file=no&quot;,
+              &quot;/path/to/runscript&quot;
+          };
+      filetypes = {'julia'};
+      root_dir = function(fname)
+        return nvim_lsp.util.find_git_ancestor(fname) or vim.loop.os_homedir()
+      end;
+      settings = {};
+    };
+  }
+end
+nvim_lsp.julials.setup{}
+"><pre><span class="pl-k">local</span> nvim_lsp <span class="pl-k">=</span> <span class="pl-c1">require</span><span class="pl-s"><span class="pl-pds">'</span>nvim_lsp<span class="pl-pds">'</span></span>
 <span class="pl-k">local</span> configs <span class="pl-k">=</span> <span class="pl-c1">require</span><span class="pl-s"><span class="pl-pds">'</span>nvim_lsp/configs<span class="pl-pds">'</span></span>
 <span class="pl-c"><span class="pl-c">--</span> Check if it's already defined for when I reload this file.</span>
 <span class="pl-k">if</span> <span class="pl-k">not</span> nvim_lsp.<span class="pl-smi">julials</span> <span class="pl-k">then</span>
@@ -75,11 +111,19 @@ If you set all indicators and warnings to be too aggressive, slight breakage can
 infuriating.  If you want to get all available features without being molested by broken
 highlights, you can use <a href="https://github.com/haorenW1025/diagnostic-nvim">diagnostic-nvim</a>
 and set the following</p>
-<div class="highlight highlight-source-viml"><pre><span class="pl-k">let</span> <span class="pl-smi"><span class="pl-k">g:</span>diagnostic_enable_virtual_text</span> <span class="pl-k">=</span> <span class="pl-c1">0</span>
+<div class="highlight highlight-source-viml position-relative" data-snippet-clipboard-copy-content="let g:diagnostic_enable_virtual_text = 0
+let g:diagnostic_show_sign = 0
+let g:diagnostic_enable_underline = 0
+"><pre><span class="pl-k">let</span> <span class="pl-smi"><span class="pl-k">g:</span>diagnostic_enable_virtual_text</span> <span class="pl-k">=</span> <span class="pl-c1">0</span>
 <span class="pl-k">let</span> <span class="pl-smi"><span class="pl-k">g:</span>diagnostic_show_sign</span> <span class="pl-k">=</span> <span class="pl-c1">0</span>
 <span class="pl-k">let</span> <span class="pl-smi"><span class="pl-k">g:</span>diagnostic_enable_underline</span> <span class="pl-k">=</span> <span class="pl-c1">0</span></pre></div>
 <p>To use available features on command, you will need to set keys for them, for example</p>
-<div class="highlight highlight-source-viml"><pre><span class="pl-c1">nnoremap</span> <span class="pl-c1">&lt;silent&gt;</span> <span class="pl-c1">&lt;leader&gt;</span><span class="pl-c1">lg</span> :<span class="pl-c1">lua</span> <span class="pl-c1">vim</span>.<span class="pl-c1">lsp</span>.util.<span class="pl-en">show_line_diagnostics</span>()<span class="pl-c1">&lt;CR&gt;</span>
+<div class="highlight highlight-source-viml position-relative" data-snippet-clipboard-copy-content="nnoremap &lt;silent&gt; &lt;leader&gt;lg :lua vim.lsp.util.show_line_diagnostics()&lt;CR&gt;
+nnoremap &lt;silent&gt; &lt;leader&gt;lh :lua vim.lsp.buf.hover()&lt;CR&gt;
+nnoremap &lt;silent&gt; &lt;leader&gt;lf :lua vim.lsp.buf.definition()&lt;CR&gt;
+nnoremap &lt;silent&gt; &lt;leader&gt;lr :lua vim.lsp.buf.references()&lt;CR&gt;
+nnoremap &lt;silent&gt; &lt;leader&gt;l0 :lua vim.lsp.buf.document_symbol()&lt;CR&gt;
+"><pre><span class="pl-c1">nnoremap</span> <span class="pl-c1">&lt;silent&gt;</span> <span class="pl-c1">&lt;leader&gt;</span><span class="pl-c1">lg</span> :<span class="pl-c1">lua</span> <span class="pl-c1">vim</span>.<span class="pl-c1">lsp</span>.util.<span class="pl-en">show_line_diagnostics</span>()<span class="pl-c1">&lt;CR&gt;</span>
 <span class="pl-c1">nnoremap</span> <span class="pl-c1">&lt;silent&gt;</span> <span class="pl-c1">&lt;leader&gt;</span><span class="pl-c1">lh</span> :<span class="pl-c1">lua</span> <span class="pl-c1">vim</span>.<span class="pl-c1">lsp</span>.<span class="pl-c1">buf</span>.<span class="pl-en">hover</span>()<span class="pl-c1">&lt;CR&gt;</span>
 <span class="pl-c1">nnoremap</span> <span class="pl-c1">&lt;silent&gt;</span> <span class="pl-c1">&lt;leader&gt;</span><span class="pl-c1">lf</span> :<span class="pl-c1">lua</span> <span class="pl-c1">vim</span>.<span class="pl-c1">lsp</span>.<span class="pl-c1">buf</span>.<span class="pl-en">definition</span>()<span class="pl-c1">&lt;CR&gt;</span>
 <span class="pl-c1">nnoremap</span> <span class="pl-c1">&lt;silent&gt;</span> <span class="pl-c1">&lt;leader&gt;</span><span class="pl-c1">lr</span> :<span class="pl-c1">lua</span> <span class="pl-c1">vim</span>.<span class="pl-c1">lsp</span>.<span class="pl-c1">buf</span>.<span class="pl-en">references</span>()<span class="pl-c1">&lt;CR&gt;</span>

@@ -1,0 +1,171 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-tensorrulesjl" class="anchor" aria-hidden="true" href="#tensorrulesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>TensorRules.jl</h1>
+<p><a href="https://github.com/ho-oto/TensorRules.jl/actions"><img src="https://github.com/ho-oto/TensorRules.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://github.com/invenia/BlueStyle"><img src="https://camo.githubusercontent.com/c18fbaa52d94d16b90b19701fc90d289b8a5bb920c74c79bab200b14e75420a4/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f636f64652532307374796c652d626c75652d3434393564312e737667" alt="Code Style: Blue" data-canonical-src="https://img.shields.io/badge/code%20style-blue-4495d1.svg" style="max-width:100%;"></a></p>
+<p><code>TensorRules.jl</code> provides a macro <code>@∇</code> (you can type <code>∇</code> by <code>\nabla&lt;tab&gt;</code>), which
+enable us to use automatic differentiation (AD) libraries (e.g.,
+<a href="https://github.com/FluxML/Zygote.jl"><code>Zygote.jl</code></a>,
+<a href="https://github.com/JuliaDiff/ForwardDiff.jl"><code>ForwardDiff.jl</code></a>)
+with <code>@tensor</code> and <code>@tensoropt</code> macros in <a href="https://github.com/Jutho/TensorOperations.jl"><code>TensorOperations.jl</code></a>.</p>
+<p><code>TensorRules.jl</code> uses <a href="https://github.com/JuliaDiff/ChainRulesCore.jl"><code>ChainRulesCore.jl</code></a> to define custom adjoints.
+So, you can use any AD libraries which supports <code>ChainRulesCore.jl</code>.</p>
+<h2><a id="user-content-how-to-use" class="anchor" aria-hidden="true" href="#how-to-use"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How to use</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using TensorOperations, TensorRules, Zygote;
+julia&gt; function foo(a, b, c) # define function with Einstein summation
+           # d_F = \sum_{A,B,C,D} a_{A,B,C} b_{C,D,E,F} c_{A,B,D,E}
+           @tensor d[F] := a[A, B, C] * b[C, D, E, F] * c[A, B, D, E]
+           return d[1]
+       end;
+julia&gt; a, b, c = randn(3, 4, 5), randn(5, 6, 7, 8), randn(3, 4, 6, 7);
+julia&gt; gradient(foo, a, b, c); # try to obtain gradient of `foo` by Zygote
+ERROR: this intrinsic must be compiled to be called
+Stacktrace:
+...
+julia&gt; @∇ function foo(a, b, c) # use @∇
+           @tensor d[F] := a[A, B, C] * b[C, D, E, F] * c[A, B, D, E]
+           return d[1]
+       end;
+julia&gt; gradient(foo, a, b, c); # it works!
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> TensorOperations, TensorRules, Zygote;
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b, c) <span class="pl-c"><span class="pl-c">#</span> define function with Einstein summation</span>
+           <span class="pl-c"><span class="pl-c">#</span> d_F = \sum_{A,B,C,D} a_{A,B,C} b_{C,D,E,F} c_{A,B,D,E}</span>
+           <span class="pl-c1">@tensor</span> d[F] <span class="pl-k">:=</span> a[A, B, C] <span class="pl-k">*</span> b[C, D, E, F] <span class="pl-k">*</span> c[A, B, D, E]
+           <span class="pl-k">return</span> d[<span class="pl-c1">1</span>]
+       <span class="pl-k">end</span>;
+julia<span class="pl-k">&gt;</span> a, b, c <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>), <span class="pl-c1">randn</span>(<span class="pl-c1">5</span>, <span class="pl-c1">6</span>, <span class="pl-c1">7</span>, <span class="pl-c1">8</span>), <span class="pl-c1">randn</span>(<span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">6</span>, <span class="pl-c1">7</span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">gradient</span>(foo, a, b, c); <span class="pl-c"><span class="pl-c">#</span> try to obtain gradient of `foo` by Zygote</span>
+ERROR<span class="pl-k">:</span> this intrinsic must be compiled to be called
+Stacktrace<span class="pl-k">:</span>
+<span class="pl-k">...</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@∇</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b, c) <span class="pl-c"><span class="pl-c">#</span> use @∇</span>
+           <span class="pl-c1">@tensor</span> d[F] <span class="pl-k">:=</span> a[A, B, C] <span class="pl-k">*</span> b[C, D, E, F] <span class="pl-k">*</span> c[A, B, D, E]
+           <span class="pl-k">return</span> d[<span class="pl-c1">1</span>]
+       <span class="pl-k">end</span>;
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">gradient</span>(foo, a, b, c); <span class="pl-c"><span class="pl-c">#</span> it works!</span></pre></div>
+<h2><a id="user-content-how-it-works" class="anchor" aria-hidden="true" href="#how-it-works"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How it works</h2>
+<p>The strategy of <code>TensorRules.jl</code> are very similar to <a href="https://github.com/mcabbott/TensorGrad.jl"><code>TensorGrad.jl</code></a>.</p>
+<p><code>@∇</code> converts functions which contains <code>@tensor</code> or <code>@tensoropt</code> macro.
+First, <code>@∇</code> detects <code>@tensor</code> or <code>@tensoropt</code> expressions in function definition
+and convert them to inlined functions.
+Then, <code>@∇</code> define custom adjoint rules for the generated functions.</p>
+<p>For example, the following definition</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@∇ function foo(a, b, c, d, e, f)
+    @tensoropt !C x[A, B] := conj(a[A, C]) * sin.(b)[C, D] * c.d[D, B] + d * e[1, 2][A, B]
+    x = x + f
+    @tensor x[A, B] += a[A, C] * (a * a)[C, B]
+    return x
+end
+"><pre><span class="pl-c1">@∇</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b, c, d, e, f)
+    <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C x[A, B] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(a[A, C]) <span class="pl-k">*</span> <span class="pl-c1">sin</span>.(b)[C, D] <span class="pl-k">*</span> c<span class="pl-k">.</span>d[D, B] <span class="pl-k">+</span> d <span class="pl-k">*</span> e[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>][A, B]
+    x <span class="pl-k">=</span> x <span class="pl-k">+</span> f
+    <span class="pl-c1">@tensor</span> x[A, B] <span class="pl-k">+=</span> a[A, C] <span class="pl-k">*</span> (a <span class="pl-k">*</span> a)[C, B]
+    <span class="pl-k">return</span> x
+<span class="pl-k">end</span></pre></div>
+<p>will be converted to a code equivalent to</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function foo(a, b, c, d, e, f)
+    x = _foo_1(a, sin.(a), c.d, d, e[1, 2])
+    x = x + f
+    x += _foo_2(a, a * a)
+    return x
+end
+
+@inline _foo_1(x1, x2, x3, x4, x5) =
+    @tensoropt !C _[A, B] := conj(x1[A, C]) * x2[C, D] * x3[D, B] + x4 * x5[A, B]
+
+@inline _foo_2(x1, x2) = @tensor _[A, B] := x1[A, C] * x2[C, B]
+
+function rrule(::typeof(_foo_1), x1, x2, x3, x4, x5)
+    f = _foo_1(x1, x2, x3, x4, x5)
+    function _foo_1_pullback(Δf)
+        Δx1 = InplaceableThunk(
+            Thunk(() -&gt; @tensoropt !C Δx1[A, C] := conj(Δf[A, B]) * x2[C, D] * x3[D, B]),
+            Δx1 -&gt; @tensoropt !C Δx1[A, C] += conj(Δf[A, B]) * x2[C, D] * x3[D, B]
+        )
+        Δx2 = InplaceableThunk(
+            Thunk(() -&gt; @tensoropt !C Δx2[C, D] := conj(conj(x1[A, C]) * conj(Δf[A, B]) * x3[D, B])),
+            Δx2 -&gt; @tensoropt !C Δx2[C, D] += conj(conj(x1[A, C]) * conj(Δf[A, B]) * x3[D, B])
+        )
+        Δx3 = InplaceableThunk(
+            Thunk(() -&gt; @tensoropt !C Δx3[D, B] := conj(conj(x1[A, C]) * x2[C, D] * conj(Δf[A, B]))),
+            Δx3 -&gt; @tensoropt !C Δx3[D, B] += conj(conj(x1[A, C]) * x2[C, D] * conj(Δf[A, B]))
+        )
+        Δx4 = Thunk(() -&gt; first(@tensoropt !C Δx4[] := conj(conj(Δf[A, B]) * x5[A, B])))
+        Δx5 = InplaceableThunk(
+            Thunk(() -&gt; @tensoropt !C Δx5[A, B] := conj(x4 * conj(Δf[A, B]))),
+            Δx5 -&gt; @tensoropt !C Δx5[A, B] := conj(x4 * conj(Δf[A, B]))
+        )
+        return (NO_FIELDS, Δx1, Δx2, Δx3, Δx4, Δx5)
+    end
+    return f, _foo_1_pullback
+end
+
+function rrule(::typeof(_foo_2), x1, x2)
+    ...
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b, c, d, e, f)
+    x <span class="pl-k">=</span> <span class="pl-c1">_foo_1</span>(a, <span class="pl-c1">sin</span>.(a), c<span class="pl-k">.</span>d, d, e[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>])
+    x <span class="pl-k">=</span> x <span class="pl-k">+</span> f
+    x <span class="pl-k">+=</span> <span class="pl-c1">_foo_2</span>(a, a <span class="pl-k">*</span> a)
+    <span class="pl-k">return</span> x
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@inline</span> <span class="pl-en">_foo_1</span>(x1, x2, x3, x4, x5) <span class="pl-k">=</span>
+    <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C _[A, B] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(x1[A, C]) <span class="pl-k">*</span> x2[C, D] <span class="pl-k">*</span> x3[D, B] <span class="pl-k">+</span> x4 <span class="pl-k">*</span> x5[A, B]
+
+<span class="pl-c1">@inline</span> <span class="pl-en">_foo_2</span>(x1, x2) <span class="pl-k">=</span> <span class="pl-c1">@tensor</span> _[A, B] <span class="pl-k">:=</span> x1[A, C] <span class="pl-k">*</span> x2[C, B]
+
+<span class="pl-k">function</span> <span class="pl-en">rrule</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(_foo_1), x1, x2, x3, x4, x5)
+    f <span class="pl-k">=</span> <span class="pl-c1">_foo_1</span>(x1, x2, x3, x4, x5)
+    <span class="pl-k">function</span> <span class="pl-en">_foo_1_pullback</span>(Δf)
+        Δx1 <span class="pl-k">=</span> <span class="pl-c1">InplaceableThunk</span>(
+            <span class="pl-c1">Thunk</span>(() <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx1[A, C] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(Δf[A, B]) <span class="pl-k">*</span> x2[C, D] <span class="pl-k">*</span> x3[D, B]),
+            Δx1 <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx1[A, C] <span class="pl-k">+=</span> <span class="pl-c1">conj</span>(Δf[A, B]) <span class="pl-k">*</span> x2[C, D] <span class="pl-k">*</span> x3[D, B]
+        )
+        Δx2 <span class="pl-k">=</span> <span class="pl-c1">InplaceableThunk</span>(
+            <span class="pl-c1">Thunk</span>(() <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx2[C, D] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(<span class="pl-c1">conj</span>(x1[A, C]) <span class="pl-k">*</span> <span class="pl-c1">conj</span>(Δf[A, B]) <span class="pl-k">*</span> x3[D, B])),
+            Δx2 <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx2[C, D] <span class="pl-k">+=</span> <span class="pl-c1">conj</span>(<span class="pl-c1">conj</span>(x1[A, C]) <span class="pl-k">*</span> <span class="pl-c1">conj</span>(Δf[A, B]) <span class="pl-k">*</span> x3[D, B])
+        )
+        Δx3 <span class="pl-k">=</span> <span class="pl-c1">InplaceableThunk</span>(
+            <span class="pl-c1">Thunk</span>(() <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx3[D, B] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(<span class="pl-c1">conj</span>(x1[A, C]) <span class="pl-k">*</span> x2[C, D] <span class="pl-k">*</span> <span class="pl-c1">conj</span>(Δf[A, B]))),
+            Δx3 <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx3[D, B] <span class="pl-k">+=</span> <span class="pl-c1">conj</span>(<span class="pl-c1">conj</span>(x1[A, C]) <span class="pl-k">*</span> x2[C, D] <span class="pl-k">*</span> <span class="pl-c1">conj</span>(Δf[A, B]))
+        )
+        Δx4 <span class="pl-k">=</span> <span class="pl-c1">Thunk</span>(() <span class="pl-k">-&gt;</span> <span class="pl-c1">first</span>(<span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx4[] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(<span class="pl-c1">conj</span>(Δf[A, B]) <span class="pl-k">*</span> x5[A, B])))
+        Δx5 <span class="pl-k">=</span> <span class="pl-c1">InplaceableThunk</span>(
+            <span class="pl-c1">Thunk</span>(() <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx5[A, B] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(x4 <span class="pl-k">*</span> <span class="pl-c1">conj</span>(Δf[A, B]))),
+            Δx5 <span class="pl-k">-&gt;</span> <span class="pl-c1">@tensoropt</span> <span class="pl-k">!</span>C Δx5[A, B] <span class="pl-k">:=</span> <span class="pl-c1">conj</span>(x4 <span class="pl-k">*</span> <span class="pl-c1">conj</span>(Δf[A, B]))
+        )
+        <span class="pl-k">return</span> (NO_FIELDS, Δx1, Δx2, Δx3, Δx4, Δx5)
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> f, _foo_1_pullback
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">rrule</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(_foo_2), x1, x2)
+    <span class="pl-k">...</span>
+<span class="pl-k">end</span></pre></div>
+<p>By using <code>Thunk</code> and <code>InplaceableThunk</code> properly, adjoints will be evaluated only
+if they are needed.</p>
+<h2><a id="user-content-unsupported-features" class="anchor" aria-hidden="true" href="#unsupported-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>unsupported features</h2>
+<ul>
+<li><code>@∇</code> uses <code>@capture</code> macro defined in <a href="https://github.com/FluxML/MacroTools.jl"><code>MacroTools.jl</code></a>
+to parse <code>Expr</code>. Because of the limitation of <code>@capture</code> macro,
+index notations based on <code>:typed_vcat</code> and <code>:typed_hcat</code> (<code>A[a; b], A[a b]</code>)
+are unsupported. Please use <code>A[a, b]</code> style.</li>
+<li>Designations of contraction order based on <code>ord=(...)</code> or NCON style are unsupported.
+Please use <code>@tensoropt</code> and specify costs of each bonds.</li>
+<li>Since <code>Zygote.jl</code> does not support inplace operations, we cannot use <code>@tensor A[] = ...</code>
+in the expression. Please use <code>:=</code>, <code>+=</code> and <code>-=</code> instead.</li>
+</ul>
+<h2><a id="user-content-todo" class="anchor" aria-hidden="true" href="#todo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>TODO</h2>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> support <code>frule</code></li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> support <code>@tensor</code> block (<code>@tensor begin ... end</code>)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> support higher order differentiation (by applying <code>@∇</code> to <code>rrule</code> and <code>frule</code> recursively)
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> add more test (higher order differentiations are not well tested
+since <code>Zygote.jl</code> has poor support of higher order differentiation...<g-emoji class="g-emoji" alias="disappointed" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f61e.png">😞</g-emoji>)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> better support of <code>InplaceableThunk</code> (in this version, when we use <code>@∇ i foo(...) = ...</code>
+where <code>i &gt; 1</code>, <code>InplaceableThunk</code> will be disabled)</li>
+</ul>
+</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> use <code>@thunk</code> ?</li>
+</ul>
+</article></div>

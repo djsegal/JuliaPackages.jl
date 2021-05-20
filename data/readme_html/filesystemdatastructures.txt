@@ -1,0 +1,81 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-filesystemdatastructuresjl" class="anchor" aria-hidden="true" href="#filesystemdatastructuresjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>FilesystemDatastructures.jl</h1>
+<p>This package collects useful filesystem datastructures.  Currently, it implements two file caches: <code>SizeConstrainedFileCache</code> and <code>NFileCache</code>.</p>
+<h2><a id="user-content-sizeconstrainedfilecache" class="anchor" aria-hidden="true" href="#sizeconstrainedfilecache"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><code>SizeConstrainedFileCache</code></h2>
+<p>The SCFC implements a flexible filesystem cache that can evict entries when a size pressure is applied.  Currently there is built-in support for eviction policies such as Least-Recently-Used (<code>LRU</code>) and Least-Frequently-Used (<code>LFU</code>), as well as target size policies such as a constant size, or a mandate to keep at least X bytes on disk free.</p>
+<p>Example usage:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using FilesystemDatastructures
+
+# Note!! This is a potentially destructive operation: the file cache root will be
+# managed by the cache and files therein will be deleted when the constraints are
+# violated. Be careful with what you use as the root!
+
+root = mktempdir()
+# File cache that keep 10GB free
+scfc = SizeConstrainedFileCache(root, TargetSizeKeepFree(10*1024^3), DiscardLRU())
+
+# Add a new file:
+key = &quot;small_file&quot;
+filesize = 10*1024
+filedata = rand(UInt8, filesize)
+path = add!(scfc, key, filesize)
+open(path, &quot;w&quot;) do io
+    write(path, filedata)
+end
+
+# Check to see if that file is there (and also increment its usage counters)
+@show hit!(scfc, key)
+
+# Delete that file and its usage counters
+delete!(scfc, key)
+
+# Show that hit!() now returns false:
+@show hit!(scfc, key)
+"><pre><span class="pl-k">using</span> FilesystemDatastructures
+
+<span class="pl-c"><span class="pl-c">#</span> Note!! This is a potentially destructive operation: the file cache root will be</span>
+<span class="pl-c"><span class="pl-c">#</span> managed by the cache and files therein will be deleted when the constraints are</span>
+<span class="pl-c"><span class="pl-c">#</span> violated. Be careful with what you use as the root!</span>
+
+root <span class="pl-k">=</span> <span class="pl-c1">mktempdir</span>()
+<span class="pl-c"><span class="pl-c">#</span> File cache that keep 10GB free</span>
+scfc <span class="pl-k">=</span> <span class="pl-c1">SizeConstrainedFileCache</span>(root, <span class="pl-c1">TargetSizeKeepFree</span>(<span class="pl-c1">10</span><span class="pl-k">*</span><span class="pl-c1">1024</span><span class="pl-k">^</span><span class="pl-c1">3</span>), <span class="pl-c1">DiscardLRU</span>())
+
+<span class="pl-c"><span class="pl-c">#</span> Add a new file:</span>
+key <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>small_file<span class="pl-pds">"</span></span>
+filesize <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">*</span><span class="pl-c1">1024</span>
+filedata <span class="pl-k">=</span> <span class="pl-c1">rand</span>(UInt8, filesize)
+path <span class="pl-k">=</span> <span class="pl-c1">add!</span>(scfc, key, filesize)
+<span class="pl-c1">open</span>(path, <span class="pl-s"><span class="pl-pds">"</span>w<span class="pl-pds">"</span></span>) <span class="pl-k">do</span> io
+    <span class="pl-c1">write</span>(path, filedata)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Check to see if that file is there (and also increment its usage counters)</span>
+<span class="pl-c1">@show</span> <span class="pl-c1">hit!</span>(scfc, key)
+
+<span class="pl-c"><span class="pl-c">#</span> Delete that file and its usage counters</span>
+<span class="pl-c1">delete!</span>(scfc, key)
+
+<span class="pl-c"><span class="pl-c">#</span> Show that hit!() now returns false:</span>
+<span class="pl-c1">@show</span> <span class="pl-c1">hit!</span>(scfc, key)</pre></div>
+<h2><a id="user-content-nfilecache" class="anchor" aria-hidden="true" href="#nfilecache"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><code>NFileCache</code></h2>
+<p>The <code>NFileCache</code> is similar to <code>SizeConstrainedFileCache</code> but targets number of files in the cache rather than number of bytes. <code>NFileCache</code> supports the same built-in eviction strategies <code>LRU</code> and <code>LFU</code>. The interface is the same (<code>add!</code>, <code>hit!</code>, <code>delete!</code>, see above).</p>
+<p>Example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using FilesystemDatastructures
+
+# Note!! This is a potentially destructive operation: the file cache root will be
+# managed by the cache and files therein will be deleted when the constraints are
+# violated. Be careful with what you use as the root!
+
+root = mktempdir()
+# Create a cache that retains maximum 10 files
+fc = NFileCache(root, 10, DiscardLRU())
+"><pre><span class="pl-k">using</span> FilesystemDatastructures
+
+<span class="pl-c"><span class="pl-c">#</span> Note!! This is a potentially destructive operation: the file cache root will be</span>
+<span class="pl-c"><span class="pl-c">#</span> managed by the cache and files therein will be deleted when the constraints are</span>
+<span class="pl-c"><span class="pl-c">#</span> violated. Be careful with what you use as the root!</span>
+
+root <span class="pl-k">=</span> <span class="pl-c1">mktempdir</span>()
+<span class="pl-c"><span class="pl-c">#</span> Create a cache that retains maximum 10 files</span>
+fc <span class="pl-k">=</span> <span class="pl-c1">NFileCache</span>(root, <span class="pl-c1">10</span>, <span class="pl-c1">DiscardLRU</span>())</pre></div>
+</article></div>

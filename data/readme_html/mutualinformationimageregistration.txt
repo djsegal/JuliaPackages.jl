@@ -1,0 +1,87 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-mutualinformationimageregistration" class="anchor" aria-hidden="true" href="#mutualinformationimageregistration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>MutualInformationImageRegistration</h1>
+<p><a href="https://Octogonapus.github.io/MutualInformationImageRegistration.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://Octogonapus.github.io/MutualInformationImageRegistration.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a>
+<a href="https://github.com/Octogonapus/MutualInformationImageRegistration.jl/actions"><img src="https://github.com/Octogonapus/MutualInformationImageRegistration.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/Octogonapus/MutualInformationImageRegistration.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/17ffb068d8e3627ec2c31f09f08c374f6a1bec8f2fb7c426789d6d6516afbaaf/68747470733a2f2f636f6465636f762e696f2f67682f4f63746f676f6e617075732f4d757475616c496e666f726d6174696f6e496d616765526567697374726174696f6e2e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/Octogonapus/MutualInformationImageRegistration.jl/branch/main/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>MutualInformationImageRegistration performs image registration (i.e. the problem of aligning two similar images) using
+<a href="https://en.wikipedia.org/wiki/Mutual_information" rel="nofollow">mutual information</a>.
+This package is meant to be used to quickly register many relatively small images within a larger image.
+This package only supports computing a translation to register images; rotation and other warping is a non-goal.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using MutualInformationImageRegistration, FastHistograms, Random
+
+# Create the container used to hold intermediate variables for registration
+mi = MutualInformationContainer(SingleThreadFixedWidth2DHistogram())
+
+# Create the full image that the smaller images to register will be pulled from
+full_image = rand(UInt8, 500, 300)
+
+# The fixed image is the image that the other images are registered against
+fixed = full_image[(300-10):(330+10), (200-10):(220+10)]
+
+# A buffer is needed to hold intermediate data
+buffer = Array{UInt8}(undef, (size(fixed) .+ (MAX_SHIFT * 2))...)
+
+# The max shift is the maximum search range
+MAX_SHIFT = 11
+# Padding is used to grow the bbox for higher quality registration
+padding = [-10, -10, 10, 10]
+
+# Introduce a random shift to the moving bbox
+expected_x = rand(-5:5)
+expected_y = rand(-5:5)
+
+# Register the image given by the bbox (called the moving bbox) against the fixed image
+shift, mm, mms = register!(
+    mi,
+    full_image,
+    fixed,
+    [300, 200, 330, 220] .+ padding .+ [expected_x, expected_y, expected_x, expected_y],
+    MAX_SHIFT,
+    MAX_SHIFT,
+    buffer
+)
+
+# The shift we get out should be equal and opposite of the shift we applied
+@test shift == (-expected_x, -expected_y)
+"><pre><span class="pl-k">using</span> MutualInformationImageRegistration, FastHistograms, Random
+
+<span class="pl-c"><span class="pl-c">#</span> Create the container used to hold intermediate variables for registration</span>
+mi <span class="pl-k">=</span> <span class="pl-c1">MutualInformationContainer</span>(<span class="pl-c1">SingleThreadFixedWidth2DHistogram</span>())
+
+<span class="pl-c"><span class="pl-c">#</span> Create the full image that the smaller images to register will be pulled from</span>
+full_image <span class="pl-k">=</span> <span class="pl-c1">rand</span>(UInt8, <span class="pl-c1">500</span>, <span class="pl-c1">300</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> The fixed image is the image that the other images are registered against</span>
+fixed <span class="pl-k">=</span> full_image[(<span class="pl-c1">300</span><span class="pl-k">-</span><span class="pl-c1">10</span>)<span class="pl-k">:</span>(<span class="pl-c1">330</span><span class="pl-k">+</span><span class="pl-c1">10</span>), (<span class="pl-c1">200</span><span class="pl-k">-</span><span class="pl-c1">10</span>)<span class="pl-k">:</span>(<span class="pl-c1">220</span><span class="pl-k">+</span><span class="pl-c1">10</span>)]
+
+<span class="pl-c"><span class="pl-c">#</span> A buffer is needed to hold intermediate data</span>
+buffer <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{UInt8}</span>(undef, (<span class="pl-c1">size</span>(fixed) <span class="pl-k">.+</span> (MAX_SHIFT <span class="pl-k">*</span> <span class="pl-c1">2</span>))<span class="pl-k">...</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> The max shift is the maximum search range</span>
+MAX_SHIFT <span class="pl-k">=</span> <span class="pl-c1">11</span>
+<span class="pl-c"><span class="pl-c">#</span> Padding is used to grow the bbox for higher quality registration</span>
+padding <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-k">-</span><span class="pl-c1">10</span>, <span class="pl-c1">10</span>, <span class="pl-c1">10</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Introduce a random shift to the moving bbox</span>
+expected_x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+expected_y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-k">-</span><span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Register the image given by the bbox (called the moving bbox) against the fixed image</span>
+shift, mm, mms <span class="pl-k">=</span> <span class="pl-c1">register!</span>(
+    mi,
+    full_image,
+    fixed,
+    [<span class="pl-c1">300</span>, <span class="pl-c1">200</span>, <span class="pl-c1">330</span>, <span class="pl-c1">220</span>] <span class="pl-k">.+</span> padding <span class="pl-k">.+</span> [expected_x, expected_y, expected_x, expected_y],
+    MAX_SHIFT,
+    MAX_SHIFT,
+    buffer
+)
+
+<span class="pl-c"><span class="pl-c">#</span> The shift we get out should be equal and opposite of the shift we applied</span>
+<span class="pl-c1">@test</span> shift <span class="pl-k">==</span> (<span class="pl-k">-</span>expected_x, <span class="pl-k">-</span>expected_y)</pre></div>
+<h2><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>References</h2>
+<p>The mutual information implementation is based on <a href="https://matthew-brett.github.io/teaching/mutual_information.html" rel="nofollow">this work</a> by Matthew Brett.</p>
+<h2><a id="user-content-benchmarks" class="anchor" aria-hidden="true" href="#benchmarks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Benchmarks</h2>
+<p>With two 50x40 8-bit images and an expected shift of (-5, 5), MutualInformationImageRegistration runs in 1.2 ms.</p>
+</article></div>

@@ -1,4 +1,5 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-cqldriver" class="anchor" aria-hidden="true" href="#cqldriver"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>CQLdriver</h1>
+<p><a href="https://travis-ci.com/r3tex/CQLdriver.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/0908d585c3131854bfe3ed11936a2d90ca26182a26be453d71f1bf74f68ed66d/68747470733a2f2f7472617669732d63692e636f6d2f72337465782f43514c6472697665722e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/r3tex/CQLdriver.jl.svg?branch=master" style="max-width:100%;"></a></p>
 <p>This Julia package is an interface to ScyllaDB / Cassandra and is based on the Datastax <a href="http://datastax.github.io/cpp-driver/" rel="nofollow">CPP driver</a> implementing the CQL v3 binary protocol. The package is missing very many features, but it does two things quite well:</p>
 <ul>
 <li>write very many rows quickly</li>
@@ -69,7 +70,17 @@
 <p><code>cqlinit()</code> will return a tuple with 2 pointers and a <code>UInt16</code> error code which you can check.
 If the returned value is <code>0</code> then you're in good shape.
 It also lets you tune some performance characteristics of your connection.</p>
-<pre><code>julia&gt; session, cluster, err = cqlinit("192.168.1.128, 192.168.1.140")
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; session, cluster, err = cqlinit(&quot;192.168.1.128, 192.168.1.140&quot;)
+julia&gt; const CQL_OK = 0x0000
+julia&gt; @assert err == CQL_OK
+julia&gt; cqlclose(session, cluster)
+
+julia&gt; hosts = &quot;192.168.1.128, 192.168.1.140&quot;
+julia&gt; session, cluster, err = cqlinit(hosts, threads = 1, connections = 2, 
+                                       queuesize = 4096, bytelimit = 65536, requestlimit = 256,
+                                       username=&quot;admin&quot;, password=&quot;s3cr!t&quot;)
+julia&gt; cqlclose(session, cluster)
+"><pre><code>julia&gt; session, cluster, err = cqlinit("192.168.1.128, 192.168.1.140")
 julia&gt; const CQL_OK = 0x0000
 julia&gt; @assert err == CQL_OK
 julia&gt; cqlclose(session, cluster)
@@ -79,22 +90,34 @@ julia&gt; session, cluster, err = cqlinit(hosts, threads = 1, connections = 2,
                                        queuesize = 4096, bytelimit = 65536, requestlimit = 256,
                                        username="admin", password="s3cr!t")
 julia&gt; cqlclose(session, cluster)
-</code></pre>
+</code></pre></div>
 <p>The driver tries to be smart about detecting all the nodes in the cluster and keeping the connection alive.</p>
 <h3><a id="user-content-writing-data" class="anchor" aria-hidden="true" href="#writing-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Writing data</h3>
 <p><code>cqlwrite()</code> takes a <code>DataFrame</code> with named columns, or a <code>JuliaDB</code> table.
 Make sure that the column names in your DataFrame are the same as those in table you are writing to.
 By default it will write 1000 rows per batch and will make 5 attemps at writing each batch.</p>
 <p>For appending new rows to tables:</p>
-<pre><code>julia&gt; table = "data.refrigerator"
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; table = &quot;data.refrigerator&quot;
+julia&gt; data = DataFrame(veggies = [&quot;Carrots&quot;, &quot;Broccoli&quot;], amount = [3, 5])
+julia&gt; err = cqlwrite(session, table, data)
+"><pre><code>julia&gt; table = "data.refrigerator"
 julia&gt; data = DataFrame(veggies = ["Carrots", "Broccoli"], amount = [3, 5])
 julia&gt; err = cqlwrite(session, table, data)
-</code></pre>
+</code></pre></div>
 <p>For updating a table you must provide additional arguments.
 Consider the following statement which updates a table that uses counters:
 <code>UPDATE data.car SET speed = speed + ?, temp = temp + ? WHERE partid = ?</code>
 The query below is analogous to the statement above:</p>
-<pre><code>julia&gt; table = "data.car"
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; table = &quot;data.car&quot;
+julia&gt; data = DataFrame(speed=[1,2], temp=[4,5], partid=[&quot;wheel1&quot;,&quot;wheel2&quot;])
+julia&gt; err = cqlwrite(session, 
+                      table, 
+                      data[:,[:speed, :total]],
+                      update = data[:,[:partid]],
+                      batchsize = 10000,
+                      retries = 6,
+                      counter = true)
+"><pre><code>julia&gt; table = "data.car"
 julia&gt; data = DataFrame(speed=[1,2], temp=[4,5], partid=["wheel1","wheel2"])
 julia&gt; err = cqlwrite(session, 
                       table, 
@@ -103,11 +126,19 @@ julia&gt; err = cqlwrite(session,
                       batchsize = 10000,
                       retries = 6,
                       counter = true)
-</code></pre>
+</code></pre></div>
 <h3><a id="user-content-reading-data" class="anchor" aria-hidden="true" href="#reading-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Reading data</h3>
 <p><code>cqlread()</code> pulls down data in 10000-row pages by default.
 It will do 5 retries per page and collate everything into a <code>DataFrame</code> with typed and named columns.</p>
-<pre><code>julia&gt; query = "SELECT * FROM data.car"
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; query = &quot;SELECT * FROM data.car&quot;
+julia&gt; err, output = cqlread(session, query)
+
+(0x0000, 2×3 DataFrames.DataFrame
+│ Row │ speed │ temp │ partid   │
+├┼┼┼┤
+│ 1   │ 1     │ 4    │ &quot;wheel1&quot; │
+│ 2   │ 2     │ 5    │ &quot;wheel2&quot; │)
+"><pre><code>julia&gt; query = "SELECT * FROM data.car"
 julia&gt; err, output = cqlread(session, query)
 
 (0x0000, 2×3 DataFrames.DataFrame
@@ -115,27 +146,41 @@ julia&gt; err, output = cqlread(session, query)
 ├┼┼┼┤
 │ 1   │ 1     │ 4    │ "wheel1" │
 │ 2   │ 2     │ 5    │ "wheel2" │)
-</code></pre>
+</code></pre></div>
 <p>Changing the page size might affect performance.
 You can also increase the number of characters allowed for string types.</p>
-<pre><code>julia&gt; query = "SELECT * FROM data.bigtable LIMIT 1000000"
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; query = &quot;SELECT * FROM data.bigtable LIMIT 1000000&quot;
 julia&gt; err, output = cqlread(session, 
                              query, 
                              pgsize = 15000, 
                              retries = 6, 
                              strlen = 1024)
-</code></pre>
+"><pre><code>julia&gt; query = "SELECT * FROM data.bigtable LIMIT 1000000"
+julia&gt; err, output = cqlread(session, 
+                             query, 
+                             pgsize = 15000, 
+                             retries = 6, 
+                             strlen = 1024)
+</code></pre></div>
 <p>You can send in an array of different queries and the driver will execute them asynchronously and return an array of resulting dataframes.</p>
-<pre><code>julia&gt; query = ["SELECT * FROM data.bigtable WHERE driver=124","SELECT * FROM data.smalltable WHERE car=144"]
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; query = [&quot;SELECT * FROM data.bigtable WHERE driver=124&quot;,&quot;SELECT * FROM data.smalltable WHERE car=144&quot;]
 julia&gt; err, output = cqlread(session, 
                              query, 
                              concurrency=500, 
                              timeout = 12000)
 
-</code></pre>
+"><pre><code>julia&gt; query = ["SELECT * FROM data.bigtable WHERE driver=124","SELECT * FROM data.smalltable WHERE car=144"]
+julia&gt; err, output = cqlread(session, 
+                             query, 
+                             concurrency=500, 
+                             timeout = 12000)
+
+</code></pre></div>
 <h3><a id="user-content-executing-commands" class="anchor" aria-hidden="true" href="#executing-commands"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Executing commands</h3>
 <p><code>cqlexec()</code> runs your command on the database and returns a 0x0000 if everything went OK.</p>
-<pre><code>julia&gt; cmd = "CREATE TABLE test.example (id int, data text, PRIMARY KEY (id));"
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; cmd = &quot;CREATE TABLE test.example (id int, data text, PRIMARY KEY (id));&quot;
 julia&gt; err = cqlexec(session, cmd)
-</code></pre>
+"><pre><code>julia&gt; cmd = "CREATE TABLE test.example (id int, data text, PRIMARY KEY (id));"
+julia&gt; err = cqlexec(session, cmd)
+</code></pre></div>
 </article></div>

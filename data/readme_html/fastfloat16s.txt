@@ -1,0 +1,49 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-fastfloat16sjl---software-emulated-float16-but-fast" class="anchor" aria-hidden="true" href="#fastfloat16sjl---software-emulated-float16-but-fast"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>FastFloat16s.jl - Software-emulated Float16, but fast.</h1>
+<p>NOTE: THIS PACKAGE IS DEPRECATED FOR JULIA &gt;=1.6 AS THE SUPPORT OF LLVM'S HALF FOR JULIA'S FLOAT16 IS SIMILARLY FAST.</p>
+<p>FastFloat16s.jl emulates Float16 similar to Julia's inbuilt type, but stores them as
+Float32 internally. Although 32-bit are therefore used for storing every FastFloat16
+number, avoiding the recalculation of the exponent bits makes them about 20–30x faster.
+Arithmetically, FastFloat16 is identical to Float16.</p>
+<p>For all numbers larger equal subnormal on every arithmetic operation the significant
+bits of Float32 are round to the nearest 10 significant bits. For Float16-subnormals
+the precision of 10 bits is reduced every power of 2 down by 1 bit – to match the
+IEEE standard. As FastFloat16s are essentially Float32 but always round to the nearest
+Float16 in the subset of all Float32 no conversion of the exponent bits is needed
+which makes them much faster.</p>
+<p>As with Float16, FastFloat16 underflow below minpos/2 and overflow above floatmax.</p>
+<h2><a id="user-content-benchmarking" class="anchor" aria-hidden="true" href="#benchmarking"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Benchmarking</h2>
+<p><code>FastFloat16s.jl</code> is almost 20–30x faster than Julia's inbuilt <code>Float16</code> (but requires twice as much memory).</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using FastFloat16s.jl, BenchmarkTools
+A = Float16.(rand(1000,1000));
+B = Float16.(rand(1000,1000));
+Afast = FastFloat16.(rand(1000,1000));
+Bfast = FastFloat16.(rand(1000,1000));
+
+julia&gt; @btime +($A,$B);
+  16.556 ms (2 allocations: 1.91 MiB)
+
+julia&gt; @btime +($Afast,$Bfast);
+  628.882 μs (2 allocations: 3.81 MiB)
+"><pre><span class="pl-k">using</span> FastFloat16s<span class="pl-k">.</span>jl, BenchmarkTools
+A <span class="pl-k">=</span> <span class="pl-c1">Float16</span>.(<span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>));
+B <span class="pl-k">=</span> <span class="pl-c1">Float16</span>.(<span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>));
+Afast <span class="pl-k">=</span> <span class="pl-c1">FastFloat16</span>.(<span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>));
+Bfast <span class="pl-k">=</span> <span class="pl-c1">FastFloat16</span>.(<span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">+</span>(<span class="pl-k">$</span>A,<span class="pl-k">$</span>B);
+  <span class="pl-c1">16.556</span> ms (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.91</span> MiB)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">+</span>(<span class="pl-k">$</span>Afast,<span class="pl-k">$</span>Bfast);
+  <span class="pl-c1">628.882</span> μs (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">3.81</span> MiB)</pre></div>
+<p>and only slightly slower than Float32</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; A = Float32.(rand(1000,1000));
+julia&gt; B = Float32.(rand(1000,1000));
+
+julia&gt; @btime +($A,$B);
+  460.743 μs (2 allocations: 3.81 MiB)
+"><pre>julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">Float32</span>.(<span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>));
+julia<span class="pl-k">&gt;</span> B <span class="pl-k">=</span> <span class="pl-c1">Float32</span>.(<span class="pl-c1">rand</span>(<span class="pl-c1">1000</span>,<span class="pl-c1">1000</span>));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">+</span>(<span class="pl-k">$</span>A,<span class="pl-k">$</span>B);
+  <span class="pl-c1">460.743</span> μs (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">3.81</span> MiB)</pre></div>
+</article></div>

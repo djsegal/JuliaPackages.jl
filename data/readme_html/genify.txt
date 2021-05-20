@@ -1,0 +1,135 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-genifyjl" class="anchor" aria-hidden="true" href="#genifyjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Genify.jl</h1>
+<p>Automatically transforms Julia methods to <a href="https://www.gen.dev/" rel="nofollow">Gen</a> functions via staged compilation. All calls to random primitives like <code>Base.rand</code> or <code>StatsBase.sample</code> are
+converted to samples from Gen distributions, and address names are generated
+automatically. Gen-ification is applied recursively by default, tracing all nested sub-routines with stochastic behavior.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>At the Julia REPL, press <code>]</code> to enter the package manager, then run:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="add https://github.com/probcomp/Genify.jl.git
+"><pre><code>add https://github.com/probcomp/Genify.jl.git
+</code></pre></div>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
+<p><code>Genify.jl</code> allows one to convert stochastic functions from plain Julia into Gen, enabling programmable inference via the manipulation of internal random variables. The user-level function for transforming Julia methods is <code>genify</code>, documented below:</p>
+<blockquote>
+<p><code>genify(fn, arg_types...; kwargs...)</code> or <code>genify(options, fn, arg_types...)</code></p>
+<p>Transforms a Julia method into a dynamic Gen function.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>fn</code>: a <code>Function</code>, <code>Type</code> constructor, or (if the second form is used)
+any other callable object.</li>
+<li><code>arg_types</code>: The types of the arguments for the method to be transformed.</li>
+</ul>
+<p><strong>Keyword Arguments:</strong></p>
+<ul>
+<li><code>recurse::Bool=true</code>: recursively <code>genify</code> methods called by <code>fn</code> if true.</li>
+<li><code>useslots::Bool=true</code>: if true, use slot (i.e. variable) names as trace
+addresses where possible.</li>
+<li><code>naming::Symbol=:static</code>: scheme for generating address names, defaults to
+static generation at compile time. Use <code>:manual</code> for user-specified
+addresses (e.g., <code>rand(:z, Normal(0, 1))</code>)</li>
+<li><code>options</code>: the above options can also be provided as parameters in an
+<code>Options</code> struct, or as a <code>Symbol</code> from the list of named
+option sets overriding any other values specified:
+<ul>
+<li><code>:minimal</code> corresponds to <code>recurse=false, useslots=false, naming=:static</code></li>
+<li><code>:default</code> corresponds to <code>recurse=true, useslots=true, naming=:static</code></li>
+<li><code>:manual</code> corresponds to <code>recurse=true, useslots=false, naming=:manual</code></li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<p><code>genify</code> should only be used at the REPL, or at the top-level of a script or module. A memoized version, <code>genified</code>, is designed to be used within other Gen functions.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
+<p>Suppose we have the following simulator of a noisy weighing scale, written in Julia, which samples the mass of the weighed object, and simulates <code>n</code> measurements:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Distributions: Normal
+
+function scale(n::Int)
+    mass = rand(Normal(5, 1))
+    obs = measure(mass, n)
+end
+
+function measure(mass::Real, n::Int)
+    obs = Float64[]
+    for i in 1:n
+        m = rand(Normal(mass, 2))
+        push!(obs, m)
+    end
+    return obs
+end
+"><pre><span class="pl-k">using</span> Distributions<span class="pl-k">:</span> Normal
+
+<span class="pl-k">function</span> <span class="pl-en">scale</span>(n<span class="pl-k">::</span><span class="pl-c1">Int</span>)
+    mass <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">5</span>, <span class="pl-c1">1</span>))
+    obs <span class="pl-k">=</span> <span class="pl-c1">measure</span>(mass, n)
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">measure</span>(mass<span class="pl-k">::</span><span class="pl-c1">Real</span>, n<span class="pl-k">::</span><span class="pl-c1">Int</span>)
+    obs <span class="pl-k">=</span> Float64[]
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n
+        m <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">Normal</span>(mass, <span class="pl-c1">2</span>))
+        <span class="pl-c1">push!</span>(obs, m)
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> obs
+<span class="pl-k">end</span></pre></div>
+<p>We can convert the <code>scale</code> method into generative function <code>genscale</code> using <code>genify</code>. Note that we need to specify both the name of <code>scale</code>, as well as the types of its arguments:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Gen, Genify
+genscale = genify(scale, Int)
+
+julia&gt; typeof(genscale)
+Gen.DynamicDSLFunction{Any}
+"><pre><span class="pl-k">using</span> Gen, Genify
+genscale <span class="pl-k">=</span> <span class="pl-c1">genify</span>(scale, Int)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">typeof</span>(genscale)
+Gen<span class="pl-k">.</span>DynamicDSLFunction{Any}</pre></div>
+<p>We can now treat this as a Gen function that supports the <a href="https://www.gen.dev/dev/ref/gfi/" rel="nofollow">generative function interface</a>. For example, we can simulate a trace (note that the first run will be a little slow, because transformation occurs during just-in-time compilation):</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; trace = simulate(genscale, (3,));
+julia&gt; get_choices(trace)
+├── :mass : 5.69796235005049
+└── :obs
+    └── :m
+        ├── 1 : 4.267277635953466
+        ├── 2 : 4.499125425390254
+        └── 3 : 4.34687310812849
+"><pre>julia<span class="pl-k">&gt;</span> trace <span class="pl-k">=</span> <span class="pl-c1">simulate</span>(genscale, (<span class="pl-c1">3</span>,));
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">get_choices</span>(trace)
+├── <span class="pl-c1">:mass</span> <span class="pl-k">:</span> <span class="pl-c1">5.69796235005049</span>
+└── <span class="pl-c1">:obs</span>
+    └── <span class="pl-c1">:m</span>
+        ├── <span class="pl-c1">1</span> <span class="pl-k">:</span> <span class="pl-c1">4.267277635953466</span>
+        ├── <span class="pl-c1">2</span> <span class="pl-k">:</span> <span class="pl-c1">4.499125425390254</span>
+        └── <span class="pl-c1">3</span> <span class="pl-k">:</span> <span class="pl-c1">4.34687310812849</span></pre></div>
+<p>Notice that addresses for each random variable have been generated automatically from the source code, including variables that are sampled within loops.</p>
+<p>We can also generate a trace while constraining observations:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; observations = choicemap(((:obs =&gt; :m =&gt; i, 6) for i in 1:3)...);
+julia&gt; trace, w = generate(genscale, (3), observations);
+julia&gt; get_choices(trace)
+├── :mass : 5.843712561769999
+└── :obs
+    └── :m
+        ├── 1 : 6.0
+        ├── 2 : 6.0
+        └── 3 : 6.0
+"><pre>julia<span class="pl-k">&gt;</span> observations <span class="pl-k">=</span> <span class="pl-c1">choicemap</span>(((<span class="pl-c1">:obs</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:m</span> <span class="pl-k">=&gt;</span> i, <span class="pl-c1">6</span>) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)<span class="pl-k">...</span>);
+julia<span class="pl-k">&gt;</span> trace, w <span class="pl-k">=</span> <span class="pl-c1">generate</span>(genscale, (<span class="pl-c1">3</span>), observations);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">get_choices</span>(trace)
+├── <span class="pl-c1">:mass</span> <span class="pl-k">:</span> <span class="pl-c1">5.843712561769999</span>
+└── <span class="pl-c1">:obs</span>
+    └── <span class="pl-c1">:m</span>
+        ├── <span class="pl-c1">1</span> <span class="pl-k">:</span> <span class="pl-c1">6.0</span>
+        ├── <span class="pl-c1">2</span> <span class="pl-k">:</span> <span class="pl-c1">6.0</span>
+        └── <span class="pl-c1">3</span> <span class="pl-k">:</span> <span class="pl-c1">6.0</span></pre></div>
+<p>This allows us to perform inference over the latent variables, e.g. via importance sampling:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="observations = choicemap(((:obs =&gt; :m =&gt; i, 4) for i in 1:10)...)
+trs, ws, _ = importance_sampling(genscale, (10,), observations, 100)
+mass_est = sum(tr[:mass] * exp(w) for (tr, w) in zip(trs, ws))
+
+julia&gt; mass_est
+4.288428017814824
+"><pre>observations <span class="pl-k">=</span> <span class="pl-c1">choicemap</span>(((<span class="pl-c1">:obs</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:m</span> <span class="pl-k">=&gt;</span> i, <span class="pl-c1">4</span>) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>)<span class="pl-k">...</span>)
+trs, ws, _ <span class="pl-k">=</span> <span class="pl-c1">importance_sampling</span>(genscale, (<span class="pl-c1">10</span>,), observations, <span class="pl-c1">100</span>)
+mass_est <span class="pl-k">=</span> <span class="pl-c1">sum</span>(tr[<span class="pl-c1">:mass</span>] <span class="pl-k">*</span> <span class="pl-c1">exp</span>(w) <span class="pl-k">for</span> (tr, w) <span class="pl-k">in</span> <span class="pl-c1">zip</span>(trs, ws))
+
+julia<span class="pl-k">&gt;</span> mass_est
+<span class="pl-c1">4.288428017814824</span></pre></div>
+<p>For a more detailed tutorial, see the <a href="tutorial"><code>tutorial</code></a> directory. For more examples of programmable inference over transformed Julia code, see the <a href="examples"><code>examples</code></a> directory.</p>
+</article></div>

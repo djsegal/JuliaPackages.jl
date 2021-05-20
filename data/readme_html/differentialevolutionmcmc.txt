@@ -1,3 +1,50 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-differentialevolutionmcmc" class="anchor" aria-hidden="true" href="#differentialevolutionmcmc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>DifferentialEvolutionMCMC</h1>
-<p>This package implements Differential Evolution MCMC using the AbstractMCMC interface. Simple examples can be found in the Examples folder.</p>
+<p>DifferentialEvolutionMCMC.jl is a Differential Evolution MCMC sampler written in Julia and uses the AbstractMCMC interface. DifferentialEvolutionMCMC.jl works with any model, provided that it returns an exact or approximate log likeilhood. An annotated example is provided below. Other examples can be found in the examples subfolder.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
+<p>First, load the required libraries.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using DifferentialEvolutionMCMC, Random, Distributions
+
+Random.seed!(50514)
+"><pre><span class="pl-k">using</span> DifferentialEvolutionMCMC, Random, Distributions
+
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">50514</span>)</pre></div>
+<p>Define the prior distributions as a NamedTuple of distribution objects and number of elements, N: (distribution, N). Omit the number of elements if the parameter is a scalar.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="priors = (
+    μ = (Normal(0, 10),),
+    σ = (Truncated(Cauchy(0, 1), 0.0, Inf),)
+)
+"><pre>priors <span class="pl-k">=</span> (
+    μ <span class="pl-k">=</span> (<span class="pl-c1">Normal</span>(<span class="pl-c1">0</span>, <span class="pl-c1">10</span>),),
+    σ <span class="pl-k">=</span> (<span class="pl-c1">Truncated</span>(<span class="pl-c1">Cauchy</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>), <span class="pl-c1">0.0</span>, <span class="pl-c1">Inf</span>),)
+)</pre></div>
+<p>Specify the upper and lower bounds of the parameters.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="bounds = ((-Inf,Inf),(0.0,Inf))
+"><pre>bounds <span class="pl-k">=</span> ((<span class="pl-k">-</span><span class="pl-c1">Inf</span>,<span class="pl-c1">Inf</span>),(<span class="pl-c1">0.0</span>,<span class="pl-c1">Inf</span>))</pre></div>
+<p>Generate simulated data from a normal distribution</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="data = rand(Normal(0.0, 1.0), 50)
+"><pre>data <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>), <span class="pl-c1">50</span>)</pre></div>
+<p>Next, define a function for the log likelihood which accepts the data follow by the parameters (in the order specififed in the priors). Create a second method that accepts a vector of parameters and maps it to the original function and makes a reference to the data.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function loglike(data, μ, σ)
+    return sum(logpdf.(Normal(μ, σ), data))
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">loglike</span>(data, μ, σ)
+    <span class="pl-k">return</span> <span class="pl-c1">sum</span>(<span class="pl-c1">logpdf</span>.(<span class="pl-c1">Normal</span>(μ, σ), data))
+<span class="pl-k">end</span></pre></div>
+<p>Note that in some cases it might be preferable to pass your parameters as a vector rather than specify each parameter in the function definition. In such cases, you can use <code>loglike(data, θ...)</code>.</p>
+<p>Create a model object containing the prior and loglikelihood function and create a differential evolution object. Default settings can be overriden with keyword arguments.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="model = DEModel(;priors, model=loglike, data)
+
+de = DE(;bounds, burnin=1000, priors)
+
+"><pre>model <span class="pl-k">=</span> <span class="pl-c1">DEModel</span>(;priors, model<span class="pl-k">=</span>loglike, data)
+
+de <span class="pl-k">=</span> <span class="pl-c1">DE</span>(;bounds, burnin<span class="pl-k">=</span><span class="pl-c1">1000</span>, priors)
+</pre></div>
+<p>To run the sampler, pass the model and differential evolution object along with settings for the number iterations and MCMCMThreads() for multithreading.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="n_iter = 2000
+chains = sample(model, de, MCMCThreads(), n_iter, progress=true)
+println(chains)
+"><pre>n_iter <span class="pl-k">=</span> <span class="pl-c1">2000</span>
+chains <span class="pl-k">=</span> <span class="pl-c1">sample</span>(model, de, <span class="pl-c1">MCMCThreads</span>(), n_iter, progress<span class="pl-k">=</span><span class="pl-c1">true</span>)
+<span class="pl-c1">println</span>(chains)</pre></div>
 </article></div>

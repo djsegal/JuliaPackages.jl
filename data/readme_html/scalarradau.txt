@@ -1,0 +1,62 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-scalarradau" class="anchor" aria-hidden="true" href="#scalarradau"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ScalarRadau</h1>
+<p><a href="https://github.com/wordsworthgroup/ScalarRadau.jl/actions"><img src="https://github.com/wordsworthgroup/ScalarRadau.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a></p>
+<p>This module implements the 5th order, <a href="https://link.springer.com/referenceworkentry/10.1007%2F978-3-540-70529-1_139" rel="nofollow">Radau IIA method</a> for a <strong>scalar</strong> ordinary differential equation (ODE), in Julia. The algorithm is famously effective for stiff ODEs. Implementation mostly follows the description in chapter IV.8 in <a href="https://www.springer.com/gp/book/9783540604525" rel="nofollow">Solving Ordinary Differential Equations II</a>, by Ernst Hairer and Gerhard Wanner, with a couple small changes that were found to be beneficial for scalar equations.</p>
+<ul>
+<li>Step size is adaptive and the initial step size is chosen automatically.</li>
+<li>Functions implemented here expect to use <code>Float64</code> numbers.</li>
+<li>Dense output for continuous solutions is implemented using cubic Hermite interpolation.</li>
+<li>Approximate Jacobian evaluation is performed with a finite difference.</li>
+<li>Because the equation is scalar and the method has three stages, the Jacobian is always a 3 x 3 matrix. <a href="https://github.com/JuliaArrays/StaticArrays.jl">Static arrays</a> are used for efficient Newton iterations.</li>
+</ul>
+<p>The implementation here is useful for any scenario where a stiff, scalar ODE must be solved repeatedly under different conditions. For example, you might need to solve the same stiff ODE with a range of different initial conditions or with many sets of system parameters. The solver functions specialize directly on the ODE provided, making them fast. This is slightly different than <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a>, which uses a two-step system of defining an ODE problem with one function then solving it with another function, but if you need to solve a stiff system of ODEs instead of a scalar equation, look <a href="https://diffeq.sciml.ai/stable/solvers/ode_solve/#Stiff-Problems" rel="nofollow">here</a>.</p>
+<p>For a nice overview of Radau methods and their utility, check out: <a href="https://www.sciencedirect.com/science/article/pii/S037704279900134X" rel="nofollow">Stiff differential equations solved by Radau methods</a>.</p>
+<h3><a id="user-content-quick-start" class="anchor" aria-hidden="true" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Quick Start</h3>
+<p>Install using Julia's package manager</p>
+<div class="highlight highlight-source-shell position-relative" data-snippet-clipboard-copy-content="julia&gt; ]add ScalarRadau
+"><pre>julia<span class="pl-k">&gt;</span> ]add ScalarRadau</pre></div>
+<p>To solve an ODE, first define it as a function, then pass it to the <code>radau</code> function.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using ScalarRadau
+F(x, y, param) = -y
+x, y = radau(F, 1, 0, 2, 25)
+"><pre><span class="pl-k">using</span> ScalarRadau
+<span class="pl-en">F</span>(x, y, param) <span class="pl-k">=</span> <span class="pl-k">-</span>y
+x, y <span class="pl-k">=</span> <span class="pl-c1">radau</span>(F, <span class="pl-c1">1</span>, <span class="pl-c1">0</span>, <span class="pl-c1">2</span>, <span class="pl-c1">25</span>)</pre></div>
+<p>The snippet above solves the equation <code>dy/dx = -y</code>, starting at <code>y=1</code>, between <code>x=0</code> and <code>x=2</code>, and returns 25 evenly spaced points in the solution interval.</p>
+<h3><a id="user-content-in-place-solution" class="anchor" aria-hidden="true" href="#in-place-solution"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In-place Solution</h3>
+<p>For full control over output points, the in-place function is</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="radau!(yout, xout, F, y₀, x₀, xₙ, param=nothing; rtol=1e-6, atol=1e-6, facmax=100.0, facmin=0.01, κ=1e-3, ϵ=0.25, maxnwt=7, maxstp=1000000)
+"><pre><span class="pl-c1">radau!</span>(yout, xout, F, y₀, x₀, xₙ, param<span class="pl-k">=</span><span class="pl-c1">nothing</span>; rtol<span class="pl-k">=</span><span class="pl-c1">1e-6</span>, atol<span class="pl-k">=</span><span class="pl-c1">1e-6</span>, facmax<span class="pl-k">=</span><span class="pl-c1">100.0</span>, facmin<span class="pl-k">=</span><span class="pl-c1">0.01</span>, κ<span class="pl-k">=</span><span class="pl-c1">1e-3</span>, ϵ<span class="pl-k">=</span><span class="pl-c1">0.25</span>, maxnwt<span class="pl-k">=</span><span class="pl-c1">7</span>, maxstp<span class="pl-k">=</span><span class="pl-c1">1000000</span>)</pre></div>
+<p>Mandatory function arguments are</p>
+<ul>
+<li><code>yout</code> - vector where output points will be written</li>
+<li><code>xout</code> - sorted vector of <code>x</code> values where output points should be sampled</li>
+<li><code>F</code> - scalar ODE in the form <code>F(x, y, param)</code></li>
+<li><code>y₀</code> - initial value for <code>y</code></li>
+<li><code>x₀</code> - starting point for <code>x</code></li>
+<li><code>xₙ</code> - end point of the integration</li>
+</ul>
+<p>The optional <code>param</code> argument is <code>nothing</code> by default, but it may be any type and is meant for scenarios where extra information must be accessible to the ODE function. It is passed to your ODE function whenever it's evaluated.</p>
+<p>The coordinates of the output points (<code>xout</code>) should be between <code>x₀</code> and <code>xₙ</code> and they should be in ascending order. They are not checked for integrity before integrating, though. The only check performed is <code>xₙ &gt; x₀</code>, or that the integration isn't going backward.</p>
+<p>Keyword arguments are</p>
+<ul>
+<li><code>rtol</code> - relative error tolerance</li>
+<li><code>atol</code> - absolute error tolerance</li>
+<li><code>facmax</code> - maximum fraction that the step size may increase, compared to the previous step</li>
+<li><code>facmin</code> - minimum fraction that the step size may decrease, compared to the previous step</li>
+<li><code>κ</code> (kappa) - stopping tolerance for Newton iterations</li>
+<li><code>ϵ</code> (epsilon) - fraction of current step size used for finite difference Jacobian approximation</li>
+<li><code>maxnwt</code> - maximum number of Newton iterations before step size reduction</li>
+<li><code>maxstp</code> - maximum number of steps for the solver stops and throws an error</li>
+</ul>
+<p>Two other functions are available to make different output options convenient. Both of them use the in-place version internally.</p>
+<h3><a id="user-content-evenly-spaced-output" class="anchor" aria-hidden="true" href="#evenly-spaced-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Evenly Spaced Output</h3>
+<p>For evenly spaced output points (as in the example above) the function definition is</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="radau(F, y₀, x₀, xₙ, nout, param=nothing; kwargs...)
+"><pre><span class="pl-c1">radau</span>(F, y₀, x₀, xₙ, nout, param<span class="pl-k">=</span><span class="pl-c1">nothing</span>; kwargs<span class="pl-k">...</span>)</pre></div>
+<p>In this case, you must specify the number of output points with the <code>nout</code> argument. Keyword arguments and default values are the same as above. Solution vectors for <code>x</code> and <code>y</code> are returned.</p>
+<h3><a id="user-content-end-point-output" class="anchor" aria-hidden="true" href="#end-point-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>End-point Output</h3>
+<p>To compute only the <code>y</code> value at the end of the integration interval (<code>xₙ</code>), the function is</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="radau(F, y₀, x₀, xₙ, param=nothing; kwargs...)
+"><pre><span class="pl-c1">radau</span>(F, y₀, x₀, xₙ, param<span class="pl-k">=</span><span class="pl-c1">nothing</span>; kwargs<span class="pl-k">...</span>)</pre></div>
+<p>Again, keyword arguments and default values are identical to the in-place function.</p>
+</article></div>

@@ -1,0 +1,313 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-resourcecontextsjl" class="anchor" aria-hidden="true" href="#resourcecontextsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ResourceContexts.jl</h1>
+<p><a href="https://github.com/c42f/ResourceContexts.jl/actions"><img src="https://github.com/c42f/ResourceContexts.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a></p>
+<p><code>ResourceContexts</code> is an experimental Julia package for <strong>composable resource
+management</strong> without <code>do</code> blocks.</p>
+<p>Resources are objects which need cleanup code to run to finalize their state.
+For example,</p>
+<ul>
+<li>Open file handles</li>
+<li>Temporary files and directories</li>
+<li>Background <code>Task</code>s</li>
+<li>Many other things which are currently handled with <code>do</code>-blocks.</li>
+</ul>
+<p>The <code>@!</code> macro calls or defines "context functions" — functions which take an
+<code>AbstractContext</code> as the first argument and associate any resources with that
+context. This package provides context-based overrides for <code>Base</code> functions
+<code>open</code>, <code>mktemp</code>, <code>mktempdir</code>, <code>cd</code>, <code>run</code>, <code>lock</code> and
+<code>redirect_{stdout,stderr,stdin}</code>.</p>
+<p>The <code>@context</code> macro associates a context with the current code block which
+will be passed to any context functions invoked with <code>@!</code>. When a <code>@context</code>
+block exits the cleanup code associated with the context runs.</p>
+<p>The <code>@defer</code> macro defers an arbitrary cleanup expression to the end of the
+current <code>@context</code>.</p>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h2>
+<h3><a id="user-content-manging-resources-without-do-blocks" class="anchor" aria-hidden="true" href="#manging-resources-without-do-blocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Manging resources without do blocks</h3>
+<p>Open a file, read all the lines and close it again</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function f()
+    @context readlines(@!(open(&quot;tmp/hi.txt&quot;, &quot;r&quot;)))
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">f</span>()
+    <span class="pl-c1">@context</span> <span class="pl-c1">readlines</span>(@<span class="pl-k">!</span>(<span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>tmp/hi.txt<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>r<span class="pl-pds">"</span></span>)))
+<span class="pl-k">end</span></pre></div>
+<p>Create a temporary file and ensure it's cleaned up afterward</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@context function f()
+    path, io = @! mktemp()
+    write(io, &quot;content&quot;)
+    flush(io)
+    @info &quot;mktemp output&quot; path ispath(path) isopen(io) read(path, String)
+end
+"><pre><span class="pl-c1">@context</span> <span class="pl-k">function</span> <span class="pl-en">f</span>()
+    path, io <span class="pl-k">=</span> @<span class="pl-k">!</span> <span class="pl-c1">mktemp</span>()
+    <span class="pl-c1">write</span>(io, <span class="pl-s"><span class="pl-pds">"</span>content<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">flush</span>(io)
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>mktemp output<span class="pl-pds">"</span></span> path <span class="pl-c1">ispath</span>(path) <span class="pl-c1">isopen</span>(io) <span class="pl-c1">read</span>(path, String)
+<span class="pl-k">end</span></pre></div>
+<p>Acquire a pair of locks (and release them in the opposite order)</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function f()
+    lk1 = ReentrantLock()
+    lk2 = ReentrantLock()
+    @context begin
+        @! lock(lk1)
+        @! lock(lk2)
+        @info &quot;Hi from locked section&quot; islocked(lk1) islocked(lk2)
+    end
+    @info &quot;Outside locked section&quot; islocked(lk1) islocked(lk2)
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">f</span>()
+    lk1 <span class="pl-k">=</span> <span class="pl-c1">ReentrantLock</span>()
+    lk2 <span class="pl-k">=</span> <span class="pl-c1">ReentrantLock</span>()
+    <span class="pl-c1">@context</span> <span class="pl-k">begin</span>
+        @<span class="pl-k">!</span> <span class="pl-c1">lock</span>(lk1)
+        @<span class="pl-k">!</span> <span class="pl-c1">lock</span>(lk2)
+        <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Hi from locked section<span class="pl-pds">"</span></span> <span class="pl-c1">islocked</span>(lk1) <span class="pl-c1">islocked</span>(lk2)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Outside locked section<span class="pl-pds">"</span></span> <span class="pl-c1">islocked</span>(lk1) <span class="pl-c1">islocked</span>(lk2)
+<span class="pl-k">end</span></pre></div>
+<p>Start ten external processes and wait for all of them to finish before
+continuing</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@context begin
+    for i=1:10
+        @! run(`sleep $(rand(2))`)
+    end
+end
+"><pre><span class="pl-c1">@context</span> <span class="pl-k">begin</span>
+    <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>
+        @<span class="pl-k">!</span> <span class="pl-c1">run</span>(<span class="pl-s"><span class="pl-pds">`</span>sleep $(rand(2))<span class="pl-pds">`</span></span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<h3><a id="user-content-functions-which-pass-resources-back-to-their-callers" class="anchor" aria-hidden="true" href="#functions-which-pass-resources-back-to-their-callers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Functions which pass resources back to their callers</h3>
+<p>Functions called as <code>@! foo(args...)</code> are passed the current context in the
+first argument; <code>foo(current_context, args...)</code> is called.  When <code>foo</code> is
+<em>defined</em> using <code>@!</code>, the context will automatically defer resource cleanup to
+the caller when using <code>@defer</code>. For example:</p>
+<p>Returning a bare <code>Ptr</code> to a temporary buffer:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@! function raw_buffer(len)
+    buf = Vector{UInt8}(undef, len)
+    @defer GC.@preserve buf nothing
+    pointer(buf)
+end
+
+@context begin
+    len = 1_000_000_000
+    ptr = @! raw_buffer(len)
+    GC.gc() # `buf` is preserved regardless of this call to gc()
+    unsafe_store!(ptr, 0xff)
+end
+"><pre>@<span class="pl-k">!</span> <span class="pl-k">function</span> <span class="pl-en">raw_buffer</span>(len)
+    buf <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{UInt8}</span>(undef, len)
+    <span class="pl-c1">@defer</span> GC<span class="pl-k">.</span><span class="pl-c1">@preserve</span> buf <span class="pl-c1">nothing</span>
+    <span class="pl-c1">pointer</span>(buf)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@context</span> <span class="pl-k">begin</span>
+    len <span class="pl-k">=</span> <span class="pl-c1">1_000_000_000</span>
+    ptr <span class="pl-k">=</span> @<span class="pl-k">!</span> <span class="pl-c1">raw_buffer</span>(len)
+    GC<span class="pl-k">.</span><span class="pl-c1">gc</span>() <span class="pl-c"><span class="pl-c">#</span> `buf` is preserved regardless of this call to gc()</span>
+    <span class="pl-c1">unsafe_store!</span>(ptr, <span class="pl-c1">0xff</span>)
+<span class="pl-k">end</span></pre></div>
+<p>Defer zeroing of a secret buffer to the caller</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@! function create_secret()
+    buf = Base.SecretBuffer()
+    write(buf, rand(UInt64)) # super secret ?
+    seek(buf, 0)
+    @defer Base.shred!(buf)
+    buf
+end
+
+@context begin
+    buf = @! create_secret()
+    @info &quot;Secret first byte&quot; read(buf, 1)
+end
+# buf has been `shred!`ed at this point
+"><pre>@<span class="pl-k">!</span> <span class="pl-k">function</span> <span class="pl-en">create_secret</span>()
+    buf <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">SecretBuffer</span>()
+    <span class="pl-c1">write</span>(buf, <span class="pl-c1">rand</span>(UInt64)) <span class="pl-c"><span class="pl-c">#</span> super secret ?</span>
+    <span class="pl-c1">seek</span>(buf, <span class="pl-c1">0</span>)
+    <span class="pl-c1">@defer</span> Base<span class="pl-k">.</span><span class="pl-c1">shred!</span>(buf)
+    buf
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@context</span> <span class="pl-k">begin</span>
+    buf <span class="pl-k">=</span> @<span class="pl-k">!</span> <span class="pl-c1">create_secret</span>()
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Secret first byte<span class="pl-pds">"</span></span> <span class="pl-c1">read</span>(buf, <span class="pl-c1">1</span>)
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> buf has been `shred!`ed at this point</span></pre></div>
+<h3><a id="user-content-interop-with-do-block-based-resource-management" class="anchor" aria-hidden="true" href="#interop-with-do-block-based-resource-management"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Interop with "do-block-based" resource management</h3>
+<p>This is available with the <code>enter_do</code> function, which can "steal" the state
+from inside the do block and make it available in a <code>@context</code> block, or in the
+REPL:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function resource_func(f::Function, arg)
+    @info &quot;Setting up resources&quot;
+    fake_resource = 40
+    f(fake_resource + arg)
+    @info &quot;Tear down resources&quot;
+end
+
+# Normal usage
+resource_func(2) do x
+    @info &quot;Resource ready&quot; x
+end
+
+# Safely access the resource in the REPL
+x = @! enter_do(resource_func, 2)
+"><pre><span class="pl-k">function</span> <span class="pl-en">resource_func</span>(f<span class="pl-k">::</span><span class="pl-c1">Function</span>, arg)
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Setting up resources<span class="pl-pds">"</span></span>
+    fake_resource <span class="pl-k">=</span> <span class="pl-c1">40</span>
+    <span class="pl-c1">f</span>(fake_resource <span class="pl-k">+</span> arg)
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Tear down resources<span class="pl-pds">"</span></span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Normal usage</span>
+<span class="pl-c1">resource_func</span>(<span class="pl-c1">2</span>) <span class="pl-k">do</span> x
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Resource ready<span class="pl-pds">"</span></span> x
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Safely access the resource in the REPL</span>
+x <span class="pl-k">=</span> @<span class="pl-k">!</span> <span class="pl-c1">enter_do</span>(resource_func, <span class="pl-c1">2</span>)</pre></div>
+<h3><a id="user-content-interop-with-finalizer-based-resource-management" class="anchor" aria-hidden="true" href="#interop-with-finalizer-based-resource-management"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Interop with finalizer-based resource management</h3>
+<p>The special function <code>@! detach_context_cleanup(x)</code> can be used to detach
+context cleanup from the current <code>@context</code> block and associate it with the
+finalization of <code>x</code> instead. That is, it turns <em>lexical</em> resource management
+into <em>dynamic</em> resource management.</p>
+<p>For example, to create a temporary directory with two files in it, return
+the directory name as a string and only clean up the directory when <code>dir</code> is
+finalized:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="dir = @context begin
+    dir = @! mktempdir()
+    write(joinpath(dir, &quot;file1.txt&quot;), &quot;Some content&quot;)
+    write(joinpath(dir, &quot;file2.txt&quot;), &quot;Some other content&quot;)
+    @! ResourceContexts.detach_context_cleanup(dir)
+end
+"><pre><code>dir = @context begin
+    dir = @! mktempdir()
+    write(joinpath(dir, "file1.txt"), "Some content")
+    write(joinpath(dir, "file2.txt"), "Some other content")
+    @! ResourceContexts.detach_context_cleanup(dir)
+end
+</code></pre></div>
+<h1><a id="user-content-design" class="anchor" aria-hidden="true" href="#design"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Design</h1>
+<p>The standard solution for Julian resource management is still the <code>do</code> block,
+but this has some severe ergonomic disadvantages:</p>
+<ul>
+<li>It's extremely inconvenient at the REPL; you cannot work with the
+intermediate open resources without entering the context of the <code>do</code> block.</li>
+<li>It creates highly nested code when many resources are present. This is both
+visually confusing and the excess nesting leads to very deep stack traces.</li>
+<li>Custom cleanup code is separated from the resource creation in a <code>finally</code>
+block.</li>
+</ul>
+<p>The ergonomic factors mean that people often prefer the non-scoped form as
+argued <a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-171345256">here</a>.
+However this also suffers some severe disadantages:</p>
+<ul>
+<li>Resources leak (or must be finalized by the GC) when people forget to guard
+resource cleanup with a <code>try ... finally</code>.</li>
+<li>Finalizers run in a restricted environment where any errors occur outside the
+original context where the resource was created. This makes for <em>unstructured
+error handling</em> where it's impossible to propagate errors in a natural way.</li>
+<li>Functions which return objects must keep the backing resources alive by
+holding references to them somewhere. There's two ways to do this:
+<ul>
+<li>Have the returned object hold a reference to each resource. This is bad
+for the implementer because it reduces composability: one cannot combine
+any desired return type with arbitrary backing resources.</li>
+<li>Have multiple returns such as <code>(object,resource)</code>. This is unnatural
+because it forces the user to unpack return values.</li>
+</ul>
+</li>
+</ul>
+<h2><a id="user-content-the-solution" class="anchor" aria-hidden="true" href="#the-solution"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The solution</h2>
+<p>This package uses the macro <code>@!</code> as a proxy for the <a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-170942938">proposed postfix <code>!</code>
+syntax</a>
+and adds some new ideas:</p>
+<p><strong>The user should not be able to "forget the <code>!</code>"</strong>. We prevent this by
+introducing a new <em>context calling convention</em> for resource creation functions
+where the current <code>AbstractContext</code> is passed as the first argument. The
+<code>@context</code> macro creates a new context in lexical scope and the <code>@!</code> macro is
+syntactic sugar for calling with the current context.</p>
+<p><strong>Resource creation functions should be able to <em>compose</em> any desired object
+return type with arbitrary resources</strong>. This preserves the <a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-719152859">composability of
+the <code>do</code> block form</a>
+by rejecting the conflation of the returned object and its backing resources.
+This is a break with some familiar APIs such as the standard file handles
+returned by <code>open(filename)</code> which are both a stream interface and a resource
+in need of cleanup.</p>
+<h2><a id="user-content-possible-language-integration" class="anchor" aria-hidden="true" href="#possible-language-integration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Possible language integration</h2>
+<p>What would all this look like as a language feature?</p>
+<ul>
+<li><code>@!</code> could be replaced with a postfix <code>!</code> as proposed way back in 2015 or so.</li>
+<li><code>defer</code> might become a keyword so that it can have special behavior such as
+ignoring its return value. In a similar way to the code which runs inside
+<code>finally</code>, there's no sense in having a "value returned by" <code>defer</code>. In
+particular, I've observed that it frequently leads to the introduction of
+temporary variables simply to transfer the result of the expression occurring
+prior to the <code>defer</code> line.</li>
+<li><code>@context</code> would be implicit at function boundaries, global <code>let</code> blocks, and
+potentially other scopes within functions. Getting this part correct is
+still a tricky design problem. For example, looping constructs should
+introduce an implicit context, but how then can the user disable this in
+particular cases?</li>
+</ul>
+<p>Using the example from above, we've got</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function create_secret()!
+    buf = Base.SecretBuffer()
+    write(buf, rand(UInt64)) # super secret ?
+    seek(buf, 0)
+    defer Base.shred!(buf)
+end
+
+let
+    buf = create_secret()!
+    @info &quot;Secret first byte&quot; read(buf, 1)
+end # &lt;- `buf` shredded here
+"><pre><span class="pl-k">function</span> <span class="pl-en">create_secret</span>()<span class="pl-k">!</span>
+    buf <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">SecretBuffer</span>()
+    <span class="pl-c1">write</span>(buf, <span class="pl-c1">rand</span>(UInt64)) <span class="pl-c"><span class="pl-c">#</span> super secret ?</span>
+    <span class="pl-c1">seek</span>(buf, <span class="pl-c1">0</span>)
+    defer Base<span class="pl-k">.</span><span class="pl-c1">shred!</span>(buf)
+<span class="pl-k">end</span>
+
+<span class="pl-k">let</span>
+    buf <span class="pl-k">=</span> <span class="pl-c1">create_secret</span>()<span class="pl-k">!</span>
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Secret first byte<span class="pl-pds">"</span></span> <span class="pl-c1">read</span>(buf, <span class="pl-c1">1</span>)
+<span class="pl-k">end</span> <span class="pl-c"><span class="pl-c">#</span> &lt;- `buf` shredded here</span></pre></div>
+<p>One might be concerned that this definition of <code>create_secret()</code> hides the
+calling convention and that explicitly annotating the passed context might be
+more transparent. In that case we could go with syntax more like the existing
+macro annotations such as <code>@nospecialize</code> which attach metadata to function
+arguments. For example,</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function create_secret(@passcontext(ctx::AbstractContext))
+    buf = Base.SecretBuffer()
+    write(buf, rand(UInt64)) # super secret ?
+    seek(buf, 0)
+    defer Base.shred!(buf)
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">create_secret</span>(<span class="pl-c1">@passcontext</span>(ctx<span class="pl-k">::</span><span class="pl-c1">AbstractContext</span>))
+    buf <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">SecretBuffer</span>()
+    <span class="pl-c1">write</span>(buf, <span class="pl-c1">rand</span>(UInt64)) <span class="pl-c"><span class="pl-c">#</span> super secret ?</span>
+    <span class="pl-c1">seek</span>(buf, <span class="pl-c1">0</span>)
+    defer Base<span class="pl-k">.</span><span class="pl-c1">shred!</span>(buf)
+<span class="pl-k">end</span></pre></div>
+<h2><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>References</h2>
+<ul>
+<li>Resource cleanup with <code>defer</code> and <code>!</code> syntax
+<ul>
+<li><a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-170942938">The postfix <code>!</code> syntax</a></li>
+<li><a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-171004109"><code>close</code> as a possible default for cleanup</a></li>
+<li><a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-277142281">The <code>@!</code> macro proxy syntax for <code>!</code></a></li>
+</ul>
+</li>
+<li>The benefits and drawbacks of <code>do</code> syntax
+<ul>
+<li><a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-171345256">The ergonomic problems of <code>do</code></a></li>
+<li><a href="https://github.com/JuliaLang/julia/issues/7721#issuecomment-719152859">Some composability benefits of <code>do</code></a></li>
+</ul>
+</li>
+<li>Finalizers were discussed at length in <a href="https://github.com/JuliaLang/julia/issues/11207">https://github.com/JuliaLang/julia/issues/11207</a></li>
+<li>A previous prototype, <a href="https://github.com/adambrewster/Defer.jl">Defer.jl</a>
+used similar macro-based syntax.</li>
+<li>Structured concurrency and the cancellation problem is closely related
+<a href="https://github.com/JuliaLang/julia/issues/33248">https://github.com/JuliaLang/julia/issues/33248</a> when viewing <code>@async</code> tasks
+as a type of resource and the task nursury as the context.</li>
+</ul>
+</article></div>

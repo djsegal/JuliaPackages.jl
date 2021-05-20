@@ -3,7 +3,23 @@
 the "same" signature (some <code>Val{unique_key}</code> is added behind the scene to make them
 different). Calls to that function will call all applicable methods, and return their
 results in a <code>Vector</code>.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@confcall</span> <span class="pl-k">function</span> ask_for_advice <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@confcall function ask_for_advice end
+@confcall ask_for_advice() = &quot;Buy!&quot;
+@confcall ask_for_advice() = &quot;Sell!&quot;
+@confcall ask_for_advice(whom::String) = &quot;I didn't say anything&quot;
+
+julia&gt; ask_for_advice()
+2-element Array{String,1}:
+ &quot;Sell!&quot;
+ &quot;Buy!&quot; 
+
+julia&gt; ask_for_advice(&quot;Harry&quot;)
+1-element Array{String,1}:
+ &quot;I didn't say anything&quot;
+
+julia&gt; ask_for_advice(:BobSymbol)
+0-element Array{Union{},1}
+"><pre><span class="pl-c1">@confcall</span> <span class="pl-k">function</span> ask_for_advice <span class="pl-k">end</span>
 <span class="pl-c1">@confcall</span> <span class="pl-en">ask_for_advice</span>() <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Buy!<span class="pl-pds">"</span></span>
 <span class="pl-c1">@confcall</span> <span class="pl-en">ask_for_advice</span>() <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Sell!<span class="pl-pds">"</span></span>
 <span class="pl-c1">@confcall</span> <span class="pl-en">ask_for_advice</span>(whom<span class="pl-k">::</span><span class="pl-c1">String</span>) <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>I didn't say anything<span class="pl-pds">"</span></span>
@@ -21,7 +37,16 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">ask_for_advice</span>(<s
 <span class="pl-c1">0</span><span class="pl-k">-</span>element Array{Union{},<span class="pl-c1">1</span>}</pre></div>
 <p>The methods are called in sorted order, based on the optional key passed
 as first argument:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@confcall</span> <span class="pl-k">function</span> describe_object <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@confcall function describe_object end
+@confcall 1 describe_object(x) = &quot;Something&quot;
+@confcall 2 describe_object(x::Number) = &quot;Some number&quot;
+@confcall 3 describe_object(x::Int) = &quot;An Int&quot;
+
+julia&gt; describe_object(3.0)
+2-element Array{String,1}:
+ &quot;Something&quot;  
+ &quot;Some number&quot;
+"><pre><span class="pl-c1">@confcall</span> <span class="pl-k">function</span> describe_object <span class="pl-k">end</span>
 <span class="pl-c1">@confcall</span> <span class="pl-c1">1</span> <span class="pl-en">describe_object</span>(x) <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Something<span class="pl-pds">"</span></span>
 <span class="pl-c1">@confcall</span> <span class="pl-c1">2</span> <span class="pl-en">describe_object</span>(x<span class="pl-k">::</span><span class="pl-c1">Number</span>) <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Some number<span class="pl-pds">"</span></span>
 <span class="pl-c1">@confcall</span> <span class="pl-c1">3</span> <span class="pl-en">describe_object</span>(x<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>An Int<span class="pl-pds">"</span></span>
@@ -35,13 +60,24 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">describe_object</span>(<
 <a href="https://github.com/timholy/Revise.jl">Reviseable</a>. It can be useful for macros
 that register callbacks.</p>
 <p>Making a conference call is moderately slow, as it involves some reflection.</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">describe_object</span>(<span class="pl-c1">3.0</span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @btime describe_object(3.0)
+  32.748 μs (38 allocations: 1.69 KiB)
+2-element Array{String,1}:
+ &quot;Something&quot;  
+ &quot;Some number&quot;
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">describe_object</span>(<span class="pl-c1">3.0</span>)
   <span class="pl-c1">32.748</span> μs (<span class="pl-c1">38</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.69</span> KiB)
 <span class="pl-c1">2</span><span class="pl-k">-</span>element Array{String,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
  <span class="pl-s"><span class="pl-pds">"</span>Something<span class="pl-pds">"</span></span>  
  <span class="pl-s"><span class="pl-pds">"</span>Some number<span class="pl-pds">"</span></span></pre></div>
 <p>The reflection can be done at compile-time using <code>@confcall_fast</code>:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@confcall_fast</span> <span class="pl-k">function</span> describe_object <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @confcall_fast function describe_object end
+describe_object (generic function with 1 method)
+
+julia&gt; @btime describe_object(3.0)
+  7.377 ns (1 allocation: 32 bytes)
+(&quot;Something&quot;, &quot;Some number&quot;)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@confcall_fast</span> <span class="pl-k">function</span> describe_object <span class="pl-k">end</span>
 describe_object (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">describe_object</span>(<span class="pl-c1">3.0</span>)

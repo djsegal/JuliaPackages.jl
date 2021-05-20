@@ -4,7 +4,20 @@ Like the built-in Array type these are mutable objects,
 unlike <a href="https://github.com/davidavdav/NamedArrays.jl">NamedArrays</a> and <a href="https://github.com/JuliaArrays/AxisArrays.jl">AxisArrays</a> which are immutable.</p>
 <p>The idea was to have a convenient way to gather results of calculations in a script or notebook, rather than for anything high-performance.
 For example, here I have a matrix of results at each iteration, and <code>nest</code> these into a 3-tensor, whose axis order I need not remember:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> DimArrays
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using DimArrays
+
+list = [];
+for i=1:33
+    slowcalc = sqrt(i) .* randn(3,13) .+ i
+    push!(list, DimArray(slowcalc, :a, :b, :c ))  # add labels for 1st and 2nd dimensions  
+end
+
+list3 = nest(list, :iter)   # now i is the 3rd index, and named &quot;iter&quot;
+
+using Statistics
+
+mean(list3, dims=:iter)     # equivalent to dropdims(mean(list3, dims=3), dims=3)
+"><pre><span class="pl-k">using</span> DimArrays
 
 list <span class="pl-k">=</span> [];
 <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">33</span>
@@ -18,7 +31,10 @@ list3 <span class="pl-k">=</span> <span class="pl-c1">nest</span>(list, <span cl
 
 <span class="pl-c1">mean</span>(list3, dims<span class="pl-k">=</span><span class="pl-c1">:iter</span>)     <span class="pl-c"><span class="pl-c">#</span> equivalent to dropdims(mean(list3, dims=3), dims=3)</span></pre></div>
 <p>For quick plots, dimension names are used for axes and series:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Plots
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Plots
+
+plot(selectdim(list3, :b, 1)' , legend=:bottomright)
+"><pre><span class="pl-k">using</span> Plots
 
 <span class="pl-c1">plot</span>(<span class="pl-c1">selectdim</span>(list3, <span class="pl-c1">:b</span>, <span class="pl-c1">1</span>)<span class="pl-k">'</span> , legend<span class="pl-k">=</span><span class="pl-c1">:bottomright</span>)</pre></div>
 <p>Here <code>selectdim(list3, :b, 1) == list3[:,1,:]</code> in contents, but retains the labels.</p>
@@ -26,7 +42,18 @@ list3 <span class="pl-k">=</span> <span class="pl-c1">nest</span>(list, <span cl
 (But only the output, <code>getindex</code> uses original integer indices).
 You can pass a number by which to scale the index, or a dictionary, instead of a function.</p>
 <p>For example, this plots data saved every 4 iterations correctly over the above example:</p>
-<div class="highlight highlight-source-julia"><pre>saveevery <span class="pl-k">=</span> <span class="pl-c1">4</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="saveevery = 4
+list4 = DimArray([], :iter, saveevery);     # equivalent to function  i-&gt;4i
+for i=1:33
+    slowcalc = sqrt(i) .* randn(3,23) .+ i
+    slownice = DimArray(slowcalc, [:a, :b], [Dict(1=&gt;&quot;one&quot;, 2=&gt;&quot;two&quot;, 3=&gt;&quot;three&quot;)], :stuff )
+                                            # equivalent to  i-&gt;Dict(...)[i]
+    rem(i,saveevery)==0 &amp;&amp; push!(list4, slownice)
+end
+nest(list4)
+
+plot!(mean(nest(list4), dims=:b)', s=:dash)
+"><pre>saveevery <span class="pl-k">=</span> <span class="pl-c1">4</span>
 list4 <span class="pl-k">=</span> <span class="pl-c1">DimArray</span>([], <span class="pl-c1">:iter</span>, saveevery);     <span class="pl-c"><span class="pl-c">#</span> equivalent to function  i-&gt;4i</span>
 <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">33</span>
     slowcalc <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(i) <span class="pl-k">.*</span> <span class="pl-c1">randn</span>(<span class="pl-c1">3</span>,<span class="pl-c1">23</span>) <span class="pl-k">.+</span> i
@@ -71,7 +98,7 @@ And <code>kron</code>ecker products produce new names like <code>:a_b</code>.</l
 </ul>
 <p>Michael Abbott,
 January 2018, mostly (as I had a grant to write).</p>
-<p><a href="https://travis-ci.org/mcabbott/DimArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/2b3190e93862f356a01e7d1734e2a3bba9cc7635/68747470733a2f2f7472617669732d63692e6f72672f6d636162626f74742f44696d4172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/mcabbott/DimArrays.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://travis-ci.org/mcabbott/DimArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/dec4b5174d3f41ca72489884137459de1df64482198e5648d29b5f1ec1903323/68747470733a2f2f7472617669732d63692e6f72672f6d636162626f74742f44696d4172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/mcabbott/DimArrays.jl.svg?branch=master" style="max-width:100%;"></a></p>
  
 
 </article></div>

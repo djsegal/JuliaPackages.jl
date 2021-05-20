@@ -24,12 +24,21 @@
 </ol>
 <p>To make things a bit clearer, we now show how to implement a simple bisection search for the zero of a continuous monotonic function (full implementation is available in <code>example/monotonic_zero.jl</code>).</p>
 <p>First to be able to store search region we define an interval type</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> Interval
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct Interval
+    lo::Float64
+    hi::Float64
+end
+"><pre><span class="pl-k">struct</span> Interval
     lo<span class="pl-k">::</span><span class="pl-c1">Float64</span>
     hi<span class="pl-k">::</span><span class="pl-c1">Float64</span>
 <span class="pl-k">end</span></pre></div>
 <p>Then we need to create our own search type. Our search type contains the function whose zero is searched, an initial search region and an absolute tolerance to be used as stopping criterion.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">struct</span> ZeroSearch <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractDepthFirstSearch{Interval}</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct ZeroSearch &lt;: AbstractDepthFirstSearch{Interval}
+    f::Function
+    initial::Interval
+    tol::Float64
+end
+"><pre><span class="pl-k">struct</span> ZeroSearch <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractDepthFirstSearch{Interval}</span>
     f<span class="pl-k">::</span><span class="pl-c1">Function</span>
     initial<span class="pl-k">::</span><span class="pl-c1">Interval</span>
     tol<span class="pl-k">::</span><span class="pl-c1">Float64</span>
@@ -43,7 +52,19 @@
 <li>Otherwise, we bisect the interval.</li>
 </ol>
 <p>Concretely this reads</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> BranchAndPrune<span class="pl-k">.</span><span class="pl-en">process</span>(search<span class="pl-k">::</span><span class="pl-c1">ZeroSearch</span>, interval)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function BranchAndPrune.process(search::ZeroSearch, interval)
+    ylo = search.f(interval.lo)
+    yhi = search.f(interval.hi)
+
+    if ylo*yhi &gt; 0
+        return :discard, interval
+    elseif interval.hi - interval.lo &lt; search.tol
+        return :store, interval
+    else
+        return :bisect, interval
+    end
+end
+"><pre><span class="pl-k">function</span> BranchAndPrune<span class="pl-k">.</span><span class="pl-en">process</span>(search<span class="pl-k">::</span><span class="pl-c1">ZeroSearch</span>, interval)
     ylo <span class="pl-k">=</span> search<span class="pl-k">.</span><span class="pl-c1">f</span>(interval<span class="pl-k">.</span>lo)
     yhi <span class="pl-k">=</span> search<span class="pl-k">.</span><span class="pl-c1">f</span>(interval<span class="pl-k">.</span>hi)
 
@@ -57,12 +78,27 @@
 <span class="pl-k">end</span></pre></div>
 <p>Note the use of the symbols <code>:discard</code>, <code>:store</code> and <code>:bisect</code>. They determine the status of the search region and are the three only possible ones. There is also a second returned value, here always the interval considered without modification. In principle it could be a refinement of the search region as it replaces the initial one in the search.</p>
 <p>Then we need to be able to bisect an interval, this can be done as follows</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> BranchAndPrune<span class="pl-k">.</span><span class="pl-en">bisect</span>(<span class="pl-k">::</span><span class="pl-c1">ZeroSearch</span>, interval)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function BranchAndPrune.bisect(::ZeroSearch, interval)
+    m = (interval.hi + interval.lo)/2
+    return Interval(interval.lo, m), Interval(m, interval.hi)
+end
+"><pre><span class="pl-k">function</span> BranchAndPrune<span class="pl-k">.</span><span class="pl-en">bisect</span>(<span class="pl-k">::</span><span class="pl-c1">ZeroSearch</span>, interval)
     m <span class="pl-k">=</span> (interval<span class="pl-k">.</span>hi <span class="pl-k">+</span> interval<span class="pl-k">.</span>lo)<span class="pl-k">/</span><span class="pl-c1">2</span>
     <span class="pl-k">return</span> <span class="pl-c1">Interval</span>(interval<span class="pl-k">.</span>lo, m), <span class="pl-c1">Interval</span>(m, interval<span class="pl-k">.</span>hi)
 <span class="pl-k">end</span></pre></div>
 <p>We can now write a function to run the search given a function <code>f</code> and an initial interval</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">run_search</span>(f, interval)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function run_search(f, interval)
+    search = ZeroSearch(f, interval, 1e-10)
+
+    local endtree = nothing
+
+    for working_tree in search
+        endtree = working_tree
+    end
+
+    return endtree
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">run_search</span>(f, interval)
     search <span class="pl-k">=</span> <span class="pl-c1">ZeroSearch</span>(f, interval, <span class="pl-c1">1e-10</span>)
 
     <span class="pl-k">local</span> endtree <span class="pl-k">=</span> <span class="pl-c1">nothing</span>
@@ -77,7 +113,9 @@
 <p>This also explains the need for the <code>local</code> keyword when initializing <code>endtree</code> this allows to extract the state from the <code>for</code> loop. Otherwise, the variable <code>endtree</code> would be shadowed inside the loop and the internal state could not be retrieved.</p>
 <p>Finally the states of the search during the iteration, as well as the final state, are represented as a <em>tree</em> (of type <code>BPTree</code>). This closely matches the structure of the search as each bisection can be seen as creating a new branch in a binary tree.</p>
 <p>Finally, the <code>data</code> function allows to get a list of all surviving search regions at the end of the search</p>
-<div class="highlight highlight-source-julia"><pre>tree <span class="pl-k">=</span> <span class="pl-c1">run_search</span>(x <span class="pl-k">-&gt;</span> (x <span class="pl-k">-</span> <span class="pl-c1">4</span>)<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">-</span> <span class="pl-c1">8</span>, <span class="pl-c1">Interval</span>(<span class="pl-k">-</span><span class="pl-c1">20</span>, <span class="pl-c1">20</span>))
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="tree = run_search(x -&gt; (x - 4)^3 - 8, Interval(-20, 20))
+d = data(tree)
+"><pre>tree <span class="pl-k">=</span> <span class="pl-c1">run_search</span>(x <span class="pl-k">-&gt;</span> (x <span class="pl-k">-</span> <span class="pl-c1">4</span>)<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">-</span> <span class="pl-c1">8</span>, <span class="pl-c1">Interval</span>(<span class="pl-k">-</span><span class="pl-c1">20</span>, <span class="pl-c1">20</span>))
 d <span class="pl-k">=</span> <span class="pl-c1">data</span>(tree)</pre></div>
 <p>Here <code>d</code> contains only one element, an interval that indeed well approximates the exact solution which is <code>6</code>. If the function had no zero, <code>d</code> would be empty.</p>
 <h3><a id="user-content-search-with-custom-strategy" class="anchor" aria-hidden="true" href="#search-with-custom-strategy"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Search with custom strategy</h3>

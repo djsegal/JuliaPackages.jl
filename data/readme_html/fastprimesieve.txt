@@ -1,0 +1,102 @@
+<div id="readme" class="md" data-path="readme.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-fastprimesievejl" class="anchor" aria-hidden="true" href="#fastprimesievejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>FastPrimeSieve.jl</h1>
+<h2><a id="user-content-features" class="anchor" aria-hidden="true" href="#features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Features</h2>
+<ul>
+<li>Uses O(2√n / log(n)) memory when discovering primes up to n. All prime numbers up to √n are stored.</li>
+<li>Skips multiples of 2, 3 and 5</li>
+<li>Exploits L1 cache by processing segment by segment (currently one segment is 32KB)</li>
+<li>Uses minimal memory: every byte represents an interval of 30 integers, meaning that all primes up to 1_000_000 can be sieved using just L1 cache.</li>
+<li>The sieving inner loop is unrolled such that 8 multiples can be removed per iteration.</li>
+<li>Multiples of small primes 7, 11, 13, 17 are sieved modulo <code>2 * 3 * ... * 17 = 510510</code> by
+sieving a buffer of <code>510510 / 30 = 17017</code> bytes. This buffer is then repeatedly copied over.</li>
+</ul>
+<h2><a id="user-content-current-functionality" class="anchor" aria-hidden="true" href="#current-functionality"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Current functionality</h2>
+<ul>
+<li>Counting prime numbers in a large interval. Should be 10 to 16 times faster than Primes.jl
+in the range <code>2^20:2^32</code>.</li>
+</ul>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using FastPrimeSieve, BenchmarkTools
+
+julia&gt; @btime FastPrimeSieve.countprimes(2^32)
+  1.241 s (21531 allocations: 1.19 MiB)
+203280221
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> FastPrimeSieve, BenchmarkTools
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> FastPrimeSieve<span class="pl-k">.</span><span class="pl-c1">countprimes</span>(<span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">32</span>)
+  <span class="pl-c1">1.241</span> s (<span class="pl-c1">21531</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.19</span> MiB)
+<span class="pl-c1">203280221</span></pre></div>
+<ul>
+<li>Multithreaded prime counting in large intervals (set <code>JULIA_NUM_THREADS=n</code> where <code>n</code> is
+the number of threads).</li>
+</ul>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Ran on a cloud VM with 8 vCPUs and 128KB L1 cache
+julia&gt; @btime FastPrimeSieve.pcountprimes(2^32, segment_length = 128 * 1024, threads = 8)
+  290.254 ms (173 allocations: 1.91 MiB)
+203280221
+
+julia&gt; @btime FastPrimeSieve.pcountprimes(2^32, segment_length = 128 * 1024, threads = 4)
+  359.990 ms (88 allocations: 1006.61 KiB)
+203280221
+
+julia&gt; @btime FastPrimeSieve.pcountprimes(2^32, segment_length = 128 * 1024, threads = 2)
+  710.347 ms (49 allocations: 528.06 KiB)
+203280221
+
+julia&gt; @btime FastPrimeSieve.pcountprimes(2^32, segment_length = 128 * 1024, threads = 1)
+  1.374 s (26 allocations: 285.03 KiB)
+203280221
+"><pre><span class="pl-c"><span class="pl-c">#</span> Ran on a cloud VM with 8 vCPUs and 128KB L1 cache</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> FastPrimeSieve<span class="pl-k">.</span><span class="pl-c1">pcountprimes</span>(<span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">32</span>, segment_length <span class="pl-k">=</span> <span class="pl-c1">128</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>, threads <span class="pl-k">=</span> <span class="pl-c1">8</span>)
+  <span class="pl-c1">290.254</span> ms (<span class="pl-c1">173</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.91</span> MiB)
+<span class="pl-c1">203280221</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> FastPrimeSieve<span class="pl-k">.</span><span class="pl-c1">pcountprimes</span>(<span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">32</span>, segment_length <span class="pl-k">=</span> <span class="pl-c1">128</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>, threads <span class="pl-k">=</span> <span class="pl-c1">4</span>)
+  <span class="pl-c1">359.990</span> ms (<span class="pl-c1">88</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1006.61</span> KiB)
+<span class="pl-c1">203280221</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> FastPrimeSieve<span class="pl-k">.</span><span class="pl-c1">pcountprimes</span>(<span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">32</span>, segment_length <span class="pl-k">=</span> <span class="pl-c1">128</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>, threads <span class="pl-k">=</span> <span class="pl-c1">2</span>)
+  <span class="pl-c1">710.347</span> ms (<span class="pl-c1">49</span> allocations<span class="pl-k">:</span> <span class="pl-c1">528.06</span> KiB)
+<span class="pl-c1">203280221</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> FastPrimeSieve<span class="pl-k">.</span><span class="pl-c1">pcountprimes</span>(<span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">32</span>, segment_length <span class="pl-k">=</span> <span class="pl-c1">128</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>, threads <span class="pl-k">=</span> <span class="pl-c1">1</span>)
+  <span class="pl-c1">1.374</span> s (<span class="pl-c1">26</span> allocations<span class="pl-k">:</span> <span class="pl-c1">285.03</span> KiB)
+<span class="pl-c1">203280221</span></pre></div>
+<ul>
+<li>Efficient iteration over prime numbers in the range <code>7:2^20</code> (2, 3, and 5 are skipped).
+Should be roughly 6x faster than in Primes.jl.</li>
+</ul>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using FastPrimeSieve, BenchmarkTools
+
+julia&gt; @btime collect(FastPrimeSieve.SmallSieve(1_000_000))
+  528.523 μs (5 allocations: 645.98 KiB)
+78495-element Array{Int64,1}:
+      7
+     11
+      ⋮
+ 999979
+ 999983
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> FastPrimeSieve, BenchmarkTools
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">collect</span>(FastPrimeSieve<span class="pl-k">.</span><span class="pl-c1">SmallSieve</span>(<span class="pl-c1">1_000_000</span>))
+  <span class="pl-c1">528.523</span> μs (<span class="pl-c1">5</span> allocations<span class="pl-k">:</span> <span class="pl-c1">645.98</span> KiB)
+<span class="pl-c1">78495</span><span class="pl-k">-</span>element Array{Int64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+      <span class="pl-c1">7</span>
+     <span class="pl-c1">11</span>
+      ⋮
+ <span class="pl-c1">999979</span>
+ <span class="pl-c1">999983</span></pre></div>
+<h2><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Limitations</h2>
+<p>Segmented sieving combined with loop unrolling while exploiting L1 cache is of course mostly
+efficient when siever primes fit at least eight times in the segment. For example, with 32KB
+of L1 cache, the siever primes should not exceed <code>30 num/byte * 32 * 1024 byte / 8 num = 122_880</code>, meaning we can efficiently sieve up to <code>n = 122_880^2 = 15_099_494_400 ≈ 2^34</code>. This package does not yet implement efficient methods that sieve in the range <code>2^34:∞</code>.</p>
+<h2><a id="user-content-whats-next" class="anchor" aria-hidden="true" href="#whats-next"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>What's next</h2>
+<p>Short term:</p>
+<ul>
+<li>Add a sensible, simple API that allows for iterating over prime numbers etc, such that
+this package can be contributed back to <a href="https://github.com/JuliaMath/Primes.jl">https://github.com/JuliaMath/Primes.jl</a>.</li>
+<li>Automatically use the right methods for the right range</li>
+</ul>
+<p>Long term:</p>
+<ul>
+<li>Improve performance in the range <code>2^34:∞</code>.</li>
+</ul>
+</article></div>

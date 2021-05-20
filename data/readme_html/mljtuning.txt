@@ -2,13 +2,14 @@
 <p>Hyperparameter optimization for
 <a href="https://github.com/alan-turing-institute/MLJ.jl">MLJ</a> machine
 learning models.</p>
-<p><a href="https://travis-ci.com/alan-turing-institute/MLJTuning.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/cd6db5adecb8abb05d61bba92b3d42fbee86c6c9/68747470733a2f2f7472617669732d63692e636f6d2f616c616e2d747572696e672d696e737469747574652f4d4c4a54756e696e672e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/alan-turing-institute/MLJTuning.jl.svg?branch=master" style="max-width:100%;"></a>
-<a href="https://coveralls.io/github/alan-turing-institute/MLJTuning.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/3750554e827975d650a771168055228251c00ca7/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f616c616e2d747572696e672d696e737469747574652f4d4c4a54756e696e672e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/github/alan-turing-institute/MLJTuning.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://github.com/alan-turing-institute/MLJTuning.jl/actions"><img src="https://github.com/alan-turing-institute/MLJTuning.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://coveralls.io/github/alan-turing-institute/MLJTuning.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/0c3d4168c0d6e44a679bb8e0f030d28ccf5e99f09e5bb36fea5d3e7bc4b8c9ab/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f616c616e2d747572696e672d696e737469747574652f4d4c4a54756e696e672e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/github/alan-turing-institute/MLJTuning.jl/badge.svg?branch=master" style="max-width:100%;"></a></p>
 <h3><a id="user-content-contents" class="anchor" aria-hidden="true" href="#contents"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Contents</h3>
 <ul>
 <li><a href="#who-is-this-repo-for">Who is this repo for?</a></li>
 <li><a href="#what-is-provided-here">What's provided here?</a></li>
 <li><a href="#how-do-i-implement-a-new-tuning-strategy">How do I implement a new tuning strategy?</a></li>
+<li><a href="#how-do-i-implement-a-new-selection-heuristic">How do I implement a new selection heuristic?</a></li>
 </ul>
 <p><em>Note:</em> This component of the <a href="https://github.com/alan-turing-institute/MLJ.jl#the-mlj-universe">MLJ
 stack</a>
@@ -58,7 +59,10 @@ optimization strategies, such as:</p>
 <p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> grid search (built-in <code>Grid</code> strategy)</p>
 </li>
 <li class="task-list-item">
-<p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Latin hypercubes</p>
+<p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Latin hypercubes (built-in <code>LatinHypercube</code> strategy,
+interfacing the
+<a href="https://github.com/MrUrq/LatinHypercubeSampling.jl">LatinHypercubeSampling</a>
+package)</p>
 </li>
 <li class="task-list-item">
 <p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> random search (built-in <code>RandomSearch</code> strategy)</p>
@@ -73,7 +77,8 @@ optimization strategies, such as:</p>
 <p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Bayesian optimization using Gaussian processes</p>
 </li>
 <li class="task-list-item">
-<p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> structured tree Parzen estimators</p>
+<p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> structured tree Parzen estimators (<code>MLJTreeParzenTuning</code> from
+<a href="https://github.com/IQVIA-ML/TreeParzen.jl">TreeParzen.jl</a>)</p>
 </li>
 <li class="task-list-item">
 <p><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> multi-objective (Pareto) optimization</p>
@@ -114,15 +119,15 @@ general case, this prototype is a composite model, i.e., a model with
 other models as hyperparameters, and while the type of the prototype
 mutations is fixed, the types of the sub-models are allowed to vary.</p>
 <p>When all iterations of the algorithm are complete, the optimal model
-is selected based entirely on a <em>history</em> generated according to the
-specified <em>tuning strategy</em>. Iterations are generally performed in
-batches, which are evaluated in parallel (sequential tuning strategies
-degenerating into semi-sequential strategies, unless the batch size is
-one). At the beginning of each batch, both the history and an internal
-<em>state</em> object are consulted, and, on the basis of the tuning
-strategy, a new batch of models to be evaluated is generated. On the
-basis of these evaluations, and the strategy, the history and internal
-state are updated.</p>
+is selected by applying a <em>selection heuristic</em> to a <em>history</em>
+generated according to the specified <em>tuning strategy</em>. Iterations are
+generally performed in batches, which are evaluated in parallel
+(sequential tuning strategies degenerating into semi-sequential
+strategies, unless the batch size is one). At the beginning of each
+batch, both the history and an internal <em>state</em> object are consulted,
+and, on the basis of the tuning strategy, a new batch of models to be
+evaluated is generated. On the basis of these evaluations, and the
+strategy, the history and internal state are updated.</p>
 <p>The tuning algorithm initializes the state object before iterations
 begin, on the basis of the specific strategy and a user-specified
 <em>range</em> object.</p>
@@ -134,69 +139,101 @@ the model type (e.g., <code>DecisionTreeRegressor</code>). Models do not
 store learned parameters.</p>
 </li>
 <li>
-<p>An <em>evaluation</em> is the value returned by some call to the
+<p>An <em>evaluation</em> is an object <code>E</code> returned by some call to the
 <code>evaluate!</code> method, when passed the resampling strategy (e.g.,
-<code>CV(nfolds=9)</code> and performance measures specified by the user when
-specifying the tuning task (e.g., <code>cross_entropy</code>b,
-<code>accuracy</code>). Recall that such a value is a named tuple of vectors
-with keys <code>measure</code>, <code>measurement</code>, <code>per_fold</code>, and
-<code>per_observation</code>. See <a href="https://alan-turing-institute.github.io/MLJ.jl/dev/evaluating_model_performance/" rel="nofollow">Evaluating Model
+<code>resampling=CV(nfolds=9)</code>) and a battery of user-specified
+performance measures (e.g., <code>measures=[cross_entropy, accuracy]</code>). An evaluation object <code>E</code> contains a list of measures
+<code>E.measure</code> and a list of corresponding measurements
+<code>E.measurement</code>, each of which is the aggregrate of measurements for
+each resampling of the data, which are stored in <code>E.per_fold</code> (a
+vector of vectors). In the case of a measure that reports a value
+for each individual observation (to obtain the per-fold measurement,
+by aggregation) the per-observation values can be retrieved from
+<code>E.per_observation</code>. This last object includes <code>missing</code> entries for
+measures that do not report per-observation values
+(<code>reports_per_observation(measure) = false</code>) such as <code>auc</code>. See
+<a href="https://alan-turing-institute.github.io/MLJ.jl/dev/evaluating_model_performance/" rel="nofollow">Evaluating Model
 Performance</a>
-for details. Recall also that some measures in MLJ (e.g.,
-<code>cross_entropy</code>) report a loss (or score) for each provided
-observation, while others (e.g., <code>auc</code>) report only an aggregated
-value (the <code>per_observation</code> entries being recorded as
-<code>missing</code>). This and other behavior can be inspected using trait
-functions. Do <code>info(rms)</code> to view the trait values for the <code>rms</code>
-loss, for example, and see <a href="https://alan-turing-institute.github.io/MLJ.jl/dev/performance_measures/" rel="nofollow">Performance
+for details. There is a trait for measures called <code>orientation</code>
+which is <code>:loss</code> for measures you ordinarily want to minimize, and
+<code>:score</code> for those you want to maximize. See <a href="https://alan-turing-institute.github.io/MLJ.jl/dev/performance_measures/" rel="nofollow">Performance
 measures</a>
-for details.</p>
-</li>
-<li>
-<p>The <em>history</em> is a vector of tuples of the form <code>(m, r)</code> generated
-by the tuning algorithm - one tuple per iteration - where <code>m</code> is a
-model instance that has been evaluated, and <code>r</code> (called the
-<em>result</em>) contains three kinds of information: (i) whatever parts of
-the evaluation needed to determine the optimal model; (ii)
-additional user-inspectable statistics that may be of interest - for
-example, evaluations of a measure (loss or score) different from one
-being explicitly optimized; and (iii) any model "metadata" that a
-tuning strategy implementation may need to be recorded for
-generating the next batch of model candidates - for example an
-implementation-specific representation of the model.</p>
+for further details.</p>
 </li>
 <li>
 <p>A <em>tuning strategy</em> is an instance of some subtype <code>S &lt;: TuningStrategy</code>, the name <code>S</code> (e.g., <code>Grid</code>) indicating the tuning
-algorithm to be applied. The fields of the tuning strategy - called
-<em>tuning hyperparameters</em> - are those tuning parameters specific to the
-strategy that <strong>do not refer to specific models or specific model
-hyperparameters</strong>. So, for example, a default resolution to be used
-in a grid search is a hyperparameter of <code>Grid</code>, but the resolution
-to be applied to a <em>specific</em> hyperparameter (such as the maximum
-depth of a decision tree) is <strong>not</strong>. This latter parameter would be
-part of the user-specified range object.</p>
+(optimization) algorithm to be applied. The fields of the tuning
+strategy - called <em>tuning hyperparameters</em> - are those tuning
+parameters specific to the strategy that <strong>do not refer to specific
+models or specific model hyperparameters</strong>. So, for example, a
+default resolution to be used in a grid search is a hyperparameter
+of <code>Grid</code>, but the resolution to be applied to a <em>specific</em>
+hyperparameter (such as the maximum depth of a decision tree) is
+<em>not</em>. This latter parameter would be part of the user-specified
+range object. A <em>multi-objective</em> tuning strategy is one that
+consults the measurements of all <code>measures</code> specified by the user;
+otherwise only the <strong>first</strong> measure is consulted, although
+measurements for all measures are nevertheless reported.</p>
+</li>
+<li>
+<p>A <em>selection heuristic</em> is a rule describing how the outcomes of the
+model evaluations will be used to select the <em>best (optimal) model</em>,
+after all iterations of the optimizer have concluded. For example,
+the default <code>NaiveSelection()</code> heuristic
+simply selects the model whose evaluation <code>E</code> has the smallest or
+largest <code>E.measurement[1]</code> value, according to whether the metric
+<code>E.measure[1]</code> is a <code>:loss</code> or <code>:score</code>. Most heuristics are
+<em>generic</em> in the sense they will apply no matter what tuning
+strategy is applied.  A selection heuristic supported by a
+multi-objective tuning strategy must select <em>some</em> "best" model
+(e.g., a random Pareto optimal solution).</p>
+</li>
+<li>
+<p>The <em>history</em> is a vector of identically-keyed named tuples, one
+tuple per iteration. The tuple keys include:</p>
+<ul>
+<li>
+<p><code>model</code>: for the MLJ model instance that has been evaluated</p>
+</li>
+<li>
+<p><code>measure</code>, <code>measurement</code>, <code>per_fold</code>: for storing the values of
+<code>E.measure</code>, <code>E.measurement</code> and <code>E.per_fold</code>, where <code>E</code> is the corresponding
+evaluation object.</p>
+</li>
+<li>
+<p><code>metadata</code>: for any tuning strategy-specific information required
+to be recorded in the history <em>but not intended to be reported to
+the user</em> (for example an implementation-specific representation
+of <code>model</code>).</p>
+</li>
+</ul>
+<p>There may be additional keys for tuning-specific information that
+<em>is</em> to be reported to the user (such as temperature in
+simulated annhealing).</p>
 </li>
 <li>
 <p>A <em>range</em> is any object whose specification completes the
 specification of the tuning task, after the prototype, tuning
-strategy, resampling strategy, performance measure(s), and total
-iteration count are given - and is essentially the space of models
-to be searched. This definition is intentionally broad and the
-interface places no restriction on the allowed types of this
-object. It may be generally viewed as the "space" of models being
-searched <em>plus</em> strategy-specific data explaining how models from
-that space are actually to be generated (e.g.,
-hyperparameter-specific grid resolutions or probability
-distributions). For more on range types see <a href="#range-types">Range
+strategy, resampling strategy, performance measure(s), selection
+heuristic, and total iteration count are given. This definition is
+intentionally broad and the interface places no restriction on the
+allowed types of this object, although <strong>all strategies should
+support the one-dimensional range objects</strong> defined in <code>MLJBase</code>
+(see <a href="#range-types">below</a>). Generally, a range may be understood as
+the "space" of models being searched <em>plus</em> strategy-specific data
+explaining how models from that space are actually to be generated
+(e.g., grid resolutions or probability distributions specific to
+particular hyper-parameters). For more on range types see <a href="#range-types">Range
 types</a> below.</p>
 </li>
 </ul>
 <h3><a id="user-content-interface-points-for-user-input" class="anchor" aria-hidden="true" href="#interface-points-for-user-input"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Interface points for user input</h3>
 <p>Recall, for context, that in MLJ tuning is implemented as a model
 wrapper. A model is tuned by <em>fitting</em> the wrapped model to data
-(which also trains the optimal model on all available data). To use
-the optimal model one <em>predicts</em> using the wrapped model. For more
-detail, see the <a href="https://alan-turing-institute.github.io/MLJ.jl/dev/tuning_models/" rel="nofollow">Tuning
+(which also trains the optimal model on all available data). This
+process determines the optimal model, as defined by the selection
+heuristic (see above). To use the optimal model one <em>predicts</em> using
+the wrapped model. For more detail, see the <a href="https://alan-turing-institute.github.io/MLJ.jl/dev/tuning_models/" rel="nofollow">Tuning
 Models</a>
 section of the MLJ manual.</p>
 <p>In setting up a tuning task, the user constructs an instance of the
@@ -219,6 +256,10 @@ evaluations, which must be an instance of a concrete
 <p><code>measure</code>: a measure (loss or score) or vector of measures available
 to the tuning algorithm, the first of which is optimized in the
 common case of single-objective tuning strategies</p>
+</li>
+<li>
+<p><code>selection_heuristic</code>: some instance of <code>SelectionHeuristic</code>, such
+as <code>NaiveSelection()</code> (default)</p>
 </li>
 <li>
 <p><code>range</code>: as defined above - roughly, the space of models to be searched</p>
@@ -246,23 +287,25 @@ at the level of resampling (e.g., in cross-validation)</p>
 <p><code>setup</code>: for initialization of state (compulsory)</p>
 </li>
 <li>
-<p><code>result</code>: for building each element of the history</p>
+<p><code>extras</code>: for declaring and formatting additional user-inspectable information
+going into the history</p>
 </li>
 <li>
-<p><code>models!</code>: for generating batches of new models and updating the
+<p><code>tuning_report</code>: for declaring any other strategy-specific information
+to report to the user (optional)</p>
+</li>
+<li>
+<p><code>models</code>: for generating batches of new models and updating the
 state (compulsory)</p>
-</li>
-<li>
-<p><code>best</code>: for extracting the entry in the history corresponding to the
-optimal model from the full history</p>
-</li>
-<li>
-<p><code>tuning_report</code>: for selecting what to report to the user apart from
-details on the optimal model</p>
 </li>
 <li>
 <p><code>default_n</code>: to specify the total number of models to be evaluated when
 <code>n</code> is not specified by the user</p>
+</li>
+<li>
+<p><code>supports_heuristic</code>: a trait used to encode which selection
+heuristics are supported by the tuning strategy (only needed if you
+define a strategy-specific heuristic)</p>
 </li>
 </ul>
 <p><strong>Important note on the history.</strong> The initialization and update of the
@@ -278,7 +321,18 @@ include, for example, the default resolution of a grid search, or the
 initial temperature in simulated annealing.</p>
 <p>The algorithm implementation must include a keyword constructor with
 defaults. Here's an example:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> Grid <span class="pl-k">&lt;:</span> <span class="pl-c1">TuningStrategy</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="mutable struct Grid &lt;: TuningStrategy
+	goal::Union{Nothing,Int}
+	resolution::Int
+	shuffle::Bool
+	rng::Random.AbstractRNG
+end
+
+# Constructor with keywords
+Grid(; goal=nothing, resolution=10, shuffle=true,
+	 rng=Random.GLOBAL_RNG) =
+	Grid(goal, resolution, MLJBase.shuffle_and_rng(shuffle, rng)...)
+"><pre><span class="pl-k">mutable struct</span> Grid <span class="pl-k">&lt;:</span> <span class="pl-c1">TuningStrategy</span>
 	goal<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Int}</span>
 	resolution<span class="pl-k">::</span><span class="pl-c1">Int</span>
 	shuffle<span class="pl-k">::</span><span class="pl-c1">Bool</span>
@@ -299,9 +353,9 @@ recommended that every tuning strategy support at least these types:</p>
 <p>one-dimensional ranges <code>r</code>, where <code>r</code> is a <code>MLJBase.ParamRange</code> instance</p>
 </li>
 <li>
-<p>(optional) pairs of the form <code>(r, data)</code>, where <code>data</code> is metadata,
-such as a resolution in a grid search, or a distribution in a random
-search</p>
+<p>(optional) pairs of the form <code>(r, data)</code>, where <code>data</code> is extra
+hyper-parameter-specific information, such as a resolution in a grid
+search, or a distribution in a random search</p>
 </li>
 <li>
 <p>abstract vectors whose elements are of the above form</p>
@@ -328,38 +382,19 @@ one-dimensional grids or for random sampling, respectively. See the
 section</a>
 of the MLJ manual or doc-strings for more on these methods and the
 <code>Grid</code> and <code>RandomSearch</code> implementations.</p>
-<h4><a id="user-content-the-result-method-for-building-each-entry-of-the-history" class="anchor" aria-hidden="true" href="#the-result-method-for-building-each-entry-of-the-history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>result</code> method: For building each entry of the history</h4>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">result</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, history, state, e, metadata)</pre></div>
-<p>This method is for constructing the result object <code>r</code> in each tuple
-<code>(m, r)</code> written to the history. Here <code>e</code> is the evaluation of the
-model <code>m</code> (as returned by a call to <code>evaluation!</code>) and <code>metadata</code> is
-any metadata associated with <code>m</code> when this is included in the output
-of <code>models!</code> (see below), and <code>nothing</code> otherwise. The value of <code>r</code> is
-also allowed to depend on previous events in the history. The fallback
-is:</p>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-en">result</span>(tuning, history, state, e, metadata) <span class="pl-k">=</span> (measure<span class="pl-k">=</span>e<span class="pl-k">.</span>measure, measurement<span class="pl-k">=</span>e<span class="pl-k">.</span>measurement)</pre></div>
-<p>Note in this case that the result is always a named tuple of
-<em>vectors</em>, since multiple measures can be specified (and singleton
-measures provided by the user are promoted to vectors with a
-single element).</p>
-<p>The history must contain everything needed for the <code>best</code> method to
-determine the optimal model, and everything needed by the
-<code>report_history</code> method, which generates a report on tuning to the
-user (for use in visualization, for example). These methods are
-detailed below.</p>
 <h4><a id="user-content-the-setup-method-to-initialize-state" class="anchor" aria-hidden="true" href="#the-setup-method-to-initialize-state"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>setup</code> method: To initialize state</h4>
-<div class="highlight highlight-source-julia"><pre>state <span class="pl-k">=</span> <span class="pl-c1">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, range, verbosity)</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="state = setup(tuning::MyTuningStrategy, model, range, n, verbosity)
+"><pre>state <span class="pl-k">=</span> <span class="pl-c1">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, range, n, verbosity)</pre></div>
 <p>The <code>setup</code> function is for initializing the <code>state</code> of the tuning
-algorithm (available to the <code>models!</code> method). Be sure to make this
-object mutable if it needs to be updated by the <code>models!</code> method.</p>
+algorithm (available to the <code>models</code> method). Be sure to make this
+object mutable if it needs to be updated by the <code>models</code> method. The
+arguments <code>model</code> and <code>n</code> are what the user has specified in their
+<code>TunedModel</code> instance; recall <code>model</code> is the prototype to be cloned
+and mutated, and <code>n</code> the total number of mutations to be generated.</p>
 <p>The <code>state</code> is a place to record the outcomes of any necessary
 intialization of the tuning algorithm (performed by <code>setup</code>) and a
-place for the <code>models!</code> method to save and read transient information
+place for the <code>models</code> method to save and read transient information
 that does not need to be recorded in the history.</p>
-<p>The <code>setup</code> function is called once only, when a <code>TunedModel</code> machine
-is <code>fit!</code> the first time, and not on subsequent calls (unless
-<code>force=true</code>). (Specifically, <code>MLJBase.fit(::TunedModel, ...)</code> calls
-<code>setup</code> but <code>MLJBase.update(::TunedModel, ...)</code> does not.)</p>
 <p>The <code>setup</code> function is called once only, when a <code>TunedModel</code> machine
 is <code>fit!</code> the first time, and not on subsequent calls (unless
 <code>force=true</code>). (Specifically, <code>MLJBase.fit(::TunedModel, ...)</code> calls
@@ -368,101 +403,124 @@ is <code>fit!</code> the first time, and not on subsequent calls (unless
 means logging should be restricted to warnings, <code>-1</code>, means completely
 silent.</p>
 <p>The fallback for <code>setup</code> is:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">TuningStrategy</span>, model, range, verbosity) <span class="pl-k">=</span> range</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="setup(tuning::TuningStrategy, model, range, n, verbosity) = range
+"><pre><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">TuningStrategy</span>, model, range, n, verbosity) <span class="pl-k">=</span> range</pre></div>
 <p>However, a tuning strategy will generally want to implement a <code>setup</code>
 method for each range type it is going to support:</p>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, range<span class="pl-k">::</span><span class="pl-c1">RangeType1</span>, verbosity) <span class="pl-k">=</span> <span class="pl-k">...</span>
-MLJTuning<span class="pl-k">.</span><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, range<span class="pl-k">::</span><span class="pl-c1">RangeType2</span>, verbosity) <span class="pl-k">=</span> <span class="pl-k">...</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.setup(tuning::MyTuningStrategy, model, range::RangeType1, n, verbosity) = ...
+MLJTuning.setup(tuning::MyTuningStrategy, model, range::RangeType2, n, verbosity) = ...
+etc.
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, range<span class="pl-k">::</span><span class="pl-c1">RangeType1</span>, n, verbosity) <span class="pl-k">=</span> <span class="pl-k">...</span>
+MLJTuning<span class="pl-k">.</span><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, range<span class="pl-k">::</span><span class="pl-c1">RangeType2</span>, n, verbosity) <span class="pl-k">=</span> <span class="pl-k">...</span>
 etc.</pre></div>
-<h4><a id="user-content-the-models-method-for-generating-model-batches-to-evaluate" class="anchor" aria-hidden="true" href="#the-models-method-for-generating-model-batches-to-evaluate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>models!</code> method: For generating model batches to evaluate</h4>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">models!</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, history, state, verbosity)</pre></div>
+<h4><a id="user-content-the-extras-method-for-adding-user-inspectable-data-to-the-history" class="anchor" aria-hidden="true" href="#the-extras-method-for-adding-user-inspectable-data-to-the-history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>extras</code> method: For adding user-inspectable data to the history</h4>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.extras(tuning::MyTuningStrategy, history, state, E) -&gt; named_tuple
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">extras</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, history, state, E) <span class="pl-k">-&gt;</span> named_tuple</pre></div>
+<p>This method should return any user-inspectable information to be
+included in a new history entry, that is in addition to the <code>model</code>,
+<code>measures</code>, <code>measurement</code> and <code>per_fold</code> data.
+<em><strong>This method must return a named tuple</strong></em>,
+human readable if possible. Each key of the
+returned named tuple becomes a key of the new history entry.</p>
+<p>Here <code>E</code> is the full evalutation object for <code>model</code> and <code>history</code> the
+current history (before adding the new entry).</p>
+<p>The fallback for <code>extras</code> returns an empty named tuple.</p>
+<h4><a id="user-content-the-models-method-for-generating-model-batches-to-evaluate" class="anchor" aria-hidden="true" href="#the-models-method-for-generating-model-batches-to-evaluate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>models</code> method: For generating model batches to evaluate</h4>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.models(tuning::MyTuningStrategy, model, history, state, n_remaining, verbosity)
+	-&gt; vector_of_models, new_state
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">models</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, model, history, state, n_remaining, verbosity)
+	<span class="pl-k">-&gt;</span> vector_of_models, new_state</pre></div>
 <p>This is the core method of a new implementation. Given the existing
 <code>history</code> and <code>state</code>, it must return a vector ("batch") of <em>new</em>
-model instances to be evaluated. Any number of models can be returned
-(and this includes an empty vector or <code>nothing</code>, if models have been
-exhausted) and the evaluations will be performed in parallel (using
-the mode of parallelization defined by the <code>acceleration</code> field of the
-<code>TunedModel</code> instance). <em>An update of the history, performed
-automatically under the hood, only occurs after these evaluations.</em></p>
+model instances <code>vector_of_models</code> to be evaluated, and the updated
+<code>state</code>. Any number of models can be returned (and this includes an
+empty vector or <code>nothing</code>, if models have been exhausted) and the
+evaluations will be performed in parallel (using the mode of
+parallelization defined by the <code>acceleration</code> field of the
+<code>TunedModel</code> instance). <em><strong>An update of the history, performed
+automatically under the hood, only occurs after these evaluations.</strong></em></p>
+<p>If needed, extra metadata may be attached to each model returned; see
+<a href="#including-model-metadata">below</a>.</p>
 <p>Most sequential tuning strategies will want include the batch size as
 a hyperparameter, which we suggest they call <code>batch_size</code>, but this
 field is not part of the tuning interface. In tuning, whatever models
-are returned by <code>models!</code> get evaluated in parallel.</p>
-<p>In a <code>Grid</code> tuning strategy, for example, <code>models!</code> returns a random
-selection of <code>n - length(history)</code> models from the grid, so that
-<code>models!</code> is called only once (in each call to
+are returned by <code>models</code> get evaluated in parallel.</p>
+<p>In a <code>Grid</code> tuning strategy, for example, <code>vector_of_models</code> is a
+random selection of <code>n_remaining = n - length(history)</code> models from
+the grid, so that <code>models</code> is called only once (in each call to
 <code>MLJBase.fit(::TunedModel, ...)</code> or <code>MLJBase.update(::TunedModel, ...)</code>). In a bona fide sequential method which is generating models
-non-deterministically (such as simulated annealing), <code>models!</code> might
-return a single model, or return a small batch of models to make use
-of parallelization (the method becoming "semi-sequential" in that
-case).</p>
+non-deterministically (such as simulated annealing),
+<code>vector_of_models</code> might be a single model, or a small batch of models
+to make use of parallelization (the method becoming "semi-sequential"
+in that case).</p>
 <h5><a id="user-content-including-model-metadata" class="anchor" aria-hidden="true" href="#including-model-metadata"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Including model metadata</h5>
-<p>If a tuning strategy implementation needs to pass additional
-"metadata" along with each model, to be passed to <code>result</code> for
-recording in the history, then instead of model instances, <code>models!</code>
-should returne a vector of <em>tuples</em> of the form <code>(m, metadata)</code>, where
-<code>m</code> is a model instance, and <code>metadata</code> the associated data. See the
-discussion above on <code>result</code>.</p>
+<p>If a tuning strategy implementation needs to record additional
+metadata in the history, for each model generated, then instead of
+model instances, <code>vector_of_models</code> should be vector of <em>tuples</em> of the
+form <code>(m, metadata)</code>, where <code>m</code> is a model instance, and <code>metadata</code>
+the associated data. <em><strong>To access the metadata for the <code>j</code>th element of
+the existing history, use <code>history[j].metadata</code>.</strong></em></p>
 <p>If the tuning algorithm exhausts it's supply of new models (because,
-for example, there is only a finite supply) then <code>models!</code> should
-return an empty vector or <code>nothing</code>. Under the hood, there is no fixed
-"batch-size" parameter, and the tuning algorithm is happy to receive
-any number of models. If <code>models!</code> returns a number of models
-exceeding the number needed to complete the history, the list returned
-is simply truncated.</p>
+for example, there is only a finite supply) then <code>vector_of_models</code>
+should be an empty vector or <code>nothing</code>. Under the hood, there is no
+fixed "batch-size" parameter, and the tuning algorithm is happy to
+receive any number of models. If <code>vector_of_models</code> contains more
+models than required to complete all tuning iterations, then it is
+simply truncated.</p>
 <p>Some simple tuning strategies, such as <code>RandomSearch</code>, will want to
 return as many models as possible in one hit. The argument
 <code>n_remaining</code> is the difference between the current length of the
 history and the target number of iterations <code>tuned_model.n</code> set by the
 user when constructing his <code>TunedModel</code> instance, <code>tuned_model</code> (or
 <code>default_n(tuning, range)</code> if left unspecified).</p>
-<h4><a id="user-content-the-best-method-to-define-what-constitutes-the-optimal-model" class="anchor" aria-hidden="true" href="#the-best-method-to-define-what-constitutes-the-optimal-model"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>best</code> method: To define what constitutes the "optimal model"</h4>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">best</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, history)</pre></div>
-<p>Returns the entry <code>(best_model, r)</code> from the history corresponding to
-the optimal model <code>best_model</code>.</p>
-<p>A fallback whose definition is given below may be used, <em>provided the
-fallback for <code>result</code> detailed above has not been overloaded</em>. In this
-fallback for <code>best</code>, the best model is the one optimizing performance
-estimates for the first measure in the <code>TunedModel</code> field <code>measure</code>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">function</span> <span class="pl-en">best</span>(tuning<span class="pl-k">::</span><span class="pl-c1">TuningStrategy</span>, history)
-   measurements <span class="pl-k">=</span> [h[<span class="pl-c1">2</span>]<span class="pl-k">.</span>measurement[<span class="pl-c1">1</span>] <span class="pl-k">for</span> h <span class="pl-k">in</span> history]
-   measure <span class="pl-k">=</span> <span class="pl-c1">first</span>(history)[<span class="pl-c1">2</span>]<span class="pl-k">.</span>measure[<span class="pl-c1">1</span>]
-   <span class="pl-k">if</span> <span class="pl-c1">orientation</span>(measure) <span class="pl-k">==</span> <span class="pl-c1">:score</span>
-	   measurements <span class="pl-k">=</span> <span class="pl-k">-</span>measurements
-   <span class="pl-k">end</span>
-   best_index <span class="pl-k">=</span> <span class="pl-c1">argmin</span>(measurements)
-   <span class="pl-k">return</span> history[best_index]
-<span class="pl-k">end</span></pre></div>
-<h4><a id="user-content-the-tuning_report-method-to-build-the-user-accessible-report" class="anchor" aria-hidden="true" href="#the-tuning_report-method-to-build-the-user-accessible-report"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>tuning_report</code> method: To build the user-accessible report</h4>
+<h4><a id="user-content-the-tuning_report-method-to-add-to-the-user-inspectable-report" class="anchor" aria-hidden="true" href="#the-tuning_report-method-to-add-to-the-user-inspectable-report"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>tuning_report</code> method: To add to the user-inspectable report</h4>
 <p>As with any model, fitting a <code>TunedModel</code> instance generates a
-user-accessible report. In the case of tuning, the report is
+user-accessible report. Note that the fallback report already includes
+additions to the history created by the <code>extras</code> method mentioned
+above. To add more strategy-specific information to the report, one
+overloads <code>tuning_report</code>.</p>
+<p>Specically, the report generated by fitting a <code>TunedModel</code> is
 constructed with this code:</p>
-<div class="highlight highlight-source-julia"><pre>report <span class="pl-k">=</span> <span class="pl-c1">merge</span>((best_model<span class="pl-k">=</span>best_model, best_result<span class="pl-k">=</span>best_result, best_report<span class="pl-k">=</span>best_report,),
-				<span class="pl-c1">tuning_report</span>(tuning, history, state))</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="report1 = (best_model         = best_model,
+           best_history_entry = best_user_history_entry,
+           history            = user_history,
+           best_report        = best_report)
+
+report = merge(report1, tuning_report(tuning, history, state))
+"><pre>report1 <span class="pl-k">=</span> (best_model         <span class="pl-k">=</span> best_model,
+           best_history_entry <span class="pl-k">=</span> best_user_history_entry,
+           history            <span class="pl-k">=</span> user_history,
+           best_report        <span class="pl-k">=</span> best_report)
+
+report <span class="pl-k">=</span> <span class="pl-c1">merge</span>(report1, <span class="pl-c1">tuning_report</span>(tuning, history, state))</pre></div>
 <p>where:</p>
 <ul>
 <li>
-<p><code>best_model</code> is the optimal model instance</p>
+<p><code>best_model</code> is the best model instance (as selected according to
+the user-specified <code>selection heuristic</code>).</p>
 </li>
 <li>
-<p><code>best_result</code> is the corresponding "result" entry in the history (e.g., performance evaluation)</p>
+<p><code>best_user_history</code> is the corresponding entry in the history with <code>metadata</code> removed.</p>
 </li>
 <li>
-<p><code>best_report</code> is the report generated by fitting the optimal
-model</p>
+<p><code>best_report</code> is the report generated when fitting the <code>best_model</code>
+on all available data.</p>
+</li>
+<li>
+<p><code>user_history</code> is the full history with <code>metadata</code> entries removed.</p>
 </li>
 <li>
 <p><code>tuning_report(::MyTuningStrategy, ...)</code> is a method the implementer
-may overload. It should return a named tuple with <code>history</code> as one
-of the keys (the format up to the implementation.) The fallback is
-to return the raw history:</p>
+may overload that ***must return a named tuple, preferably human readable</p>
 </li>
 </ul>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-en">tuning_report</span>(tuning, history, state) <span class="pl-k">=</span> (history<span class="pl-k">=</span>history,)</pre></div>
+<p>The fallback for <code>tuning_report</code> returns an empty named-tuple.</p>
 <h4><a id="user-content-the-default_n-method-for-declaring-the-default-number-of-iterations" class="anchor" aria-hidden="true" href="#the-default_n-method-for-declaring-the-default-number-of-iterations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>default_n</code> method: For declaring the default number of iterations</h4>
-<div class="highlight highlight-source-julia"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">default_n</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, range)</pre></div>
-<p>The <code>models!</code> method (which is allowed to return multiple models) is
-called until one of the following occurs:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.default_n(tuning::MyTuningStrategy, range)
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">default_n</span>(tuning<span class="pl-k">::</span><span class="pl-c1">MyTuningStrategy</span>, range)</pre></div>
+<p>The <code>models</code> method, which is allowed to return multiple models in
+it's first return value <code>vector_of_models</code>, is called until one of the
+following occurs:</p>
 <ul>
 <li>
 <p>The length of the history matches the number of iterations specified
@@ -472,75 +530,180 @@ user has not specified a value) then <code>default_n(tuning, range)</code> is
 used instead.</p>
 </li>
 <li>
-<p><code>models!</code> returns an empty list or <code>nothing</code>.</p>
+<p><code>vector_of_models</code> is empty or <code>nothing</code>.</p>
 </li>
 </ul>
 <p>The fallback is</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-en">default_n</span>(tuning<span class="pl-k">::</span><span class="pl-c1">TuningStrategy</span>, range) <span class="pl-k">=</span> DEFAULT_N</pre></div>
-<p>where <code>DEFAULT_N</code> is a global constant. Do <code>using MLJTuning;  MLJTuning.DEFAULT_N</code> to see check the current value.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="default_n(tuning::TuningStrategy, range) = DEFAULT_N
+"><pre><span class="pl-en">default_n</span>(tuning<span class="pl-k">::</span><span class="pl-c1">TuningStrategy</span>, range) <span class="pl-k">=</span> DEFAULT_N</pre></div>
+<p>where <code>DEFAULT_N</code> is a global constant. Do <code>using MLJTuning; MLJTuning.DEFAULT_N</code> to see check the current value.</p>
+<h4><a id="user-content-the-supports_heuristic-trait" class="anchor" aria-hidden="true" href="#the-supports_heuristic-trait"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The <code>supports_heuristic</code> trait</h4>
+<p>If you define a selection heuristic <code>SpecialHeuristic</code> (see
+<a href="#how-do-i-implement-a-new-selection-heuristic">below</a>) and that
+heuristic is specific to a tuning strategy <code>TuningStrategy</code> then you
+must define</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.supports_heuristic(::TuningStrategy, ::SpecialHeuristic) = true
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-en">supports_heuristic</span>(<span class="pl-k">::</span><span class="pl-c1">TuningStrategy</span>, <span class="pl-k">::</span><span class="pl-c1">SpecialHeuristic</span>) <span class="pl-k">=</span> <span class="pl-c1">true</span></pre></div>
 <h3><a id="user-content-implementation-example-search-through-an-explicit-list" class="anchor" aria-hidden="true" href="#implementation-example-search-through-an-explicit-list"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Implementation example: Search through an explicit list</h3>
 <p>The most rudimentary tuning strategy just evaluates every model
 generated by some iterator, such iterators constituting the only kind
 of supported range. The models generated must all have a common type
 and, in th implementation below, the type information is conveyed by
 the specified prototype <code>model</code> (which is otherwise ignored).  The
-fallback implementations for <code>result</code>, <code>best</code> and <code>report_history</code>
+fallback implementations for <code>extras</code> and <code>report_history</code>
 suffice.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">mutable struct</span> Explicit <span class="pl-k">&lt;:</span> <span class="pl-c1">TuningStrategy</span> <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+mutable struct Explicit &lt;: TuningStrategy end
+
+mutable struct ExplicitState{R,N}
+	range::R
+	next::Union{Nothing,N} # to hold output of `iterate(range)`
+end
+
+ExplicitState(r::R, ::Nothing) where R = ExplicitState{R,Nothing}(r,nothing)
+ExplictState(r::R, n::N) where {R,N} = ExplicitState{R,Union{Nothing,N}}(r,n)
+
+function MLJTuning.setup(tuning::Explicit, model, range, verbosity)
+	next = iterate(range)
+	return ExplicitState(range, next)
+end
+
+# models returns all available models in the range at once:
+function MLJTuning.models(tuning::Explicit,
+                          model,
+                          history,
+                          state,
+                          n_remaining,
+						  verbosity)
+
+	range, next  = state.range, state.next
+
+	next === nothing &amp;&amp; return nothing, state
+
+	m, s = next
+	vector_of_models = [m, ]
+
+	next = iterate(range, s)
+
+	i = 1 # current length of `vector_of_models`
+	while i &lt; n_remaining
+		next === nothing &amp;&amp; break
+		m, s = next
+		push!(vector_of_models, m)
+		i += 1
+		next = iterate(range, s)
+	end
+
+    new_state = ExplicitState(range, next)
+
+    return vector_of_models, new_state
+
+end
+
+function default_n(tuning::Explicit, range)
+	try
+		length(range)
+	catch MethodError
+		DEFAULT_N
+	end
+end
+
+"><pre><span class="pl-k">mutable struct</span> Explicit <span class="pl-k">&lt;:</span> <span class="pl-c1">TuningStrategy</span> <span class="pl-k">end</span>
 
 <span class="pl-k">mutable struct</span> ExplicitState{R,N}
-    range<span class="pl-k">::</span><span class="pl-c1">R</span>
-    next<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,N}</span> <span class="pl-c"><span class="pl-c">#</span> to hold output of `iterate(range)`</span>
+	range<span class="pl-k">::</span><span class="pl-c1">R</span>
+	next<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,N}</span> <span class="pl-c"><span class="pl-c">#</span> to hold output of `iterate(range)`</span>
 <span class="pl-k">end</span>
 
 <span class="pl-en">ExplicitState</span>(r<span class="pl-k">::</span><span class="pl-c1">R</span>, <span class="pl-k">::</span><span class="pl-c1">Nothing</span>) <span class="pl-k">where</span> R <span class="pl-k">=</span> <span class="pl-c1">ExplicitState</span><span class="pl-c1">{R,Nothing}</span>(r,<span class="pl-c1">nothing</span>)
 <span class="pl-en">ExplictState</span>(r<span class="pl-k">::</span><span class="pl-c1">R</span>, n<span class="pl-k">::</span><span class="pl-c1">N</span>) <span class="pl-k">where</span> {R,N} <span class="pl-k">=</span> <span class="pl-c1">ExplicitState</span><span class="pl-c1">{R,Union{Nothing,N}}</span>(r,n)
 
 <span class="pl-k">function</span> MLJTuning<span class="pl-k">.</span><span class="pl-en">setup</span>(tuning<span class="pl-k">::</span><span class="pl-c1">Explicit</span>, model, range, verbosity)
-    next <span class="pl-k">=</span> <span class="pl-c1">iterate</span>(range)
-    <span class="pl-k">return</span> <span class="pl-c1">ExplicitState</span>(range, next)
+	next <span class="pl-k">=</span> <span class="pl-c1">iterate</span>(range)
+	<span class="pl-k">return</span> <span class="pl-c1">ExplicitState</span>(range, next)
 <span class="pl-k">end</span>
 
-<span class="pl-c"><span class="pl-c">#</span> models! returns all available models in the range at once:</span>
-<span class="pl-k">function</span> MLJTuning<span class="pl-k">.</span><span class="pl-en">models!</span>(tuning<span class="pl-k">::</span><span class="pl-c1">Explicit</span>,
-                           model,
-                           history,
-                           state,
-                           n_remaining,
-                           verbosity)
+<span class="pl-c"><span class="pl-c">#</span> models returns all available models in the range at once:</span>
+<span class="pl-k">function</span> MLJTuning<span class="pl-k">.</span><span class="pl-en">models</span>(tuning<span class="pl-k">::</span><span class="pl-c1">Explicit</span>,
+                          model,
+                          history,
+                          state,
+                          n_remaining,
+						  verbosity)
 
-    range, next  <span class="pl-k">=</span> state<span class="pl-k">.</span>range, state<span class="pl-k">.</span>next
+	range, next  <span class="pl-k">=</span> state<span class="pl-k">.</span>range, state<span class="pl-k">.</span>next
 
-    next <span class="pl-k">===</span> <span class="pl-c1">nothing</span> <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+	next <span class="pl-k">===</span> <span class="pl-c1">nothing</span> <span class="pl-k">&amp;&amp;</span> <span class="pl-k">return</span> <span class="pl-c1">nothing</span>, state
 
-    m, s <span class="pl-k">=</span> next
-    models <span class="pl-k">=</span> [m, ]
+	m, s <span class="pl-k">=</span> next
+	vector_of_models <span class="pl-k">=</span> [m, ]
 
-    next <span class="pl-k">=</span> <span class="pl-c1">iterate</span>(range, s)
+	next <span class="pl-k">=</span> <span class="pl-c1">iterate</span>(range, s)
 
-    i <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> current length of `models`</span>
-    <span class="pl-k">while</span> i <span class="pl-k">&lt;</span> n_remaining
-        next <span class="pl-k">===</span> <span class="pl-c1">nothing</span> <span class="pl-k">&amp;&amp;</span> <span class="pl-k">break</span>
-        m, s <span class="pl-k">=</span> next
-        <span class="pl-c1">push!</span>(models, m)
-        i <span class="pl-k">+=</span> <span class="pl-c1">1</span>
-        next <span class="pl-k">=</span> <span class="pl-c1">iterate</span>(range, s)
-    <span class="pl-k">end</span>
+	i <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> current length of `vector_of_models`</span>
+	<span class="pl-k">while</span> i <span class="pl-k">&lt;</span> n_remaining
+		next <span class="pl-k">===</span> <span class="pl-c1">nothing</span> <span class="pl-k">&amp;&amp;</span> <span class="pl-k">break</span>
+		m, s <span class="pl-k">=</span> next
+		<span class="pl-c1">push!</span>(vector_of_models, m)
+		i <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+		next <span class="pl-k">=</span> <span class="pl-c1">iterate</span>(range, s)
+	<span class="pl-k">end</span>
 
-    state<span class="pl-k">.</span>next <span class="pl-k">=</span> next
+    new_state <span class="pl-k">=</span> <span class="pl-c1">ExplicitState</span>(range, next)
 
-    <span class="pl-k">return</span> models
+    <span class="pl-k">return</span> vector_of_models, new_state
 
 <span class="pl-k">end</span>
 
 <span class="pl-k">function</span> <span class="pl-en">default_n</span>(tuning<span class="pl-k">::</span><span class="pl-c1">Explicit</span>, range)
-    <span class="pl-k">try</span>
-        <span class="pl-c1">length</span>(range)
-    <span class="pl-k">catch</span> MethodError
-        DEFAULT_N
-    <span class="pl-k">end</span>
+	<span class="pl-k">try</span>
+		<span class="pl-c1">length</span>(range)
+	<span class="pl-k">catch</span> MethodError
+		DEFAULT_N
+	<span class="pl-k">end</span>
 <span class="pl-k">end</span>
 </pre></div>
 <p>For slightly less trivial example, see
 <a href="/src/strategies/grid.jl">/src/strategies/grid.jl</a></p>
+<h2><a id="user-content-how-do-i-implement-a-new-selection-heuristic" class="anchor" aria-hidden="true" href="#how-do-i-implement-a-new-selection-heuristic"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How do I implement a new selection heuristic?</h2>
+<p>Recall that a <em>selection heuristic</em> is a rule which decides on the
+"best model" given the model evaluations in the tuning history. New
+heuristics are introduced by defining a new struct <code>SomeHeuristic</code> subtyping
+<code>SelectionHeuristic</code> and implementing a method</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.best(heuristic::SomeHeuristic, history) -&gt; history_entry
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-c1">best</span>(heuristic<span class="pl-k">::</span><span class="pl-c1">SomeHeuristic</span>, history) <span class="pl-k">-&gt;</span> history_entry</pre></div>
+<p>where <code>history_entry</code> is the entry in the history corresponding to the model deemed "best".</p>
+<p>Below is a simplified version of <a href="src/selection_heuristics.jl">code</a>
+defining the default heuristic <code>NaiveSelection()</code>
+which simply chooses the model with the lowest (or highest) aggregated
+performance estimate, based on the first measure specified by the user
+in his <code>TunedModel</code> construction (she may specify more than one).</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct NaiveSelection &lt;: MLJTuning.SelectionHeuristic end
+
+function best(heuristic::NaiveSelection, history)
+	measurements = [h.measurement[1] for h in history]
+	measure = first(history).measure[1]
+	if orientation(measure) == :score
+		measurements = -measurements
+	end
+	best_index = argmin(measurements)
+	return history[best_index]
+end
+"><pre><span class="pl-k">struct</span> NaiveSelection <span class="pl-k">&lt;:</span> <span class="pl-c1">MLJTuning.SelectionHeuristic</span> <span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">best</span>(heuristic<span class="pl-k">::</span><span class="pl-c1">NaiveSelection</span>, history)
+	measurements <span class="pl-k">=</span> [h<span class="pl-k">.</span>measurement[<span class="pl-c1">1</span>] <span class="pl-k">for</span> h <span class="pl-k">in</span> history]
+	measure <span class="pl-k">=</span> <span class="pl-c1">first</span>(history)<span class="pl-k">.</span>measure[<span class="pl-c1">1</span>]
+	<span class="pl-k">if</span> <span class="pl-c1">orientation</span>(measure) <span class="pl-k">==</span> <span class="pl-c1">:score</span>
+		measurements <span class="pl-k">=</span> <span class="pl-k">-</span>measurements
+	<span class="pl-k">end</span>
+	best_index <span class="pl-k">=</span> <span class="pl-c1">argmin</span>(measurements)
+	<span class="pl-k">return</span> history[best_index]
+<span class="pl-k">end</span></pre></div>
+<p>Because this selection heuristic is generic (applies to all tuning
+strategies) we additionally define</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="MLJTuning.supports_heuristic(strategy, heuristic::NaiveSelection) = true
+"><pre>MLJTuning<span class="pl-k">.</span><span class="pl-en">supports_heuristic</span>(strategy, heuristic<span class="pl-k">::</span><span class="pl-c1">NaiveSelection</span>) <span class="pl-k">=</span> <span class="pl-c1">true</span></pre></div>
+<p>For strategy-specific selection heuristics, see
+<a href="#the-supportsheuristic-trait">above</a> on how to set this trait.</p>
 </article></div>

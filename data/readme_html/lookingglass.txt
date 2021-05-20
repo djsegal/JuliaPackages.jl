@@ -1,5 +1,5 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-lookingglassjl" class="anchor" aria-hidden="true" href="#lookingglassjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>LookingGlass.jl</h1>
-<p><a href="https://travis-ci.com/NHDaly/LookingGlass.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/6a824a410980bb0f2d3b3b643095305b944cf852/68747470733a2f2f7472617669732d63692e636f6d2f4e4844616c792f4c6f6f6b696e67476c6173732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/NHDaly/LookingGlass.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://travis-ci.com/NHDaly/LookingGlass.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ee7f258a02b432b8829a6a584c0677a3c93ea42e5679bb78cb310fe0e8093162/68747470733a2f2f7472617669732d63692e636f6d2f4e4844616c792f4c6f6f6b696e67476c6173732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/NHDaly/LookingGlass.jl.svg?branch=master" style="max-width:100%;"></a></p>
 <p>This package contains a collection of code reflection and investigation utilities that can
 be (potentially) useful for understanding, analyzing, and investigating julia code and the
 julia compiler.</p>
@@ -14,7 +14,19 @@ example:</p>
 <p>I've used <code>func_specializations()</code> and <code>func_backedges()</code> quite a bit when trying to
 understand decisions the compiler makes.</p>
 <p>For example, we can see that julia doesn't specialize functions for Type arguments by default:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">isintegertype</span>(t) <span class="pl-k">=</span> t <span class="pl-k">&lt;:</span> <span class="pl-c1">Integer</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; isintegertype(t) = t &lt;: Integer
+isintegertype (generic function with 1 method)
+
+julia&gt; isintegertype(Int)
+true
+
+julia&gt; isintegertype(Float32)
+false
+
+julia&gt; keys(LookingGlass.func_specializations(isintegertype))
+Base.KeySet for a Dict{Tuple{Method,DataType},Core.TypeMapEntry} with 1 entry. Keys:
+  (isintegertype(t) in Main at none:1, Tuple{typeof(isintegertype),Type})
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">isintegertype</span>(t) <span class="pl-k">=</span> t <span class="pl-k">&lt;:</span> <span class="pl-c1">Integer</span>
 isintegertype (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">isintegertype</span>(Int)
@@ -27,7 +39,20 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">keys</span>(LookingGlass
 Base<span class="pl-k">.</span>KeySet <span class="pl-k">for</span> a Dict{Tuple{Method,DataType},Core<span class="pl-k">.</span>TypeMapEntry} with <span class="pl-c1">1</span> entry. Keys<span class="pl-k">:</span>
   (<span class="pl-c1">isintegertype</span>(t) <span class="pl-k">in</span> Main at none<span class="pl-k">:</span><span class="pl-c1">1</span>, Tuple{<span class="pl-c1">typeof</span>(isintegertype),Type})</pre></div>
 <p>But it <em>does</em> specialize on Type arguments if you access them via a <code>where</code> clause:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">isintegertype</span>(<span class="pl-k">::</span><span class="pl-c1">Type{T}</span>) <span class="pl-k">where</span> T <span class="pl-k">=</span> T <span class="pl-k">&lt;:</span> <span class="pl-c1">Integer</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; isintegertype(::Type{T}) where T = T &lt;: Integer
+isintegertype (generic function with 2 methods)
+
+julia&gt; isintegertype(Int)
+true
+
+julia&gt; isintegertype(Float32)
+false
+
+julia&gt; keys(LookingGlass.func_specializations(isintegertype))
+Base.KeySet for a Dict{Tuple{Method,DataType},Core.TypeMapEntry} with 3 entries. Keys:
+  (isintegertype(t) in Main at none:1, Tuple{typeof(isintegertype),Type})
+  (isintegertype(::Type{T}) where T in Main at none:1, Tuple{typeof(isintegertype),Type{Float32}})
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">isintegertype</span>(<span class="pl-k">::</span><span class="pl-c1">Type{T}</span>) <span class="pl-k">where</span> T <span class="pl-k">=</span> T <span class="pl-k">&lt;:</span> <span class="pl-c1">Integer</span>
 isintegertype (generic <span class="pl-k">function</span> with <span class="pl-c1">2</span> methods)
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">isintegertype</span>(Int)
@@ -41,7 +66,20 @@ Base<span class="pl-k">.</span>KeySet <span class="pl-k">for</span> a Dict{Tuple
   (<span class="pl-c1">isintegertype</span>(t) <span class="pl-k">in</span> Main at none<span class="pl-k">:</span><span class="pl-c1">1</span>, Tuple{<span class="pl-c1">typeof</span>(isintegertype),Type})
   (<span class="pl-c1">isintegertype</span>(<span class="pl-k">::</span><span class="pl-c1">Type{T}</span>) <span class="pl-k">where</span> T <span class="pl-k">in</span> Main at none<span class="pl-k">:</span><span class="pl-c1">1</span>, Tuple{<span class="pl-c1">typeof</span>(isintegertype),Type{Float32}})</pre></div>
 <p>And you can use <code>func_backedges(f)</code> to observe inlining, among other things.</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">foo</span>(x) <span class="pl-k">=</span> <span class="pl-c1">2</span>x
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; foo(x) = 2x
+foo (generic function with 1 method)
+
+julia&gt; bar(x) = foo(x) + 1
+bar (generic function with 1 method)
+
+julia&gt; foo(2)
+4
+
+julia&gt; LookingGlass.func_backedges(foo)
+Dict{Any,Array{Any,1}} with 2 entries:
+  (foo(x) in Main at none:1, Tuple{typeof(foo),Int64}) =&gt; Any[]
+  :MethodTable                                         =&gt; Any[]
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">foo</span>(x) <span class="pl-k">=</span> <span class="pl-c1">2</span>x
 foo (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
 
 julia<span class="pl-k">&gt;</span> <span class="pl-en">bar</span>(x) <span class="pl-k">=</span> <span class="pl-c1">foo</span>(x) <span class="pl-k">+</span> <span class="pl-c1">1</span>
@@ -58,7 +96,16 @@ Dict{Any,Array{Any,<span class="pl-c1">1</span>}} with <span class="pl-c1">2</sp
 <p>These functions provide reflection over Modules. This can be useful for example, when
 working on multithreading a package, where you may want to check for potential places where
 data races can occur -- all global mutable state. This can be covered via:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Non-const global variables</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; # Non-const global variables
+julia&gt; LookingGlass.module_recursive_globals_names(FixedPointDecimals, constness=:nonconst, mutability=:all)
+Dict{Module,Array{Symbol,1}} with 1 entry:
+  FixedPointDecimals =&gt; Symbol[]
+
+julia&gt; # And const-mutable global variables
+julia&gt; LookingGlass.module_recursive_globals_names(FixedPointDecimals, constness=:const, mutability=:mutable)
+Dict{Module,Array{Symbol,1}} with 1 entry:
+  FixedPointDecimals =&gt; Symbol[]
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Non-const global variables</span>
 julia<span class="pl-k">&gt;</span> LookingGlass<span class="pl-k">.</span><span class="pl-c1">module_recursive_globals_names</span>(FixedPointDecimals, constness<span class="pl-k">=</span><span class="pl-c1">:nonconst</span>, mutability<span class="pl-k">=</span><span class="pl-c1">:all</span>)
 Dict{Module,Array{Symbol,<span class="pl-c1">1</span>}} with <span class="pl-c1">1</span> entry<span class="pl-k">:</span>
   FixedPointDecimals <span class="pl-k">=&gt;</span> Symbol[]

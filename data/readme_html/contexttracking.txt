@@ -1,0 +1,162 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://github.com/tk3369/ContextTracking.jl/actions?query=workflow%3ACI"><img src="https://github.com/tk3369/ContextTracking.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="http://codecov.io/github/tk3369/ContextTracking.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/80646a996e13cb6baba84c6c4702ca0f8b63209056aac27763ff6c1f19766d8b/687474703a2f2f636f6465636f762e696f2f6769746875622f746b333336392f436f6e74657874547261636b696e672e6a6c2f636f7665726167652e7376673f6272616e63683d6d6173746572" alt="codecov.io" data-canonical-src="http://codecov.io/github/tk3369/ContextTracking.jl/coverage.svg?branch=master" style="max-width:100%;"></a>
+<a target="_blank" rel="noopener noreferrer" href="https://camo.githubusercontent.com/7fbf197c8358c4828cfaf8739134a64c1e152bdb985c69dfb7e01461d517de73/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f7374617475732d6d61747572696e672d677265656e"><img src="https://camo.githubusercontent.com/7fbf197c8358c4828cfaf8739134a64c1e152bdb985c69dfb7e01461d517de73/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f7374617475732d6d61747572696e672d677265656e" alt="Project Status" data-canonical-src="https://img.shields.io/badge/status-maturing-green" style="max-width:100%;"></a></p>
+<h1><a id="user-content-contexttrackingjl" class="anchor" aria-hidden="true" href="#contexttrackingjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ContextTracking.jl</h1>
+<p>ContextTracking is used to keep track of execution context.  The context data is kept in a stack data structure.  When a function is called, the context is saved.  When the function exits, the context is restored.  User can make changes to the context during execution, and the data is visible to both the current and deeper stack frames.</p>
+<p>The usage is embarassingly simple:</p>
+<ol>
+<li>Annotate functions with <code>@ctx</code> macro</li>
+<li>Attach context data using the <code>@memo</code> macro</li>
+<li>Access context data anywhere using the <code>context</code> function</li>
+</ol>
+<h2><a id="user-content-motivation" class="anchor" aria-hidden="true" href="#motivation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Motivation</h2>
+<p>Suppose that we are <a href="images/web_service_example.png">processing a web request</a>.  We may want to create a <a href="https://blog.rapid7.com/2016/12/23/the-value-of-correlation-ids/" rel="nofollow">correlation id</a> to keep track of the request and include the request id whenever we write anything to the log file during any part of the processing of that request.</p>
+<p>It may seems somewhat redundant to log the same data multiple times but it is invaluable in debugging production problems.  Imagine that two users are hitting the same web service at the same time.  If we look at the log file, everything could be interleaving and it would be quite confusing without the context.</p>
+<p>As context data is stored in a stack structure, you naturally gain more "knowledge" when going deeper into the execution stack. Then, you naturally "forget" about those details when the execution stack unwinds.  With this design, you can just memoize the most valuable knowledge needed in the log file.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using ContextTracking
+
+@ctx function foo()
+    @memo x = 1
+    bar()
+end
+
+@ctx function bar()
+    c = context()
+    @info &quot;context data&quot; c.data
+end
+"><pre><span class="pl-k">using</span> ContextTracking
+
+<span class="pl-c1">@ctx</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>()
+    <span class="pl-c1">@memo</span> x <span class="pl-k">=</span> <span class="pl-c1">1</span>
+    <span class="pl-c1">bar</span>()
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@ctx</span> <span class="pl-k">function</span> <span class="pl-en">bar</span>()
+    c <span class="pl-k">=</span> <span class="pl-c1">context</span>()
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>context data<span class="pl-pds">"</span></span> c<span class="pl-k">.</span>data
+<span class="pl-k">end</span></pre></div>
+<p>Result:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; foo()
+┌ Info: context data
+│   c.data =
+│    Dict{Any,Any} with 2 entries:
+└      :x             =&gt; 1
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">foo</span>()
+┌ Info<span class="pl-k">:</span> context data
+│   c<span class="pl-k">.</span>data <span class="pl-k">=</span>
+│    Dict{Any,Any} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+└      <span class="pl-c1">:x</span>             <span class="pl-k">=&gt;</span> <span class="pl-c1">1</span></pre></div>
+<h2><a id="user-content-working-with-the-context-object" class="anchor" aria-hidden="true" href="#working-with-the-context-object"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Working with the Context object</h2>
+<p>The <code>context</code> function returns a <code>Context</code> object with the following properties:</p>
+<ul>
+<li><code>id</code>: context id, which is unique per task/thread</li>
+<li><code>data</code>: the data being tracked by the context.  By default, it is a <code>Dict</code>.</li>
+<li><code>path</code>: the call path, an array of function names as recorded by <code>@ctx</code></li>
+<li><code>generations</code>: number of context levels in the stack</li>
+<li><code>hex_id</code>: same as <code>id</code>, represented as a hexadecimal string</li>
+</ul>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @ctx function foo()
+           @memo x = 1
+           c = context()
+           @show c.id c.path c.data
+           return nothing
+       end;
+
+julia&gt; foo()
+c.id = 0x010000011a80f610
+c.path = [:foo]
+c.data = Dict{Any,Any}(:x =&gt; 1)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@ctx</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>()
+           <span class="pl-c1">@memo</span> x <span class="pl-k">=</span> <span class="pl-c1">1</span>
+           c <span class="pl-k">=</span> <span class="pl-c1">context</span>()
+           <span class="pl-c1">@show</span> c<span class="pl-k">.</span>id c<span class="pl-k">.</span>path c<span class="pl-k">.</span>data
+           <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+       <span class="pl-k">end</span>;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">foo</span>()
+c<span class="pl-k">.</span>id <span class="pl-k">=</span> <span class="pl-c1">0x010000011a80f610</span>
+c<span class="pl-k">.</span>path <span class="pl-k">=</span> [<span class="pl-c1">:foo</span>]
+c<span class="pl-k">.</span>data <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{Any,Any}</span>(<span class="pl-c1">:x</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1</span>)</pre></div>
+<h2><a id="user-content-how-does-ctx-macro-work" class="anchor" aria-hidden="true" href="#how-does-ctx-macro-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How does <code>@ctx</code> macro work?</h2>
+<p>By annotating a function with <code>@ctx</code> macro, the function body is wrapped by code that saves and restores context.  Consider the following example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@ctx function foo()
+    @info &quot;Inside Foo&quot;
+end
+"><pre><span class="pl-c1">@ctx</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>()
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Inside Foo<span class="pl-pds">"</span></span>
+<span class="pl-k">end</span></pre></div>
+<p>It would be translated to something like this:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function foo()
+    try
+        # &lt;&lt; inserted code to save context &gt;&gt;
+        @info &quot;Your code inside Foo&quot;
+    finally
+        # &lt;&lt; inserted code to restore context &gt;&gt;
+    end
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">foo</span>()
+    <span class="pl-k">try</span>
+        <span class="pl-c"><span class="pl-c">#</span> &lt;&lt; inserted code to save context &gt;&gt;</span>
+        <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Your code inside Foo<span class="pl-pds">"</span></span>
+    <span class="pl-k">finally</span>
+        <span class="pl-c"><span class="pl-c">#</span> &lt;&lt; inserted code to restore context &gt;&gt;</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p>The purpose of the save/restore operation is to guarantee that context data is visible only during the current execution chain - inside the current function or any subsequent functions being called from here.</p>
+<h2><a id="user-content-how-does-memo-macro-work" class="anchor" aria-hidden="true" href="#how-does-memo-macro-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>How does <code>@memo</code> macro work?</h2>
+<p>The <code>@memo</code> macro is used to assign data to the current context.  Consider the following example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@memo x = 1
+"><pre><span class="pl-c1">@memo</span> x <span class="pl-k">=</span> <span class="pl-c1">1</span></pre></div>
+<p>It would be translated to something like:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="val = (x = 1)
+push!(ContextTracking.context(), :x =&gt; val)
+"><pre>val <span class="pl-k">=</span> (x <span class="pl-k">=</span> <span class="pl-c1">1</span>)
+<span class="pl-c1">push!</span>(ContextTracking<span class="pl-k">.</span><span class="pl-c1">context</span>(), <span class="pl-c1">:x</span> <span class="pl-k">=&gt;</span> val)</pre></div>
+<p>It is highly recommended that you only use <code>@memo</code> in functions that are annotated with <code>@ctx</code> macro.  Failing to do so would leak your data to the parent function's context, which is <em>usually</em> not a desirable effect.</p>
+<h2><a id="user-content-is-it-thread-safe" class="anchor" aria-hidden="true" href="#is-it-thread-safe"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Is it thread-safe?</h2>
+<p>The <code>context()</code> function always returns a <code>Context</code> object that is unique by thread / async task.
+Therefore, the context data is managed properly even when you run your program using multiple
+threads or with <code>@async</code>.</p>
+<p>For example, if you run the program with 4 threads, then <code>context()</code> would return a separate
+context when it is called from the individual threads.  Likewise for async tasks.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using Base.Threads
+
+julia&gt; Threads.nthreads()
+4
+
+julia&gt; Threads.@threads for i in 1:4
+           println(&quot;Thread &quot;, threadid(), &quot; has context &quot;, context().hex_id)
+       end
+Thread 3 has context 0x30000011092bcd0
+Thread 2 has context 0x20000011092ba90
+Thread 1 has context 0x10000011092b850
+Thread 4 has context 0x40000011098c010
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Base<span class="pl-k">.</span>Threads
+
+julia<span class="pl-k">&gt;</span> Threads<span class="pl-k">.</span><span class="pl-c1">nthreads</span>()
+<span class="pl-c1">4</span>
+
+julia<span class="pl-k">&gt;</span> Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span>
+           <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Thread <span class="pl-pds">"</span></span>, <span class="pl-c1">threadid</span>(), <span class="pl-s"><span class="pl-pds">"</span> has context <span class="pl-pds">"</span></span>, <span class="pl-c1">context</span>()<span class="pl-k">.</span>hex_id)
+       <span class="pl-k">end</span>
+Thread <span class="pl-c1">3</span> has context <span class="pl-c1">0x30000011092bcd0</span>
+Thread <span class="pl-c1">2</span> has context <span class="pl-c1">0x20000011092ba90</span>
+Thread <span class="pl-c1">1</span> has context <span class="pl-c1">0x10000011092b850</span>
+Thread <span class="pl-c1">4</span> has context <span class="pl-c1">0x40000011098c010</span></pre></div>
+<h2><a id="user-content-what-if-i-dont-want-to-use-dict-for-storing-my-context" class="anchor" aria-hidden="true" href="#what-if-i-dont-want-to-use-dict-for-storing-my-context"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>What if I don't want to use Dict for storing my context?</h2>
+<p>The <code>Context</code> type allows you to use a different container type if you want to use something
+different.  The only requirement is that the container type must implement the following functions:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Base.push!       # accepting Pair{Symbol,Any}
+Base.getindex    # retrieving context value by Symbol
+Base.length
+Base.empty!
+Base.iterate
+"><pre>Base<span class="pl-k">.</span>push!       <span class="pl-c"><span class="pl-c">#</span> accepting Pair{Symbol,Any}</span>
+Base<span class="pl-k">.</span>getindex    <span class="pl-c"><span class="pl-c">#</span> retrieving context value by Symbol</span>
+Base<span class="pl-k">.</span>length
+Base<span class="pl-k">.</span>empty!
+Base<span class="pl-k">.</span>iterate</pre></div>
+<h2><a id="user-content-related-projects" class="anchor" aria-hidden="true" href="#related-projects"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Related Projects</h2>
+<p>One can probably achieve similar result using <a href="https://github.com/jrevels/Cassette.jl">Cassette.jl</a>.</p>
+</article></div>

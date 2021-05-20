@@ -83,7 +83,20 @@ these solvers; any of the supported JuMP LP solvers with do just fine.</p>
 <p>Once you have an LP solver installed, computing our measure is easy.
 Below we'll first show how to compute the Langevin graph Stein discrepancy
 for a univariate Gaussian target:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> import the gsd function (graph Stein discrepancy)</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# import the gsd function (graph Stein discrepancy)
+using SteinDiscrepancy: gsd
+# define the grad log density of univariate Gaussian (we always expect vector inputs!)
+function gradlogp(x::Array{Float64,1})
+    -x
+end
+# generates 100 points from N(0,1)
+X = randn(100)
+# use a solver covered by JuMP
+using Clp
+solver = Clp.ClpSolver(LogLevel=4)
+result = gsd(points=X, gradlogdensity=gradlogp, solver=solver)
+graph_stein_discrepancy = result.objectivevalue[1]
+"><pre><span class="pl-c"><span class="pl-c">#</span> import the gsd function (graph Stein discrepancy)</span>
 <span class="pl-k">using</span> SteinDiscrepancy<span class="pl-k">:</span> gsd
 <span class="pl-c"><span class="pl-c">#</span> define the grad log density of univariate Gaussian (we always expect vector inputs!)</span>
 <span class="pl-k">function</span> <span class="pl-en">gradlogp</span>(x<span class="pl-k">::</span><span class="pl-c1">Array{Float64,1}</span>)
@@ -99,7 +112,24 @@ graph_stein_discrepancy <span class="pl-k">=</span> result<span class="pl-k">.</
 <p>Here's another example that will compute the Langevin graph Stein
 discrepancy for a bivariate uniform sample (notice this target distribution
 has a bounded support so these bounds become part of the input parameters):</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> do the necessary imports</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# do the necessary imports
+using SteinDiscrepancy: gsd
+# define the grad log density of bivariate uniform target
+function gradlogp(x::Array{Float64,1})
+    zeros(size(x))
+end
+# generates 100 points from Unif([0,1]^2)
+X = rand(100,2)
+# use a solver covered by JuMP
+using Clp
+solver = Clp.ClpSolver(LogLevel=4)
+result = gsd(points=X,
+             gradlogdensity=gradlogp,
+             solver=solver,
+             supportlowerbounds=zeros(2),
+             supportupperbounds=ones(2))
+discrepancy = vec(result.objectivevalue)
+"><pre><span class="pl-c"><span class="pl-c">#</span> do the necessary imports</span>
 <span class="pl-k">using</span> SteinDiscrepancy<span class="pl-k">:</span> gsd
 <span class="pl-c"><span class="pl-c">#</span> define the grad log density of bivariate uniform target</span>
 <span class="pl-k">function</span> <span class="pl-en">gradlogp</span>(x<span class="pl-k">::</span><span class="pl-c1">Array{Float64,1}</span>)
@@ -125,7 +155,21 @@ kernels are already implemented in <code>src/kernels</code>, but if yours is not
 for some reason, feel free to inherit from the <code>SteinKernel</code> type and roll
 your own.</p>
 <p>With a kernel in hand, computing the kernel Stein discrepancy is easy:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> import the kernel stein discrepancy function and kernel to use</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# import the kernel stein discrepancy function and kernel to use
+using SteinDiscrepancy: SteinInverseMultiquadricKernel, ksd
+# define the grad log density of standard normal target
+function gradlogp(x::Array{Float64,1})
+    -x
+end
+# grab sample
+X = randn(500, 3)
+# create the kernel instance
+kernel = SteinInverseMultiquadricKernel()
+# compute the KSD2
+result = ksd(points=X, gradlogdensity=gradlogp, kernel=kernel)
+# get the final ksd
+kernel_stein_discrepancy = sqrt(result.discrepancy2)
+"><pre><span class="pl-c"><span class="pl-c">#</span> import the kernel stein discrepancy function and kernel to use</span>
 <span class="pl-k">using</span> SteinDiscrepancy<span class="pl-k">:</span> SteinInverseMultiquadricKernel, ksd
 <span class="pl-c"><span class="pl-c">#</span> define the grad log density of standard normal target</span>
 <span class="pl-k">function</span> <span class="pl-en">gradlogp</span>(x<span class="pl-k">::</span><span class="pl-c1">Array{Float64,1}</span>)
@@ -144,7 +188,25 @@ respects these constraints (no <code>supportlowerbounds</code> and <code>support
 arguments are needed). In the case you have a rectangular domain, the
 <code>SteinRectangularDomainMetaKernel</code> should be useful. Here's an example
 for a bivariate uniform target:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> SteinDiscrepancy<span class="pl-k">:</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using SteinDiscrepancy:
+    SteinRectangularDomainMetaKernel,
+    SteinInverseMultiquadricKernel,
+    ksd
+# define the grad log density of standard normal target
+function gradlogp(x::Array{Float64,1})
+    zeros(length(d))
+end
+# grab sample
+X = rand(500, 2)
+# create the base kernel instance
+imqkernel = SteinInverseMultiquadricKernel()
+# clip the kernel to have the target distribution's domain
+imqrectkernel = SteinRectangularDomainMetaKernel(imqkernel, [0., 0.], [1., 1.])
+# compute the KSD2
+result = ksd(points=X, gradlogdensity=gradlogp, kernel=imqrectkernel)
+# get the final ksd
+kernel_stein_discrepancy = sqrt(result.discrepancy2)
+"><pre><span class="pl-k">using</span> SteinDiscrepancy<span class="pl-k">:</span>
     SteinRectangularDomainMetaKernel,
     SteinInverseMultiquadricKernel,
     ksd
@@ -174,12 +236,16 @@ computing the stein_discrepancy are in the test directory.</p>
 <p><strong>Our C++ code should be compiled automatically when the package is
 built</strong>. However, if this doesn't work for some reason, you can issue the
 following commands to compile the code in <code>src/discrepancy/spanner</code>:</p>
-<pre><code>cd &lt;PACKAGE_DIR&gt;/src/discrepancy/spanner
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="cd &lt;PACKAGE_DIR&gt;/src/discrepancy/spanner
 make
 make clean
-</code></pre>
+"><pre><code>cd &lt;PACKAGE_DIR&gt;/src/discrepancy/spanner
+make
+make clean
+</code></pre></div>
 <p>The last step isn't necessary, but it will remove some superfluous
 files. If you want to kill everything made in the build process, just run</p>
-<pre><code>make distclean
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="make distclean
+"><pre><code>make distclean
+</code></pre></div>
 </article></div>

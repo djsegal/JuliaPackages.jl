@@ -1,0 +1,241 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-bootlegcassettejl" class="anchor" aria-hidden="true" href="#bootlegcassettejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>BootlegCassette.jl</h1>
+<p>BootlegCassette.jl is a quick and dirty package that tries to mimic
+the interface of
+<a href="https://github.com/JuliaLabs/Cassette.jl">Cassette.jl</a> using
+<a href="https://github.com/FluxML/IRTools.jl">IRTools.jl</a> under the
+hood. This isn't a great implementation, but provided you do not use
+tagging and only use <code>@context</code>, <code>ovderdub</code>, <code>prehook</code>, <code>posthook</code> and
+<code>recurse</code>, BootlegCassette.jl should work as a drop-in replacement for
+Cassette.jl.</p>
+<p>While Cassette.jl is functioning, this package has little or no reason
+to be used. It may be interesting for educational purposes.</p>
+<p>BootlegCassette.jl is currently signigicantly slower than regular
+Cassette.jl and has a different mechanism for setting recursion
+barriers. Currently, it's set by default to not recurse into functions
+from the <code>Core</code> module and also will leave the functions
+<code>isdispatchtuple</code>, <code>eltype</code>, <code>convert</code>, <code>getproperty</code>, and <code>throw</code>
+alone. This can be modified, but it's modified in a different way from
+in standard non-bootleg Cassette.jl</p>
+<h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using BootlegCassette: BootlegCassette, @context, prehook, overdub, posthook, recurse
+const Cassette = BootlegCassette
+
+Cassette.@context Ctx 
+Cassette.prehook(::Ctx, f, args...) = println(f, args)
+Cassette.overdub(Ctx(), /, 1, 2)
+
+#+RESULTS
+float(1,)
+AbstractFloat(1,)
+Float64(1,)
+sitofp(Float64, 1)
+float(2,)
+AbstractFloat(2,)
+Float64(2,)
+sitofp(Float64, 2)
+/(1.0, 2.0)
+div_float(1.0, 2.0)
+"><pre><span class="pl-k">using</span> BootlegCassette<span class="pl-k">:</span> BootlegCassette, <span class="pl-c1">@context</span>, prehook, overdub, posthook, recurse
+<span class="pl-k">const</span> Cassette <span class="pl-k">=</span> BootlegCassette
+
+Cassette<span class="pl-k">.</span><span class="pl-c1">@context</span> Ctx 
+Cassette<span class="pl-k">.</span><span class="pl-en">prehook</span>(<span class="pl-k">::</span><span class="pl-c1">Ctx</span>, f, args<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">println</span>(f, args)
+Cassette<span class="pl-k">.</span><span class="pl-c1">overdub</span>(<span class="pl-c1">Ctx</span>(), <span class="pl-k">/</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+
+<span class="pl-c"><span class="pl-c">#</span>+RESULTS</span>
+<span class="pl-c1">float</span>(<span class="pl-c1">1</span>,)
+<span class="pl-c1">AbstractFloat</span>(<span class="pl-c1">1</span>,)
+<span class="pl-c1">Float64</span>(<span class="pl-c1">1</span>,)
+<span class="pl-c1">sitofp</span>(Float64, <span class="pl-c1">1</span>)
+<span class="pl-c1">float</span>(<span class="pl-c1">2</span>,)
+<span class="pl-c1">AbstractFloat</span>(<span class="pl-c1">2</span>,)
+<span class="pl-c1">Float64</span>(<span class="pl-c1">2</span>,)
+<span class="pl-c1">sitofp</span>(Float64, <span class="pl-c1">2</span>)
+<span class="pl-k">/</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>)
+<span class="pl-c1">div_float</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>)</pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Cassette.prehook(::Ctx, f, args...) = nothing
+Cassette.prehook(::Ctx{Val{T}}, f, arg::T, rest...) where {T} = println(f, (arg, rest...))
+Cassette.overdub(Ctx(metadata=Val(Int)), /, 1, 2)
+
+#+RESULTS
+ float(1,)
+ AbstractFloat(1,)
+ Float64(1,) 
+ float(2,)
+ AbstractFloat(2,)
+ Float64(2,)
+ 0.5
+"><pre>Cassette<span class="pl-k">.</span><span class="pl-en">prehook</span>(<span class="pl-k">::</span><span class="pl-c1">Ctx</span>, f, args<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">nothing</span>
+Cassette<span class="pl-k">.</span><span class="pl-en">prehook</span>(<span class="pl-k">::</span><span class="pl-c1">Ctx{Val{T}}</span>, f, arg<span class="pl-k">::</span><span class="pl-c1">T</span>, rest<span class="pl-k">...</span>) <span class="pl-k">where</span> {T} <span class="pl-k">=</span> <span class="pl-c1">println</span>(f, (arg, rest<span class="pl-k">...</span>))
+Cassette<span class="pl-k">.</span><span class="pl-c1">overdub</span>(<span class="pl-c1">Ctx</span>(metadata<span class="pl-k">=</span><span class="pl-c1">Val</span>(Int)), <span class="pl-k">/</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+
+<span class="pl-c"><span class="pl-c">#</span>+RESULTS</span>
+ <span class="pl-c1">float</span>(<span class="pl-c1">1</span>,)
+ <span class="pl-c1">AbstractFloat</span>(<span class="pl-c1">1</span>,)
+ <span class="pl-c1">Float64</span>(<span class="pl-c1">1</span>,) 
+ <span class="pl-c1">float</span>(<span class="pl-c1">2</span>,)
+ <span class="pl-c1">AbstractFloat</span>(<span class="pl-c1">2</span>,)
+ <span class="pl-c1">Float64</span>(<span class="pl-c1">2</span>,)
+ <span class="pl-c1">0.5</span></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Cassette.overdub(Ctx(metadata=Val(DataType)), /, 1, 2)
+
+#+RESULTS
+ sitofp(Float64, 1)
+ sitofp(Float64, 2)
+ 0.5
+"><pre>Cassette<span class="pl-k">.</span><span class="pl-c1">overdub</span>(<span class="pl-c1">Ctx</span>(metadata<span class="pl-k">=</span><span class="pl-c1">Val</span>(DataType)), <span class="pl-k">/</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+
+<span class="pl-c"><span class="pl-c">#</span>+RESULTS</span>
+ <span class="pl-c1">sitofp</span>(Float64, <span class="pl-c1">1</span>)
+ <span class="pl-c1">sitofp</span>(Float64, <span class="pl-c1">2</span>)
+ <span class="pl-c1">0.5</span></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Cassette.@context TraceCtx
+
+mutable struct Trace
+    current::Vector{Any}
+    stack::Vector{Any}
+    Trace() = new(Any[], Any[])
+end
+
+function enter!(t::Trace, args...)
+    pair = args =&gt; Any[]
+    push!(t.current, pair)
+    push!(t.stack, t.current)
+    t.current = pair.second
+    return nothing
+end
+
+function exit!(t::Trace)
+    t.current = pop!(t.stack)
+    return nothing
+end
+
+Cassette.prehook(ctx::TraceCtx, args...) = enter!(ctx.metadata, args...)
+Cassette.posthook(ctx::TraceCtx, args...) = exit!(ctx.metadata)
+
+trace = Trace()
+x, y, z = rand(3)
+f(x, y, z) = x*y + y*z
+Cassette.overdub(TraceCtx(metadata = trace), () -&gt; f(x, y, z))
+
+trace.current == Any[
+    (f,x,y,z) =&gt; Any[
+        (*,x,y) =&gt; Any[(Base.mul_float,x,y)=&gt;Any[]]
+        (*,y,z) =&gt; Any[(Base.mul_float,y,z)=&gt;Any[]]
+        (+,x*y,y*z) =&gt; Any[(Base.add_float,x*y,y*z)=&gt;Any[]]
+    ]
+]
+
+#+RESULTS
+true
+"><pre>Cassette<span class="pl-k">.</span><span class="pl-c1">@context</span> TraceCtx
+
+<span class="pl-k">mutable struct</span> Trace
+    current<span class="pl-k">::</span><span class="pl-c1">Vector{Any}</span>
+    stack<span class="pl-k">::</span><span class="pl-c1">Vector{Any}</span>
+    <span class="pl-en">Trace</span>() <span class="pl-k">=</span> <span class="pl-c1">new</span>(Any[], Any[])
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">enter!</span>(t<span class="pl-k">::</span><span class="pl-c1">Trace</span>, args<span class="pl-k">...</span>)
+    pair <span class="pl-k">=</span> args <span class="pl-k">=&gt;</span> Any[]
+    <span class="pl-c1">push!</span>(t<span class="pl-k">.</span>current, pair)
+    <span class="pl-c1">push!</span>(t<span class="pl-k">.</span>stack, t<span class="pl-k">.</span>current)
+    t<span class="pl-k">.</span>current <span class="pl-k">=</span> pair<span class="pl-k">.</span>second
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">exit!</span>(t<span class="pl-k">::</span><span class="pl-c1">Trace</span>)
+    t<span class="pl-k">.</span>current <span class="pl-k">=</span> <span class="pl-c1">pop!</span>(t<span class="pl-k">.</span>stack)
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+
+Cassette<span class="pl-k">.</span><span class="pl-en">prehook</span>(ctx<span class="pl-k">::</span><span class="pl-c1">TraceCtx</span>, args<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">enter!</span>(ctx<span class="pl-k">.</span>metadata, args<span class="pl-k">...</span>)
+Cassette<span class="pl-k">.</span><span class="pl-en">posthook</span>(ctx<span class="pl-k">::</span><span class="pl-c1">TraceCtx</span>, args<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">exit!</span>(ctx<span class="pl-k">.</span>metadata)
+
+trace <span class="pl-k">=</span> <span class="pl-c1">Trace</span>()
+x, y, z <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">3</span>)
+<span class="pl-en">f</span>(x, y, z) <span class="pl-k">=</span> x<span class="pl-k">*</span>y <span class="pl-k">+</span> y<span class="pl-k">*</span>z
+Cassette<span class="pl-k">.</span><span class="pl-c1">overdub</span>(<span class="pl-c1">TraceCtx</span>(metadata <span class="pl-k">=</span> trace), () <span class="pl-k">-&gt;</span> <span class="pl-c1">f</span>(x, y, z))
+
+trace<span class="pl-k">.</span>current <span class="pl-k">==</span> Any[
+    (f,x,y,z) <span class="pl-k">=&gt;</span> Any[
+        (<span class="pl-k">*</span>,x,y) <span class="pl-k">=&gt;</span> Any[(Base<span class="pl-k">.</span>mul_float,x,y)<span class="pl-k">=&gt;</span>Any[]]
+        (<span class="pl-k">*</span>,y,z) <span class="pl-k">=&gt;</span> Any[(Base<span class="pl-k">.</span>mul_float,y,z)<span class="pl-k">=&gt;</span>Any[]]
+        (<span class="pl-k">+</span>,x<span class="pl-k">*</span>y,y<span class="pl-k">*</span>z) <span class="pl-k">=&gt;</span> Any[(Base<span class="pl-k">.</span>add_float,x<span class="pl-k">*</span>y,y<span class="pl-k">*</span>z)<span class="pl-k">=&gt;</span>Any[]]
+    ]
+]
+
+<span class="pl-c"><span class="pl-c">#</span>+RESULTS</span>
+<span class="pl-c1">true</span></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Cassette.@context SinToCosCtx
+
+Cassette.overdub(::SinToCosCtx, ::typeof(sin), x) = cos(x)
+
+x = rand(10)
+y = Cassette.overdub(SinToCosCtx(), sum, i -&gt; cos(i) + sin(i), x)
+y == sum(i -&gt; 2 * cos(i), x)
+
+#+RESULTS
+true
+"><pre>Cassette<span class="pl-k">.</span><span class="pl-c1">@context</span> SinToCosCtx
+
+Cassette<span class="pl-k">.</span><span class="pl-en">overdub</span>(<span class="pl-k">::</span><span class="pl-c1">SinToCosCtx</span>, <span class="pl-k">::</span><span class="pl-c1">typeof</span>(sin), x) <span class="pl-k">=</span> <span class="pl-c1">cos</span>(x)
+
+x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>)
+y <span class="pl-k">=</span> Cassette<span class="pl-k">.</span><span class="pl-c1">overdub</span>(<span class="pl-c1">SinToCosCtx</span>(), sum, i <span class="pl-k">-&gt;</span> <span class="pl-c1">cos</span>(i) <span class="pl-k">+</span> <span class="pl-c1">sin</span>(i), x)
+y <span class="pl-k">==</span> <span class="pl-c1">sum</span>(i <span class="pl-k">-&gt;</span> <span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">cos</span>(i), x)
+
+<span class="pl-c"><span class="pl-c">#</span>+RESULTS</span>
+<span class="pl-c1">true</span></pre></div>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="fib(x) = x &lt; 3 ? 1 : fib(x - 2) + fib(x - 1)
+fibtest(n) = fib(2 * n) + n
+
+@context MemoizeCtx
+
+function Cassette.overdub(ctx::MemoizeCtx, ::typeof(fib), x)
+    result = get(ctx.metadata, x, 0)
+    if result === 0
+        result = recurse(ctx, fib, x)
+        ctx.metadata[x] = result
+    end
+    return result
+end
+
+ctx = MemoizeCtx(metadata=Dict{Int, Int}())
+
+@time overdub(ctx, fibtest, 20)
+@time overdub(ctx, fibtest, 20)
+@time fibtest(20)
+
+#+RESULTS
+   0.188974 seconds (361.71 k allocations: 21.705 MiB, 7.02% gc time, 99.87% compilation time)
+   0.000010 seconds (2 allocations: 32 bytes)
+   0.318917 seconds
+ 102334175
+"><pre><span class="pl-en">fib</span>(x) <span class="pl-k">=</span> x <span class="pl-k">&lt;</span> <span class="pl-c1">3</span> <span class="pl-k">?</span> <span class="pl-c1">1</span> <span class="pl-k">:</span> <span class="pl-c1">fib</span>(x <span class="pl-k">-</span> <span class="pl-c1">2</span>) <span class="pl-k">+</span> <span class="pl-c1">fib</span>(x <span class="pl-k">-</span> <span class="pl-c1">1</span>)
+<span class="pl-en">fibtest</span>(n) <span class="pl-k">=</span> <span class="pl-c1">fib</span>(<span class="pl-c1">2</span> <span class="pl-k">*</span> n) <span class="pl-k">+</span> n
+
+<span class="pl-c1">@context</span> MemoizeCtx
+
+<span class="pl-k">function</span> Cassette<span class="pl-k">.</span><span class="pl-en">overdub</span>(ctx<span class="pl-k">::</span><span class="pl-c1">MemoizeCtx</span>, <span class="pl-k">::</span><span class="pl-c1">typeof</span>(fib), x)
+    result <span class="pl-k">=</span> <span class="pl-c1">get</span>(ctx<span class="pl-k">.</span>metadata, x, <span class="pl-c1">0</span>)
+    <span class="pl-k">if</span> result <span class="pl-k">===</span> <span class="pl-c1">0</span>
+        result <span class="pl-k">=</span> <span class="pl-c1">recurse</span>(ctx, fib, x)
+        ctx<span class="pl-k">.</span>metadata[x] <span class="pl-k">=</span> result
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> result
+<span class="pl-k">end</span>
+
+ctx <span class="pl-k">=</span> <span class="pl-c1">MemoizeCtx</span>(metadata<span class="pl-k">=</span><span class="pl-c1">Dict</span><span class="pl-c1">{Int, Int}</span>())
+
+<span class="pl-c1">@time</span> <span class="pl-c1">overdub</span>(ctx, fibtest, <span class="pl-c1">20</span>)
+<span class="pl-c1">@time</span> <span class="pl-c1">overdub</span>(ctx, fibtest, <span class="pl-c1">20</span>)
+<span class="pl-c1">@time</span> <span class="pl-c1">fibtest</span>(<span class="pl-c1">20</span>)
+
+<span class="pl-c"><span class="pl-c">#</span>+RESULTS</span>
+   <span class="pl-c1">0.188974</span> seconds (<span class="pl-c1">361.71</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">21.705</span> MiB, <span class="pl-c1">7.02</span><span class="pl-k">%</span> gc time, <span class="pl-c1">99.87</span><span class="pl-k">%</span> compilation time)
+   <span class="pl-c1">0.000010</span> seconds (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">32</span> bytes)
+   <span class="pl-c1">0.318917</span> seconds
+ <span class="pl-c1">102334175</span></pre></div>
+<p>The final example from <a href="https://julia.mit.edu/Cassette.jl/stable/contextualdispatch.html" rel="nofollow">https://julia.mit.edu/Cassette.jl/stable/contextualdispatch.html</a> does not currently work.</p>
+</article></div>

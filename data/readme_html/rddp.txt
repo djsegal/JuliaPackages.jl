@@ -1,0 +1,85 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-robust-dual-dynamic-programming-rddp" class="anchor" aria-hidden="true" href="#robust-dual-dynamic-programming-rddp"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Robust Dual Dynamic Programming (RDDP)</h1>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="pkg&gt; add RDDP
+"><pre>pkg<span class="pl-k">&gt;</span> add RDDP</pre></div>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# inventory management under uncertain demand
+using RDDP,Gurobi,JuMP
+N = 10
+msro = RDDP.buildMultiStageRobustModel(
+    N_stage = N, # number of stages
+    optimizer = Gurobi.Optimizer, # choose an optimizer
+    MaxIteration = 100, # maximum epoches
+    MaxTime = 60, # maximum trainning time
+    Gap = 0.01, # optimal gap
+    use_maxmin_solver = false # using a vertex enumeration by default
+) do ro::JuMP.Model,t::Int
+    # defining operator's strategy
+    @variable(ro,0 &lt;= x &lt;= 5&gt;,RDDP.State,initial_value = 0) # state variable (stock level)
+    @variable(ro,0 &lt;= u &lt;= 1&gt;) # control variable (supply)
+    @variable(ro,0 &lt;= ξ[i = 1:2] &lt;= 1,RDDP.Uncertain) # uncertain parameter (demand)
+    @constraint(ro,sum(ξ) &lt;= 1&gt;) # constraint abount uncertain parameter
+    @constraint(ro, x.out == x.in - u + sum(ξ)) # state transition (temporal dependence of stock level)
+    @objective(ro,Min,x) # minimize the stock
+end
+RDDP.train(msro)
+"><pre><span class="pl-c"><span class="pl-c">#</span> inventory management under uncertain demand</span>
+<span class="pl-k">using</span> RDDP,Gurobi,JuMP
+N <span class="pl-k">=</span> <span class="pl-c1">10</span>
+msro <span class="pl-k">=</span> RDDP<span class="pl-k">.</span><span class="pl-c1">buildMultiStageRobustModel</span>(
+    N_stage <span class="pl-k">=</span> N, <span class="pl-c"><span class="pl-c">#</span> number of stages</span>
+    optimizer <span class="pl-k">=</span> Gurobi<span class="pl-k">.</span>Optimizer, <span class="pl-c"><span class="pl-c">#</span> choose an optimizer</span>
+    MaxIteration <span class="pl-k">=</span> <span class="pl-c1">100</span>, <span class="pl-c"><span class="pl-c">#</span> maximum epoches</span>
+    MaxTime <span class="pl-k">=</span> <span class="pl-c1">60</span>, <span class="pl-c"><span class="pl-c">#</span> maximum trainning time</span>
+    Gap <span class="pl-k">=</span> <span class="pl-c1">0.01</span>, <span class="pl-c"><span class="pl-c">#</span> optimal gap</span>
+    use_maxmin_solver <span class="pl-k">=</span> <span class="pl-c1">false</span> <span class="pl-c"><span class="pl-c">#</span> using a vertex enumeration by default</span>
+) <span class="pl-k">do</span> ro<span class="pl-k">::</span><span class="pl-c1">JuMP.Model</span>,t<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    <span class="pl-c"><span class="pl-c">#</span> defining operator's strategy</span>
+    <span class="pl-c1">@variable</span>(ro,<span class="pl-c1">0</span> <span class="pl-k">&lt;=</span> x <span class="pl-k">&lt;=</span> <span class="pl-c1">5</span><span class="pl-k">&gt;</span>,RDDP<span class="pl-k">.</span>State,initial_value <span class="pl-k">=</span> <span class="pl-c1">0</span>) <span class="pl-c"><span class="pl-c">#</span> state variable (stock level)</span>
+    <span class="pl-c1">@variable</span>(ro,<span class="pl-c1">0</span> <span class="pl-k">&lt;=</span> u <span class="pl-k">&lt;=</span> <span class="pl-c1">1</span><span class="pl-k">&gt;</span>) <span class="pl-c"><span class="pl-c">#</span> control variable (supply)</span>
+    <span class="pl-c1">@variable</span>(ro,<span class="pl-c1">0</span> <span class="pl-k">&lt;=</span> ξ[i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>] <span class="pl-k">&lt;=</span> <span class="pl-c1">1</span>,RDDP<span class="pl-k">.</span>Uncertain) <span class="pl-c"><span class="pl-c">#</span> uncertain parameter (demand)</span>
+    <span class="pl-c1">@constraint</span>(ro,<span class="pl-c1">sum</span>(ξ) <span class="pl-k">&lt;=</span> <span class="pl-c1">1</span><span class="pl-k">&gt;</span>) <span class="pl-c"><span class="pl-c">#</span> constraint abount uncertain parameter</span>
+    <span class="pl-c1">@constraint</span>(ro, x<span class="pl-k">.</span>out <span class="pl-k">==</span> x<span class="pl-k">.</span>in <span class="pl-k">-</span> u <span class="pl-k">+</span> <span class="pl-c1">sum</span>(ξ)) <span class="pl-c"><span class="pl-c">#</span> state transition (temporal dependence of stock level)</span>
+    <span class="pl-c1">@objective</span>(ro,Min,x) <span class="pl-c"><span class="pl-c">#</span> minimize the stock</span>
+<span class="pl-k">end</span>
+RDDP<span class="pl-k">.</span><span class="pl-c1">train</span>(msro)</pre></div>
+<h2><a id="user-content-citing-rddpjl" class="anchor" aria-hidden="true" href="#citing-rddpjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Citing RDDP.jl</h2>
+<p>If you use RDDP.jl, we ask that you please cite the following:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="@article{rddp.jl,
+  title={Enhancing the Flexibility of Storage Integrated Power System by Multi-stage Robust Dispatch},
+  author={Shi, Yunhui and Guo, Chuangxin and Dong, Shufeng and Chen, Zhe and Wang, Luyu},
+  journal={IEEE Transactions on Power Systems},
+  year={2020},
+  publisher={IEEE}
+}
+
+@article{georghiou2019robust,
+  title={Robust dual dynamic programming},
+  author={Georghiou, Angelos and Tsoukalas, Angelos and Wiesemann, Wolfram},
+  journal={Operations Research},
+  volume={67},
+  number={3},
+  pages={813--830},
+  year={2019},
+  publisher={INFORMS}
+}
+"><pre><code>@article{rddp.jl,
+  title={Enhancing the Flexibility of Storage Integrated Power System by Multi-stage Robust Dispatch},
+  author={Shi, Yunhui and Guo, Chuangxin and Dong, Shufeng and Chen, Zhe and Wang, Luyu},
+  journal={IEEE Transactions on Power Systems},
+  year={2020},
+  publisher={IEEE}
+}
+
+@article{georghiou2019robust,
+  title={Robust dual dynamic programming},
+  author={Georghiou, Angelos and Tsoukalas, Angelos and Wiesemann, Wolfram},
+  journal={Operations Research},
+  volume={67},
+  number={3},
+  pages={813--830},
+  year={2019},
+  publisher={INFORMS}
+}
+</code></pre></div>
+</article></div>

@@ -7,7 +7,43 @@ the Stanford triangle format.</p>
 <h3><a id="user-content-writing-ply" class="anchor" aria-hidden="true" href="#writing-ply"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Writing ply</h3>
 <p>Here's an example of how to write a basic ply file containing random triangles
 and edges:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> PlyIO
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using PlyIO
+
+ply = Ply()
+push!(ply, PlyComment(&quot;An example ply file&quot;))
+
+nverts = 1000
+
+# Random vertices with position and color
+vertex = PlyElement(&quot;vertex&quot;,
+                    ArrayProperty(&quot;x&quot;, randn(nverts)),
+                    ArrayProperty(&quot;y&quot;, randn(nverts)),
+                    ArrayProperty(&quot;z&quot;, randn(nverts)),
+                    ArrayProperty(&quot;r&quot;, rand(nverts)),
+                    ArrayProperty(&quot;g&quot;, rand(nverts)),
+                    ArrayProperty(&quot;b&quot;, rand(nverts)))
+push!(ply, vertex)
+
+# Some triangular faces.
+# The UInt8 is the type used for serializing the number of list elements (equal
+# to 3 for a triangular mesh); the Int32 is the type used to serialize indices
+# into the vertex array.
+vertex_index = ListProperty(&quot;vertex_index&quot;, UInt8, Int32)
+for i=1:nverts
+   push!(vertex_index, rand(0:nverts-1,3))
+end
+push!(ply, PlyElement(&quot;face&quot;, vertex_index))
+
+# Some edges
+vertex_index = ListProperty(&quot;vertex_index&quot;, Int32, Int32)
+for i=1:nverts
+   push!(vertex_index, rand(0:nverts-1,2))
+end
+push!(ply, PlyElement(&quot;edge&quot;, vertex_index))
+
+# For the sake of the example, ascii format is used, the default binary mode is faster.
+save_ply(ply, &quot;example1.ply&quot;, ascii=true)
+"><pre><span class="pl-k">using</span> PlyIO
 
 ply <span class="pl-k">=</span> <span class="pl-c1">Ply</span>()
 <span class="pl-c1">push!</span>(ply, <span class="pl-c1">PlyComment</span>(<span class="pl-s"><span class="pl-pds">"</span>An example ply file<span class="pl-pds">"</span></span>))
@@ -49,7 +85,39 @@ you should see something like</p>
 <p><a target="_blank" rel="noopener noreferrer" href="doc/example1.png"><img src="doc/example1.png" alt="Example one" style="max-width:100%;"></a></p>
 <h3><a id="user-content-reading-ply" class="anchor" aria-hidden="true" href="#reading-ply"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Reading ply</h3>
 <p>Reading the ply file generated above is quite simple:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> PlyIO
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using PlyIO
+
+julia&gt; ply = load_ply(&quot;example1.ply&quot;)
+PlyIO.Ply with header:
+ ply
+ format ascii 1.0
+ comment An example ply file
+ element vertex 1000
+ property float64 x
+ property float64 y
+ property float64 z
+ property float64 r
+ property float64 g
+ property float64 b
+ element face 1000
+ property list int32 int32 vertex_index
+ element edge 1000
+ property list int32 int32 vertex_index
+ end_header
+
+julia&gt; ply[&quot;vertex&quot;]
+PlyElement &quot;vertex&quot; of length 1000 with properties [&quot;x&quot;, &quot;y&quot;, &quot;z&quot;, &quot;r&quot;, &quot;g&quot;, &quot;b&quot;]
+
+julia&gt; ply[&quot;vertex&quot;][&quot;x&quot;]
+1000-element PlyIO.ArrayProperty{Float64,String} &quot;x&quot;:
+ -0.472592
+  1.04326
+ -0.982202
+ ⋮
+ -2.55605
+  0.773923
+ -2.10675
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> PlyIO
 
 julia<span class="pl-k">&gt;</span> ply <span class="pl-k">=</span> <span class="pl-c1">load_ply</span>(<span class="pl-s"><span class="pl-pds">"</span>example1.ply<span class="pl-pds">"</span></span>)
 PlyIO<span class="pl-k">.</span>Ply with header<span class="pl-k">:</span>

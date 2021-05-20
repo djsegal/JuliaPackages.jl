@@ -1,5 +1,5 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-quadraturejl" class="anchor" aria-hidden="true" href="#quadraturejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Quadrature.jl</h1>
-<p><a href="https://travis-ci.org/JuliaDiffEq/Quadrature.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/8d23a0c1ff979c10721432a619e1394e6b4ee087/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614469666645712f517561647261747572652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaDiffEq/Quadrature.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://github.com/SciML/Quadrature.jl/actions?query=workflow%3ACI"><img src="https://github.com/SciML/Quadrature.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a></p>
 <p>Quadrature.jl is an instantiation of the DiffEqBase.jl common <code>QuadratureProblem</code>
 interface for the common quadrature packages of Julia. By using Quadrature.jl,
 you get a single predictable interface where many of the arguments are
@@ -8,14 +8,26 @@ for benchmarking or for library implementations, since libraries which internall
 use a quadrature can easily accept a quadrature method as an argument.</p>
 <h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h2>
 <p>For basic multidimensional quadrature we can construct and solve a <code>QuadratureProblem</code>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Quadrature
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Quadrature
+f(x,p) = sum(sin.(x))
+prob = QuadratureProblem(f,ones(2),3ones(2))
+sol = solve(prob,HCubatureJL(),reltol=1e-3,abstol=1e-3)
+"><pre><span class="pl-k">using</span> Quadrature
 <span class="pl-en">f</span>(x,p) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">sin</span>.(x))
 prob <span class="pl-k">=</span> <span class="pl-c1">QuadratureProblem</span>(f,<span class="pl-c1">ones</span>(<span class="pl-c1">2</span>),<span class="pl-c1">3</span><span class="pl-c1">ones</span>(<span class="pl-c1">2</span>))
 sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(prob,<span class="pl-c1">HCubatureJL</span>(),reltol<span class="pl-k">=</span><span class="pl-c1">1e-3</span>,abstol<span class="pl-k">=</span><span class="pl-c1">1e-3</span>)</pre></div>
 <p>If we would like to parallelize the computation, we can use the batch interface
 to compute multiple points at once. For example, here we do allocation-free
 multithreading with Cubature.jl:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Quadrature, Cubature, Base<span class="pl-k">.</span>Threads
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Quadrature, Cubature, Base.Threads
+function f(dx,x,p)
+  Threads.@threads for i in 1:size(x,2)
+    dx[i] = sum(sin.(@view(x[:,i])))
+  end
+end
+prob = QuadratureProblem(f,ones(2),3ones(2),batch=2)
+sol = solve(prob,CubatureJLh(),reltol=1e-3,abstol=1e-3)
+"><pre><span class="pl-k">using</span> Quadrature, Cubature, Base<span class="pl-k">.</span>Threads
 <span class="pl-k">function</span> <span class="pl-en">f</span>(dx,x,p)
   Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(x,<span class="pl-c1">2</span>)
     dx[i] <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">sin</span>.(<span class="pl-c1">@view</span>(x[:,i])))
@@ -24,20 +36,57 @@ multithreading with Cubature.jl:</p>
 prob <span class="pl-k">=</span> <span class="pl-c1">QuadratureProblem</span>(f,<span class="pl-c1">ones</span>(<span class="pl-c1">2</span>),<span class="pl-c1">3</span><span class="pl-c1">ones</span>(<span class="pl-c1">2</span>),batch<span class="pl-k">=</span><span class="pl-c1">2</span>)
 sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(prob,<span class="pl-c1">CubatureJLh</span>(),reltol<span class="pl-k">=</span><span class="pl-c1">1e-3</span>,abstol<span class="pl-k">=</span><span class="pl-c1">1e-3</span>)</pre></div>
 <p>If we would like to compare the results against Cuba.jl's <code>Cuhre</code> method, then
-the change is one argument change:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Cuba
+the change is a one-argument change:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Cuba
+sol = solve(prob,CubaCuhre(),reltol=1e-3,abstol=1e-3)
+"><pre><span class="pl-k">using</span> Cuba
 sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(prob,<span class="pl-c1">CubaCuhre</span>(),reltol<span class="pl-k">=</span><span class="pl-c1">1e-3</span>,abstol<span class="pl-k">=</span><span class="pl-c1">1e-3</span>)</pre></div>
+<h2><a id="user-content-differentiability" class="anchor" aria-hidden="true" href="#differentiability"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Differentiability</h2>
+<p>Quadrature.jl is a fully differentiable quadrature library. Thus, it adds the
+ability to perform automatic differentiation over any of the libraries that it
+calls. It integrates with ForwardDiff.jl for forward-mode automatic differentiation
+and Zygote.jl for reverse-mode automatic differentiation. For example:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba
+f(x,p) = sum(sin.(x .* p))
+lb = ones(2)
+ub = 3ones(2)
+p = [1.5,2.0]
+
+function testf(p)
+    prob = QuadratureProblem(f,lb,ub,p)
+    sin(solve(prob,CubaCuhre(),reltol=1e-6,abstol=1e-6)[1])
+end
+dp1 = Zygote.gradient(testf,p)
+dp2 = FiniteDiff.finite_difference_gradient(testf,p)
+dp3 = ForwardDiff.gradient(testf,p)
+dp1[1] ≈ dp2 ≈ dp3
+"><pre><span class="pl-k">using</span> Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba
+<span class="pl-en">f</span>(x,p) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">sin</span>.(x <span class="pl-k">.*</span> p))
+lb <span class="pl-k">=</span> <span class="pl-c1">ones</span>(<span class="pl-c1">2</span>)
+ub <span class="pl-k">=</span> <span class="pl-c1">3</span><span class="pl-c1">ones</span>(<span class="pl-c1">2</span>)
+p <span class="pl-k">=</span> [<span class="pl-c1">1.5</span>,<span class="pl-c1">2.0</span>]
+
+<span class="pl-k">function</span> <span class="pl-en">testf</span>(p)
+    prob <span class="pl-k">=</span> <span class="pl-c1">QuadratureProblem</span>(f,lb,ub,p)
+    <span class="pl-c1">sin</span>(<span class="pl-c1">solve</span>(prob,<span class="pl-c1">CubaCuhre</span>(),reltol<span class="pl-k">=</span><span class="pl-c1">1e-6</span>,abstol<span class="pl-k">=</span><span class="pl-c1">1e-6</span>)[<span class="pl-c1">1</span>])
+<span class="pl-k">end</span>
+dp1 <span class="pl-k">=</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(testf,p)
+dp2 <span class="pl-k">=</span> FiniteDiff<span class="pl-k">.</span><span class="pl-c1">finite_difference_gradient</span>(testf,p)
+dp3 <span class="pl-k">=</span> ForwardDiff<span class="pl-k">.</span><span class="pl-c1">gradient</span>(testf,p)
+dp1[<span class="pl-c1">1</span>] <span class="pl-k">≈</span> dp2 <span class="pl-k">≈</span> dp3</pre></div>
 <h2><a id="user-content-quadratureproblem" class="anchor" aria-hidden="true" href="#quadratureproblem"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>QuadratureProblem</h2>
 <p>To use this package, you always construct a <code>QuadratureProblem</code>. This has a
 constructor:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">QuadratureProblem</span>(f,lb,ub,p<span class="pl-k">=</span><span class="pl-c1">NullParameters</span>();
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="QuadratureProblem(f,lb,ub,p=NullParameters();
+                  nout=1, batch = 0, kwargs...)
+"><pre><span class="pl-c1">QuadratureProblem</span>(f,lb,ub,p<span class="pl-k">=</span><span class="pl-c1">NullParameters</span>();
                   nout<span class="pl-k">=</span><span class="pl-c1">1</span>, batch <span class="pl-k">=</span> <span class="pl-c1">0</span>, kwargs<span class="pl-k">...</span>)</pre></div>
 <ul>
-<li><code>f</code>: Either a function <code>f(x,p)</code> for out-of-place or <code>f(dx,x,p)</code> for in place.</li>
-<li><code>lb</code>: Either a number or vector of lower bounds</li>
-<li><code>ub</code>: Either a number or vector of upper bounds</li>
-<li><code>p</code>: The parameters associated with the problem</li>
-<li><code>nout</code>: The output size of the function <code>f</code>. Defaults to <code>1</code>, i.e. a scalar
+<li><code>f</code>: Either a function <code>f(x,p)</code> for out-of-place or <code>f(dx,x,p)</code> for in-place.</li>
+<li><code>lb</code>: Either a number or vector of lower bounds.</li>
+<li><code>ub</code>: Either a number or vector of upper bounds.</li>
+<li><code>p</code>: The parameters associated with the problem.</li>
+<li><code>nout</code>: The output size of the function <code>f</code>. Defaults to <code>1</code>, i.e., a scalar
 integral output.</li>
 <li><code>batch</code>: The preferred number of points to batch. This allows user-side
 parallelization of the integrand. If <code>batch != 0</code>, then each <code>x[:,i]</code> is a

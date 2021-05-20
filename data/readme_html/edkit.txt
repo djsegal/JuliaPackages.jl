@@ -1,0 +1,134 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-edkitjl" class="anchor" aria-hidden="true" href="#edkitjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>EDKit.jl</h1>
+<p>Julia package for general many-body exact diagonalization calculation. The package provide a general Hamiltonian constructing routine for specific symmetry sectors. The functionalities can be extended with user-defined bases.</p>
+<h2><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
+<p>Run the following script in the <code>Pkg REPL</code> environment:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="pkg&gt; add EDKit
+"><pre>pkg<span class="pl-k">&gt;</span> add EDKit</pre></div>
+<h2><a id="user-content-basis-object" class="anchor" aria-hidden="true" href="#basis-object"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Basis Object</h2>
+<p>In <code>EDKit.jl</code>, the fundamental objects are basis and operator. The <code>AbstractBasis</code> is the abstract type of basis. Currently there are 4 concrete basis:</p>
+<ol>
+<li><code>TensorBasis</code>: Ordinary basis without any symmetry.</li>
+<li><code>ProjectedBasis</code>: Basis for subspace that is spanned only by product states.</li>
+<li><code>TranslationalBasis</code>: Basis for translational symmetric Hamiltonian.</li>
+<li><code>TranslationalParityBasis</code> : Basis with translational as well as reflection symmetry. The momensum should be 0 or π.</li>
+</ol>
+<p>The basis object can be extended. To construct linear operation, we need to define 3 functions for a new basis type:</p>
+<ol>
+<li><code>size(b::AbstractBasis)</code> : Size of matrix representations of the operators in this subspace.</li>
+<li><code>change!(b::AbstractBasis, i::Integer)</code> : Return the normalization of ith state and change the digits to ith states in this subspace.</li>
+<li><code>index(b::AbstractBasis)</code> : Return the coefficient and index of the digits.</li>
+</ol>
+<p>Optionally, we can define <code>eltype</code> for a basis object (default is <code>ComplexF64</code>).</p>
+<p>If the calculation is done on the entire Hilbert space, the basis object need not be explicitly constructed. The <code>Operator</code> will use <code>TensorBasis</code> by default. The construction of other basis with symmetry concern are discussed below.</p>
+<p>In addition, if the entaglement entropy is needed, the user-defined basis should implement a function <code>schmidt!(target, v, Ainds, b::AbstractBasis)</code>.</p>
+<h2><a id="user-content-operator-object" class="anchor" aria-hidden="true" href="#operator-object"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Operator Object</h2>
+<p>In <code>EDKit.jl</code> , a many-body operator is represented by the type <code>Operator</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct Operator{Tv&lt;:Number, Tb&lt;:AbstractBasis}
+    M::Vector{SparseMatrixCSC{Tv, Int}}
+    I::Vector{Vector{Int}}
+    B::Tb
+end
+"><pre><span class="pl-k">struct</span> Operator{Tv<span class="pl-k">&lt;:</span><span class="pl-c1">Number</span>, Tb<span class="pl-k">&lt;:</span><span class="pl-c1">AbstractBasis</span>}
+    M<span class="pl-k">::</span><span class="pl-c1">Vector{SparseMatrixCSC{Tv, Int}}</span>
+    I<span class="pl-k">::</span><span class="pl-c1">Vector{Vector{Int}}</span>
+    B<span class="pl-k">::</span><span class="pl-c1">Tb</span>
+<span class="pl-k">end</span></pre></div>
+<p>In this definition, <code>M</code> is the list of matrix representations of local operators, <code>I</code> is the list of indices of sites it acts on.</p>
+<h3><a id="user-content-construction" class="anchor" aria-hidden="true" href="#construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Construction</h3>
+<p>To construct an <code>Operator</code> object, we need 3 inputs:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="M &lt;: AbstractVector{&lt;:AbstractMatrix}
+I &lt;: AbstractVector{&lt;:AbstractVector{&lt;:Integer}}
+B &lt;: AbstractBasis
+"><pre>M <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractVector{&lt;:AbstractMatrix}</span>
+I <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractVector{&lt;:AbstractVector{&lt;:Integer}}</span>
+B <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractBasis</span></pre></div>
+<p>where <code>M</code> is the list of matrices representing the local operators, <code>I</code> is the list of vectors representing the sites it acts on. <code>B</code> is a basis object. If use <code>TensorBasis</code>, we can directly using the constructing method</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="operator(mats::AbstractVector{&lt;:AbstractMatrix}, inds::AbstractVector{&lt;:AbstractVector}, L::Integer)
+"><pre><span class="pl-c1">operator</span>(mats<span class="pl-k">::</span><span class="pl-c1">AbstractVector{&lt;:AbstractMatrix}</span>, inds<span class="pl-k">::</span><span class="pl-c1">AbstractVector{&lt;:AbstractVector}</span>, L<span class="pl-k">::</span><span class="pl-c1">Integer</span>)</pre></div>
+<h3><a id="user-content-convert-to-matrix" class="anchor" aria-hidden="true" href="#convert-to-matrix"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Convert to matrix</h3>
+<p>An <code>Operator</code> object is basically like a matrix, and it can be convert to dense matrix using the function</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Array(opt::Operation)
+"><pre><span class="pl-c1">Array</span>(opt<span class="pl-k">::</span><span class="pl-c1">Operation</span>)</pre></div>
+<p>It can also write to a given matrix with correct dimension using function</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="addto!(M::AbstractMatrix, opt::Operator)
+"><pre><span class="pl-c1">addto!</span>(M<span class="pl-k">::</span><span class="pl-c1">AbstractMatrix</span>, opt<span class="pl-k">::</span><span class="pl-c1">Operator</span>)</pre></div>
+<p>Note that to get correct answer, <code>M</code> should de initialized as a zero matrix.</p>
+<h3><a id="user-content-multiply-to-vector-or-matrix" class="anchor" aria-hidden="true" href="#multiply-to-vector-or-matrix"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Multiply to vector or matrix</h3>
+<p>We can directly using</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="O::Operator * M::AbstractVecOrMat
+"><pre>O<span class="pl-k">::</span><span class="pl-c1">Operator</span> <span class="pl-k">*</span> M<span class="pl-k">::</span><span class="pl-c1">AbstractVecOrMat</span></pre></div>
+<p>to do the multiplycation. Or, use the function</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="mul!(target::AbstractVecOrMat, opt::Operator, v::AbstractVecOrMat)
+"><pre><span class="pl-c1">mul!</span>(target<span class="pl-k">::</span><span class="pl-c1">AbstractVecOrMat</span>, opt<span class="pl-k">::</span><span class="pl-c1">Operator</span>, v<span class="pl-k">::</span><span class="pl-c1">AbstractVecOrMat</span>)</pre></div>
+<p>to modify <code>target</code> (similarly, <code>target</code> should be initialized as a zero vector/matrix).</p>
+<h3><a id="user-content-compute-entaglement-entropy" class="anchor" aria-hidden="true" href="#compute-entaglement-entropy"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Compute entaglement entropy</h3>
+<p>After obtaining Hamiltonian in a symmetry sector. We can calculate the entaglement entropy of an eigenvector <code>v</code> (assume the system size is <code>2L</code>, and the entropy cut is at the middel of the chain) by</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="ent_S(v::AbstractVector, 1:L, b::AbstractBasis)
+"><pre><span class="pl-c1">ent_S</span>(v<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>, <span class="pl-c1">1</span><span class="pl-k">:</span>L, b<span class="pl-k">::</span><span class="pl-c1">AbstractBasis</span>)</pre></div>
+<h2><a id="user-content-concrete-implementations-of-basis" class="anchor" aria-hidden="true" href="#concrete-implementations-of-basis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Concrete Implementations of Basis</h2>
+<p>Here we introduce 3 concrete implementation of <code>AbstractBasis</code>.</p>
+<h3><a id="user-content-tensorbasis" class="anchor" aria-hidden="true" href="#tensorbasis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>TensorBasis</h3>
+<p>The type <code>TensorBasis</code> has the fields:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct TensorBasis &lt;: AbstractBasis
+    dgt::Vector{Int}
+    B::Int
+end
+"><pre><span class="pl-k">struct</span> TensorBasis <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractBasis</span>
+    dgt<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+    B<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span></pre></div>
+<p>We can use the function</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="tensorbasis(L::Integer; base::Integer=2)
+"><pre><span class="pl-c1">tensorbasis</span>(L<span class="pl-k">::</span><span class="pl-c1">Integer</span>; base<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<p>to construct a basis, though in most cases it is not necessary.</p>
+<h3><a id="user-content-projectedbasis" class="anchor" aria-hidden="true" href="#projectedbasis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ProjectedBasis</h3>
+<p>The type <code>ProjectedBasis</code> has the fields:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct ProjectedBasis &lt;: AbstractBasis
+    dgt::Vector{Int}
+    I::Vector{Int}
+    B::Int
+end
+"><pre><span class="pl-k">struct</span> ProjectedBasis <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractBasis</span>
+    dgt<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+    I<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+    B<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span></pre></div>
+<p>We can use the function</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="projectedbasis(f, L::Integer; base::Integer=2)
+"><pre><span class="pl-c1">projectedbasis</span>(f, L<span class="pl-k">::</span><span class="pl-c1">Integer</span>; base<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<p>In the definition, <code>f</code> is a function acting on digits that tells whether a given digits is valid in this basis. For eaxample, consider a S=1/2 chain with L=6 (conserve megnetic quantum number). If we consider the subspace spaned by those states with 3 up-spins, we can create the basis for the subspace by</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="projectedbasis(x -&gt; sum(x)==3, 6; base=2)
+"><pre><span class="pl-c1">projectedbasis</span>(x <span class="pl-k">-&gt;</span> <span class="pl-c1">sum</span>(x)<span class="pl-k">==</span><span class="pl-c1">3</span>, <span class="pl-c1">6</span>; base<span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<h3><a id="user-content-translationalbasis" class="anchor" aria-hidden="true" href="#translationalbasis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>TranslationalBasis</h3>
+<p>The type <code>TranslationalBasis</code> has the fields:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct TranslationalBasis &lt;: AbstractBasis
+    dgt::Vector{Int}
+    I::Vector{Int}
+    R::Vector{Float64}
+    C::ComplexF64
+    B::Int
+end
+"><pre><span class="pl-k">struct</span> TranslationalBasis <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractBasis</span>
+    dgt<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+    I<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+    R<span class="pl-k">::</span><span class="pl-c1">Vector{Float64}</span>
+    C<span class="pl-k">::</span><span class="pl-c1">ComplexF64</span>
+    B<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span></pre></div>
+<p>We can use the function</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="translationalbasis(k::Integer, L::Integer; base::Integer=2)
+translationalbasis(f, k::Integer, L::Integer; base::Integer=2)
+"><pre><span class="pl-c1">translationalbasis</span>(k<span class="pl-k">::</span><span class="pl-c1">Integer</span>, L<span class="pl-k">::</span><span class="pl-c1">Integer</span>; base<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">2</span>)
+<span class="pl-c1">translationalbasis</span>(f, k<span class="pl-k">::</span><span class="pl-c1">Integer</span>, L<span class="pl-k">::</span><span class="pl-c1">Integer</span>; base<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<p>In the definition, <code>k</code> is the momentum sector we are interested, and <code>f</code> is a function acting on digits that tells whether a given digits is valid in this basis. Note that <code>k</code> is an integer, representing the momentum at <code>2πk/L</code>. For example, consider a <code>S=1/2</code> chain with <code>L=6</code> (with translational symmetry and conserve magnetic quantum number). If we consider the subspace spaned by those states with 3 up-spins with zero momentum, we can create the basis for the subspace by</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="translationalbasis(x -&gt; sum(x)==3, 0, 6; base=2)
+"><pre><span class="pl-c1">translationalbasis</span>(x <span class="pl-k">-&gt;</span> <span class="pl-c1">sum</span>(x)<span class="pl-k">==</span><span class="pl-c1">3</span>, <span class="pl-c1">0</span>, <span class="pl-c1">6</span>; base<span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<h2><a id="user-content-spin-tools" class="anchor" aria-hidden="true" href="#spin-tools"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Spin tools</h2>
+<p>We also provide a helper function to create spin-s operators (represented by matrices):</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="spin(spins...; D::Integer=2)
+"><pre><span class="pl-c1">spin</span>(spins<span class="pl-k">...</span>; D<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<p>In the definition, <code>spins</code> are arbituary number of tuples such as <code>(1.0, "xzx")</code>. The supported characters are:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="&quot;x&quot;, &quot;y&quot;, &quot;z&quot;, &quot;1&quot;, &quot;+&quot;, &quot;-&quot;
+"><pre><span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>z<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>+<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>-<span class="pl-pds">"</span></span></pre></div>
+<p>The other input <code>D</code> is the dimension of the matrix (<code>D = 2s+1</code>).</p>
+</article></div>

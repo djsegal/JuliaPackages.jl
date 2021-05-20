@@ -1,0 +1,183 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-notice" class="anchor" aria-hidden="true" href="#notice"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>NOTICE</h1>
+<p>This repository will be deprecated.
+For the next version, see <a href="https://github.com/JinraeKim/LazyFym.jl">LazyFym</a>.</p>
+<h1><a id="user-content-fymenvs" class="anchor" aria-hidden="true" href="#fymenvs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>FymEnvs</h1>
+<p><strong>FymEnvs.jl</strong> is a Julia version of <a href="https://github.com/fdcl-nrf/fym">the original <code>fym</code></a>,
+developed by FDCL in SNU.</p>
+<p>You can perform numerical (flight) simulations including deep reinforcement learning with this package.
+This package is also highly inspired by <a href="https://gym.openai.com/" rel="nofollow"><code>Gym</code></a>, OpenAI.</p>
+<h2><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage</h2>
+<p>The usage of <strong>FymEnvs.jl</strong> is very similar to <code>fym</code>,
+but there is a significant difference: <em>does not inherit BaseEnv</em> like class in <code>Python</code>.
+It may be awkward to the users from the original <code>fym</code>.
+<strong>NOTICE</strong>: To create your own <code>FymEnv</code>,
+it is <em>highly recommended</em> to see
+the contents about custom environments in directory <code>test</code>.</p>
+<p>Here is the simplest example of <strong>FymEnvs.jl</strong>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using FymEnvs
+using LinearAlgebra
+
+function set_dyn(env, t)
+    # corresponding to `set_dot` of the original fym
+    # you can use any names in this package
+    sys = env.systems[&quot;sys&quot;]
+    x = sys.state
+    A = Matrix(I, 3, 3)
+    sys.dot = -A * x
+end
+function step(env)
+    t = time(env.clock)
+    sys = env.systems[&quot;sys&quot;]
+    x = sys.state
+    update!(env)
+    next_obs = sys.state
+    reward = zeros(1)
+    done = time_over(env.clock)
+    info = Dict(
+                &quot;time&quot; =&gt; t,
+                &quot;state&quot; =&gt; x,
+               )
+    return next_obs, reward, done, info
+end
+
+x0 = collect(1:3)
+systems = Dict(&quot;sys&quot; =&gt; BaseSystem(initial_state=x0, name=&quot;3d_sys&quot;))
+log_dir = &quot;data/test&quot;
+file_name = &quot;fym.h5&quot;
+logger = Logger(log_dir=log_dir, file_name=file_name)
+env = BaseEnv(max_t=100.00, logger=logger, name=&quot;test_env&quot;,)
+systems!(env, systems)  # set systems; required
+dyn!(env, set_dyn)  # set dynamics; required
+step!(env, step)  # set step; required
+
+reset!(env)  # reset env; required before propagation
+obs = observe_flat(env)
+i = 0
+@time while true
+    render(env)  # not mendatory; would make simulator slow
+    next_obs, reward, done, info = env.step()
+    obs = next_obs
+    i += 1
+    if done
+        break
+    end
+end
+close!(env)
+data = load(env.logger.path)
+show(env)
+show(size(data[&quot;state&quot;][&quot;sys&quot;]))
+"><pre><span class="pl-k">using</span> FymEnvs
+<span class="pl-k">using</span> LinearAlgebra
+
+<span class="pl-k">function</span> <span class="pl-en">set_dyn</span>(env, t)
+    <span class="pl-c"><span class="pl-c">#</span> corresponding to `set_dot` of the original fym</span>
+    <span class="pl-c"><span class="pl-c">#</span> you can use any names in this package</span>
+    sys <span class="pl-k">=</span> env<span class="pl-k">.</span>systems[<span class="pl-s"><span class="pl-pds">"</span>sys<span class="pl-pds">"</span></span>]
+    x <span class="pl-k">=</span> sys<span class="pl-k">.</span>state
+    A <span class="pl-k">=</span> <span class="pl-c1">Matrix</span>(I, <span class="pl-c1">3</span>, <span class="pl-c1">3</span>)
+    sys<span class="pl-k">.</span>dot <span class="pl-k">=</span> <span class="pl-k">-</span>A <span class="pl-k">*</span> x
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> <span class="pl-en">step</span>(env)
+    t <span class="pl-k">=</span> <span class="pl-c1">time</span>(env<span class="pl-k">.</span>clock)
+    sys <span class="pl-k">=</span> env<span class="pl-k">.</span>systems[<span class="pl-s"><span class="pl-pds">"</span>sys<span class="pl-pds">"</span></span>]
+    x <span class="pl-k">=</span> sys<span class="pl-k">.</span>state
+    <span class="pl-c1">update!</span>(env)
+    next_obs <span class="pl-k">=</span> sys<span class="pl-k">.</span>state
+    reward <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">1</span>)
+    done <span class="pl-k">=</span> <span class="pl-c1">time_over</span>(env<span class="pl-k">.</span>clock)
+    info <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
+                <span class="pl-s"><span class="pl-pds">"</span>time<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> t,
+                <span class="pl-s"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> x,
+               )
+    <span class="pl-k">return</span> next_obs, reward, done, info
+<span class="pl-k">end</span>
+
+x0 <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+systems <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(<span class="pl-s"><span class="pl-pds">"</span>sys<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-c1">BaseSystem</span>(initial_state<span class="pl-k">=</span>x0, name<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>3d_sys<span class="pl-pds">"</span></span>))
+log_dir <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>data/test<span class="pl-pds">"</span></span>
+file_name <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>fym.h5<span class="pl-pds">"</span></span>
+logger <span class="pl-k">=</span> <span class="pl-c1">Logger</span>(log_dir<span class="pl-k">=</span>log_dir, file_name<span class="pl-k">=</span>file_name)
+env <span class="pl-k">=</span> <span class="pl-c1">BaseEnv</span>(max_t<span class="pl-k">=</span><span class="pl-c1">100.00</span>, logger<span class="pl-k">=</span>logger, name<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>test_env<span class="pl-pds">"</span></span>,)
+<span class="pl-c1">systems!</span>(env, systems)  <span class="pl-c"><span class="pl-c">#</span> set systems; required</span>
+<span class="pl-c1">dyn!</span>(env, set_dyn)  <span class="pl-c"><span class="pl-c">#</span> set dynamics; required</span>
+<span class="pl-c1">step!</span>(env, step)  <span class="pl-c"><span class="pl-c">#</span> set step; required</span>
+
+<span class="pl-c1">reset!</span>(env)  <span class="pl-c"><span class="pl-c">#</span> reset env; required before propagation</span>
+obs <span class="pl-k">=</span> <span class="pl-c1">observe_flat</span>(env)
+i <span class="pl-k">=</span> <span class="pl-c1">0</span>
+<span class="pl-c1">@time</span> <span class="pl-k">while</span> <span class="pl-c1">true</span>
+    <span class="pl-c1">render</span>(env)  <span class="pl-c"><span class="pl-c">#</span> not mendatory; would make simulator slow</span>
+    next_obs, reward, done, info <span class="pl-k">=</span> env<span class="pl-k">.</span><span class="pl-c1">step</span>()
+    obs <span class="pl-k">=</span> next_obs
+    i <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">if</span> done
+        <span class="pl-k">break</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+<span class="pl-c1">close!</span>(env)
+data <span class="pl-k">=</span> <span class="pl-c1">load</span>(env<span class="pl-k">.</span>logger<span class="pl-k">.</span>path)
+<span class="pl-c1">show</span>(env)
+<span class="pl-c1">show</span>(<span class="pl-c1">size</span>(data[<span class="pl-s"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>sys<span class="pl-pds">"</span></span>]))</pre></div>
+<p>Result:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# time and progressbar
+ 99%|████████████████████████████████████████████████████████████████████████████████████▎|  ETA: 0:00:00  0.706294 seconds (2.98 M allocations: 1.675 GiB, 11.48% gc time)
+# representation, i.e., show (nested env supported)
+name: test_env
+max_t: 100.0
+dt: 0.01
++---name: 3d_sys
+|   state: [3.7200760072278747e-44, 7.440152014455749e-44, 1.1160228021683672e-43]
+|   dot: [-3.7200756925403154e-44, -7.440151385080631e-44, -1.1160227077620995e-43]
+|   initial_state: [1.0, 2.0, 3.0]
+|   state_size: (3,)
+|   flat_index: 1:3
+# saved data
+(10000, 3)
+"><pre><span class="pl-c"><span class="pl-c">#</span> time and progressbar</span>
+ <span class="pl-c1">99</span><span class="pl-k">%</span><span class="pl-k">|</span>████████████████████████████████████████████████████████████████████████████████████▎<span class="pl-k">|</span>  ETA<span class="pl-k">:</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">00</span><span class="pl-k">:</span><span class="pl-c1">00</span>  <span class="pl-c1">0.706294</span> seconds (<span class="pl-c1">2.98</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">1.675</span> GiB, <span class="pl-c1">11.48</span><span class="pl-k">%</span> gc time)
+<span class="pl-c"><span class="pl-c">#</span> representation, i.e., show (nested env supported)</span>
+name<span class="pl-k">:</span> test_env
+max_t<span class="pl-k">:</span> <span class="pl-c1">100.0</span>
+dt<span class="pl-k">:</span> <span class="pl-c1">0.01</span>
+<span class="pl-k">+---</span>name<span class="pl-k">:</span> <span class="pl-c1">3</span>d_sys
+<span class="pl-k">|</span>   state<span class="pl-k">:</span> [<span class="pl-c1">3.7200760072278747e-44</span>, <span class="pl-c1">7.440152014455749e-44</span>, <span class="pl-c1">1.1160228021683672e-43</span>]
+<span class="pl-k">|</span>   dot<span class="pl-k">:</span> [<span class="pl-k">-</span><span class="pl-c1">3.7200756925403154e-44</span>, <span class="pl-k">-</span><span class="pl-c1">7.440151385080631e-44</span>, <span class="pl-k">-</span><span class="pl-c1">1.1160227077620995e-43</span>]
+<span class="pl-k">|</span>   initial_state<span class="pl-k">:</span> [<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>]
+<span class="pl-k">|</span>   state_size<span class="pl-k">:</span> (<span class="pl-c1">3</span>,)
+<span class="pl-k">|</span>   flat_index<span class="pl-k">:</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>
+<span class="pl-c"><span class="pl-c">#</span> saved data</span>
+(<span class="pl-c1">10000</span>, <span class="pl-c1">3</span>)</pre></div>
+<p>For more examples, see directory <code>test</code>.</p>
+<h2><a id="user-content-notice-1" class="anchor" aria-hidden="true" href="#notice-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Notice</h2>
+<h3><a id="user-content-fymenvsjl-does-not-directly-support-gyms-features" class="anchor" aria-hidden="true" href="#fymenvsjl-does-not-directly-support-gyms-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><strong>FymEnvs.jl</strong> does not directly support <code>Gym</code>'s features.</h3>
+<ul>
+<li>Note that this does not inherit <code>Gym</code>'s features, while <code>fym</code> <em>does</em>.</li>
+</ul>
+<h3><a id="user-content-supported-features" class="anchor" aria-hidden="true" href="#supported-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Supported features</h3>
+<p>The following features are supported in <strong>FymEnvs.jl</strong>:</p>
+<ul>
+<li>Nested environments
+<ul>
+<li>An environment can contain other environments as its systems.</li>
+</ul>
+</li>
+<li>Backward integration
+<ul>
+<li>Can perform backward integration with keyword argument <code>dt (&lt; 0.0).</code></li>
+</ul>
+</li>
+<li>Log data
+<ul>
+<li>Can log simulation data and configuration using <code>Logger</code>.</li>
+<li>It is compatible with <a href="https://github.com/JuliaIO/JLD2.jl">JLD2.jl</a>.</li>
+</ul>
+</li>
+</ul>
+<h3><a id="user-content-not-supported-features" class="anchor" aria-hidden="true" href="#not-supported-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Not supported features</h3>
+<p>There are some features of <code>fym</code>, not realised yet. Here's the list:</p>
+<ul>
+<li>eager stop</li>
+<li>logger callback</li>
+<li>delayed system</li>
+</ul>
+</article></div>

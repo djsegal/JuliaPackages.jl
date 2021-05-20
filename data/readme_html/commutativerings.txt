@@ -1,0 +1,968 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-commutativeringsjl" class="anchor" aria-hidden="true" href="#commutativeringsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>CommutativeRings.jl</h1>
+<p><a href="https://github.com/KlausC/CommutativeRings.jl/actions?query=workflow%3ACI"><img src="https://github.com/KlausC/CommutativeRings.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>     <a href="https://codecov.io/gh/KlausC/CommutativeRings.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/290489ce35e1850ab3ec1bd12d24efed1df34c3e7614038802c89374fbd5e218/68747470733a2f2f636f6465636f762e696f2f67682f4b6c617573432f436f6d6d7574617469766552696e67732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage Status" data-canonical-src="https://codecov.io/gh/KlausC/CommutativeRings.jl/branch/main/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>W.I.P</p>
+<h2><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Introduction</h2>
+<p>This software is the start of a computer algebra system specialized to
+discrete calculations in the area of integer numbers <code>ℤ</code>, modular arithmetic <code>ℤ/m</code>
+fractional <code>ℚ</code>, polynomials <code>ℤ[x]</code>. Also multivariate polynomials <code>ℤ[x,y,...]</code> and Galois fields <code>GF(p^r)</code> are supported.</p>
+<p>This is not seen as a replacement of <code>Nemo.jl</code> or <code>AbstractAlgebra.jl</code>, which should be used for serious work.
+It is understood more like a sandbox to try out a simpler API.</p>
+<p>It is important, that rings may be freely combined, for example <code>(ℤ/p)[x]</code> (polynomials over the quotient ring for a prime number <code>p</code>),
+<code>Frac(ℤ[x])</code>, the rational functions with integer coefficients, or <code>GF(64)[:x]</code>, polynomials over the Galois field.
+The quotient rings include ideals, which are of major importance with multivariate polynomials.</p>
+<p>The mentioned examples are elementary examples for ring structures. The can be
+liberately combined to fractional fields, quotient rings, and polynomials of previously defined structures.</p>
+<p>So it is possible to work with rational functions, which are fractions of polynomials, where the polynomial coefficients are in ℤ/p, for example.
+The the current standard library we have modules <code>Rational</code> and <code>Polynomial</code> besides the numeric subtypes of <code>Number</code> and some support for modular calculations with integers.</p>
+<p>The original motivation for writing this piece of sofware, when I tried to handle polynomials over a quotient ring. There was no obvious way of embedding my ring elements
+into the <code>Julia</code> language and for example exploit polynomial calculations from the <code>Polynomial</code> package for that. There seems to be a correspondence between <code>Julia</code> types and structures and the algebraic stuctures I want to work with. So the idea was born to define
+abstract and concrete types in <code>Julia</code>, the objects of those types representing the ring
+elements to operate on. As types are first class objects in <code>Julia</code> it was also possible to
+define combinations in a language affine way. Also <code>ring homomorphisms</code>, i.e. strucure-respecting mappings between rings (of differnt kind) find a natural representation as one-argument-functions or methods with corresponding domains. The typical canonical homomorphisms, can be conveniently implemented as constructors.</p>
+<p>The exploitation of the julia structures is in contrast to the alternative package <a href="https://github.com/Nemocas/AbstractAlgebra.jl">AbstractAlgebra</a>, which defines separate types for ring elements and the ring classes themselves, the elements keeping an explicit link to the owner structure.</p>
+<p>To distinct variants of rings, we use type parameters, for example the <code>m</code> in <code>ℤ/m</code> or the <code>x</code> in <code>ℤ[:x]</code>. Other type parameters may be used to specify implementation restictions, for
+example typically the integer types used for the representation of the objects.</p>
+<p>Correspondence between algebraic and Julia categories:</p>
+<table>
+<thead>
+<tr>
+<th>algebraic</th>
+<th>Julia</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>category <strong>Ring</strong></td>
+<td>abstract type</td>
+<td><code>abstract type Ring ...</code></td>
+</tr>
+<tr>
+<td>algebraic structure <strong>ℤ/m</strong></td>
+<td>concrete type</td>
+<td><code>struct ZZmod{m,Int} &lt;: Ring</code></td>
+</tr>
+<tr>
+<td>specialisation <strong>ℤ</strong> is a <strong>Ring</strong></td>
+<td>type inclusion</td>
+<td><code>ZZ{Int] &lt;: Ring</code></td>
+</tr>
+<tr>
+<td>ring element <strong>a</strong> of <strong>R</strong></td>
+<td>object</td>
+<td><code>a</code> isa <code>R</code></td>
+</tr>
+<tr>
+<td>basic binary operations <strong>a + b</strong></td>
+<td>binary operator</td>
+<td><code>a + b</code></td>
+</tr>
+<tr>
+<td>homomorphism <strong>h</strong> : <strong>R</strong> -&gt; <strong>S</strong></td>
+<td>method</td>
+<td><code>h(::R)::S = ...</code></td>
+</tr>
+<tr>
+<td>canonical <strong>h</strong> : <strong>R</strong> -&gt; <strong>S</strong></td>
+<td>constructor</td>
+<td><code>S(::R) = ...</code></td>
+</tr>
+</tbody>
+</table>
+<h2><a id="user-content-usage-example" class="anchor" aria-hidden="true" href="#usage-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Usage example</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using CommutativeRings
+
+ # starting with some calculation in the quotient field Z/31
+
+julia&gt; m = 31
+31
+julia&gt; ZZp = Int8/m
+ZZmod{31,Int8}
+julia&gt; modulus(ZZp)
+31
+julia&gt; z1 = ZZp(12)
+12°
+julia&gt; z2 = ZZp(17)
+-14°
+julia&gt; z1 + z2
+-2°
+julia&gt; z1 * z2
+-13°
+julia&gt; inv(z1)
+13°
+julia&gt; 13z1
+1°
+
+ # using a big prime as parameter, the class is identified by an arbitrary symbol (:p)
+
+julia&gt; ZZbig = BigInt / (big(2)^521 - 1)
+ZZmod{Symbol(&quot;##361&quot;),BigInt}
+
+julia&gt; modulus(ZZbig)
+686479766013060971498190079908139321726943530014330540939446345918554318339765
+6052122559640661454554977296311391480858037121987999716643812574028291115057151
+julia&gt; zb = ZZbig(10)
+10°
+julia&gt; zb^(modulus(ZZbig)-1) # Fermat's little theorem for primes
+1°
+
+
+... # now polynomials with element type of Z/31
+
+julia&gt; P = UnivariatePolynomial{:x,ZZp}
+UnivariatePolynomial{:x,ZZmod{31,Int8}}
+julia&gt; x = P([0, 1])
+x
+
+julia&gt; p = (x + 2)^2 * (x-1)
+x^3 + 3°⋅x^2 - 4°
+julia&gt; p.coeff
+4-element Array{ZZmod{31,Int8},1}:
+ -4°
+ 0°
+ 3°
+ 1°
+julia&gt; 1 + p
+x^3 + 3°⋅x^2 - 3°
+
+
+julia&gt; gcd(p, x-1)
+x - 1°
+julia&gt; p / (x-1)
+x^2 + 4°⋅x + 4°
+julia&gt; p / (x+2)
+x^2 + x - 2°
+
+
+julia&gt; p / (x + 3) * (x + 1)
+ERROR: DomainError with (x^3 + 3°⋅x^2 - 4°, x + 3°):
+not dividable a/b.
+
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CommutativeRings
+
+ <span class="pl-c"><span class="pl-c">#</span> starting with some calculation in the quotient field Z/31</span>
+
+julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-c1">31</span>
+<span class="pl-c1">31</span>
+julia<span class="pl-k">&gt;</span> ZZp <span class="pl-k">=</span> Int8<span class="pl-k">/</span>m
+ZZmod{<span class="pl-c1">31</span>,Int8}
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">modulus</span>(ZZp)
+<span class="pl-c1">31</span>
+julia<span class="pl-k">&gt;</span> z1 <span class="pl-k">=</span> <span class="pl-c1">ZZp</span>(<span class="pl-c1">12</span>)
+<span class="pl-c1">12</span>°
+julia<span class="pl-k">&gt;</span> z2 <span class="pl-k">=</span> <span class="pl-c1">ZZp</span>(<span class="pl-c1">17</span>)
+<span class="pl-k">-</span><span class="pl-c1">14</span>°
+julia<span class="pl-k">&gt;</span> z1 <span class="pl-k">+</span> z2
+<span class="pl-k">-</span><span class="pl-c1">2</span>°
+julia<span class="pl-k">&gt;</span> z1 <span class="pl-k">*</span> z2
+<span class="pl-k">-</span><span class="pl-c1">13</span>°
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">inv</span>(z1)
+<span class="pl-c1">13</span>°
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">13</span>z1
+<span class="pl-c1">1</span>°
+
+ <span class="pl-c"><span class="pl-c">#</span> using a big prime as parameter, the class is identified by an arbitrary symbol (:p)</span>
+
+julia<span class="pl-k">&gt;</span> ZZbig <span class="pl-k">=</span> BigInt <span class="pl-k">/</span> (<span class="pl-c1">big</span>(<span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">521</span> <span class="pl-k">-</span> <span class="pl-c1">1</span>)
+ZZmod{<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>##361<span class="pl-pds">"</span></span>),BigInt}
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">modulus</span>(ZZbig)
+<span class="pl-c1">686479766013060971498190079908139321726943530014330540939446345918554318339765</span>
+<span class="pl-c1">6052122559640661454554977296311391480858037121987999716643812574028291115057151</span>
+julia<span class="pl-k">&gt;</span> zb <span class="pl-k">=</span> <span class="pl-c1">ZZbig</span>(<span class="pl-c1">10</span>)
+<span class="pl-c1">10</span>°
+julia<span class="pl-k">&gt;</span> zb<span class="pl-k">^</span>(<span class="pl-c1">modulus</span>(ZZbig)<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> Fermat's little theorem for primes</span>
+<span class="pl-c1">1</span>°
+
+
+<span class="pl-k">...</span> <span class="pl-c"><span class="pl-c">#</span> now polynomials with element type of Z/31</span>
+
+julia<span class="pl-k">&gt;</span> P <span class="pl-k">=</span> UnivariatePolynomial{<span class="pl-c1">:x</span>,ZZp}
+UnivariatePolynomial{<span class="pl-c1">:x</span>,ZZmod{<span class="pl-c1">31</span>,Int8}}
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">P</span>([<span class="pl-c1">0</span>, <span class="pl-c1">1</span>])
+x
+
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">=</span> (x <span class="pl-k">+</span> <span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">*</span> (x<span class="pl-k">-</span><span class="pl-c1">1</span>)
+x<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">+</span> <span class="pl-c1">3</span>°<span class="pl-k">⋅</span>x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> <span class="pl-c1">4</span>°
+julia<span class="pl-k">&gt;</span> p<span class="pl-k">.</span>coeff
+<span class="pl-c1">4</span><span class="pl-k">-</span>element Array{ZZmod{<span class="pl-c1">31</span>,Int8},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-k">-</span><span class="pl-c1">4</span>°
+ <span class="pl-c1">0</span>°
+ <span class="pl-c1">3</span>°
+ <span class="pl-c1">1</span>°
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1</span> <span class="pl-k">+</span> p
+x<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">+</span> <span class="pl-c1">3</span>°<span class="pl-k">⋅</span>x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> <span class="pl-c1">3</span>°
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">gcd</span>(p, x<span class="pl-k">-</span><span class="pl-c1">1</span>)
+x <span class="pl-k">-</span> <span class="pl-c1">1</span>°
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">/</span> (x<span class="pl-k">-</span><span class="pl-c1">1</span>)
+x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">4</span>°<span class="pl-k">⋅</span>x <span class="pl-k">+</span> <span class="pl-c1">4</span>°
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">/</span> (x<span class="pl-k">+</span><span class="pl-c1">2</span>)
+x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> x <span class="pl-k">-</span> <span class="pl-c1">2</span>°
+
+
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">/</span> (x <span class="pl-k">+</span> <span class="pl-c1">3</span>) <span class="pl-k">*</span> (x <span class="pl-k">+</span> <span class="pl-c1">1</span>)
+ERROR<span class="pl-k">:</span> DomainError with (x<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">+</span> <span class="pl-c1">3</span>°<span class="pl-k">⋅</span>x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> <span class="pl-c1">4</span>°, x <span class="pl-k">+</span> <span class="pl-c1">3</span>°)<span class="pl-k">:</span>
+not dividable a<span class="pl-k">/</span>b.
+</pre></div>
+<h2><a id="user-content-installation-of-this-wip-version" class="anchor" aria-hidden="true" href="#installation-of-this-wip-version"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation of this WIP version</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="    $ cd ~/.julia/dev
+
+    $ git clone https://github.com/KlausC/CommutativeRings.jl.git CommutativeRings
+
+    $ julia
+
+     ...
+    # press &quot;]&quot;
+    (v1.3) pkg&gt; activate CommutativeRings
+    Activating environment at `~/.julia/dev/CommutativeRings/Project.toml`
+
+    (CommutativeRings) pkg&gt;
+
+     # press backspace
+
+julia&gt; using CommutativeRings
+[ Info: Precompiling CommutativeRings [a6d4fa9c-9e0b-4795-89f3-f481b7b5e384]
+
+(CommutativeRings) pkg&gt; test
+    Testing CommutativeRings
+
+Test Summary: | Pass  Total
+generic       |   23     23
+Test Summary: | Pass  Total
+typevars      |    8      8
+Test Summary: | Pass  Total
+ZZ            |  113    113
+Test Summary: | Pass  Total
+QQ            |   42     42
+Test Summary: | Pass  Total
+ZZmod         |  271    271
+Test Summary: | Pass  Total
+univarpolynom |  256    256
+Test Summary:   | Pass  Total
+multivarpolynom |  151    151
+Test Summary: | Pass  Total
+ideal         |   21     21
+Test Summary: | Pass  Total
+fraction      |   32     32
+Test Summary: | Pass  Total
+quotient      |   24     24
+Test Summary: | Pass  Total
+factorization |   20     20
+Test Summary: | Pass  Total
+galoisfields  |   99     99
+Test Summary: | Pass  Total
+numbertheory  |   24     24
+Test Summary: | Pass  Total
+enumerations  |   31     31
+Test Summary: | Pass  Total
+linearalgebra |   23     23
+    Testing CommutativeRings tests passed  
+
+"><pre>    <span class="pl-k">$</span> cd <span class="pl-k">~</span><span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>dev
+
+    <span class="pl-k">$</span> git clone https<span class="pl-k">:</span><span class="pl-k">//</span>github<span class="pl-k">.</span>com<span class="pl-k">/</span>KlausC<span class="pl-k">/</span>CommutativeRings<span class="pl-k">.</span>jl<span class="pl-k">.</span>git CommutativeRings
+
+    <span class="pl-k">$</span> julia
+
+     <span class="pl-k">...</span>
+    <span class="pl-c"><span class="pl-c">#</span> press "]"</span>
+    (v1.<span class="pl-c1">3</span>) pkg<span class="pl-k">&gt;</span> activate CommutativeRings
+    Activating environment at <span class="pl-s"><span class="pl-pds">`</span>~/.julia/dev/CommutativeRings/Project.toml<span class="pl-pds">`</span></span>
+
+    (CommutativeRings) pkg<span class="pl-k">&gt;</span>
+
+     <span class="pl-c"><span class="pl-c">#</span> press backspace</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CommutativeRings
+[ Info<span class="pl-k">:</span> Precompiling CommutativeRings [a6d4fa9c<span class="pl-k">-</span><span class="pl-c1">9e0</span>b<span class="pl-k">-</span><span class="pl-c1">4795</span><span class="pl-k">-</span><span class="pl-c1">89f3</span><span class="pl-k">-</span>f481b7b5e384]
+
+(CommutativeRings) pkg<span class="pl-k">&gt;</span> test
+    Testing CommutativeRings
+
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+generic       <span class="pl-k">|</span>   <span class="pl-c1">23</span>     <span class="pl-c1">23</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+typevars      <span class="pl-k">|</span>    <span class="pl-c1">8</span>      <span class="pl-c1">8</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+ZZ            <span class="pl-k">|</span>  <span class="pl-c1">113</span>    <span class="pl-c1">113</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+QQ            <span class="pl-k">|</span>   <span class="pl-c1">42</span>     <span class="pl-c1">42</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+ZZmod         <span class="pl-k">|</span>  <span class="pl-c1">271</span>    <span class="pl-c1">271</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+univarpolynom <span class="pl-k">|</span>  <span class="pl-c1">256</span>    <span class="pl-c1">256</span>
+Test Summary<span class="pl-k">:</span>   <span class="pl-k">|</span> Pass  Total
+multivarpolynom <span class="pl-k">|</span>  <span class="pl-c1">151</span>    <span class="pl-c1">151</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+ideal         <span class="pl-k">|</span>   <span class="pl-c1">21</span>     <span class="pl-c1">21</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+fraction      <span class="pl-k">|</span>   <span class="pl-c1">32</span>     <span class="pl-c1">32</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+quotient      <span class="pl-k">|</span>   <span class="pl-c1">24</span>     <span class="pl-c1">24</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+factorization <span class="pl-k">|</span>   <span class="pl-c1">20</span>     <span class="pl-c1">20</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+galoisfields  <span class="pl-k">|</span>   <span class="pl-c1">99</span>     <span class="pl-c1">99</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+numbertheory  <span class="pl-k">|</span>   <span class="pl-c1">24</span>     <span class="pl-c1">24</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+enumerations  <span class="pl-k">|</span>   <span class="pl-c1">31</span>     <span class="pl-c1">31</span>
+Test Summary<span class="pl-k">:</span> <span class="pl-k">|</span> Pass  Total
+linearalgebra <span class="pl-k">|</span>   <span class="pl-c1">23</span>     <span class="pl-c1">23</span>
+    Testing CommutativeRings tests passed  
+</pre></div>
+<h2><a id="user-content-implementation-details" class="anchor" aria-hidden="true" href="#implementation-details"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Implementation details</h2>
+<h3><a id="user-content-classes" class="anchor" aria-hidden="true" href="#classes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Classes</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>supertype</th>
+<th>description / constructor</th>
+<th>remarks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ring</code></td>
+<td><code>Any</code></td>
+<td>abstract - supertype of all ring classes</td>
+<td></td>
+</tr>
+<tr>
+<td><code>FractionField</code></td>
+<td><code>Ring</code></td>
+<td>abstract - ring of fractions over a ring</td>
+<td></td>
+</tr>
+<tr>
+<td><code>QuotientRing</code></td>
+<td><code>Ring</code></td>
+<td>abstract - quotient (or factor-) ring of a ring</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Polynomial</code></td>
+<td><code>Ring</code></td>
+<td>abstract - polynomials over a ring</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ZZ{type}</code></td>
+<td><code>Ring</code></td>
+<td>integer numbers</td>
+<td><code>type</code> is an integer Julia type</td>
+</tr>
+<tr>
+<td><code>ZZmod{M,type}</code></td>
+<td><code>QuotientRing</code></td>
+<td><code>ZZ / m</code> quotient class modulo <code>m</code></td>
+<td><code>m</code> is an integer Julia value of type <code>M</code></td>
+</tr>
+<tr>
+<td><code>QQ{type}</code></td>
+<td><code>FractionField</code></td>
+<td>rational numbers over integer</td>
+<td>like <code>Rational{type}</code> - supports integer Julia and integer Rings</td>
+</tr>
+<tr>
+<td><code>Frac{R}</code></td>
+<td><code>FractionField</code></td>
+<td>fractions over a <code>R</code> typically polynomials</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Quotient{m,R}</code></td>
+<td><code>QuotientRing</code></td>
+<td>also <code>R/m</code>, ring modulo <code>m</code></td>
+<td><code>m</code> is an element or an ideal of <code>R</code></td>
+</tr>
+<tr>
+<td><code>UnivariatePolynomial{X,R}</code></td>
+<td><code>Polynomial</code></td>
+<td>also <code>R[:x]</code>, ring of polynomials over <code>R</code></td>
+<td><code>X</code> is a symbol like <code>:x</code></td>
+</tr>
+<tr>
+<td><code>MultivariatePolynomial{X,R}</code></td>
+<td><code>Polynomial</code></td>
+<td>also <code>R[:x,:y,...]</code></td>
+<td><code>X</code> is a list of distinct variable names</td>
+</tr>
+<tr>
+<td><code>GaloisField</code></td>
+<td><code>QuotientRing</code></td>
+<td><code>GF(p^r)</code> - efficient implementation of Galois fields</td>
+<td>more details see below</td>
+</tr>
+</tbody>
+</table>
+<h3><a id="user-content-class-construction" class="anchor" aria-hidden="true" href="#class-construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>class construction</h3>
+<p>Each complete <code>Julia</code> type (with all type parameters specified) defines a singlton algebraic class. Sometimes it is necessary to use distinguishing symbols as a first type parameter if the parameter value cannot be used directly.
+For that purpose, there is a special function <code>new_class</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="    m = big&quot;.....&quot;
+    Zm = new_class(ZZmod{:p,BigInt}, m)
+
+ # as opposed to
+
+    p = Int128(2)^127 - 1
+    Zp = ZZmod{p,Int128}
+"><pre>    m <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">big</span>"</span>.....<span class="pl-pds">"</span></span>
+    Zm <span class="pl-k">=</span> <span class="pl-c1">new_class</span>(ZZmod{<span class="pl-c1">:p</span>,BigInt}, m)
+
+ <span class="pl-c"><span class="pl-c">#</span> as opposed to</span>
+
+    p <span class="pl-k">=</span> <span class="pl-c1">Int128</span>(<span class="pl-c1">2</span>)<span class="pl-k">^</span><span class="pl-c1">127</span> <span class="pl-k">-</span> <span class="pl-c1">1</span>
+    Zp <span class="pl-k">=</span> ZZmod{p,Int128}</pre></div>
+<p>For general quotient classes and for polynomials there are convenient constructors, which
+look like the typical mathematical notation <code>R[:x,:y,...]</code> and <code>R/I</code>.
+Here the symbols <code>:x, :y</code> define the name of the variables of a uni-
+or multivariate polynomial ring over <code>R</code>. <code>I</code> is an ideal of R or an element of
+<code>R</code>, which represents the corresponding principal ideal.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="    S = ZZ{Int}
+    P = S[:x]
+    x = monom(P, 1) # same as P([0,1])
+    Q = P/(x^2 + 1)
+"><pre>    S <span class="pl-k">=</span> ZZ{Int}
+    P <span class="pl-k">=</span> S[<span class="pl-c1">:x</span>]
+    x <span class="pl-k">=</span> <span class="pl-c1">monom</span>(P, <span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> same as P([0,1])</span>
+    Q <span class="pl-k">=</span> P<span class="pl-k">/</span>(x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">1</span>)</pre></div>
+<p>The <code>/</code> notion is also implemented for <code>Julia</code> integer types,
+so this works:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="    Z31 = Int8/31    # equivalent to ZZmod{31,Int8}
+    Zbig = BigInt/(big&quot;2&quot;^521-1) # equivalent to new_class(ZZmod{gensym(),BigInt}, m)
+"><pre>    Z31 <span class="pl-k">=</span> Int8<span class="pl-k">/</span><span class="pl-c1">31</span>    <span class="pl-c"><span class="pl-c">#</span> equivalent to ZZmod{31,Int8}</span>
+    Zbig <span class="pl-k">=</span> BigInt<span class="pl-k">/</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">big</span>"</span>2<span class="pl-pds">"</span></span><span class="pl-k">^</span><span class="pl-c1">521</span><span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> equivalent to new_class(ZZmod{gensym(),BigInt}, m)</span></pre></div>
+<h3><a id="user-content-ideals" class="anchor" aria-hidden="true" href="#ideals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Ideals</h3>
+<p>Ideals are can be denoted as <code>Ideal([a, ...])</code> where a, ... are elements of <code>R</code> or
+<code>Ideal(a)</code>. For convenience, principal ideals support also <code>a * R == Ideal(a)</code> and
+<code>p*R == Ideal(R(p))</code>, where p is an integer.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="    Z = ZZ{Int8}
+    Z1 = Z/31
+    Z2 = Z/Z(31)
+    Z3 = Z/31Z
+    Z4 = Z/Ideal(Z(31))
+
+    Z1 == Z2 == Z3 == Z4
+"><pre>    Z <span class="pl-k">=</span> ZZ{Int8}
+    Z1 <span class="pl-k">=</span> Z<span class="pl-k">/</span><span class="pl-c1">31</span>
+    Z2 <span class="pl-k">=</span> Z<span class="pl-k">/</span><span class="pl-c1">Z</span>(<span class="pl-c1">31</span>)
+    Z3 <span class="pl-k">=</span> Z<span class="pl-k">/</span><span class="pl-c1">31</span>Z
+    Z4 <span class="pl-k">=</span> Z<span class="pl-k">/</span><span class="pl-c1">Ideal</span>(<span class="pl-c1">Z</span>(<span class="pl-c1">31</span>))
+
+    Z1 <span class="pl-k">==</span> Z2 <span class="pl-k">==</span> Z3 <span class="pl-k">==</span> Z4</pre></div>
+<p>It may be noted, that <code>0R</code> is the zero ideal (containing only the zero element of <code>R</code>) and <code>u*R == R</code> for all unit elements <code>u</code> of <code>R</code>.
+We also have <code>R/0R == R</code> and <code>R/1R</code> == <code>0R</code>.</p>
+<p>If there is one generating element of an ideal, <code>a*R</code>, internally a
+unit multiple of <code>a</code> is stored to achieve a standard form, for
+example a monic univariate polynomial.</p>
+<p>In the case of multiple generating elements, <code>a, b...</code>, an attempt
+is made to standardize and reduce the stored base. For example if
+<code>R</code> is an integral domain, then <code>gcd(a, b...)</code> is stored.</p>
+<p>Ideals are most useful with multivariate polynomials, when they
+are best represented by a minimal base - see below.</p>
+<h3><a id="user-content-constructors-for-elements" class="anchor" aria-hidden="true" href="#constructors-for-elements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Constructors for elements</h3>
+<p>The class names of all concrete types serve also as constructor names.
+That means, if <code>R</code> is a class name, then <code>R(a)</code> is an element of <code>R</code> for all
+<code>a</code>, which are integers or elements of (other) rings, which can be natuarally
+embedded into <code>R</code>.</p>
+<p>For polynomial rings <code>P</code>, the method call <code>monom(P, i)</code> constructs the monic
+monomials <code>x^i</code> for non-negative integers <code>i</code>. That is extended to multivariate
+cases <code>monom(P, i, j, ...)</code>.</p>
+<h3><a id="user-content-mathematical-operations" class="anchor" aria-hidden="true" href="#mathematical-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Mathematical operations</h3>
+<table>
+<thead>
+<tr>
+<th>operation</th>
+<th align="center">operator</th>
+<th>remarks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>add</td>
+<td align="center">+</td>
+<td>operations with <code>Base.BitIntegers</code> throw upon overflow</td>
+</tr>
+<tr>
+<td>subtract</td>
+<td align="center">-</td>
+<td>also unary</td>
+</tr>
+<tr>
+<td>multiply</td>
+<td align="center">*</td>
+<td></td>
+</tr>
+<tr>
+<td>integer power</td>
+<td align="center">^</td>
+<td>use <code>Base.power_by_squares</code></td>
+</tr>
+<tr>
+<td>divide</td>
+<td align="center">/</td>
+<td>only if dividable without remainder</td>
+</tr>
+<tr>
+<td>divrem</td>
+<td align="center"></td>
+<td>complete integer division</td>
+</tr>
+<tr>
+<td>div</td>
+<td align="center">÷</td>
+<td>quotient integer division</td>
+</tr>
+<tr>
+<td>rem</td>
+<td align="center">%</td>
+<td>remainder integer division</td>
+</tr>
+<tr>
+<td>gcd</td>
+<td align="center"></td>
+<td>classical Euclid's algorithm</td>
+</tr>
+<tr>
+<td>gcdx</td>
+<td align="center"></td>
+<td>extended Euclid's algorithm</td>
+</tr>
+<tr>
+<td>pdivrem</td>
+<td align="center"></td>
+<td>pseudo division for polynomials over rings <code>d, r = divrem(p, q) =&gt; q * d + r = f * p</code> where<code>f</code> is in the base ring</td>
+</tr>
+<tr>
+<td>pgcd</td>
+<td align="center"></td>
+<td>pseudo gcd <code>g, f = pgcd(p, q)</code></td>
+</tr>
+<tr>
+<td>pgcdx</td>
+<td align="center"></td>
+<td>pseudo gcdx <code>g, u, v, f = pgcdx(p, q) =&gt; p * u + q * v = g * f</code> where f is in base ring</td>
+</tr>
+<tr>
+<td>iszero</td>
+<td align="center"></td>
+<td>test if element is zero-element of its ring</td>
+</tr>
+<tr>
+<td>zero</td>
+<td align="center"></td>
+<td>zero element of ring</td>
+</tr>
+<tr>
+<td>isone</td>
+<td align="center"></td>
+<td>test if element is one-element of its ring</td>
+</tr>
+<tr>
+<td>one</td>
+<td align="center"></td>
+<td>one element of ring</td>
+</tr>
+<tr>
+<td>isunit</td>
+<td align="center"></td>
+<td>test if element is invertible in its ring</td>
+</tr>
+<tr>
+<td>deg</td>
+<td align="center"></td>
+<td>degree of polynomial, <code>-1</code> for zero. For non-polynomials always <code>0</code>.</td>
+</tr>
+<tr>
+<td>lc</td>
+<td align="center"></td>
+<td>leading coefficient of polynomial, otherwise identity</td>
+</tr>
+<tr>
+<td>ismonomial</td>
+<td align="center"></td>
+<td>short for <code>isone(lc(x))</code></td>
+</tr>
+<tr>
+<td>ismonic</td>
+<td align="center"></td>
+<td>polynomials of the form <code>c * x^k</code> for <code>c</code> in the base ring, k &gt;= 0 integer</td>
+</tr>
+<tr>
+<td>monom</td>
+<td align="center"></td>
+<td>return monomial polygon with given degree</td>
+</tr>
+<tr>
+<td>isirreducible</td>
+<td align="center"></td>
+<td>polynomial cannot be split into non-trivial factors</td>
+</tr>
+<tr>
+<td>irreducibles</td>
+<td align="center"></td>
+<td>generate all irreducible polynomials of given degree</td>
+</tr>
+<tr>
+<td>modulus</td>
+<td align="center"></td>
+<td>for quotient rings and Galois fields the defining polynomial</td>
+</tr>
+<tr>
+<td>characteristic</td>
+<td align="center"></td>
+<td>of ring: smallest positive integer <code>c</code> with <code>c * one(G) == 0</code>, otherwise <code>0</code></td>
+</tr>
+<tr>
+<td>dimension</td>
+<td align="center"></td>
+<td>of Galois fields or vector spaces</td>
+</tr>
+<tr>
+<td>order</td>
+<td align="center"></td>
+<td>of ring: number of all elements of ring; <code>0</code> if infinite</td>
+</tr>
+<tr>
+<td>order</td>
+<td align="center"></td>
+<td>of element <code>x</code>: smallest positive integer <code>c</code> with <code>x^c == 1</code>, otherwise <code>0</code></td>
+</tr>
+<tr>
+<td>basetype</td>
+<td align="center"></td>
+<td>of ring: type of representative. If no a nested type, the type itself</td>
+</tr>
+<tr>
+<td>depth</td>
+<td align="center"></td>
+<td>of ring: nesting depth</td>
+</tr>
+<tr>
+<td>value</td>
+<td align="center"></td>
+<td>representant of element. For <code>R/I</code> the stored value from <code>R</code>. For Galois fields the polynomial.</td>
+</tr>
+<tr>
+<td></td>
+<td align="center"></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3><a id="user-content-associated-classes" class="anchor" aria-hidden="true" href="#associated-classes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Associated classes</h3>
+<p>Each algebraic structure corresponds to a parameterized <code>Julia</code> type or struct. For example, to represent Z/m, there is</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="    abstract type Ring{&lt;:RingClass} end
+
+    struct ZZmod{m,T&lt;:Integer} &lt;: Ring{ZZmodRingClass}; val::T; end
+"><pre>    <span class="pl-k">abstract type</span> Ring{<span class="pl-k">&lt;:</span><span class="pl-c1">RingClass</span>} <span class="pl-k">end</span>
+
+    <span class="pl-k">struct</span> ZZmod{m,T<span class="pl-k">&lt;:</span><span class="pl-c1">Integer</span>} <span class="pl-k">&lt;:</span> <span class="pl-c1">Ring{ZZmodRingClass}</span>; val<span class="pl-k">::</span><span class="pl-c1">T</span>; <span class="pl-k">end</span></pre></div>
+<p>The subtypes of <code>RingClass</code> are currently only containers for constant type variables. It may be necessary to hold values, which are specific for the algebraic structure, and cannot be stored in as type paramters. That is for example the case, when the modulus <code>m</code> in the example above is a <code>BigInt</code>.
+In other cases, the classes are unused. The user needs not deal with those types.
+Access to the type variable is used within the implementation by method <code>owner(::Type{&lt;:Ring}}</code> which provides the <code>RingClass</code> object, when the complete type is known.
+Preferred operation mode is to take the type parameters directly.</p>
+<h2><a id="user-content-univariate-polynomials" class="anchor" aria-hidden="true" href="#univariate-polynomials"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Univariate Polynomials</h2>
+<p>For each ring type <code>R</code> the class of polynomials over <code>R</code> is created like <code>P = R[:x]</code> where the symbol <code>:x</code> defines the variable name.</p>
+<p>Polynomials of this class are obtained by the constructor
+<code>g = UnivariatePolynomial{R,:x}([1, 2, 3])</code>
+or more conveniently by</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="x = monom(P)
+g = 3x^2 + 2x + 1  
+"><pre>x <span class="pl-k">=</span> <span class="pl-c1">monom</span>(P)
+g <span class="pl-k">=</span> <span class="pl-c1">3</span>x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>x <span class="pl-k">+</span> <span class="pl-c1">1</span>  </pre></div>
+<p>If <code>R</code> is a finite Field (that means <code>ZZ/p</code> or GaloisField - see below) the following options are available:</p>
+<p>Univariate polynomials may be checked by <code>isirreducible(p)</code> for their irreducibility
+and <code>factor(g)</code> delivers the list of irreducible factors of <code>g</code>.
+The factorization is also implemented for univariate polynomials over the integers (for example of type <code>UnivariatePolynomials{ZZ{BigInt}[:x]}</code>)</p>
+<p>The function <code>irreducible(P, r)</code> delivers the first irreducible polynomial with degree <code>r</code>.
+All irreducible polynomials of <code>P</code> with degree <code>r</code> are obtained by <code>irreducibles(P, r)</code>
+which is an iterator. That allows to apply  <code>Iterators.filter</code> or <code>find</code> on this list.</p>
+<p>While the number of polynomials of degree <code>r</code> is <code>order(R)^r</code>, the subset of
+irreducibles has order <code>num_irreducibles(P, r)</code>.</p>
+<h2><a id="user-content-galois-fields" class="anchor" aria-hidden="true" href="#galois-fields"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Galois Fields</h2>
+<p>All finite field have order <code>p^r</code> where <code>p</code> is a prime number and <code>r &gt;= 1</code> an integer.
+It can be represented as a quotient ring of univariate polynomials over <code>ZZ/p</code> by an irreducible monic polynomial <code>g</code> of degree <code>r</code>.
+In short, if <code>g</code> is known, we have <code>(ZZ/p)[:x] / g</code> as a working implementation of a Galois field.
+For <code>r == 1</code> this can be identified with <code>ZZ/p</code> (using <code>g(x) = x</code>).</p>
+<p><code>g</code> can be any monic polynomial of degree <code>r</code>. When constructing the class <code>GF(p^r) = GaloisField{p,r}</code> a brute force search for such polynomials is
+performed using an efficient method to detect irreducibility. For <code>r &gt; 1</code> the monom <code>x ∈ (ZZ/p)[:x] / g</code> with <code>0</code> and <code>1</code> generates the field by
+applying addition and multiplication operations. Calculated in <code>GF</code>, we have always <code>g(x) = 0</code>.
+We restrict the selection of <code>g</code> in order to <code>x</code> let generate the multiplicative subgroup of <code>GF</code> by multiplication. That is possible for all <code>p, r</code>.</p>
+<p>Time efficiency of algebraic operations is improved by avoiding the expensive multiplicative calculations in the quotient ring and the use of
+logarithmic tables in the size of <code>p^r</code>. Each element is represented by an integer in <code>0:p^r-1</code>, which corresponds to a polynomial of degree <code>&lt; r</code>
+in a canonical manner (for example the number <code>2p^3 + p + 1</code> maps uniquley to <code>2x^3 + x + 1</code>).</p>
+<h3><a id="user-content-using-galois-fields" class="anchor" aria-hidden="true" href="#using-galois-fields"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using Galois Fields</h3>
+<p>We construct a Galois field conveniently by <code>GF(p^r)</code>.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; p, r = 5, 6; # `p` is prime number, `r` not too big
+
+julia&gt; G = GF(5^6) # GF(5, 6) is also possible
+GaloisField{5,6}
+
+julia&gt; g = modulus(G) # the selected irreducible polynomial
+γ^6 + γ + 2°
+
+julia&gt; order(G) # `p^r`
+15625
+
+julia&gt; x = G(p) # an easy way to obtain the standard monom
+{0:0:0:0:1:0%5}
+
+julia&gt; order(x) # `x` generates the multiplicative subgroup
+15624
+
+julia&gt; G.(0:p) # element number `p` is `x`
+6-element Array{GaloisField{5,6},1}:
+ {0:0:0:0:0:0%5}
+ {0:0:0:0:0:1%5}
+ {0:0:0:0:0:2%5}
+ {0:0:0:0:0:3%5}
+ {0:0:0:0:0:4%5}
+ {0:0:0:0:1:0%5}
+
+julia&gt; g(x) # the monom `x` is a root of `g`
+{0:0:0:0:0:0%5}
+
+# These are all zeros of g - see also `allzeros`
+julia&gt; x.^p.^(0:r-1)
+6-element Array{GaloisField{5,6},1}:
+ {0:0:0:0:1:0%5}
+ {1:0:0:0:0:0%5}
+ {1:3:4:2:1:0%5}
+ {1:2:4:3:1:0%5}
+ {1:1:1:1:1:0%5}
+ {1:4:1:4:1:0%5}
+
+julia&gt; g.(x.^p.^(0:r-1)) |&gt; unique
+1-element Array{GaloisField{5,6},1}:
+ {0:0:0:0:0:0%5}
+"><pre>julia<span class="pl-k">&gt;</span> p, r <span class="pl-k">=</span> <span class="pl-c1">5</span>, <span class="pl-c1">6</span>; <span class="pl-c"><span class="pl-c">#</span> `p` is prime number, `r` not too big</span>
+
+julia<span class="pl-k">&gt;</span> G <span class="pl-k">=</span> <span class="pl-c1">GF</span>(<span class="pl-c1">5</span><span class="pl-k">^</span><span class="pl-c1">6</span>) <span class="pl-c"><span class="pl-c">#</span> GF(5, 6) is also possible</span>
+GaloisField{<span class="pl-c1">5</span>,<span class="pl-c1">6</span>}
+
+julia<span class="pl-k">&gt;</span> g <span class="pl-k">=</span> <span class="pl-c1">modulus</span>(G) <span class="pl-c"><span class="pl-c">#</span> the selected irreducible polynomial</span>
+γ<span class="pl-k">^</span><span class="pl-c1">6</span> <span class="pl-k">+</span> γ <span class="pl-k">+</span> <span class="pl-c1">2</span>°
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">order</span>(G) <span class="pl-c"><span class="pl-c">#</span> `p^r`</span>
+<span class="pl-c1">15625</span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">G</span>(p) <span class="pl-c"><span class="pl-c">#</span> an easy way to obtain the standard monom</span>
+{<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">order</span>(x) <span class="pl-c"><span class="pl-c">#</span> `x` generates the multiplicative subgroup</span>
+<span class="pl-c1">15624</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">G</span>.(<span class="pl-c1">0</span><span class="pl-k">:</span>p) <span class="pl-c"><span class="pl-c">#</span> element number `p` is `x`</span>
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{GaloisField{<span class="pl-c1">5</span>,<span class="pl-c1">6</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">g</span>(x) <span class="pl-c"><span class="pl-c">#</span> the monom `x` is a root of `g`</span>
+{<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+
+<span class="pl-c"><span class="pl-c">#</span> These are all zeros of g - see also `allzeros`</span>
+julia<span class="pl-k">&gt;</span> x<span class="pl-k">.^</span>p<span class="pl-k">.^</span>(<span class="pl-c1">0</span><span class="pl-k">:</span>r<span class="pl-k">-</span><span class="pl-c1">1</span>)
+<span class="pl-c1">6</span><span class="pl-k">-</span>element Array{GaloisField{<span class="pl-c1">5</span>,<span class="pl-c1">6</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+ {<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">g</span>.(x<span class="pl-k">.^</span>p<span class="pl-k">.^</span>(<span class="pl-c1">0</span><span class="pl-k">:</span>r<span class="pl-k">-</span><span class="pl-c1">1</span>)) <span class="pl-k">|&gt;</span> unique
+<span class="pl-c1">1</span><span class="pl-k">-</span>element Array{GaloisField{<span class="pl-c1">5</span>,<span class="pl-c1">6</span>},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ {<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">0</span><span class="pl-k">%</span><span class="pl-c1">5</span>}</pre></div>
+<h2><a id="user-content-linear-algebra" class="anchor" aria-hidden="true" href="#linear-algebra"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Linear Algebra</h2>
+<p>Matrices and vectors of ring elements are supported.
+<code>x - A</code> is understood as <code>x * I - A</code>.</p>
+<p>The following methods handle vector spaces und subspaces:</p>
+<table>
+<thead>
+<tr>
+<th>operation</th>
+<th>remarks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nullspace</td>
+<td>null space (kernel) of matrix</td>
+</tr>
+<tr>
+<td>intersect</td>
+<td>instesection of subspaces</td>
+</tr>
+<tr>
+<td>sum</td>
+<td>sum of subspaces</td>
+</tr>
+<tr>
+<td>rank</td>
+<td>rank of matrix</td>
+</tr>
+</tbody>
+</table>
+<p>For a square matrix, also the following methods exist:</p>
+<table>
+<thead>
+<tr>
+<th>operation</th>
+<th>remarks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>inv</td>
+<td>matrix inverse - using generic LU factorization</td>
+</tr>
+<tr>
+<td>det</td>
+<td>determinant - using generic LU factorization</td>
+</tr>
+<tr>
+<td>adjugate</td>
+<td>for regular <code>A</code>: <code>inv(A) * det(A)</code></td>
+</tr>
+<tr>
+<td>characteristic_polynomial</td>
+<td><code>p(A) == 0</code></td>
+</tr>
+<tr>
+<td>companion</td>
+<td>collides with <code>Polynomials.companion</code></td>
+</tr>
+</tbody>
+</table>
+<p>For <code>inv</code>, <code>det</code>, and <code>adjugate</code> if the element type is <code>P&lt;:Polynomial</code>, it should be widened to <code>Frac(P)</code>.</p>
+<h2><a id="user-content-multivariate-polynomials" class="anchor" aria-hidden="true" href="#multivariate-polynomials"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Multivariate Polynomials</h2>
+<p>Some example usage:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="
+julia&gt; Z = ZZ / 7
+ZZmod{7,Int8}
+
+julia&gt; P = Z[:x,:y]
+MultivariatePolynomial{ZZmod{7,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}}
+
+julia&gt; x, y = generators(P);
+
+julia&gt; (x + y)^2
+x^2 + 2°*x*y + y^2
+
+julia&gt; (x + y)^7
+x^7 + y^7
+
+julia&gt; z = (x + y^2) * (x^2 + y)
+x^2*y^2 + x^3 + y^3 + x*y
+
+julia&gt; z^2 / (x^2 + y)^2
+y^4 + 2°*x*y^2 + x^2
+
+julia&gt; I = [x+2; (x+1)*y];
+2-element Array{MultivariatePolynomial{ZZmod{7,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}},1}:
+ x + 2°
+ x*y + y
+
+julia&gt; groebnerbase(I)
+2-element Array{MultivariatePolynomial{ZZmod{7,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}},1}:
+ x + 2°
+ y
+
+ julia&gt; P = (ZZ/97)[:x, :y]
+MultivariatePolynomial{ZZmod{97,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}}
+
+julia&gt; x, y = generators(P);
+
+julia&gt; I = [x^2*y + x*y; x*y^2 + 1]
+2-element Array{MultivariatePolynomial{ZZmod{97,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}},1}:
+ x^2*y + x*y
+ x*y^2 + 1°
+
+julia&gt; groebnerbase(I)
+2-element Array{MultivariatePolynomial{ZZmod{97,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}},1}:
+ y^2 + 96°
+ x + 1°
+
+# example from [Gröbner Base](https://en.wikipedia.org/wiki/Gr%C3%B6bner_basis)
+julia&gt; I = [x^2 - y; x^3 - x]
+2-element Array{MultivariatePolynomial{ZZmod{7,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}},1}:
+ x^2 - y
+ x^3 - x
+
+julia&gt; groebnerbase(I)
+3-element Array{MultivariatePolynomial{ZZmod{7,Int8},2,Symbol(&quot;8693009651133194268&quot;),Int64,Tuple{2}},1}:
+ x^2 - y
+ x*y - x
+ y^2 - y
+
+"><pre>julia<span class="pl-k">&gt;</span> Z <span class="pl-k">=</span> ZZ <span class="pl-k">/</span> <span class="pl-c1">7</span>
+ZZmod{<span class="pl-c1">7</span>,Int8}
+
+julia<span class="pl-k">&gt;</span> P <span class="pl-k">=</span> Z[<span class="pl-c1">:x</span>,<span class="pl-c1">:y</span>]
+MultivariatePolynomial{ZZmod{<span class="pl-c1">7</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}}
+
+julia<span class="pl-k">&gt;</span> x, y <span class="pl-k">=</span> <span class="pl-c1">generators</span>(P);
+
+julia<span class="pl-k">&gt;</span> (x <span class="pl-k">+</span> y)<span class="pl-k">^</span><span class="pl-c1">2</span>
+x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>°<span class="pl-k">*</span>x<span class="pl-k">*</span>y <span class="pl-k">+</span> y<span class="pl-k">^</span><span class="pl-c1">2</span>
+
+julia<span class="pl-k">&gt;</span> (x <span class="pl-k">+</span> y)<span class="pl-k">^</span><span class="pl-c1">7</span>
+x<span class="pl-k">^</span><span class="pl-c1">7</span> <span class="pl-k">+</span> y<span class="pl-k">^</span><span class="pl-c1">7</span>
+
+julia<span class="pl-k">&gt;</span> z <span class="pl-k">=</span> (x <span class="pl-k">+</span> y<span class="pl-k">^</span><span class="pl-c1">2</span>) <span class="pl-k">*</span> (x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> y)
+x<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">*</span>y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> x<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">+</span> y<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">+</span> x<span class="pl-k">*</span>y
+
+julia<span class="pl-k">&gt;</span> z<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">/</span> (x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> y)<span class="pl-k">^</span><span class="pl-c1">2</span>
+y<span class="pl-k">^</span><span class="pl-c1">4</span> <span class="pl-k">+</span> <span class="pl-c1">2</span>°<span class="pl-k">*</span>x<span class="pl-k">*</span>y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> x<span class="pl-k">^</span><span class="pl-c1">2</span>
+
+julia<span class="pl-k">&gt;</span> I <span class="pl-k">=</span> [x<span class="pl-k">+</span><span class="pl-c1">2</span>; (x<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>y];
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{MultivariatePolynomial{ZZmod{<span class="pl-c1">7</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ x <span class="pl-k">+</span> <span class="pl-c1">2</span>°
+ x<span class="pl-k">*</span>y <span class="pl-k">+</span> y
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">groebnerbase</span>(I)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{MultivariatePolynomial{ZZmod{<span class="pl-c1">7</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ x <span class="pl-k">+</span> <span class="pl-c1">2</span>°
+ y
+
+ julia<span class="pl-k">&gt;</span> P <span class="pl-k">=</span> (ZZ<span class="pl-k">/</span><span class="pl-c1">97</span>)[<span class="pl-c1">:x</span>, <span class="pl-c1">:y</span>]
+MultivariatePolynomial{ZZmod{<span class="pl-c1">97</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}}
+
+julia<span class="pl-k">&gt;</span> x, y <span class="pl-k">=</span> <span class="pl-c1">generators</span>(P);
+
+julia<span class="pl-k">&gt;</span> I <span class="pl-k">=</span> [x<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">*</span>y <span class="pl-k">+</span> x<span class="pl-k">*</span>y; x<span class="pl-k">*</span>y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">1</span>]
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{MultivariatePolynomial{ZZmod{<span class="pl-c1">97</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ x<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">*</span>y <span class="pl-k">+</span> x<span class="pl-k">*</span>y
+ x<span class="pl-k">*</span>y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">1</span>°
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">groebnerbase</span>(I)
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{MultivariatePolynomial{ZZmod{<span class="pl-c1">97</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">96</span>°
+ x <span class="pl-k">+</span> <span class="pl-c1">1</span>°
+
+<span class="pl-c"><span class="pl-c">#</span> example from [Gröbner Base](https://en.wikipedia.org/wiki/Gr%C3%B6bner_basis)</span>
+julia<span class="pl-k">&gt;</span> I <span class="pl-k">=</span> [x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> y; x<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">-</span> x]
+<span class="pl-c1">2</span><span class="pl-k">-</span>element Array{MultivariatePolynomial{ZZmod{<span class="pl-c1">7</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> y
+ x<span class="pl-k">^</span><span class="pl-c1">3</span> <span class="pl-k">-</span> x
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">groebnerbase</span>(I)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{MultivariatePolynomial{ZZmod{<span class="pl-c1">7</span>,Int8},<span class="pl-c1">2</span>,<span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>8693009651133194268<span class="pl-pds">"</span></span>),Int64,Tuple{<span class="pl-c1">2</span>}},<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> y
+ x<span class="pl-k">*</span>y <span class="pl-k">-</span> x
+ y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> y
+</pre></div>
+<h2><a id="user-content-acknowledgements" class="anchor" aria-hidden="true" href="#acknowledgements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Acknowledgements</h2>
+<p>This package was inspired by the <code>C++</code> library <code>CoCoALib</code>, which can be found
+here: <a href="http://cocoa.dima.unige.it/cocoalib/" rel="nofollow">CoCoALib</a>.</p>
+<p>The factorization of integer polynomials follows the D. Knuths infamous book "The Art of Computer Programming" chapter 4.6.2.</p>
+<h3><a id="user-content-copyright--2019-2021-by-klaus-crusius-this-work-is-released-under-the-mit-license" class="anchor" aria-hidden="true" href="#copyright--2019-2021-by-klaus-crusius-this-work-is-released-under-the-mit-license"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Copyright © 2019-2021 by Klaus Crusius. This work is released under The MIT License</h3>
+</article></div>

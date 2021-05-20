@@ -1,0 +1,159 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-parameterhandling" class="anchor" aria-hidden="true" href="#parameterhandling"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ParameterHandling</h1>
+<p><a href="https://invenia.github.io/ParameterHandling.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://invenia.github.io/ParameterHandling.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a>
+<a href="https://github.com/Invenia/Intervals.jl/actions?query=workflow%3ACI"><img src="https://github.com/Invenia/ParameterHandling.jl/workflows/CI/badge.svg" alt="CI" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/invenia/ParameterHandling.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/86efe5e336e3a75507bd227a212533bf15ff0da418931a54dda4e121a3be2b8d/68747470733a2f2f636f6465636f762e696f2f67682f696e76656e69612f506172616d6574657248616e646c696e672e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/invenia/ParameterHandling.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a>
+<a href="https://github.com/SciML/ColPrac"><img src="https://camo.githubusercontent.com/a6c1efcb19a957860ecb25966a730260b03d6e05380d0c27992ee7f9e3b1feb3/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f436f6c507261632d436f6e7472696275746f72277325323047756964652d626c756576696f6c6574" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" data-canonical-src="https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet" style="max-width:100%;"></a></p>
+<p>ParameterHandling.jl is an experiment in handling constrained tunable parameters of models.</p>
+<h1><a id="user-content-the-parameter-handling-problem" class="anchor" aria-hidden="true" href="#the-parameter-handling-problem"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The Parameter Handling Problem</h1>
+<p>Consider the following common situation: you have a function <code>build_model</code> that maps a
+collection of parameters <code>θ</code> to a <code>model</code> of some kind:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="model = build_model(θ)
+"><pre>model <span class="pl-k">=</span> <span class="pl-c1">build_model</span>(θ)</pre></div>
+<p>The <code>model</code> might, for example, be a function that maps some input <code>x</code> to some sort of
+prediction <code>y</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="y = model(x)
+"><pre>y <span class="pl-k">=</span> <span class="pl-c1">model</span>(x)</pre></div>
+<p>where <code>x</code> and <code>y</code> could essentially be anything that you like.
+You might also wish to somehow "learn" or "tune" or "infer" the parameters <code>θ</code> by plugging
+<code>build_model</code> into some other function, lets call it <code>learn</code>, that tries out various
+different parameter values in some clever way and determines which ones are good -- think
+loss minimisation / objective maximisation, (approximate) Bayesian inference, etc.
+We'll not worry about exactly what procedure <code>learn</code> employs to try out a number of
+different parameter values, but suppose that <code>learn</code> has the interface:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="learned_θ = learn(build_model, initial_θ)
+"><pre>learned_θ <span class="pl-k">=</span> <span class="pl-c1">learn</span>(build_model, initial_θ)</pre></div>
+<p>So far so good, but now consider how one actually goes about writing <code>build_model</code>.
+There are more or less two things that must be written:</p>
+<ol>
+<li><code>θ</code> must be in a format that <code>learn</code> knows how to handle. A popular approach is to
+require that <code>θ</code> be a <code>Vector</code> of <code>Real</code> numbers -- or, rather, some concrete subtype of
+<code>Real</code>.</li>
+<li>The code required to turn <code>θ</code> into <code>model</code> inside <code>build_model</code> mustn't be too onerous to
+write, read, or modify.</li>
+</ol>
+<p>While the first point is fairly straightforward, the second point is a bit subtle, so it's
+worth dwelling on it a little.</p>
+<p>For the sake of concreteness, let's suppose that we adopt the convention that <code>θ</code> is a
+<code>Vector{Float64}</code>. In the case of linear regression, we might assume that <code>θ</code> comprises
+a length <code>D</code> "weight vector" <code>w</code>, and a scalar "bias" <code>b</code>. So the function to build the
+model might be something like</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function build_model(θ::Vector{Float64})
+    return x -&gt; dot(θ[1:end-1], x) + θ[end]
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">build_model</span>(θ<span class="pl-k">::</span><span class="pl-c1">Vector{Float64}</span>)
+    <span class="pl-k">return</span> x <span class="pl-k">-&gt;</span> <span class="pl-c1">dot</span>(θ[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>], x) <span class="pl-k">+</span> θ[<span class="pl-c1">end</span>]
+<span class="pl-k">end</span></pre></div>
+<p>The easiest way to see that this is a less than ideal solution is to consider what this
+function would look like if <code>θ</code> was, say, a <code>NamedTuple</code> with fields <code>w</code> and <code>b</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="function build_model(θ::NamedTuple)
+    return x -&gt; dot(θ.w, x) + θ.b
+end
+"><pre><span class="pl-k">function</span> <span class="pl-en">build_model</span>(θ<span class="pl-k">::</span><span class="pl-c1">NamedTuple</span>)
+    <span class="pl-k">return</span> x <span class="pl-k">-&gt;</span> <span class="pl-c1">dot</span>(θ<span class="pl-k">.</span>w, x) <span class="pl-k">+</span> θ<span class="pl-k">.</span>b
+<span class="pl-k">end</span></pre></div>
+<p>This version of the function is much easier to read -- moreover if you want to inspect the
+values of <code>w</code> and <code>b</code> at some other point in time, you don't need to know precisely how to
+chop up the vector.</p>
+<p>Moreover it seems probable that the latter approach is less
+bug-prone -- suppose for some reason one refactored the code so that the first element of
+<code>θ</code> became <code>b</code> and the last <code>D</code> elements <code>w</code>; any code that depended upon the original
+ordering will now be incorrect and likely fail silently. The <code>NamedTuple</code> approach simply
+doesn't have this issue.</p>
+<p>Granted, in this simple case it's not too much of a problem, but it's easy to find
+situations in which things become considerably more difficult. For example, suppose that we
+instead had pretty much any kind of neural network, Gaussian process, ODE, or really just
+any model with more than a couple of distinct parameters. From the perspective of
+writing complicated models, implementing things in terms of a single vector of
+parameters that is <em>manually</em> chopped up is an <em>extremely</em> bad design choice. It simply
+doesn't scale.</p>
+<p>However, a single vector of e.g. <code>Float64</code>s <em>is</em> extremely convenient when writing general
+purpose optimisers / approximate inference routines --
+<a href="https://github.com/JuliaNLSolvers/Optim.jl">Optim.jl</a> and
+<a href="https://github.com/TuringLang/AdvancedHMC.jl">AdvancedHMC.jl</a> being two obvious examples.</p>
+<h1><a id="user-content-the-parameterhandlingjl-approach" class="anchor" aria-hidden="true" href="#the-parameterhandlingjl-approach"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The ParameterHandling.jl Approach</h1>
+<p><code>ParameterHandling.jl</code> aims to give you the best of both worlds by providing the tools
+required to automate the transformation between a "structured" representation (e.g. nested
+<code>NamedTuple</code> / <code>Dict</code> etc) and a "flattened" (e.g. <code>Vector{Float64}</code>) of your model
+parameters.</p>
+<p>The function <code>flatten</code> eats a structured representation of some parameters, returning the
+flattened representation <em>and</em> a function that converts the flattened thing back into its
+structured representation.</p>
+<p><code>flatten</code> is implemented recursively, with a <em>very</em> small number of base-implementations
+that don't themselves call <code>flatten</code>.</p>
+<p>You should expect to occassionally have to extend <code>flatten</code> to handle your own types and, if
+you wind up doing this for a function in <code>Base</code> that this package doesn't yet cover, a PR
+including that implementation will be very welcome.</p>
+<p>See <code>test/parameters.jl</code> for a couple of examples that utilise <code>flatten</code> to do something
+similar to the task described above.</p>
+<h1><a id="user-content-dealing-with-constrained-parameters" class="anchor" aria-hidden="true" href="#dealing-with-constrained-parameters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Dealing with Constrained Parameters</h1>
+<p>It is very common to need to handle constraints on parameters e.g. it may be necessary for a
+particular scalar to always be positive. While <code>flatten</code> is great for changing between
+representations of your parameters, it doesn't really have anything to say about this
+constraint problem.</p>
+<p>For this we introduce a collection of new <code>AbstractParameter</code> types (whether we really need
+them to have some mutual supertype is unclear at present) that play nicely with <code>flatten</code>
+and allow one to specify that e.g. a particular scalar must remain positive, or should be
+fixed across iterations. See <code>src/parameters.jl</code> and <code>test/parameters.jl</code> for more examples.</p>
+<p>The approach to implementing these types typically revolves around some kind of <code>Deferred</code> /
+delayed computation. For example, a <code>Positive</code> parameter is represented by an
+"unconstrained" number, and a "transform" that maps from the entire real line to the
+positive half. The <code>value</code> of a <code>Positive</code> is given by the application of this transform to
+the unconstrained number. <code>flatten</code>ing a <code>Positive</code> yields a length-1 vector containing the
+<em>unconstrained</em> number, rather than the value represented by the <code>Positive</code> object. For
+example</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using ParameterHandling: value, Positive
+
+julia&gt; x_unconstrained = log(1.0) # Specify unconstrained value.
+0.0
+
+julia&gt; x = Positive(x_unconstrained) # Construct a number that should remain positive.
+Positive{Float64,Bijectors.Exp{0}}(0.0, Bijectors.Exp{0}())
+
+julia&gt; value(x) # Get the constrained value by applying the transform.
+1.0
+
+julia&gt; v, unflatten = flatten(x); # Supports the `flatten` interface.
+
+julia&gt; v
+1-element Array{Float64,1}:
+ 0.0
+
+julia&gt; new_v = randn(1) # Pick a random new value.
+1-element Array{Float64,1}:
+ 1.1220600582508566
+
+julia&gt; value(unflatten(new_v)) # Obtain constrained value.
+3.071174489325673
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ParameterHandling<span class="pl-k">:</span> value, Positive
+
+julia<span class="pl-k">&gt;</span> x_unconstrained <span class="pl-k">=</span> <span class="pl-c1">log</span>(<span class="pl-c1">1.0</span>) <span class="pl-c"><span class="pl-c">#</span> Specify unconstrained value.</span>
+<span class="pl-c1">0.0</span>
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">Positive</span>(x_unconstrained) <span class="pl-c"><span class="pl-c">#</span> Construct a number that should remain positive.</span>
+<span class="pl-c1">Positive</span><span class="pl-c1">{Float64,Bijectors.Exp{0}}</span>(<span class="pl-c1">0.0</span>, Bijectors<span class="pl-k">.</span><span class="pl-c1">Exp</span><span class="pl-c1">{0}</span>())
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">value</span>(x) <span class="pl-c"><span class="pl-c">#</span> Get the constrained value by applying the transform.</span>
+<span class="pl-c1">1.0</span>
+
+julia<span class="pl-k">&gt;</span> v, unflatten <span class="pl-k">=</span> <span class="pl-c1">flatten</span>(x); <span class="pl-c"><span class="pl-c">#</span> Supports the `flatten` interface.</span>
+
+julia<span class="pl-k">&gt;</span> v
+<span class="pl-c1">1</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">0.0</span>
+
+julia<span class="pl-k">&gt;</span> new_v <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> Pick a random new value.</span>
+<span class="pl-c1">1</span><span class="pl-k">-</span>element Array{Float64,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-c1">1.1220600582508566</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">value</span>(<span class="pl-c1">unflatten</span>(new_v)) <span class="pl-c"><span class="pl-c">#</span> Obtain constrained value.</span>
+<span class="pl-c1">3.071174489325673</span></pre></div>
+<p>It is straightforward to implement your own parameters that interoperate with those already
+written by implementing <code>value</code> and <code>flatten</code> for them. You might want to do this if this
+package doesn't currently support the functionality that you need.</p>
+<h1><a id="user-content-gotchas" class="anchor" aria-hidden="true" href="#gotchas"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Gotchas</h1>
+<ol>
+<li><code>Integer</code>s typically don't take part in the kind of optimisation procedures that this package is designed to handle. Consequently, <code>flatten(::Integer)</code> produces an empty vector.</li>
+<li><code>deferred</code> has some type-stability issues when used in conjunction with abstract types. For example, <code>flatten(deferred(Normal, 5.0, 4.0))</code> won't infer properly. A simple work around is to write a function <code>normal(args...) = Normal(args...)</code> and work with <code>deferred(normal, 5.0, 4.0)</code> instead.</li>
+</ol>
+</article></div>

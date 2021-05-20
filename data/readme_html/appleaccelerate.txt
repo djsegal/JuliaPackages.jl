@@ -1,5 +1,5 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-appleacceleratejl" class="anchor" aria-hidden="true" href="#appleacceleratejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>AppleAccelerate.jl</h1>
-<p><a href="https://travis-ci.org/JuliaMath/AppleAccelerate.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/d42b2ebf2cfa9d532c5f196d8e0c0040a97103fa/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614d6174682f4170706c65416363656c65726174652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaMath/AppleAccelerate.jl.svg?branch=master" style="max-width:100%;"></a></p>
+<p><a href="https://travis-ci.org/JuliaMath/AppleAccelerate.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/9e9e3f425f8b27a1df47048c5646935429fd84684cf93491ce190a2ac01b32f2/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614d6174682f4170706c65416363656c65726174652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/JuliaMath/AppleAccelerate.jl.svg?branch=master" style="max-width:100%;"></a></p>
 <p>This provides a Julia interface to some of
 <a href="https://developer.apple.com/library/mac/documentation/Accelerate/Reference/AccelerateFWRef/" rel="nofollow">OS X's Accelerate framework</a>. At
 the moment, the package consists mostly of an interface to the
@@ -34,13 +34,27 @@ nearest even value.</li>
 <h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
 <p>To avoid naming conflicts with Base, methods are not exported and so need to
 be accessed via the namespace:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> AppleAccelerate
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using AppleAccelerate
+using BenchmarkTools
+X = randn(1_000_000);
+@btime exp.($X); # standard libm function
+@btime AppleAccelerate.exp($X); # Accelerate array-oriented function
+"><pre><span class="pl-k">using</span> AppleAccelerate
 <span class="pl-k">using</span> BenchmarkTools
 X <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">1_000_000</span>);
 <span class="pl-c1">@btime</span> <span class="pl-c1">exp</span>.(<span class="pl-k">$</span>X); <span class="pl-c"><span class="pl-c">#</span> standard libm function</span>
 <span class="pl-c1">@btime</span> AppleAccelerate<span class="pl-k">.</span><span class="pl-c1">exp</span>(<span class="pl-k">$</span>X); <span class="pl-c"><span class="pl-c">#</span> Accelerate array-oriented function</span></pre></div>
 <p>The <code>@replaceBase</code> macro replaces the relevant Base methods directly</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@btime</span> <span class="pl-c1">sin</span>.(<span class="pl-k">$</span>X); <span class="pl-c"><span class="pl-c">#</span> standard libm function</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@btime sin.($X); # standard libm function
+AppleAccelerate.@replaceBase sin cos tan
+@btime sin($X);  # will use AppleAccelerate methods for vectorised operations
+
+X = randn(1_000_000);
+Y = fill(3.0, 1_000_000);
+@btime $X .^ $Y;
+AppleAccelerate.@replaceBase(^, /) # use parenthesised form for infix ops
+@btime $X ^ $Y;
+"><pre><span class="pl-c1">@btime</span> <span class="pl-c1">sin</span>.(<span class="pl-k">$</span>X); <span class="pl-c"><span class="pl-c">#</span> standard libm function</span>
 AppleAccelerate<span class="pl-k">.</span><span class="pl-c1">@replaceBase</span> sin cos tan
 <span class="pl-c1">@btime</span> <span class="pl-c1">sin</span>(<span class="pl-k">$</span>X);  <span class="pl-c"><span class="pl-c">#</span> will use AppleAccelerate methods for vectorised operations</span>
 
@@ -51,7 +65,9 @@ AppleAccelerate<span class="pl-k">.</span><span class="pl-c1">@replaceBase</span
 <span class="pl-c1">@btime</span> <span class="pl-k">$</span>X <span class="pl-k">^</span> <span class="pl-k">$</span>Y;</pre></div>
 <p>Output arrays can be specified as first arguments of the functions suffixed
 with <code>!</code>:</p>
-<div class="highlight highlight-source-julia"><pre>out <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float64, <span class="pl-c1">1_000_000</span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="out = zeros(Float64, 1_000_000)
+@btime AppleAccelerate.exp!($out, $X)
+"><pre>out <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float64, <span class="pl-c1">1_000_000</span>)
 <span class="pl-c1">@btime</span> AppleAccelerate<span class="pl-k">.</span><span class="pl-c1">exp!</span>(<span class="pl-k">$</span>out, <span class="pl-k">$</span>X)</pre></div>
 <p><strong>Warning</strong>: no dimension checks are performed on the <code>!</code> functions, so ensure
 your input and output arrays are of the same length.</p>

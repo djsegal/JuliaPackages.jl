@@ -13,14 +13,39 @@ It provides an interface for obtaining:</p>
 CodeTracking is a very lightweight dependency.</p>
 <h2><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Examples</h2>
 <h3><a id="user-content-code_string-and-code_expr" class="anchor" aria-hidden="true" href="#code_string-and-code_expr"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><code>@code_string</code> and <code>@code_expr</code></h3>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CodeTracking, Revise
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using CodeTracking, Revise
+
+julia&gt; print(@code_string sum(1:5))
+function sum(r::AbstractRange{&lt;:Real})
+    l = length(r)
+    # note that a little care is required to avoid overflow in l*(l-1)/2
+    return l * first(r) + (iseven(l) ? (step(r) * (l-1)) * (l&gt;&gt;1)
+                                     : (step(r) * l) * ((l-1)&gt;&gt;1))
+end
+
+julia&gt; @code_expr sum(1:5)
+[ Info: tracking Base
+quote
+    #= toplevel:977 =#
+    function sum(r::AbstractRange{&lt;:Real})
+        #= /home/tim/src/julia-1/base/range.jl:978 =#
+        l = length(r)
+        #= /home/tim/src/julia-1/base/range.jl:980 =#
+        return l * first(r) + if iseven(l)
+                    (step(r) * (l - 1)) * l &gt;&gt; 1
+                else
+                    (step(r) * l) * (l - 1) &gt;&gt; 1
+                end
+    end
+end
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CodeTracking, Revise
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">print</span>(<span class="pl-c1">@code_string</span> <span class="pl-c1">sum</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>))
 <span class="pl-k">function</span> <span class="pl-en">sum</span>(r<span class="pl-k">::</span><span class="pl-c1">AbstractRange{&lt;:Real}</span>)
     l <span class="pl-k">=</span> <span class="pl-c1">length</span>(r)
     <span class="pl-c"><span class="pl-c">#</span> note that a little care is required to avoid overflow in l*(l-1)/2</span>
-    <span class="pl-k">return</span> l <span class="pl-k">*</span> <span class="pl-c1">first</span>(r) <span class="pl-k">+</span> (<span class="pl-c1">iseven</span>(l) ? (<span class="pl-c1">step</span>(r) <span class="pl-k">*</span> (l<span class="pl-k">-</span><span class="pl-c1">1</span>)) <span class="pl-k">*</span> (l<span class="pl-k">&gt;&gt;</span><span class="pl-c1">1</span>)
-                                     : (<span class="pl-c1">step</span>(r) <span class="pl-k">*</span> l) <span class="pl-k">*</span> ((l<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">&gt;&gt;</span><span class="pl-c1">1</span>))
+    <span class="pl-k">return</span> l <span class="pl-k">*</span> <span class="pl-c1">first</span>(r) <span class="pl-k">+</span> (<span class="pl-c1">iseven</span>(l) <span class="pl-k">?</span> (<span class="pl-c1">step</span>(r) <span class="pl-k">*</span> (l<span class="pl-k">-</span><span class="pl-c1">1</span>)) <span class="pl-k">*</span> (l<span class="pl-k">&gt;&gt;</span><span class="pl-c1">1</span>)
+                                     <span class="pl-k">:</span> (<span class="pl-c1">step</span>(r) <span class="pl-k">*</span> l) <span class="pl-k">*</span> ((l<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">&gt;&gt;</span><span class="pl-c1">1</span>))
 <span class="pl-k">end</span>
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_expr</span> <span class="pl-c1">sum</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
@@ -42,21 +67,40 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_expr</span> <span 
 (If you must live without Revise, you can use <code>Meta.parse(@code_string(...))</code> as a fallback.)</p>
 <p>"Difficult" methods are handled more accurately with <code>@code_expr</code> and Revise.
 Here's one that's defined via an <code>@eval</code> statement inside a loop:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_expr</span> <span class="pl-c1">Float16</span>(<span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">Float16</span>(<span class="pl-c1">2</span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @code_expr Float16(1) + Float16(2)
+:(a::Float16 + b::Float16 = begin
+          #= /home/tim/src/julia-1/base/float.jl:398 =#
+          Float16(Float32(a) + Float32(b))
+      end)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_expr</span> <span class="pl-c1">Float16</span>(<span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">Float16</span>(<span class="pl-c1">2</span>)
 :(a<span class="pl-k">::</span><span class="pl-c1">Float16</span> <span class="pl-k">+</span> b<span class="pl-k">::</span><span class="pl-c1">Float16</span> <span class="pl-k">=</span> <span class="pl-k">begin</span>
           <span class="pl-c"><span class="pl-c">#=</span> /home/tim/src/julia-1/base/float.jl:398 <span class="pl-c">=#</span></span>
           <span class="pl-c1">Float16</span>(<span class="pl-c1">Float32</span>(a) <span class="pl-k">+</span> <span class="pl-c1">Float32</span>(b))
       <span class="pl-k">end</span>)</pre></div>
 <p>whereas <code>@code_string</code> cannot return a useful result:</p>
-<pre><code>julia&gt; @code_string Float16(1) + Float16(2)
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="julia&gt; @code_string Float16(1) + Float16(2)
+&quot;# This file is a part of Julia. License is MIT: https://julialang.org/license\n\nconst IEEEFloat = Union{Float16, Float32, Float64}&quot;
+"><pre><code>julia&gt; @code_string Float16(1) + Float16(2)
 "# This file is a part of Julia. License is MIT: https://julialang.org/license\n\nconst IEEEFloat = Union{Float16, Float32, Float64}"
-</code></pre>
+</code></pre></div>
 <p>Consequently it's recommended to use <code>@code_expr</code> in preference to <code>@code_string</code> wherever possible.</p>
 <p><code>@code_expr</code> and <code>@code_string</code> have companion functional variants, <code>code_expr</code> and <code>code_string</code>, which accept the function and a <code>Tuple{T1, T2, ...}</code> of types.</p>
 <p><code>@code_expr</code> and <code>@code_string</code> are based on the lower-level function <code>definition</code>;
 you can read about it with <code>?definition</code>.</p>
 <h3><a id="user-content-location-information" class="anchor" aria-hidden="true" href="#location-information"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Location information</h3>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CodeTracking, Revise
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using CodeTracking, Revise
+
+julia&gt; m = @which sum([1,2,3])
+sum(a::AbstractArray) in Base at reducedim.jl:648
+
+julia&gt; Revise.track(Base)  # also edit reducedim.jl
+
+julia&gt; file, line = whereis(m)
+(&quot;/home/tim/src/julia-1/usr/share/julia/base/reducedim.jl&quot;, 642)
+
+julia&gt; m.line
+648
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CodeTracking, Revise
 
 julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-c1">@which</span> <span class="pl-c1">sum</span>([<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>])
 <span class="pl-c1">sum</span>(a<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>) <span class="pl-k">in</span> Base at reducedim<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">648</span>
@@ -75,14 +119,27 @@ but it does change the starting line number of the file at which this method app
 <p>Other methods of <code>whereis</code> allow you to obtain the current position corresponding to a single
 statement inside a method; see <code>?whereis</code> for details.</p>
 <p>CodeTracking can also be used to find out what files define a particular package:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CodeTracking, Revise, ColorTypes
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using CodeTracking, Revise, ColorTypes
+
+julia&gt; pkgfiles(ColorTypes)
+PkgFiles(ColorTypes [3da002f7-5984-5a60-b8a6-cbb66c0b333f]):
+  basedir: /home/tim/.julia/packages/ColorTypes/BsAWO
+  files: [&quot;src/ColorTypes.jl&quot;, &quot;src/types.jl&quot;, &quot;src/traits.jl&quot;, &quot;src/conversions.jl&quot;, &quot;src/show.jl&quot;, &quot;src/operations.jl&quot;]
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CodeTracking, Revise, ColorTypes
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">pkgfiles</span>(ColorTypes)
 <span class="pl-c1">PkgFiles</span>(ColorTypes [<span class="pl-c1">3</span>da002f7<span class="pl-k">-</span><span class="pl-c1">5984</span><span class="pl-k">-</span><span class="pl-c1">5</span>a60<span class="pl-k">-</span>b8a6<span class="pl-k">-</span>cbb66c0b333f])<span class="pl-k">:</span>
   basedir<span class="pl-k">:</span> <span class="pl-k">/</span>home<span class="pl-k">/</span>tim<span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>packages<span class="pl-k">/</span>ColorTypes<span class="pl-k">/</span>BsAWO
   files<span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>src/ColorTypes.jl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>src/types.jl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>src/traits.jl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>src/conversions.jl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>src/show.jl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>src/operations.jl<span class="pl-pds">"</span></span>]</pre></div>
 <p>You can also find the method-signatures at a particular location:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">signatures_at</span>(ColorTypes, <span class="pl-s"><span class="pl-pds">"</span>src/traits.jl<span class="pl-pds">"</span></span>, <span class="pl-c1">14</span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; signatures_at(ColorTypes, &quot;src/traits.jl&quot;, 14)
+1-element Array{Any,1}:
+ Tuple{typeof(red),AbstractRGB}
+
+julia&gt; signatures_at(&quot;/home/tim/.julia/packages/ColorTypes/BsAWO/src/traits.jl&quot;, 14)
+1-element Array{Any,1}:
+ Tuple{typeof(red),AbstractRGB}
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">signatures_at</span>(ColorTypes, <span class="pl-s"><span class="pl-pds">"</span>src/traits.jl<span class="pl-pds">"</span></span>, <span class="pl-c1">14</span>)
 <span class="pl-c1">1</span><span class="pl-k">-</span>element Array{Any,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
  Tuple{<span class="pl-c1">typeof</span>(red),AbstractRGB}
 
@@ -90,8 +147,13 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">signatures_at</span>(<sp
 <span class="pl-c1">1</span><span class="pl-k">-</span>element Array{Any,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
  Tuple{<span class="pl-c1">typeof</span>(red),AbstractRGB}</pre></div>
 <p>CodeTracking also helps correcting for <a href="https://github.com/JuliaLang/julia/issues/26314">Julia issue #26314</a>:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@which</span> <span class="pl-c1">uuid1</span>()
-<span class="pl-c1">uuid1</span>() <span class="pl-k">in</span> UUIDs at C<span class="pl-k">:</span><span class="pl-k">\</span>cygwin<span class="pl-k">\</span>home<span class="pl-k">\</span>Administrator<span class="pl-k">\</span>buildbot<span class="pl-k">\</span>worker<span class="pl-k">\</span>package_win64<span class="pl-k">\</span>build<span class="pl-k">\</span>usr<span class="pl-k">\</span>share<span class="pl-k">\</span>julia<span class="pl-k">\</span>stdlib<span class="pl-k">\</span>v1<span class="pl-c1">.1</span><span class="pl-k">\</span>UUIDs<span class="pl-k">\</span>src<span class="pl-k">\</span>UUIDs<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">50</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; @which uuid1()
+uuid1() in UUIDs at C:\cygwin\home\Administrator\buildbot\worker\package_win64\build\usr\share\julia\stdlib\v1.1\UUIDs\src\UUIDs.jl:50
+
+julia&gt; CodeTracking.whereis(@which uuid1())
+(&quot;C:\\Users\\SomeOne\\AppData\\Local\\Julia-1.1.0\\share\\julia\\stdlib\\v1.1\\UUIDs\\src\\UUIDs.jl&quot;, 50)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@which</span> <span class="pl-c1">uuid1</span>()
+<span class="pl-c1">uuid1</span>() <span class="pl-k">in</span> UUIDs at C<span class="pl-k">:</span><span class="pl-k">\</span>cygwin<span class="pl-k">\</span>home<span class="pl-k">\</span>Administrator<span class="pl-k">\</span>buildbot<span class="pl-k">\</span>worker<span class="pl-k">\</span>package_win64<span class="pl-k">\</span>build<span class="pl-k">\</span>usr<span class="pl-k">\</span>share<span class="pl-k">\</span>julia<span class="pl-k">\</span>stdlib<span class="pl-k">\</span>v1.<span class="pl-c1">1</span><span class="pl-k">\</span>UUIDs<span class="pl-k">\</span>src<span class="pl-k">\</span>UUIDs<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">50</span>
 
 julia<span class="pl-k">&gt;</span> CodeTracking<span class="pl-k">.</span><span class="pl-c1">whereis</span>(<span class="pl-c1">@which</span> <span class="pl-c1">uuid1</span>())
 (<span class="pl-s"><span class="pl-pds">"</span>C:<span class="pl-cce">\\</span>Users<span class="pl-cce">\\</span>SomeOne<span class="pl-cce">\\</span>AppData<span class="pl-cce">\\</span>Local<span class="pl-cce">\\</span>Julia-1.1.0<span class="pl-cce">\\</span>share<span class="pl-cce">\\</span>julia<span class="pl-cce">\\</span>stdlib<span class="pl-cce">\\</span>v1.1<span class="pl-cce">\\</span>UUIDs<span class="pl-cce">\\</span>src<span class="pl-cce">\\</span>UUIDs.jl<span class="pl-pds">"</span></span>, <span class="pl-c1">50</span>)</pre></div>

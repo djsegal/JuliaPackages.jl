@@ -1,6 +1,7 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-unsafearraysjl" class="anchor" aria-hidden="true" href="#unsafearraysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>UnsafeArrays.jl</h1>
-<p><a href="https://travis-ci.com/JuliaArrays/UnsafeArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/cb2981fd536871357553206b9167c37b3d3012a8/68747470733a2f2f7472617669732d63692e636f6d2f4a756c69614172726179732f556e736166654172726179732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/JuliaArrays/UnsafeArrays.jl.svg?branch=master" style="max-width:100%;"></a>
-<a href="https://codecov.io/gh/JuliaArrays/UnsafeArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/583c15a8ef787a650ad829f2aa1040fb7e61887e/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614172726179732f556e736166654172726179732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/JuliaArrays/UnsafeArrays.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p><a href="LICENSE.md"><img src="https://camo.githubusercontent.com/bbf49a2eb96e6f718803f2493bd7aa3baae61abb09b7f8fc185a94e08c504dc6/687474703a2f2f696d672e736869656c64732e696f2f62616467652f6c6963656e73652d4d49542d627269676874677265656e2e7376673f7374796c653d666c6174" alt="License" data-canonical-src="http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat" style="max-width:100%;"></a>
+<a href="https://github.com/JuliaArrays/UnsafeArrays.jl/actions?query=workflow%3ACI"><img src="https://github.com/JuliaArrays/UnsafeArrays.jl/workflows/CI/badge.svg?branch=master" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaArrays/UnsafeArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4d82f6a7852a1f7b255b345b633796ca833a19a39dc123aa63bfc1bae04a7d0f/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614172726179732f556e736166654172726179732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/JuliaArrays/UnsafeArrays.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
 <p>UnsafeArrays provides stack-allocated pointer-based array views for Julia.</p>
 <p>This package is mainly intended as a workaround for
 <a href="https://github.com/JuliaLang/julia/issues/14955">Julia issue #14955 (non-allocating array views)</a>. This issue is solved in Julia v1.5 and higher.</p>
@@ -19,7 +20,20 @@ heap references on the stack, making UnsafeArrays.jl largely unnecessary.
 It may still be useful as a lightweight wrapper for memory allocated outside
 of Julia's memory management.</p>
 <p>Example:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> Base<span class="pl-k">.</span>Threads, LinearAlgebra
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Base.Threads, LinearAlgebra
+
+function colnorms!(dest::AbstractVector, A::AbstractMatrix)
+    @threads for i in axes(A, 2)
+        dest[i] = norm(view(A, :, i))
+    end
+    dest
+end
+
+A = rand(50, 100000);
+dest = similar(A, size(A, 2));
+
+colnorms!(dest, A)
+"><pre><span class="pl-k">using</span> Base<span class="pl-k">.</span>Threads, LinearAlgebra
 
 <span class="pl-k">function</span> <span class="pl-en">colnorms!</span>(dest<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>, A<span class="pl-k">::</span><span class="pl-c1">AbstractMatrix</span>)
     <span class="pl-c1">@threads</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">axes</span>(A, <span class="pl-c1">2</span>)
@@ -36,7 +50,12 @@ dest <span class="pl-k">=</span> <span class="pl-c1">similar</span>(A, <span cla
 threads. Use the <code>@uviews</code> macro provided by UnsafeArrays to replace A with an
 <code>UnsafeArray</code> within the scope of the macro. An <code>UnsafeArray</code> is
 stack-allocated, and so are all views of it, e.g. within <code>colnorms!</code>:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> UnsafeArrays
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using UnsafeArrays
+
+@uviews A begin
+    colnorms!(dest, A)
+end
+"><pre><span class="pl-k">using</span> UnsafeArrays
 
 <span class="pl-c1">@uviews</span> A <span class="pl-k">begin</span>
     <span class="pl-c1">colnorms!</span>(dest, A)

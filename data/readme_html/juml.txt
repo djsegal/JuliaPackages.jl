@@ -8,47 +8,67 @@
 <p>Let's rename the datasets into <em>airlinetrain</em> and <em>airlinetest</em>.
 First we have to import the csv datasets into a special binary format.
 We will import both datasets into 1 <em>airlinetraintest</em> dataframe with test data stacked under train data:</p>
-<pre><code>using JuML
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="using JuML
+importcsv(&quot;your-path\\airlinetrain.csv&quot;; path2 = &quot;your-path\\airlinetest.csv&quot;, outname = &quot;airlinetraintest&quot;)
+"><pre><code>using JuML
 importcsv("your-path\\airlinetrain.csv"; path2 = "your-path\\airlinetest.csv", outname = "airlinetraintest")
-</code></pre>
+</code></pre></div>
 <p>The data will be converted into a special binary format and saved in a new folder named <em>airlinetraintest</em>. Each data column is stored in a separate binary file.</p>
 <p>We can now load the dataset into JuML DataFrame:</p>
-<pre><code>traintest_df = DataFrame("your-path\\airlinetraintest") # note we are passing a path to a folder
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="traintest_df = DataFrame(&quot;your-path\\airlinetraintest&quot;) # note we are passing a path to a folder
+"><pre><code>traintest_df = DataFrame("your-path\\airlinetraintest") # note we are passing a path to a folder
+</code></pre></div>
 <p>You should see a summary of the dataframe in your REPL. JuML DataFrame is just a collection of Factors and Covariates. Categorical data is stored in Factors and numeric data in Covariates.</p>
-<pre><code>factors = traintest_df.factors
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="factors = traintest_df.factors
 covariates = traintest_df.covariates
-</code></pre>
+"><pre><code>factors = traintest_df.factors
+covariates = traintest_df.covariates
+</code></pre></div>
 <p>We can access each Factor or Covariate by name:</p>
-<pre><code>distance = traintest_df["Distance"]
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="distance = traintest_df[&quot;Distance&quot;]
+deptime = traintest_df[&quot;DepTime&quot;]
+dep_delayed_15min = traintest_df[&quot;dep_delayed_15min&quot;]
+"><pre><code>distance = traintest_df["Distance"]
 deptime = traintest_df["DepTime"]
 dep_delayed_15min = traintest_df["dep_delayed_15min"]
-</code></pre>
+</code></pre></div>
 <p>We can see a quick stat summary:</p>
-<pre><code>summary(distance)
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="summary(distance)
 summary(deptime)
 summary(dep_delayed_15min)
-</code></pre>
+"><pre><code>summary(distance)
+summary(deptime)
+summary(dep_delayed_15min)
+</code></pre></div>
 <p>JuML XGBoost expects label to be a Covariate and all features to be Factors. Our label is <em>dep_delayed_15min</em>, which is a Factor, and there are 2 Covariates in the data: <em>Distance</em> and <em>DepTime</em>. Fortunately we can easily convert between factors and covariates in JuML.</p>
 <p>Let's create a Covariate which is equal to 1 when <em>dep_delayed_15min</em> is Y and 0 otherwise:</p>
-<pre><code>label = covariate(traintest_df["dep_delayed_15min"], level -&gt; level == "Y" ? 1.0 : 0.0)
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="label = covariate(traintest_df[&quot;dep_delayed_15min&quot;], level -&gt; level == &quot;Y&quot; ? 1.0 : 0.0)
+"><pre><code>label = covariate(traintest_df["dep_delayed_15min"], level -&gt; level == "Y" ? 1.0 : 0.0)
+</code></pre></div>
 <p>Covariates can be converted into factors by binning. We can bin on every possible value with function <em>factor</em>:</p>
-<pre><code>deptime = factor(traintest_df["DepTime"])
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="deptime = factor(traintest_df[&quot;DepTime&quot;])
+distance = factor(traintest_df[&quot;Distance&quot;])
+"><pre><code>deptime = factor(traintest_df["DepTime"])
 distance = factor(traintest_df["Distance"])
-</code></pre>
+</code></pre></div>
 <p>We have stacked train and test data in 1 dataframe. We will need to define selectors for each part:</p>
-<pre><code>trainsel = BoolVariate("trainsel", (1:1100000) .&lt;= 1000000)
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="trainsel = BoolVariate(&quot;trainsel&quot;, (1:1100000) .&lt;= 1000000)
+validsel = BoolVariate(&quot;validsel&quot;, (1:1100000) .&gt; 1000000)
+"><pre><code>trainsel = BoolVariate("trainsel", (1:1100000) .&lt;= 1000000)
 validsel = BoolVariate("validsel", (1:1100000) .&gt; 1000000)
-</code></pre>
+</code></pre></div>
 <p>The last thing to do before we can run XGBoost is to create a vector of factors as features. We need to add <em>deptime</em> and <em>distance</em> factors to train dataframe factors (<em>dep_delayed_15min</em> will be excluded from the model features automatically):</p>
-<pre><code>factors = [traintest_df.factors; [deptime, distance]]
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="factors = [traintest_df.factors; [deptime, distance]]
+"><pre><code>factors = [traintest_df.factors; [deptime, distance]]
+</code></pre></div>
 <p>We are now ready to run XGBoost:</p>
-<pre><code>model = xgblogit(label, factors; trainselector = trainsel, validselector = validsel, η = 0.3, λ = 1.0, γ = 0.0, minchildweight = 1.0, nrounds = 2, maxdepth = 5, ordstumps = false, caching = true, usefloat64 = true, singlethread = true);
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="model = xgblogit(label, factors; trainselector = trainsel, validselector = validsel, η = 0.3, λ = 1.0, γ = 0.0, minchildweight = 1.0, nrounds = 2, maxdepth = 5, ordstumps = false, caching = true, usefloat64 = true, singlethread = true);
+"><pre><code>model = xgblogit(label, factors; trainselector = trainsel, validselector = validsel, η = 0.3, λ = 1.0, γ = 0.0, minchildweight = 1.0, nrounds = 2, maxdepth = 5, ordstumps = false, caching = true, usefloat64 = true, singlethread = true);
+</code></pre></div>
 <p>We can now calculate auc and logloss for both train and validation:</p>
-<pre><code>trainauc, testauc = getauc(model.pred, label, trainsel, validsel)
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="trainauc, testauc = getauc(model.pred, label, trainsel, validsel)
 trainlogloss, testlogloss = getlogloss(model.pred, label, trainsel, validsel)
-</code></pre>
+"><pre><code>trainauc, testauc = getauc(model.pred, label, trainsel, validsel)
+trainlogloss, testlogloss = getlogloss(model.pred, label, trainsel, validsel)
+</code></pre></div>
 </article></div>

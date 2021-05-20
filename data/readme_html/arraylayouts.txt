@@ -1,10 +1,21 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-arraylayoutsjl" class="anchor" aria-hidden="true" href="#arraylayoutsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ArrayLayouts.jl</h1>
 <p>A Julia package for describing array layouts and more general fast linear algebra</p>
-<p><a href="https://travis-ci.org/JuliaMatrices/ArrayLayouts.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/b9c0ec18a430e9173fb368c7c4c6e0419b78073a/68747470733a2f2f7472617669732d63692e6f72672f4a756c69614d617472696365732f41727261794c61796f7574732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Travis" data-canonical-src="https://travis-ci.org/JuliaMatrices/ArrayLayouts.jl.svg?branch=master" style="max-width:100%;"></a>
-<a href="https://codecov.io/gh/JuliaMatrices/ArrayLayouts.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ec4b2ec9961ffa4fd0be268a9bdf085505b4c2ce/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614d617472696365732f41727261794c61796f7574732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/JuliaMatrices/ArrayLayouts.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p><a href="https://github.com/JuliaMatrices/ArrayLayouts.jl/actions"><img src="https://github.com/JuliaMatrices/ArrayLayouts.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaMatrices/ArrayLayouts.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/82dfbb65b0e0502f3938d44710f3bc4df385eb0d04aa0ab32fa19db8c5fbe2e5/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614d617472696365732f41727261794c61796f7574732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/JuliaMatrices/ArrayLayouts.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
 <p>This package implements a trait-based framework for describing array layouts such as column major, row major, etc. that can be dispatched
 to appropriate BLAS or optimised Julia linear algebra routines. This supports a much wider class of matrix types than Julia's in-built <code>StridedArray</code>. Here is an example:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ArrayLayouts
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using ArrayLayouts
+
+julia&gt; A = randn(10_000,10_000); x = randn(10_000); y = similar(x);
+
+julia&gt; V = view(Symmetric(A),:,:)';
+
+julia&gt; @time mul!(y, A, x); # Julia does not recognize that V is symmetric
+  0.040255 seconds (4 allocations: 160 bytes)
+
+julia&gt; @time muladd!(1.0, V, x, 0.0, y); # ArrayLayouts does and is 3x faster as it calls BLAS
+  0.017677 seconds (4 allocations: 160 bytes)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ArrayLayouts
 
 julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">10_000</span>,<span class="pl-c1">10_000</span>); x <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">10_000</span>); y <span class="pl-k">=</span> <span class="pl-c1">similar</span>(x);
 
@@ -15,4 +26,27 @@ julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> <span class
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> <span class="pl-c1">muladd!</span>(<span class="pl-c1">1.0</span>, V, x, <span class="pl-c1">0.0</span>, y); <span class="pl-c"><span class="pl-c">#</span> ArrayLayouts does and is 3x faster as it calls BLAS</span>
   <span class="pl-c1">0.017677</span> seconds (<span class="pl-c1">4</span> allocations<span class="pl-k">:</span> <span class="pl-c1">160</span> bytes)</pre></div>
+<h2><a id="user-content-internal-design" class="anchor" aria-hidden="true" href="#internal-design"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Internal design</h2>
+<p>The package is based on assigning a <code>MemoryLayout</code> to every array, which is used for dispatch. For example,</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; MemoryLayout(A) # Each column of A is column major, and columns stored in order
+DenseColumnMajor()
+
+julia&gt; MemoryLayout(view(A, 1:3,:))  # Each column of A is column major
+ColumnMajor()
+
+julia&gt; MemoryLayout(V) # A symmetric version, whose storage is DenseColumnMajor
+SymmetricLayout{DenseColumnMajor}()
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">MemoryLayout</span>(A) <span class="pl-c"><span class="pl-c">#</span> Each column of A is column major, and columns stored in order</span>
+<span class="pl-c1">DenseColumnMajor</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">MemoryLayout</span>(<span class="pl-c1">view</span>(A, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>,:))  <span class="pl-c"><span class="pl-c">#</span> Each column of A is column major</span>
+<span class="pl-c1">ColumnMajor</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">MemoryLayout</span>(V) <span class="pl-c"><span class="pl-c">#</span> A symmetric version, whose storage is DenseColumnMajor</span>
+<span class="pl-c1">SymmetricLayout</span><span class="pl-c1">{DenseColumnMajor}</span>()</pre></div>
+<p>This is then used by <code>muladd!(α, A, B, β, C)</code>, <code>ArrayLayouts.lmul!(A, B)</code>, and <code>ArrayLayouts.rmul!(A, B)</code> to
+lower to the correct BLAS calls via lazy objects <code>MulAdd(α, A, B, β, C)</code>, <code>Lmul(A, B)</code>, <code>Rmul(A, B)</code> which are materialized,
+in analogy to <code>Base.Broadcasted</code>.</p>
+<p>Note there is also a higher level function <code>mul(A, B)</code> that materializes via <code>Mul(A, B)</code>, which uses the layout of <code>A</code> and <code>B</code>
+to further reduce to either <code>MulAdd</code>, <code>Lmul</code>, and <code>Rmul</code>.</p>
 </article></div>

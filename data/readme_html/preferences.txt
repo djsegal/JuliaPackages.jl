@@ -1,0 +1,133 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-preferences" class="anchor" aria-hidden="true" href="#preferences"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Preferences</h1>
+<p><a href="https://github.com/JuliaPackaging/Preferences.jl/actions?query=workflow%3ACI"><img src="https://github.com/JuliaPackaging/Preferences.jl/workflows/CI/badge.svg" alt="Continuous Integration" title="Continuous Integration" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaPackaging/Preferences.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/10b50b661febb4498e6019890457b2935eabaa77ae3d3f5ea4fb2437d1814156/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69615061636b6167696e672f507265666572656e6365732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Code Coverage" title="Code Coverage" data-canonical-src="https://codecov.io/gh/JuliaPackaging/Preferences.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>The <code>Preferences</code> package provides a convenient, integrated way for packages to store configuration switches to persistent TOML files, and use those pieces of information at both run time and compile time in Julia v1.6+.
+This enables the user to modify the behavior of a package, and have that choice reflected in everything from run time algorithm choice to code generation at compile time.
+Preferences are stored as TOML dictionaries and are, by default, stored within a <code>(Julia)LocalPreferences.toml</code> file next to the currently-active project.
+If a preference is "exported", it is instead stored within the <code>(Julia)Project.toml</code> instead.
+The intention is to allow shared projects to contain shared preferences, while allowing for users themselves to override those preferences with their own settings in the <code>LocalPreferences.toml</code> file, which should be <code>.gitignore</code>d as the name implies.</p>
+<p>Preferences can be set with depot-wide defaults; if package <code>Foo</code> is installed within your global environment and it has preferences set, these preferences will apply as long as your global environment is part of your <a href="https://docs.julialang.org/en/v1/manual/code-loading/#Environment-stacks" rel="nofollow"><code>LOAD_PATH</code></a>.
+Preferences in environments higher up in the environment stack get overridden by the more proximal entries in the load path, ending with the currently active project.
+This allows depot-wide preference defaults to exist, with active projects able to merge or even completely overwrite these inherited preferences.
+See the docstring for <code>set_preferences!()</code> for the full details of how to set preferences to allow or disallow merging.</p>
+<p>Preferences that are accessed during compilation are automatically marked as compile-time preferences, and any change recorded to these preferences will cause the Julia compiler to recompile any cached precompilation <code>.ji</code> files for that module.
+This allows preferences to be used to influence code generation.
+When your package sets a compile-time preference, it is usually best to suggest to the user that they should restart Julia, to allow recompilation to occur.</p>
+<p>Note that the package can be installed on Julia v1.0+ but is only functional on Julia v1.6+.</p>
+<h2><a id="user-content-api" class="anchor" aria-hidden="true" href="#api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>API</h2>
+<p>Preferences use is very simple; it is all based around four functions (which each have convenience macros): <code>@set_preferences!()</code>, <code>@load_preference()</code>, <code>@has_preference()</code>, and <code>@delete_preferences!()</code>.</p>
+<ul>
+<li>
+<p><code>@load_preference(key, default = nothing)</code>: This loads a preference named <code>key</code> for the current package.  If no such preference is found, it returns <code>default</code>.</p>
+</li>
+<li>
+<p><code>@set_preferences!(pairs...)</code>: This allows setting multiple preferences at once as pairs.</p>
+</li>
+<li>
+<p><code>@has_preference(key)</code>: Returns true if the preference named <code>key</code> is found, and <code>false</code> otherwise.</p>
+</li>
+<li>
+<p><code>@delete_preferences!(keys...)</code>: Delete one or more preferences.</p>
+</li>
+</ul>
+<p>To illustrate the usage, we show a toy module, taken directly from this package's tests:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="module UsesPreferences
+
+function set_backend(new_backend::String)
+    if !(new_backend in (&quot;OpenCL&quot;, &quot;CUDA&quot;, &quot;jlFPGA&quot;))
+        throw(ArgumentError(&quot;Invalid backend: \&quot;$(new_backend)\&quot;&quot;))
+    end
+
+    # Set it in our runtime values, as well as saving it to disk
+    @set_preferences!(&quot;backend&quot; =&gt; new_backend)
+    @info(&quot;New backend set; restart your Julia session for this change to take effect!&quot;)
+end
+
+const backend = @load_preference(&quot;backend&quot;, &quot;OpenCL&quot;)
+
+# An example that helps us to prove that things are happening at compile-time
+function do_computation()
+    @static if backend == &quot;OpenCL&quot;
+        return &quot;OpenCL is the best!&quot;
+    elseif backend == &quot;CUDA&quot;
+        return &quot;CUDA; so fast, so fresh!&quot;
+    elseif backend == &quot;jlFPGA&quot;
+        return &quot;The Future is Now, jlFPGA online!&quot;
+    else
+        return nothing
+    end
+end
+
+
+# A non-compiletime preference
+function set_username(username::String)
+    @set_preferences!(&quot;username&quot; =&gt; username)
+end
+function get_username()
+    return @load_preference(&quot;username&quot;)
+end
+
+end # module UsesPreferences
+"><pre><span class="pl-k">module</span> UsesPreferences
+
+<span class="pl-k">function</span> <span class="pl-en">set_backend</span>(new_backend<span class="pl-k">::</span><span class="pl-c1">String</span>)
+    <span class="pl-k">if</span> <span class="pl-k">!</span>(new_backend <span class="pl-k">in</span> (<span class="pl-s"><span class="pl-pds">"</span>OpenCL<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>CUDA<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>jlFPGA<span class="pl-pds">"</span></span>))
+        <span class="pl-c1">throw</span>(<span class="pl-c1">ArgumentError</span>(<span class="pl-s"><span class="pl-pds">"</span>Invalid backend: <span class="pl-cce">\"</span><span class="pl-v">$(new_backend)</span><span class="pl-cce">\"</span><span class="pl-pds">"</span></span>))
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Set it in our runtime values, as well as saving it to disk</span>
+    <span class="pl-c1">@set_preferences!</span>(<span class="pl-s"><span class="pl-pds">"</span>backend<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> new_backend)
+    <span class="pl-c1">@info</span>(<span class="pl-s"><span class="pl-pds">"</span>New backend set; restart your Julia session for this change to take effect!<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-k">const</span> backend <span class="pl-k">=</span> <span class="pl-c1">@load_preference</span>(<span class="pl-s"><span class="pl-pds">"</span>backend<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>OpenCL<span class="pl-pds">"</span></span>)
+
+<span class="pl-c"><span class="pl-c">#</span> An example that helps us to prove that things are happening at compile-time</span>
+<span class="pl-k">function</span> <span class="pl-en">do_computation</span>()
+    <span class="pl-c1">@static</span> <span class="pl-k">if</span> backend <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>OpenCL<span class="pl-pds">"</span></span>
+        <span class="pl-k">return</span> <span class="pl-s"><span class="pl-pds">"</span>OpenCL is the best!<span class="pl-pds">"</span></span>
+    <span class="pl-k">elseif</span> backend <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>CUDA<span class="pl-pds">"</span></span>
+        <span class="pl-k">return</span> <span class="pl-s"><span class="pl-pds">"</span>CUDA; so fast, so fresh!<span class="pl-pds">"</span></span>
+    <span class="pl-k">elseif</span> backend <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>jlFPGA<span class="pl-pds">"</span></span>
+        <span class="pl-k">return</span> <span class="pl-s"><span class="pl-pds">"</span>The Future is Now, jlFPGA online!<span class="pl-pds">"</span></span>
+    <span class="pl-k">else</span>
+        <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+
+<span class="pl-c"><span class="pl-c">#</span> A non-compiletime preference</span>
+<span class="pl-k">function</span> <span class="pl-en">set_username</span>(username<span class="pl-k">::</span><span class="pl-c1">String</span>)
+    <span class="pl-c1">@set_preferences!</span>(<span class="pl-s"><span class="pl-pds">"</span>username<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> username)
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> <span class="pl-en">get_username</span>()
+    <span class="pl-k">return</span> <span class="pl-c1">@load_preference</span>(<span class="pl-s"><span class="pl-pds">"</span>username<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-k">end</span> <span class="pl-c"><span class="pl-c">#</span> module UsesPreferences</span></pre></div>
+<h2><a id="user-content-conditional-loading" class="anchor" aria-hidden="true" href="#conditional-loading"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Conditional Loading</h2>
+<p>To use <code>Preferences</code> with Julia 1.6 and later but falling back to a
+default value for older Julia versions, you can conditionally load
+<code>Preferences</code> like this:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="@static if VERSION &gt;= v&quot;1.6&quot;
+    using Preferences
+end
+
+@static if VERSION &gt;= v&quot;1.6&quot;
+    preference = @load_preference(&quot;preference&quot;, &quot;default&quot;)
+else
+    preference = &quot;default&quot;
+end
+"><pre><code>@static if VERSION &gt;= v"1.6"
+    using Preferences
+end
+
+@static if VERSION &gt;= v"1.6"
+    preference = @load_preference("preference", "default")
+else
+    preference = "default"
+end
+</code></pre></div>
+<p>Note that these cannot be merged into a single <code>@static if</code>. Loading
+the package with <code>using Preferences</code> must be done on its own.</p>
+</article></div>

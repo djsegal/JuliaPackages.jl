@@ -10,7 +10,25 @@ in using the Julia <code>CompositeKind</code> rather than a pointer to a C
 <code>struct</code>.  This also allows for checking consistency of
 dimensions.</p>
 <p>For example, the C function <code>cs_lsolve</code></p>
-<div class="highlight highlight-source-c"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>cs.h<span class="pl-pds">"</span></span>
+<div class="highlight highlight-source-c position-relative" data-snippet-clipboard-copy-content="#include &quot;cs.h&quot;
+/* solve Lx=b where x and b are dense.  x=b on input, solution on output. */
+csi cs_lsolve (const cs *L, double *x)
+{
+    csi p, j, n, *Lp, *Li ;
+    double *Lx ;
+    if (!CS_CSC (L) || !x) return (0) ;                     /* check inputs */
+    n = L-&gt;n ; Lp = L-&gt;p ; Li = L-&gt;i ; Lx = L-&gt;x ;
+    for (j = 0 ; j &lt; n ; j++)
+    {
+        x [j] /= Lx [Lp [j]] ;
+        for (p = Lp [j]+1 ; p &lt; Lp [j+1] ; p++)
+        {
+            x [Li [p]] -= Lx [p] * x [j] ;
+        }
+    }
+    return (1) ;
+}
+"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>cs.h<span class="pl-pds">"</span></span>
 <span class="pl-c"><span class="pl-c">/*</span> solve Lx=b where x and b are dense.  x=b on input, solution on output. <span class="pl-c">*/</span></span>
 csi <span class="pl-en">cs_lsolve</span> (<span class="pl-k">const</span> cs *L, <span class="pl-k">double</span> *x)
 {
@@ -29,7 +47,23 @@ csi <span class="pl-en">cs_lsolve</span> (<span class="pl-k">const</span> cs *L,
     <span class="pl-k">return</span> (<span class="pl-c1">1</span>) ;
 }</pre></div>
 <p>becomes</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span># solve Lx=b where x and b are dense.  x=b on input, solution on output.</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="## solve Lx=b where x and b are dense.  x=b on input, solution on output.
+function js_lsolve!{T}(L::SparseMatrixCSC{T}, x::StridedVector{T})
+    m,n = size(L)
+    if m != n error(&quot;Matrix L is $m by $n and should be square&quot;) end
+    if length(x) != n error(&quot;Dimension mismatch&quot;) end
+    Lp = L.colptr; Li = L.rowval; Lx = L.nzval
+    for j in 1:n
+        x[j] /= Lx[Lp[j]]
+        for p in (Lp[j] + 1):(Lp[j+1] - 1)
+            x[Li[p]] -= Lx[p] * x[j]
+        end
+    end
+    x
+end
+
+js_lsolve{T}(L::SparseMatrixCSC{T}, x::StridedVector{T}) = js_lsolve!(L, copy(x))
+"><pre><span class="pl-c"><span class="pl-c">#</span># solve Lx=b where x and b are dense.  x=b on input, solution on output.</span>
 <span class="pl-k">function</span> <span class="pl-en">js_lsolve!</span><span class="pl-c1">{T}</span>(L<span class="pl-k">::</span><span class="pl-c1">SparseMatrixCSC{T}</span>, x<span class="pl-k">::</span><span class="pl-c1">StridedVector{T}</span>)
     m,n <span class="pl-k">=</span> <span class="pl-c1">size</span>(L)
     <span class="pl-k">if</span> m <span class="pl-k">!=</span> n <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>Matrix L is <span class="pl-v">$m</span> by <span class="pl-v">$n</span> and should be square<span class="pl-pds">"</span></span>) <span class="pl-k">end</span>

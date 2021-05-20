@@ -1,0 +1,187 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-conjugatecomputationvi" class="anchor" aria-hidden="true" href="#conjugatecomputationvi"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>ConjugateComputationVI</h1>
+<p><a href="https://github.com/willtebbutt/ConjugateComputationVI.jl/actions"><img src="https://github.com/willtebbutt/ConjugateComputationVI.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/willtebbutt/ConjugateComputationVI.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ea22b5b862766d5bb76d1acf3a22fb6e68ffb9ccdeab6d98185dcac5bdf16f57/68747470733a2f2f636f6465636f762e696f2f67682f77696c6c746562627574742f436f6e6a7567617465436f6d7075746174696f6e56492e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/willtebbutt/ConjugateComputationVI.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a>
+<a href="https://github.com/invenia/BlueStyle"><img src="https://camo.githubusercontent.com/c18fbaa52d94d16b90b19701fc90d289b8a5bb920c74c79bab200b14e75420a4/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f636f64652532307374796c652d626c75652d3434393564312e737667" alt="Code Style: Blue" data-canonical-src="https://img.shields.io/badge/code%20style-blue-4495d1.svg" style="max-width:100%;"></a>
+<a href="https://github.com/SciML/ColPrac"><img src="https://camo.githubusercontent.com/a6c1efcb19a957860ecb25966a730260b03d6e05380d0c27992ee7f9e3b1feb3/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f436f6c507261632d436f6e7472696275746f72277325323047756964652d626c756576696f6c6574" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" data-canonical-src="https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet" style="max-width:100%;"></a></p>
+<p>This is an implementation of [1].
+It utilises the <a href="https://github.com/JuliaGaussianProcesses/AbstractGPs.jl">AbstractGPs.jl</a> interface, so should play nicely with any <code>AbstractGP</code>, including those from <a href="https://github.com/JuliaGaussianProcesses/Stheno.jl">Stheno.jl</a> and <a href="https://github.com/JuliaGaussianProcesses/TemporalGPs.jl">TemporalGPs.jl</a>.
+No attempt has been made to make this implementation work for anything other than Gaussian processes.</p>
+<h1><a id="user-content-example-usage" class="anchor" aria-hidden="true" href="#example-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example Usage</h1>
+<p>Approximate inference and learning in a GP under an Exponential likelihood.
+This is primarily handled using the <code>build_latent_gp</code> function, which produces a <code>LatentGP</code>
+specifying this model when provided with kernel parameters.
+<a href="https://github.com/invenia/ParameterHandling.jl/">ParameterHandling.jl</a> is used to handle
+the book-keeping associated with the model parameters.</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using AbstractGPs
+using ConjugateComputationVI
+using Distributions
+using Optim
+using ParameterHandling
+using Plots
+using Random
+using RDatasets
+using StatsFuns
+using Zygote
+
+using ConjugateComputationVI: GaussHermiteQuadrature, UnivariateFactorisedLikelihood
+
+# Specify the model parameters.
+θ_init = (scale=positive(1.9), stretch=positive(0.8));
+θ_init_flat, unflatten = ParameterHandling.flatten(θ_init);
+
+# Specify the model.
+# A core requirement of this package is that you are able to provide a function mapping
+# from your model parameters to a `LatentGP`.
+function build_latent_gp(θ::AbstractVector{&lt;:Real})
+    return build_latent_gp(ParameterHandling.value(unflatten(θ)))
+end
+function build_latent_gp(θ::NamedTuple)
+    gp = GP(θ.scale * AbstractGPs.transform(SEKernel(), θ.stretch))
+    lik = UnivariateFactorisedLikelihood(f -&gt; Exponential(exp(f)))
+    return LatentGP(gp, lik, 1e-9)
+end
+
+# Specify inputs and generate some synthetic outputs.
+x = range(-5.0, 5.0; length=100);
+y = rand(build_latent_gp(θ_init_flat)(x)).y;
+
+# Attempt to recover the kernel parameters used when generating the data.
+# Add some noise to the initialisation to make this more interesting.
+# We specify that the reconstruction term in the ELBO is to be approximated using
+# Gauss-Hermite quadrature with 10 points.
+f_approx_post, results_summary = ConjugateComputationVI.optimize_elbo(
+    build_latent_gp,
+    GaussHermiteQuadrature(10),
+    x,
+    y,
+    θ_init_flat + randn(length(θ_init_flat)),
+    BFGS(
+        alphaguess = Optim.LineSearches.InitialStatic(scaled=true),
+        linesearch = Optim.LineSearches.BackTracking(),
+    ),
+    Optim.Options(
+        show_trace = true,
+        iterations=25,
+        f_calls_limit=50,
+    ),
+);
+
+# Compute approx. posterior CIs using Monte Carlo.
+function approx_post_95_CI(x::AbstractVector, N::Int)
+    samples = map(marginals(f_approx_post(x, 1e-6))) do latent_marginal
+        f = rand(latent_marginal, N)
+        return rand.(Exponential.(exp.(f)))
+    end
+    return quantile.(samples, Ref((0.025, 0.5, 0.975)))
+end
+
+x_pr = range(-6.0, 6.0; length=250);
+qs = approx_post_95_CI(x_pr, 10_000);
+
+# Plot the predictions.
+p1 = plot(
+    x_pr, getindex.(qs, 1);
+    linealpha=0,
+    fillrange=getindex.(qs, 3),
+    label=&quot;95% CI&quot;,
+    fillalpha=0.3,
+);
+scatter!(p1, x, y; markersize=2, label=&quot;Observations&quot;);
+
+p2 = plot(
+    f_approx_post(x_pr, 1e-6);
+    ribbon_scale=3, color=:blue, label=&quot;approx posterior latent&quot;,
+);
+sampleplot!(f_approx_post(x_pr, 1e-6), 10; color=:blue);
+
+plot(p1, p2; layout=(2, 1))
+"><pre><span class="pl-k">using</span> AbstractGPs
+<span class="pl-k">using</span> ConjugateComputationVI
+<span class="pl-k">using</span> Distributions
+<span class="pl-k">using</span> Optim
+<span class="pl-k">using</span> ParameterHandling
+<span class="pl-k">using</span> Plots
+<span class="pl-k">using</span> Random
+<span class="pl-k">using</span> RDatasets
+<span class="pl-k">using</span> StatsFuns
+<span class="pl-k">using</span> Zygote
+
+<span class="pl-k">using</span> ConjugateComputationVI<span class="pl-k">:</span> GaussHermiteQuadrature, UnivariateFactorisedLikelihood
+
+<span class="pl-c"><span class="pl-c">#</span> Specify the model parameters.</span>
+θ_init <span class="pl-k">=</span> (scale<span class="pl-k">=</span><span class="pl-c1">positive</span>(<span class="pl-c1">1.9</span>), stretch<span class="pl-k">=</span><span class="pl-c1">positive</span>(<span class="pl-c1">0.8</span>));
+θ_init_flat, unflatten <span class="pl-k">=</span> ParameterHandling<span class="pl-k">.</span><span class="pl-c1">flatten</span>(θ_init);
+
+<span class="pl-c"><span class="pl-c">#</span> Specify the model.</span>
+<span class="pl-c"><span class="pl-c">#</span> A core requirement of this package is that you are able to provide a function mapping</span>
+<span class="pl-c"><span class="pl-c">#</span> from your model parameters to a `LatentGP`.</span>
+<span class="pl-k">function</span> <span class="pl-en">build_latent_gp</span>(θ<span class="pl-k">::</span><span class="pl-c1">AbstractVector{&lt;:Real}</span>)
+    <span class="pl-k">return</span> <span class="pl-c1">build_latent_gp</span>(ParameterHandling<span class="pl-k">.</span><span class="pl-c1">value</span>(<span class="pl-c1">unflatten</span>(θ)))
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> <span class="pl-en">build_latent_gp</span>(θ<span class="pl-k">::</span><span class="pl-c1">NamedTuple</span>)
+    gp <span class="pl-k">=</span> <span class="pl-c1">GP</span>(θ<span class="pl-k">.</span>scale <span class="pl-k">*</span> AbstractGPs<span class="pl-k">.</span><span class="pl-c1">transform</span>(<span class="pl-c1">SEKernel</span>(), θ<span class="pl-k">.</span>stretch))
+    lik <span class="pl-k">=</span> <span class="pl-c1">UnivariateFactorisedLikelihood</span>(f <span class="pl-k">-&gt;</span> <span class="pl-c1">Exponential</span>(<span class="pl-c1">exp</span>(f)))
+    <span class="pl-k">return</span> <span class="pl-c1">LatentGP</span>(gp, lik, <span class="pl-c1">1e-9</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Specify inputs and generate some synthetic outputs.</span>
+x <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-k">-</span><span class="pl-c1">5.0</span>, <span class="pl-c1">5.0</span>; length<span class="pl-k">=</span><span class="pl-c1">100</span>);
+y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">build_latent_gp</span>(θ_init_flat)(x))<span class="pl-k">.</span>y;
+
+<span class="pl-c"><span class="pl-c">#</span> Attempt to recover the kernel parameters used when generating the data.</span>
+<span class="pl-c"><span class="pl-c">#</span> Add some noise to the initialisation to make this more interesting.</span>
+<span class="pl-c"><span class="pl-c">#</span> We specify that the reconstruction term in the ELBO is to be approximated using</span>
+<span class="pl-c"><span class="pl-c">#</span> Gauss-Hermite quadrature with 10 points.</span>
+f_approx_post, results_summary <span class="pl-k">=</span> ConjugateComputationVI<span class="pl-k">.</span><span class="pl-c1">optimize_elbo</span>(
+    build_latent_gp,
+    <span class="pl-c1">GaussHermiteQuadrature</span>(<span class="pl-c1">10</span>),
+    x,
+    y,
+    θ_init_flat <span class="pl-k">+</span> <span class="pl-c1">randn</span>(<span class="pl-c1">length</span>(θ_init_flat)),
+    <span class="pl-c1">BFGS</span>(
+        alphaguess <span class="pl-k">=</span> Optim<span class="pl-k">.</span>LineSearches<span class="pl-k">.</span><span class="pl-c1">InitialStatic</span>(scaled<span class="pl-k">=</span><span class="pl-c1">true</span>),
+        linesearch <span class="pl-k">=</span> Optim<span class="pl-k">.</span>LineSearches<span class="pl-k">.</span><span class="pl-c1">BackTracking</span>(),
+    ),
+    Optim<span class="pl-k">.</span><span class="pl-c1">Options</span>(
+        show_trace <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+        iterations<span class="pl-k">=</span><span class="pl-c1">25</span>,
+        f_calls_limit<span class="pl-k">=</span><span class="pl-c1">50</span>,
+    ),
+);
+
+<span class="pl-c"><span class="pl-c">#</span> Compute approx. posterior CIs using Monte Carlo.</span>
+<span class="pl-k">function</span> <span class="pl-en">approx_post_95_CI</span>(x<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>, N<span class="pl-k">::</span><span class="pl-c1">Int</span>)
+    samples <span class="pl-k">=</span> <span class="pl-c1">map</span>(<span class="pl-c1">marginals</span>(<span class="pl-c1">f_approx_post</span>(x, <span class="pl-c1">1e-6</span>))) <span class="pl-k">do</span> latent_marginal
+        f <span class="pl-k">=</span> <span class="pl-c1">rand</span>(latent_marginal, N)
+        <span class="pl-k">return</span> <span class="pl-c1">rand</span>.(<span class="pl-c1">Exponential</span>.(<span class="pl-c1">exp</span>.(f)))
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> <span class="pl-c1">quantile</span>.(samples, <span class="pl-c1">Ref</span>((<span class="pl-c1">0.025</span>, <span class="pl-c1">0.5</span>, <span class="pl-c1">0.975</span>)))
+<span class="pl-k">end</span>
+
+x_pr <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-k">-</span><span class="pl-c1">6.0</span>, <span class="pl-c1">6.0</span>; length<span class="pl-k">=</span><span class="pl-c1">250</span>);
+qs <span class="pl-k">=</span> <span class="pl-c1">approx_post_95_CI</span>(x_pr, <span class="pl-c1">10_000</span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Plot the predictions.</span>
+p1 <span class="pl-k">=</span> <span class="pl-c1">plot</span>(
+    x_pr, <span class="pl-c1">getindex</span>.(qs, <span class="pl-c1">1</span>);
+    linealpha<span class="pl-k">=</span><span class="pl-c1">0</span>,
+    fillrange<span class="pl-k">=</span><span class="pl-c1">getindex</span>.(qs, <span class="pl-c1">3</span>),
+    label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>95% CI<span class="pl-pds">"</span></span>,
+    fillalpha<span class="pl-k">=</span><span class="pl-c1">0.3</span>,
+);
+<span class="pl-c1">scatter!</span>(p1, x, y; markersize<span class="pl-k">=</span><span class="pl-c1">2</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Observations<span class="pl-pds">"</span></span>);
+
+p2 <span class="pl-k">=</span> <span class="pl-c1">plot</span>(
+    <span class="pl-c1">f_approx_post</span>(x_pr, <span class="pl-c1">1e-6</span>);
+    ribbon_scale<span class="pl-k">=</span><span class="pl-c1">3</span>, color<span class="pl-k">=</span><span class="pl-c1">:blue</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>approx posterior latent<span class="pl-pds">"</span></span>,
+);
+<span class="pl-c1">sampleplot!</span>(<span class="pl-c1">f_approx_post</span>(x_pr, <span class="pl-c1">1e-6</span>), <span class="pl-c1">10</span>; color<span class="pl-k">=</span><span class="pl-c1">:blue</span>);
+
+<span class="pl-c1">plot</span>(p1, p2; layout<span class="pl-k">=</span>(<span class="pl-c1">2</span>, <span class="pl-c1">1</span>))</pre></div>
+<p>See the examples directory for more.</p>
+<h1><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Limitations</h1>
+<p>This approximation does not presently play nicely with pseudo-point approximations.
+That would be an interesting research direction.</p>
+<h1><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>References</h1>
+<p>[1] - Khan, Mohammad, and Wu Lin. "Conjugate-computation variational inference: Converting variational inference in non-conjugate models to inferences in conjugate models." Artificial Intelligence and Statistics. PMLR, 2017.</p>
+</article></div>

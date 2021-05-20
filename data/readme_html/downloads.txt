@@ -1,0 +1,194 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-downloads" class="anchor" aria-hidden="true" href="#downloads"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Downloads</h1>
+<p><a href="https://travis-ci.com/JuliaLang/Downloads.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/492cbce8e8137cf7a82a65e66f4127149ab69ea39a27f9d969ce27989e92e3ab/68747470733a2f2f7472617669732d63692e636f6d2f4a756c69614c616e672f446f776e6c6f6164732e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.com/JuliaLang/Downloads.jl.svg?branch=master" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/JuliaLang/Downloads.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/22d317a65d3b93868c9a2fcfd195475bdf21dc13ee6e32b1347f514d9f4b0ddc/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614c616e672f446f776e6c6f6164732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/JuliaLang/Downloads.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a></p>
+<p>The <code>Downloads</code> package provides a single function, <code>download</code>, which provides
+cross-platform, multi-protocol, in-process download functionality implemented
+with <a href="https://curl.haxx.se/libcurl/" rel="nofollow">libcurl</a>. It uses libcurl's multi-handle
+callback API to present a Julian API: <code>download(url)</code> blocks the task in which
+it occurs but yields to Julia's scheduler, allowing arbitrarily many tasks to
+download URLs concurrently and efficiently. As of Julia 1.6, this package is a
+standard library that is included with Julia, but this package can be used with
+Julia 1.3 through 1.5 as well.</p>
+<h2><a id="user-content-api" class="anchor" aria-hidden="true" href="#api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>API</h2>
+<p>The public API of <code>Downloads</code> consists of two functions and three types:</p>
+<ul>
+<li><code>download</code> — download a file from a URL, erroring if it can't be downloaded</li>
+<li><code>request</code> — request a URL, returning a <code>Response</code> object indicating success</li>
+<li><code>Response</code> — a type capturing the status and other metadata about a request</li>
+<li><code>RequestError</code> — an error type thrown by <code>download</code> and <code>request</code> on error</li>
+<li><code>Downloader</code> — an object encapsulating shared resources for downloading</li>
+</ul>
+<h3><a id="user-content-download" class="anchor" aria-hidden="true" href="#download"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>download</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="download(url, [ output = tempfile() ];
+    [ method = &quot;GET&quot;, ]
+    [ headers = &lt;none&gt;, ]
+    [ timeout = &lt;none&gt;, ]
+    [ progress = &lt;none&gt;, ]
+    [ verbose = false, ]
+    [ downloader = &lt;default&gt;, ]
+) -&gt; output
+"><pre><span class="pl-c1">download</span>(url, [ output <span class="pl-k">=</span> <span class="pl-c1">tempfile</span>() ];
+    [ method <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>GET<span class="pl-pds">"</span></span>, ]
+    [ headers <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ timeout <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ progress <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ verbose <span class="pl-k">=</span> <span class="pl-c1">false</span>, ]
+    [ downloader <span class="pl-k">=</span> <span class="pl-k">&lt;</span>default<span class="pl-k">&gt;</span>, ]
+) <span class="pl-k">-&gt;</span> output</pre></div>
+<ul>
+<li><code>url        :: AbstractString</code></li>
+<li><code>output     :: Union{AbstractString, AbstractCmd, IO}</code></li>
+<li><code>method     :: AbstractString</code></li>
+<li><code>headers    :: Union{AbstractVector, AbstractDict}</code></li>
+<li><code>timeout    :: Real</code></li>
+<li><code>progress   :: (total::Integer, now::Integer) --&gt; Any</code></li>
+<li><code>verbose    :: Bool</code></li>
+<li><code>downloader :: Downloader</code></li>
+</ul>
+<p>Download a file from the given url, saving it to <code>output</code> or if not specified, a
+temporary path. The <code>output</code> can also be an <code>IO</code> handle, in which case the body
+of the response is streamed to that handle and the handle is returned. If
+<code>output</code> is a command, the command is run and output is sent to it on stdin.</p>
+<p>If the <code>downloader</code> keyword argument is provided, it must be a <code>Downloader</code>
+object. Resources and connections will be shared between downloads performed by
+the same <code>Downloader</code> and cleaned up automatically when the object is garbage
+collected or there have been no downloads performed with it for a grace period.
+See <code>Downloader</code> for more info about configuration and usage.</p>
+<p>If the <code>headers</code> keyword argument is provided, it must be a vector or dictionary
+whose elements are all pairs of strings. These pairs are passed as headers when
+downloading URLs with protocols that supports them, such as HTTP/S.</p>
+<p>The <code>timeout</code> keyword argument specifies a timeout for the download in seconds,
+with a resolution of milliseconds. By default no timeout is set, but this can
+also be explicitly requested by passing a timeout value of <code>Inf</code>.</p>
+<p>If the <code>progress</code> keyword argument is provided, it must be a callback funtion
+which will be called whenever there are updates about the size and status of the
+ongoing download. The callback must take two integer arguments: <code>total</code> and
+<code>now</code> which are the total size of the download in bytes, and the number of bytes
+which have been downloaded so far. Note that <code>total</code> starts out as zero and
+remains zero until the server gives an indiation of the total size of the
+download (e.g. with a <code>Content-Length</code> header), which may never happen. So a
+well-behaved progress callback should handle a total size of zero gracefully.</p>
+<p>If the <code>verbose</code> optoin is set to true, <code>libcurl</code>, which is used to implement
+the download functionality will print debugging information to <code>stderr</code>.</p>
+<h3><a id="user-content-request" class="anchor" aria-hidden="true" href="#request"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>request</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="request(url;
+    [ input = &lt;none&gt;, ]
+    [ output = &lt;none&gt;, ]
+    [ method = input ? &quot;PUT&quot; : output ? &quot;GET&quot; : &quot;HEAD&quot;, ]
+    [ headers = &lt;none&gt;, ]
+    [ timeout = &lt;none&gt;, ]
+    [ progress = &lt;none&gt;, ]
+    [ verbose = false, ]
+    [ throw = true, ]
+    [ downloader = &lt;default&gt;, ]
+) -&gt; Union{Response, RequestError}
+"><pre><span class="pl-c1">request</span>(url;
+    [ input <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ output <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ method <span class="pl-k">=</span> input <span class="pl-k">?</span> <span class="pl-s"><span class="pl-pds">"</span>PUT<span class="pl-pds">"</span></span> <span class="pl-k">:</span> output <span class="pl-k">?</span> <span class="pl-s"><span class="pl-pds">"</span>GET<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>HEAD<span class="pl-pds">"</span></span>, ]
+    [ headers <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ timeout <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ progress <span class="pl-k">=</span> <span class="pl-k">&lt;</span>none<span class="pl-k">&gt;</span>, ]
+    [ verbose <span class="pl-k">=</span> <span class="pl-c1">false</span>, ]
+    [ throw <span class="pl-k">=</span> <span class="pl-c1">true</span>, ]
+    [ downloader <span class="pl-k">=</span> <span class="pl-k">&lt;</span>default<span class="pl-k">&gt;</span>, ]
+) <span class="pl-k">-&gt;</span> Union{Response, RequestError}</pre></div>
+<ul>
+<li><code>url        :: AbstractString</code></li>
+<li><code>input      :: Union{AbstractString, AbstractCmd, IO}</code></li>
+<li><code>output     :: Union{AbstractString, AbstractCmd, IO}</code></li>
+<li><code>method     :: AbstractString</code></li>
+<li><code>headers    :: Union{AbstractVector, AbstractDict}</code></li>
+<li><code>timeout    :: Real</code></li>
+<li><code>progress   :: (dl_total, dl_now, ul_total, ul_now) --&gt; Any</code></li>
+<li><code>verbose    :: Bool</code></li>
+<li><code>throw      :: Bool</code></li>
+<li><code>downloader :: Downloader</code></li>
+</ul>
+<p>Make a request to the given url, returning a <code>Response</code> object capturing the
+status, headers and other information about the response. The body of the
+reponse is written to <code>output</code> if specified and discarded otherwise. For HTTP/S
+requests, if an <code>input</code> stream is given, a <code>PUT</code> request is made; otherwise if
+an <code>output</code> stream is givven, a <code>GET</code> request is made; if neither is given a
+<code>HEAD</code> request is made. For other protocols, appropriate default methods are
+used based on what combination of input and output are requested. The following
+options differ from the <code>download</code> function:</p>
+<ul>
+<li><code>input</code> allows providing a request body; if provided default to <code>PUT</code> request</li>
+<li><code>progress</code> is a callback taking four integers for upload and download progress</li>
+<li><code>throw</code> controls whether to throw or return a <code>RequestError</code> on request error</li>
+</ul>
+<p>Note that unlike <code>download</code> which throws an error if the requested URL could not
+be downloaded (indicated by non-2xx status code), <code>request</code> returns a <code>Response</code>
+object no matter what the status code of the response is. If there is an error
+with getting a response at all, then a <code>RequestError</code> is thrown or returned.</p>
+<h3><a id="user-content-response" class="anchor" aria-hidden="true" href="#response"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Response</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct Response
+    proto   :: String
+    url     :: String
+    status  :: Int
+    message :: String
+    headers :: Vector{Pair{String,String}}
+end
+"><pre><span class="pl-k">struct</span> Response
+    proto   <span class="pl-k">::</span> <span class="pl-c1">String</span>
+    url     <span class="pl-k">::</span> <span class="pl-c1">String</span>
+    status  <span class="pl-k">::</span> <span class="pl-c1">Int</span>
+    message <span class="pl-k">::</span> <span class="pl-c1">String</span>
+    headers <span class="pl-k">::</span> <span class="pl-c1">Vector{Pair{String,String}}</span>
+<span class="pl-k">end</span></pre></div>
+<p><code>Response</code> is a type capturing the properties of a successful response to a
+request as an object. It has the following fields:</p>
+<ul>
+<li><code>proto</code>: the protocol that was used to get the response</li>
+<li><code>url</code>: the URL that was ultimately requested after following redirects</li>
+<li><code>status</code>: the status code of the response, indicating success, failure, etc.</li>
+<li><code>message</code>: a textual message describing the nature of the response</li>
+<li><code>headers</code>: any headers that were returned with the response</li>
+</ul>
+<p>The meaning and availability of some of these responses depends on the protocol
+used for the request. For many protocols, including HTTP/S and S/FTP, a 2xx
+status code indicates a successful response. For responses in protocols that do
+not support headers, the headers vector will be empty. HTTP/2 does not include a
+status message, only a status code, so the message will be empty.</p>
+<h3><a id="user-content-requesterror" class="anchor" aria-hidden="true" href="#requesterror"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>RequestError</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="struct RequestError &lt;: ErrorException
+    url      :: String
+    code     :: Int
+    message  :: String
+    response :: Response
+end
+"><pre><span class="pl-k">struct</span> RequestError <span class="pl-k">&lt;:</span> <span class="pl-c1">ErrorException</span>
+    url      <span class="pl-k">::</span> <span class="pl-c1">String</span>
+    code     <span class="pl-k">::</span> <span class="pl-c1">Int</span>
+    message  <span class="pl-k">::</span> <span class="pl-c1">String</span>
+    response <span class="pl-k">::</span> <span class="pl-c1">Response</span>
+<span class="pl-k">end</span></pre></div>
+<p><code>RequestError</code> is a type capturing the properties of a failed response to a
+request as an exception object:</p>
+<ul>
+<li><code>url</code>: the original URL that was requested without any redirects</li>
+<li><code>code</code>: the libcurl error code; <code>0</code> if a protocol-only error occurred</li>
+<li><code>message</code>: the libcurl error message indicating what went wrong</li>
+<li><code>response</code>: response object capturing what response info is available</li>
+</ul>
+<p>The same <code>RequestError</code> type is thrown by <code>download</code> if the request was
+successful but there was a protocol-level error indicated by a status code that
+is not in the 2xx range, in which case <code>code</code> will be zero and the <code>message</code>
+field will be the empty string. The <code>request</code> API only throws a <code>RequestError</code>
+if the libcurl error <code>code</code> is non-zero, in which case the included <code>response</code>
+object is likely to have a <code>status</code> of zero and an empty message. There are,
+however, situations where a curl-level error is thrown due to a protocol error,
+in which case both the inner and outer code and message may be of interest.</p>
+<h3><a id="user-content-downloader" class="anchor" aria-hidden="true" href="#downloader"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Downloader</h3>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="Downloader(; [ grace::Real = 30 ])
+"><pre><span class="pl-c1">Downloader</span>(; [ grace<span class="pl-k">::</span><span class="pl-c1">Real</span> <span class="pl-k">=</span> <span class="pl-c1">30</span> ])</pre></div>
+<p><code>Downloader</code> objects are used to perform individual <code>download</code> operations.
+Connections, name lookups and other resources are shared within a <code>Downloader</code>.
+These connections and resources are cleaned up after a configurable grace period
+(default: 30 seconds) since anything was downloaded with it, or when it is
+garbage collected, whichever comes first. If the grace period is set to zero,
+all resources will be cleaned up immediately as soon as there are no more
+ongoing downloads in progress. If the grace period is set to <code>Inf</code> then
+resources are not cleaned up until <code>Downloader</code> is garbage collected.</p>
+</article></div>

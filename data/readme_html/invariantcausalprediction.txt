@@ -1,0 +1,89 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-invariant-causal-prediction" class="anchor" aria-hidden="true" href="#invariant-causal-prediction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Invariant Causal Prediction</h1>
+<p>Here is a Julia 1.4.2 translation of the core functionality of R lanague packages</p>
+<ul>
+<li><a href="https://cran.r-project.org/web/packages/InvariantCausalPrediction/InvariantCausalPrediction.pdf" rel="nofollow">https://cran.r-project.org/web/packages/InvariantCausalPrediction/InvariantCausalPrediction.pdf</a></li>
+<li><a href="https://cran.r-project.org/web/packages/nonlinearICP/nonlinearICP.pdf" rel="nofollow">https://cran.r-project.org/web/packages/nonlinearICP/nonlinearICP.pdf</a></li>
+</ul>
+<p>Two Jupyter labs showcase the R language version of ICP.</p>
+<ol>
+<li><a href="https://notes.quantecon.org/submission/5e851bfecc00b7001acde469" rel="nofollow">Linear Invariant Causal Prediction Using Employment Data From The Work Bank</a></li>
+<li><a href="https://notes.quantecon.org/submission/5e8e2a6cd079ab001915ca09" rel="nofollow">Nonlinear Invariant Causal Prediction Using Unemployment Data and Inflation Adjusted Prices from the USA Bureau of Labor</a></li>
+</ol>
+<p>Here the core and minimal functionality of the original <a href="https://cran.r-project.org/web/packages/InvariantCausalPrediction/index.html" rel="nofollow">linear ICP</a> and <a href="https://cran.r-project.org/web/packages/nonlinearICP/index.html" rel="nofollow">nonlinear ICP</a> R packages is implemented in <a href="https://julialang.org" rel="nofollow">Julia</a> 1.4.2. There are improvements over the R programming, however. The Julia version makes it easier to define <strong>Y</strong> and <strong>E</strong> input arguments with an integer mapper. There are refinements for code readability and support ability. There are new <a href="https://www.queryverse.org/VegaLite.jl/stable/" rel="nofollow">VegaLite</a>  plots of the Invariant Causal Prediction results.  The output of the ICP Julia functions is more informative.</p>
+<p>Furthermore, there are enhancements to program speed such parallelism of random forest computations, and linear p-value computations. There are two versions of the ICP main functions. One version is sequential and the default is parallel. The Julia version uses all the available cores in your machine.  The parrallel workers are created with function call:  <em>addprocs(Hwloc.num_physical_cores())</em>.  The Julia <a href="https://docs.julialang.org/en/v1/manual/parallel-computing/" rel="nofollow">pmap</a> function and Julia <a href="https://docs.julialang.org/en/v1/manual/parallel-computing/" rel="nofollow">@spawnat</a> macro implement the parallelism.</p>
+<p>The <a href="https://alan-turing-institute.github.io/MLJTutorials" rel="nofollow">MLJ</a> framework is heavily utilized to implement the machine learning in the ICP Julia version. MLJ models are in Julia and are faster than the old R language machine learning algorithms.  The <a href="https://www.turing.ac.uk" rel="nofollow">Alan Turing Institute</a> sponsors the package and MLJ supports most of the machine learning models in Julia.  MLJ "offers a consistent way to use, compose and tune machine learning models in Julia.  ... MLJ unlocks performance gains by exploiting Julia's support for parallelism, automatic differentiation, GPU, optimisation etc."  The Julia ICP functions execute the MLJ models many times in parallel.   This allows to process larger files than in the R language version of ICP.  Next are the MLJ models that are run in parallel.</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="@everywhere rfc = MLJ.@load RandomForestClassifier  pkg = DecisionTree
+@everywhere rfr = MLJ.@load RandomForestRegressor   pkg = DecisionTree
+
+@everywhere @load LinearRegressor pkg = GLM
+@everywhere @load LinearBinaryClassifier pkg = GLM 
+"><pre><code>@everywhere rfc = MLJ.@load RandomForestClassifier  pkg = DecisionTree
+@everywhere rfr = MLJ.@load RandomForestRegressor   pkg = DecisionTree
+
+@everywhere @load LinearRegressor pkg = GLM
+@everywhere @load LinearBinaryClassifier pkg = GLM 
+</code></pre></div>
+<p>A better booster is used to reduce the number of predictors before running the parallel MLJ models.  <a href="https://github.com/dmlc/XGBoost.jl">XGBoostRegressor</a> is a scalable, portable and Distributed gradient boosting framework.  The XGBooster is highly recommended when running linear ICP to reduce speed and memory usage.  A sophisticated stochastic feature-level Shapley algorithm named <a href="https://github.com/nredell/ShapML.jl">ShapML</a> is used to reduce the number of predictors before running the nonlinear models in parallel. The nonlinear models are random forests.  Incredible, ShapML does not directly read a dataset but it takes as input a MLJ model which encompasses the dataset.  ShapML uses Monte Carlo samples along the MLJ models to find the important predictors.  ShapML is implemented in Julia and exponential in the number of predictors.</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="xgc = @load XGBoostClassifier
+xgr = @load XGBoostRegressor
+
+using ShapML
+"><pre><code>xgc = @load XGBoostClassifier
+xgr = @load XGBoostRegressor
+
+using ShapML
+</code></pre></div>
+<h2><a id="user-content-install" class="anchor" aria-hidden="true" href="#install"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Install</h2>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(&quot;InvariantCausalPrediction&quot;)
+"><pre><code>using Pkg
+Pkg.add("InvariantCausalPrediction")
+</code></pre></div>
+<h2><a id="user-content-documentation" class="anchor" aria-hidden="true" href="#documentation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Documentation</h2>
+<p>"In practice, first apply ICP with linear models.  Apply a nonlinear version if all linear models are rejected by linear IPC."</p>
+<p>Jupyter lab <a href="https://notes.quantecon.org/submission/5f1dbefc58e5d00014f9bd6f" rel="nofollow">Invariant Causal Prediction in Julia:  Why Some Are Able Earn More Than 50 Thousands a Year?</a>  showcases the Julia 1.4.2 version of IPC.</p>
+<h2><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example</h2>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="using InvariantCausalPrediction, Queryverse, DataFrames
+
+rowtable = OpenML.load(1590)
+dfSalary = DataFrame(rowtable)
+
+dfSalary = dfSalary |&gt; 
+    @filter( _.capital_gain != 99999) |&gt;
+    DataFrame
+
+dfLatinSalary = dfSalary |&gt; 
+    @filter( occursin(r&quot;Peru|Mexico|Dominican-Republic|Haiti|El-Salvador|Puerto-Rico|Columbia|Cuba|Nicaragua|Honduras|Ecuador|Jamaica&quot;, _.native_country)) |&gt; 
+    @orderby(_.native_country) |&gt;
+    DataFrame
+
+select!(dfSalary, Not([:education, :fnlwgt]))      # using education_num only
+
+X = select(dfLatinSalary, Not([:class, :native_country]))       
+Y = select(dfLatinSalary, [:class]) 
+E = select(dfLatinSalary, [:native_country]) 
+
+rLatin = LinearInvariantCausalPrediction!(X, Y, E, α = 0.10)
+"><pre><code>using InvariantCausalPrediction, Queryverse, DataFrames
+
+rowtable = OpenML.load(1590)
+dfSalary = DataFrame(rowtable)
+
+dfSalary = dfSalary |&gt; 
+    @filter( _.capital_gain != 99999) |&gt;
+    DataFrame
+
+dfLatinSalary = dfSalary |&gt; 
+    @filter( occursin(r"Peru|Mexico|Dominican-Republic|Haiti|El-Salvador|Puerto-Rico|Columbia|Cuba|Nicaragua|Honduras|Ecuador|Jamaica", _.native_country)) |&gt; 
+    @orderby(_.native_country) |&gt;
+    DataFrame
+
+select!(dfSalary, Not([:education, :fnlwgt]))      # using education_num only
+
+X = select(dfLatinSalary, Not([:class, :native_country]))       
+Y = select(dfLatinSalary, [:class]) 
+E = select(dfLatinSalary, [:native_country]) 
+
+rLatin = LinearInvariantCausalPrediction!(X, Y, E, α = 0.10)
+</code></pre></div>
+</article></div>

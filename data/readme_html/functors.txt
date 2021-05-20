@@ -1,7 +1,21 @@
 <div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-functors" class="anchor" aria-hidden="true" href="#functors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Functors</h1>
 <p>Functors.jl provides a mechanism – really more of a design pattern – for dealing with large structures containing numerical parameters, as in machine learning and optimisation. For large models it can be cumbersome or inefficient to work with parameters as one big, flat vector, and structs help manage complexity; but you also want to easily operate over all parameters at once, e.g. for changing precision or applying an optimiser update step.</p>
 <p>Functors.jl provides <code>fmap</code> to make those things easy, acting as a 'map over parameters':</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Functors
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using Functors
+
+julia&gt; struct Foo
+         x
+         y
+       end
+
+julia&gt; @functor Foo
+
+julia&gt; model = Foo(1, [1, 2, 3])
+Foo(1, [1, 2, 3])
+
+julia&gt; fmap(float, model)
+Foo(1.0, [1.0, 2.0, 3.0])
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Functors
 
 julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> Foo
          x
@@ -16,7 +30,18 @@ julia<span class="pl-k">&gt;</span> model <span class="pl-k">=</span> <span clas
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">fmap</span>(float, model)
 <span class="pl-c1">Foo</span>(<span class="pl-c1">1.0</span>, [<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>])</pre></div>
 <p>It works also with deeply-nested models:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> Bar
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; struct Bar
+         x
+       end
+
+julia&gt; @functor Bar
+
+julia&gt; model = Bar(Foo(1, [1, 2, 3]))
+Bar(Foo(1, [1, 2, 3]))
+
+julia&gt; fmap(float, model)
+Bar(Foo(1.0, [1.0, 2.0, 3.0]))
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> Bar
          x
        <span class="pl-k">end</span>
 
@@ -28,12 +53,74 @@ julia<span class="pl-k">&gt;</span> model <span class="pl-k">=</span> <span clas
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">fmap</span>(float, model)
 <span class="pl-c1">Bar</span>(<span class="pl-c1">Foo</span>(<span class="pl-c1">1.0</span>, [<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>]))</pre></div>
 <p>The workhorse of <code>fmap</code> is actually a lower level function, <code>functor</code>:</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> xs, re <span class="pl-k">=</span> <span class="pl-c1">functor</span>(<span class="pl-c1">Foo</span>(<span class="pl-c1">1</span>, [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>]))
-((x <span class="pl-k">=</span> <span class="pl-c1">1</span>, y <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>]), <span class="pl-s"><span class="pl-pds"><span class="pl-c1">var</span>"</span>#21#22<span class="pl-pds">"</span></span>())
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; xs, re = functor(Foo(1, [1, 2, 3]))
+((x = 1, y = [1, 2, 3]), var&quot;#21#22&quot;())
+
+julia&gt; re(map(float, xs))
+Foo(1.0, [1.0, 2.0, 3.0])
+"><pre>julia<span class="pl-k">&gt;</span> xs, re <span class="pl-k">=</span> <span class="pl-c1">functor</span>(<span class="pl-c1">Foo</span>(<span class="pl-c1">1</span>, [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>]))
+((x <span class="pl-k">=</span> <span class="pl-c1">1</span>, y <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>]), <span class="pl-c1">var"#21#22"</span>())
 
 julia<span class="pl-k">&gt;</span> <span class="pl-c1">re</span>(<span class="pl-c1">map</span>(float, xs))
 <span class="pl-c1">Foo</span>(<span class="pl-c1">1.0</span>, [<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>])</pre></div>
 <p><code>functor</code> returns the parts of the object that can be inspected, as well as a <code>re</code> function that takes those values and restructures them back into an object of the original type.</p>
-<p>For a discussion regarding implementing functors for which only a subset of the fields are "seen" by <code>functor</code>, see <a href="https://github.com/FluxML/Functors.jl/issues/3#issuecomment-626747663">here</a>.</p>
+<p>To include only certain fields, pass a tuple of field names to <code>@functor</code>:</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; struct Baz
+         x
+         y
+       end
+
+julia&gt; @functor Baz (x,)
+
+julia&gt; model = Baz(1, 2)
+Baz(1, 2)
+
+julia&gt; fmap(float, model)
+Baz(1.0, 2)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> Baz
+         x
+         y
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@functor</span> Baz (x,)
+
+julia<span class="pl-k">&gt;</span> model <span class="pl-k">=</span> <span class="pl-c1">Baz</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+<span class="pl-c1">Baz</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">fmap</span>(float, model)
+<span class="pl-c1">Baz</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">2</span>)</pre></div>
+<p>Any field not in the list will not be returned by <code>functor</code> and passed through as-is during reconstruction. This is done by invoking the default constructor, so structs that define custom inner constructors are expected to provide one that acts like the default.</p>
+<p>It is also possible to implement <code>functor</code> by hand when greater flexibility is required. See <a href="https://github.com/FluxML/Functors.jl/issues/3">here</a> for an example.</p>
 <p>For a discussion regarding the need for a <code>cache</code> in the implementation of <code>fmap</code>, see <a href="https://github.com/FluxML/Functors.jl/issues/2">here</a>.</p>
+<p>Use <code>exclude</code> for more fine-grained control over whether <code>fmap</code> descends into a particular value (the default is <code>exclude = Functors.isleaf</code>):</p>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using CUDA
+
+julia&gt; x = ['a', 'b', 'c'];
+
+julia&gt; fmap(cu, x)
+3-element Array{Char,1}:
+ 'a': ASCII/Unicode U+0061 (category Ll: Letter, lowercase)
+ 'b': ASCII/Unicode U+0062 (category Ll: Letter, lowercase)
+ 'c': ASCII/Unicode U+0063 (category Ll: Letter, lowercase)
+
+julia&gt; fmap(cu, x; exclude = x -&gt; CUDA.isbitstype(eltype(x)))
+3-element CuArray{Char,1}:
+ 'a': ASCII/Unicode U+0061 (category Ll: Letter, lowercase)
+ 'b': ASCII/Unicode U+0062 (category Ll: Letter, lowercase)
+ 'c': ASCII/Unicode U+0063 (category Ll: Letter, lowercase)
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> CUDA
+
+julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>b<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>c<span class="pl-pds">'</span></span>];
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">fmap</span>(cu, x)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Array{Char,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>: ASCII<span class="pl-k">/</span>Unicode U<span class="pl-k">+</span><span class="pl-c1">0061</span> (category Ll<span class="pl-k">:</span> Letter, lowercase)
+ <span class="pl-s"><span class="pl-pds">'</span>b<span class="pl-pds">'</span></span>: ASCII<span class="pl-k">/</span>Unicode U<span class="pl-k">+</span><span class="pl-c1">0062</span> (category Ll<span class="pl-k">:</span> Letter, lowercase)
+ <span class="pl-s"><span class="pl-pds">'</span>c<span class="pl-pds">'</span></span>: ASCII<span class="pl-k">/</span>Unicode U<span class="pl-k">+</span><span class="pl-c1">0063</span> (category Ll<span class="pl-k">:</span> Letter, lowercase)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">fmap</span>(cu, x; exclude <span class="pl-k">=</span> x <span class="pl-k">-&gt;</span> CUDA<span class="pl-k">.</span><span class="pl-c1">isbitstype</span>(<span class="pl-c1">eltype</span>(x)))
+<span class="pl-c1">3</span><span class="pl-k">-</span>element CuArray{Char,<span class="pl-c1">1</span>}<span class="pl-k">:</span>
+ <span class="pl-s"><span class="pl-pds">'</span>a<span class="pl-pds">'</span></span>: ASCII<span class="pl-k">/</span>Unicode U<span class="pl-k">+</span><span class="pl-c1">0061</span> (category Ll<span class="pl-k">:</span> Letter, lowercase)
+ <span class="pl-s"><span class="pl-pds">'</span>b<span class="pl-pds">'</span></span>: ASCII<span class="pl-k">/</span>Unicode U<span class="pl-k">+</span><span class="pl-c1">0062</span> (category Ll<span class="pl-k">:</span> Letter, lowercase)
+ <span class="pl-s"><span class="pl-pds">'</span>c<span class="pl-pds">'</span></span>: ASCII<span class="pl-k">/</span>Unicode U<span class="pl-k">+</span><span class="pl-c1">0063</span> (category Ll<span class="pl-k">:</span> Letter, lowercase)</pre></div>
 </article></div>

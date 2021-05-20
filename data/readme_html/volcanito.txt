@@ -1,0 +1,391 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-volcanitojl" class="anchor" aria-hidden="true" href="#volcanitojl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Volcanito.jl</h1>
+<p>Volcanito is an attempt to start standardizing the user-facing API that tables
+expose in Julia. Because that task is too ambitious for one person writing code
+in spurts every few months, the project is starting with something less
+ambitious:</p>
+<ul>
+<li>
+<p>Standardize on a set of user-facing macros that define primitive operations
+on tables:</p>
+<ul>
+<li><code>@select</code></li>
+<li><code>@where</code></li>
+<li><code>@group_by</code></li>
+<li><code>@aggregate_vector</code></li>
+<li><code>@order_by</code></li>
+<li><code>@limit</code></li>
+<li><code>@inner_join</code></li>
+<li><code>@left_join</code></li>
+<li><code>@right_join</code></li>
+<li><code>@outer_join</code></li>
+</ul>
+</li>
+<li>
+<p>Lower those user-facing macros to objects that lazily represent those
+operations and can be used to build a simplified logical plan:</p>
+<ul>
+<li><code>Select</code></li>
+<li><code>Where</code></li>
+<li><code>GroupBy</code></li>
+<li><code>AggregateVector</code></li>
+<li><code>OrderBy</code></li>
+<li><code>Limit</code></li>
+<li><code>Join</code></li>
+</ul>
+</li>
+<li>
+<p>Define a basic implementation of how to carry out the logical plan in terms
+of primitive operations on DataFrames from
+<a href="https://github.com/JuliaData/DataFrames.jl">DataFrames.jl</a>.</p>
+</li>
+</ul>
+<p>For more details, see <a href="https://github.com/johnmyleswhite/Volcanito.jl/blob/master/docs/architecture.md">docs/architecture.md</a>.</p>
+<h1><a id="user-content-goals" class="anchor" aria-hidden="true" href="#goals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Goals</h1>
+<p>Volcanito is a project that I started to explore a few areas in the Julia data
+tools design space:</p>
+<ul>
+<li><em>Laziness</em>: How much value can cross-operation optimizations provide if data
+tools have access to a full query plan created by lazy wrappers? How many
+optimization opportunities does the current eager evaluation strategy leave
+on the table?</li>
+<li><em>Row-Wise Semantics</em>: Are there substantial challenges to using row-wise
+semantics everywhere even if DataFrames are stored as columns? Where is
+usability increased and where is it decreased by moving to a system in which
+all operations are described in terms of arbitrary Julia expressions over
+tuples?</li>
+<li><em>Syntactical Optimizations</em> : How many opportunities for optimization depend
+upon having access to the source syntax of an expression? For example, can
+we support arbitrary join predicates, but use source syntax to optimize
+equijoins?</li>
+<li><em>Generic Fallbacks</em>: How much of the data tooling can be handled generically
+in a way that new data formats can plug into trivially? Can we have generic
+definitions of nested for loop joins and hash joins that work on any source
+of tuples?</li>
+</ul>
+<h1><a id="user-content-example-usage" class="anchor" aria-hidden="true" href="#example-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Example Usage</h1>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.activate(&quot;.&quot;)
+
+import DataFrames: DataFrame
+
+import Statistics: mean
+
+import Volcanito:
+    @select,
+    @where,
+    @group_by,
+    @aggregate_vector,
+    @order_by,
+    @limit,
+    @inner_join
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+    c = rand(Bool, 10_000),
+)
+
+@select(df, a, b, d = a + b)
+
+@where(df, a &gt; b)
+
+@aggregate_vector(
+    @group_by(df, !c),
+    m_a = mean(a),
+    m_b = mean(b),
+    n_a = length(a),
+    n_b = length(b),
+)
+
+@order_by(df, a + b)
+
+@limit(df, 10)
+
+@inner_join(
+    a = df,
+    b = @aggregate_vector(
+        @group_by(df, c),
+        m_a = mean(a),
+        m_b = mean(b),
+        n_a = length(a),
+        n_b = length(b),
+    ),
+    a.c == b.c,
+)
+
+@aggregate_vector(df, m = mean(a))
+"><pre><code>import Pkg
+Pkg.activate(".")
+
+import DataFrames: DataFrame
+
+import Statistics: mean
+
+import Volcanito:
+    @select,
+    @where,
+    @group_by,
+    @aggregate_vector,
+    @order_by,
+    @limit,
+    @inner_join
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+    c = rand(Bool, 10_000),
+)
+
+@select(df, a, b, d = a + b)
+
+@where(df, a &gt; b)
+
+@aggregate_vector(
+    @group_by(df, !c),
+    m_a = mean(a),
+    m_b = mean(b),
+    n_a = length(a),
+    n_b = length(b),
+)
+
+@order_by(df, a + b)
+
+@limit(df, 10)
+
+@inner_join(
+    a = df,
+    b = @aggregate_vector(
+        @group_by(df, c),
+        m_a = mean(a),
+        m_b = mean(b),
+        n_a = length(a),
+        n_b = length(b),
+    ),
+    a.c == b.c,
+)
+
+@aggregate_vector(df, m = mean(a))
+</code></pre></div>
+<p>To make it easier to understand how things work, the examples above all exploit
+the fact that Volcanito's user-facing macros construct <code>LogicalNode</code> objects
+that automatically materialize the result of a query whenever <code>Base.show</code> is
+called. This makes it seem as if the user-facing macros operate eagerly, but
+the truth is that they operate lazily and produce <code>LogicalNode</code> objects rather
+than DataFrames. If you want to transform a <code>LogicalNode</code> object into a full
+DataFrame, you should explicitly call <code>Volcanito.materialize</code>.</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.activate(&quot;.&quot;)
+
+import DataFrames: DataFrame
+
+import Volcanito:
+    @select,
+    materialize
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+    c = rand(Bool, 10_000),
+)
+
+plan = @select(df, a, b, d = a + b)
+
+typeof(plan)
+
+df = materialize(plan)
+
+typeof(df)
+"><pre><code>import Pkg
+Pkg.activate(".")
+
+import DataFrames: DataFrame
+
+import Volcanito:
+    @select,
+    materialize
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+    c = rand(Bool, 10_000),
+)
+
+plan = @select(df, a, b, d = a + b)
+
+typeof(plan)
+
+df = materialize(plan)
+
+typeof(df)
+</code></pre></div>
+<h1><a id="user-content-expression-rewrites" class="anchor" aria-hidden="true" href="#expression-rewrites"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Expression Rewrites</h1>
+<p>To simplify working with data, the macros involve rewrite passes to automate
+several tedious users otherwise do manually.</p>
+<h2><a id="user-content-automatic-three-valued-logic" class="anchor" aria-hidden="true" href="#automatic-three-valued-logic"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Automatic Three-Valued Logic</h2>
+<p>Three-valued logic works even with short-circuiting Boolean operators:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.activate(&quot;.&quot;)
+
+import DataFrames: DataFrame
+
+import Volcanito: @where
+
+df = DataFrame(
+    a = [missing, 0.25, 0.5, 0.75],
+    b = [missing, 0.75, 0.5, 0.25],
+)
+
+function f(x)
+    println(&quot;Calling f(x) on x = $x&quot;)
+    x + 1
+end
+
+@where(df, f(a) &gt; 1.5 &amp;&amp; f(b) &gt;= 1.25)
+"><pre><code>import Pkg
+Pkg.activate(".")
+
+import DataFrames: DataFrame
+
+import Volcanito: @where
+
+df = DataFrame(
+    a = [missing, 0.25, 0.5, 0.75],
+    b = [missing, 0.75, 0.5, 0.25],
+)
+
+function f(x)
+    println("Calling f(x) on x = $x")
+    x + 1
+end
+
+@where(df, f(a) &gt; 1.5 &amp;&amp; f(b) &gt;= 1.25)
+</code></pre></div>
+<h2><a id="user-content-local-variable-interpolationsplicing" class="anchor" aria-hidden="true" href="#local-variable-interpolationsplicing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Local Variable Interpolation/Splicing</h2>
+<p>Local scalar variables can be interpolated/spliced into expressions:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.activate(&quot;.&quot;)
+
+import DataFrames: DataFrame
+
+import Volcanito: @where
+
+df = DataFrame(
+    a = [missing, 0.25, 0.5, 0.75],
+    b = [missing, 0.75, 0.5, 0.25],
+)
+
+let x = 0.5
+    @where(df, a &gt;= $x)
+end
+"><pre><code>import Pkg
+Pkg.activate(".")
+
+import DataFrames: DataFrame
+
+import Volcanito: @where
+
+df = DataFrame(
+    a = [missing, 0.25, 0.5, 0.75],
+    b = [missing, 0.75, 0.5, 0.25],
+)
+
+let x = 0.5
+    @where(df, a &gt;= $x)
+end
+</code></pre></div>
+<h2><a id="user-content-backtick-syntax-for-expressing-arbitrary-column-names" class="anchor" aria-hidden="true" href="#backtick-syntax-for-expressing-arbitrary-column-names"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Backtick Syntax for Expressing Arbitrary Column Names</h2>
+<p>As in SQL, Volcanito allows backticks to be used to indicate that an otherwise
+invalid identifier is a column name. This can be used when column names are
+derived from an expression without an alias:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.activate(&quot;.&quot;)
+
+import DataFrames: DataFrame
+
+import Volcanito: @select, @aggregate_vector
+
+import Statistics: mean
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+)
+
+@select(
+    @aggregate_vector(df, mean(a)),
+    `mean(a)` + 1,
+)
+"><pre><code>import Pkg
+Pkg.activate(".")
+
+import DataFrames: DataFrame
+
+import Volcanito: @select, @aggregate_vector
+
+import Statistics: mean
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+)
+
+@select(
+    @aggregate_vector(df, mean(a)),
+    `mean(a)` + 1,
+)
+</code></pre></div>
+<p>This trick means that the normal Julia syntax for generating a <code>Cmd</code> object is
+not available: use the <code>@cmd</code> macro instead to achieve the same effect.</p>
+<h2><a id="user-content-backtick-syntax--interpolation-for-expressing-dynamic-column-names" class="anchor" aria-hidden="true" href="#backtick-syntax--interpolation-for-expressing-dynamic-column-names"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Backtick Syntax + Interpolation for Expressing Dynamic Column Names</h2>
+<p>One challenge with metaprogramming approaches like Volcanito employs is that it
+can be difficult to use these techniques in functions in which the column names
+to be computed aginst are not known statically. To address this, Volcanito
+further coopts backtick syntax and combines it with interpolation syntax to make
+it possible to indicate that column names are dynamic and only known at runtime.
+An example of using this capacity in a function is shown below:</p>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="import Pkg
+Pkg.activate(&quot;.&quot;)
+
+import DataFrames: DataFrame
+
+import Volcanito: @select, materialize
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+)
+
+function add_columns(df, x, y)
+    @select(df, new_col = `$x` + `$y`)
+end
+
+add_columns(df, :a, :b)
+
+isequal(
+    materialize(@select(df, new_col = a + b)),
+    materialize(add_columns(df, :a, :b)),
+)
+"><pre><code>import Pkg
+Pkg.activate(".")
+
+import DataFrames: DataFrame
+
+import Volcanito: @select, materialize
+
+df = DataFrame(
+    a = rand(10_000),
+    b = rand(10_000),
+)
+
+function add_columns(df, x, y)
+    @select(df, new_col = `$x` + `$y`)
+end
+
+add_columns(df, :a, :b)
+
+isequal(
+    materialize(@select(df, new_col = a + b)),
+    materialize(add_columns(df, :a, :b)),
+)
+</code></pre></div>
+</article></div>

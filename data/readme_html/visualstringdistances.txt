@@ -1,0 +1,187 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-visualstringdistances" class="anchor" aria-hidden="true" href="#visualstringdistances"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>VisualStringDistances</h1>
+<p><a href="https://github.com/ericphanson/VisualStringDistances.jl/actions"><img src="https://github.com/ericphanson/VisualStringDistances.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width:100%;"></a>
+<a href="https://codecov.io/gh/ericphanson/VisualStringDistances.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/b24fab4dc8affb568faa4e5fa9ea89bfc9bbd0c6c2c90e62e6e4e87b4a154ff0/68747470733a2f2f636f6465636f762e696f2f67682f657269637068616e736f6e2f56697375616c537472696e6744697374616e6365732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/ericphanson/VisualStringDistances.jl/branch/master/graph/badge.svg" style="max-width:100%;"></a>
+<a href="https://ericphanson.github.io/VisualStringDistances.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width:100%;"></a>
+<a href="https://ericphanson.github.io/VisualStringDistances.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width:100%;"></a></p>
+<p>Provides a notion of "visual distance" between two strings, via the exported function <code>visual_distance</code>.</p>
+<p>This package was the subject of the 2020 JuliaCon talk <a href="https://www.youtube.com/watch?v=hf2b9ganGxE" rel="nofollow">How similar do two strings look? Visual distances in Julia</a>,
+so check that out if you like video explanations and animated gifs. For a text explanation, keep reading.</p>
+<p>There are lots of ways to calculate distances between strings; <a href="https://github.com/matthieugomez/StringDistances.jl">StringDistances.jl</a>
+includes many of them, including edit distances which count how many "edits" of various kinds are needed to turn one string into another.</p>
+<p>This package provides a distance measure via a very different mechanism. It tries to quantify how visually different two strings <em>look</em>.
+It does this by rendering both strings with a font (GNU Unifont, in this case) to get a pixel bitmap, i.e. a matrix of 0s and 1s indicating
+which pixels should be colored white or black in order to display a representation of the string.</p>
+<p>Then these bitmaps are compared by a technique called <em>optimal transport</em>. In this technique, we see the 1s as units of mass setting at various
+locations (corresponding to their indices in the matrix). We ask: how much mass do we need to move, and how far,
+to turn the first bitmap into the second? We can formulate this as an optimization problem and solve it to give a notion of distance.</p>
+<p>One subtlety we need to address is that if two strings have different amounts of black pixels in their bitmap, we cannot simply move mass around
+to turn one bitmap into the other. We in fact need to create or destroy mass. We do this by adding a penalty term in our optimization problem
+corresponding to creation or destruction of mass.</p>
+<p>The actual optimization is performed by <a href="https://github.com/ericphanson/UnbalancedOptimalTransport.jl">UnbalancedOptimalTransport.jl</a>, and
+the <a href="https://ericphanson.github.io/UnbalancedOptimalTransport.jl/stable/optimal_transport/" rel="nofollow">docs</a>
+for that package go into a lot more detail about optimal transport. In particular, we are actually computing the Sinkhorn divergence
+corresponding to an entropically-regularized unbalanced optimal transport problem, following the algorithm of [SFVTP19].</p>
+<p>[SFVTP19] Séjourné, T., Feydy, J., Vialard, F.-X., Trouvé, A., Peyré, G., 2019. Sinkhorn Divergences for Unbalanced Optimal Transport. <a href="https://arxiv.org/abs/1910.12958" rel="nofollow">arXiv:1910.12958</a>.</p>
+<p><em>Note</em>: While this package's source code is MIT licensed, it relies on GNU Unifont, which is GPL-licensed.</p>
+<h2><a id="user-content-quick-demo" class="anchor" aria-hidden="true" href="#quick-demo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Quick demo</h2>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; using VisualStringDistances
+
+julia&gt; printglyph(&quot;aaa&quot;)
+
+
+
+
+
+
+  ####    ####    ####
+ #    #  #    #  #    #
+      #       #       #
+  #####   #####   #####
+ #    #  #    #  #    #
+ #    #  #    #  #    #
+ #   ##  #   ##  #   ##
+  ### #   ### #   ### #
+
+
+
+julia&gt; printglyph(&quot;ZZZ&quot;)
+
+
+
+
+ ######  ######  ######
+      #       #       #
+      #       #       #
+     #       #       #
+    #       #       #
+   #       #       #
+  #       #       #
+ #       #       #
+ #       #       #
+ ######  ######  ######
+
+
+
+julia&gt; visual_distance(&quot;aaa&quot;, &quot;ZZZ&quot;)
+51.169602195312166
+
+julia&gt; printglyph(&quot;III&quot;)
+
+
+
+
+  #####   #####   #####
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+  #####   #####   #####
+
+
+
+julia&gt; printglyph(&quot;lll&quot;)
+
+
+
+   ##      ##      ##
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+    #       #       #
+  #####   #####   #####
+
+
+
+julia&gt; visual_distance(&quot;III&quot;, &quot;lll&quot;)
+9.7349485622592
+
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> VisualStringDistances
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">printglyph</span>(<span class="pl-s"><span class="pl-pds">"</span>aaa<span class="pl-pds">"</span></span>)
+
+
+
+
+
+
+  <span class="pl-c"><span class="pl-c">#</span>###    ####    ####</span>
+ <span class="pl-c"><span class="pl-c">#</span>    #  #    #  #    #</span>
+      <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+  <span class="pl-c"><span class="pl-c">#</span>####   #####   #####</span>
+ <span class="pl-c"><span class="pl-c">#</span>    #  #    #  #    #</span>
+ <span class="pl-c"><span class="pl-c">#</span>    #  #    #  #    #</span>
+ <span class="pl-c"><span class="pl-c">#</span>   ##  #   ##  #   ##</span>
+  <span class="pl-c"><span class="pl-c">#</span>## #   ### #   ### #</span>
+
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">printglyph</span>(<span class="pl-s"><span class="pl-pds">"</span>ZZZ<span class="pl-pds">"</span></span>)
+
+
+
+
+ <span class="pl-c"><span class="pl-c">#</span>#####  ######  ######</span>
+      <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+      <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+     <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+   <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+  <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+ <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+ <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+ <span class="pl-c"><span class="pl-c">#</span>#####  ######  ######</span>
+
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">visual_distance</span>(<span class="pl-s"><span class="pl-pds">"</span>aaa<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>ZZZ<span class="pl-pds">"</span></span>)
+<span class="pl-c1">51.169602195312166</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">printglyph</span>(<span class="pl-s"><span class="pl-pds">"</span>III<span class="pl-pds">"</span></span>)
+
+
+
+
+  <span class="pl-c"><span class="pl-c">#</span>####   #####   #####</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+  <span class="pl-c"><span class="pl-c">#</span>####   #####   #####</span>
+
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">printglyph</span>(<span class="pl-s"><span class="pl-pds">"</span>lll<span class="pl-pds">"</span></span>)
+
+
+
+   <span class="pl-c"><span class="pl-c">#</span>#      ##      ##</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+    <span class="pl-c"><span class="pl-c">#</span>       #       #</span>
+  <span class="pl-c"><span class="pl-c">#</span>####   #####   #####</span>
+
+
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">visual_distance</span>(<span class="pl-s"><span class="pl-pds">"</span>III<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>lll<span class="pl-pds">"</span></span>)
+<span class="pl-c1">9.7349485622592</span>
+</pre></div>
+</article></div>

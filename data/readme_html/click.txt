@@ -9,7 +9,48 @@ image that is loaded into a GUI. Create the image map and connect it to the
 underlying GUI using this package as seen below for Gtk.</p>
 <p>This code (example/gtk_ex2.jl) creates a window with a square in the center
 of the window that opens an info dialog when clicked.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span>!/usr/bin/env julia</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="#!/usr/bin/env julia
+using Click, Click.Primitives, Gtk, Graphics
+
+# create a 200x200 canvas in a window
+canvas = @GtkCanvas(200, 200)
+win = @GtkWindow(canvas, &quot;Gtk Example&quot;)
+
+# Setup drawing the rectangle
+@guarded draw(canvas) do c
+  ctx = getgc(c)
+  set_source_rgb(ctx, 1.0, 0.0, 0.0)
+  rectangle(ctx, 50, 50, 100, 100)
+  fill(ctx)
+end
+
+# create a 100x100 clickable rectangle
+rect = Rectangle(50, 50, 100, 100)
+clickRect = ClickableRectangle(rect)
+
+# Attach a callback to a click event
+attend(clickRect, :click) do widget
+  global win
+  info_dialog(&quot;Clicked the rectangle&quot;, win)
+end
+
+# create a ClickMap containing the clickable rectangle
+m = SimpleClickMap(clickRect)
+
+# link the click map to the canvas
+link_click_map(canvas, m)
+
+# Display the result
+show(canvas)
+
+# Pause main thread execution in non-interactive mode
+if !isinteractive()
+  signal_connect(win, :destroy) do widget
+    Gtk.gtk_quit()
+  end
+  Gtk.gtk_main()
+end
+"><pre><span class="pl-c"><span class="pl-c">#</span>!/usr/bin/env julia</span>
 <span class="pl-k">using</span> Click, Click<span class="pl-k">.</span>Primitives, Gtk, Graphics
 
 <span class="pl-c"><span class="pl-c">#</span> create a 200x200 canvas in a window</span>
@@ -56,7 +97,47 @@ abstracts the drawing process, clickable. This example
 (example/gtk_compose_ex.jl) demonstrates this by allowing essentially the
 same square to be clicked at both locations at which it is drawn. It also
 hides certain implementation details such as Gtk's drawing loop.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span>!/usr/bin/env julia</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="#!/usr/bin/env julia
+
+using Gtk, Compose, Click
+
+# Create a 400x400 canvas
+canvas = @GtkCanvas(400, 400)
+win = @GtkWindow(canvas, &quot;GTK-Compose Example&quot;)
+
+rect = rectangle(0.25, 0.25, 0.5, 0.5)
+vect = compose(context(0mm, 0mm, 300mm, 300mm),
+         rectangle(0.0, 0.0, 1.0, 1.0),
+         fill(&quot;green&quot;),
+         compose(context(0.0, 0.0, 0.5, 0.5),
+           rect,
+           fill(&quot;black&quot;)),
+         compose(context(0.5, 0.5, 0.5, 0.5),
+           rect,
+           fill(&quot;blue&quot;)))
+
+cl = create_clickable(rect, vect)
+
+attend(cl, :click) do frm, x, y
+  info_dialog(&quot;Clicked Square&quot;, win)
+end
+
+# Use the fuse function to stitch things together
+
+# ComposeClickMap needs to wrap SimpleClickMap to account for pixel density
+# which that object is updated with internal to fuse
+fuse(SimpleClickMap(cl), canvas, vect)
+
+show(canvas)
+
+# block the main thread of execution if not interactive
+if !isinteractive()
+  signal_connect(win, :destroy) do widget
+    Gtk.gtk_quit()
+  end
+  Gtk.gtk_main()
+end
+"><pre><span class="pl-c"><span class="pl-c">#</span>!/usr/bin/env julia</span>
 
 <span class="pl-k">using</span> Gtk, Compose, Click
 

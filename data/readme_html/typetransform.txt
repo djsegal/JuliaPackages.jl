@@ -3,7 +3,15 @@
 <p>Transform the given type to another type during defining a method.</p>
 <p>Use <code>@transform</code> and the function that transforms the type to another type. The function should return an <code>Array</code> of types that you want the method to be defined for.</p>
 <p>For example, we use <code>allsubtypes()</code> type transform function to define specific methods for all of subtypes of a given type (fix ambiguity error!).</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">using</span> TypeTransform
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using TypeTransform
+abstract type A end
+abstract type B &lt;:A end
+abstract type C &lt;:B end
+
+@transform function foo(a, b::allsubtypes(A))
+    println(&quot;a new method&quot;)
+end
+"><pre><span class="pl-k">using</span> TypeTransform
 <span class="pl-k">abstract type</span> A <span class="pl-k">end</span>
 <span class="pl-k">abstract type</span> B <span class="pl-k">&lt;:</span><span class="pl-c1">A</span> <span class="pl-k">end</span>
 <span class="pl-k">abstract type</span> C <span class="pl-k">&lt;:</span><span class="pl-c1">B</span> <span class="pl-k">end</span>
@@ -12,29 +20,51 @@
     <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>a new method<span class="pl-pds">"</span></span>)
 <span class="pl-k">end</span></pre></div>
 <p>Since <code>allsubtypes(A)</code> returns the array of types <code>[A, B, C]</code>, three methods are defined</p>
-<div class="highlight highlight-source-julia"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">methods</span>(foo)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="julia&gt; methods(foo)
+# 3 methods for generic function &quot;foo&quot;:
+[1] foo(a, b::C) in Main at none:2
+[2] foo(a, b::B) in Main at none:2
+[3] foo(a, b::A) in Main at none:2
+"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">methods</span>(foo)
 <span class="pl-c"><span class="pl-c">#</span> 3 methods for generic function "foo":</span>
 [<span class="pl-c1">1</span>] <span class="pl-c1">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">C</span>) <span class="pl-k">in</span> Main at none<span class="pl-k">:</span><span class="pl-c1">2</span>
 [<span class="pl-c1">2</span>] <span class="pl-c1">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">B</span>) <span class="pl-k">in</span> Main at none<span class="pl-k">:</span><span class="pl-c1">2</span>
 [<span class="pl-c1">3</span>] <span class="pl-c1">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">A</span>) <span class="pl-k">in</span> Main at none<span class="pl-k">:</span><span class="pl-c1">2</span></pre></div>
 <p>Note that you could use <code>subtypes()</code> instead of <code>allsubtypes()</code>, which defines methods only for the direct subtypes (<code>[B]</code> in this case).</p>
 <p>Another example would be using <code>inverse_hasmethod</code></p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@transform</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">inverse_hasmethod</span>(string))
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@transform function foo(a, b::inverse_hasmethod(string))
+    println(&quot;a new method&quot;)
+end
+"><pre><span class="pl-c1">@transform</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">inverse_hasmethod</span>(string))
     <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>a new method<span class="pl-pds">"</span></span>)
 <span class="pl-k">end</span></pre></div>
 <p>If you want that only specific functions to be considered in transformation by <code>@transform</code>, give an <code>Array</code> of <code>Symbol</code>s that contains the function names you want to be transformed.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@transform</span> [<span class="pl-c1">:subtypes</span>, <span class="pl-c1">:allsubtypes</span>], <span class="pl-k">function</span> <span class="pl-en">foo_array</span>(a, b<span class="pl-k">::</span><span class="pl-c1">allsubtypes</span>(A))
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@transform [:subtypes, :allsubtypes], function foo_array(a, b::allsubtypes(A))
+    println(&quot;a new method&quot;)
+end
+"><pre><span class="pl-c1">@transform</span> [<span class="pl-c1">:subtypes</span>, <span class="pl-c1">:allsubtypes</span>], <span class="pl-k">function</span> <span class="pl-en">foo_array</span>(a, b<span class="pl-k">::</span><span class="pl-c1">allsubtypes</span>(A))
     <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>a new method<span class="pl-pds">"</span></span>)
 <span class="pl-k">end</span></pre></div>
 <p>It is possible to use the function names inside curly expressions like <code>Union{A, subtypes{B}}</code> or <code>Type{allsubtypes{A}}</code> or use arguments without a name:</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@transform</span> <span class="pl-k">function</span> <span class="pl-en">foo_curly</span>(a, <span class="pl-k">::</span><span class="pl-c1">Union{T,allsubtypes(A)}</span>, c<span class="pl-k">::</span><span class="pl-c1">T</span>) <span class="pl-k">where</span> {T<span class="pl-k">&lt;:</span><span class="pl-c1">Int64</span>}
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@transform function foo_curly(a, ::Union{T,allsubtypes(A)}, c::T) where {T&lt;:Int64}
+    println(&quot;a new method&quot;)
+end
+"><pre><span class="pl-c1">@transform</span> <span class="pl-k">function</span> <span class="pl-en">foo_curly</span>(a, <span class="pl-k">::</span><span class="pl-c1">Union{T,allsubtypes(A)}</span>, c<span class="pl-k">::</span><span class="pl-c1">T</span>) <span class="pl-k">where</span> {T<span class="pl-k">&lt;:</span><span class="pl-c1">Int64</span>}
     <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>a new method<span class="pl-pds">"</span></span>)
 <span class="pl-k">end</span></pre></div>
 <h1><a id="user-content-motivation" class="anchor" aria-hidden="true" href="#motivation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Motivation</h1>
 <h2><a id="user-content-allsubtypes" class="anchor" aria-hidden="true" href="#allsubtypes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>allsubtypes</h2>
 <p>The first motivation for this package was to fix ambiguity error by defining specific methods.</p>
 <p>If you run the following program</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-k">abstract type</span> A <span class="pl-k">end</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="abstract type A end
+abstract type B &lt;:A end
+
+# my general vector method
+foo(a::Vector, b::Type{&lt;:A}) = print(&quot;vector method&quot;)
+
+# my special B mwthod
+foo(a, b::Type{B}) = print(&quot;B method&quot;)
+"><pre><span class="pl-k">abstract type</span> A <span class="pl-k">end</span>
 <span class="pl-k">abstract type</span> B <span class="pl-k">&lt;:</span><span class="pl-c1">A</span> <span class="pl-k">end</span>
 
 <span class="pl-c"><span class="pl-c">#</span> my general vector method</span>
@@ -43,10 +73,15 @@
 <span class="pl-c"><span class="pl-c">#</span> my special B mwthod</span>
 <span class="pl-en">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">Type{B}</span>) <span class="pl-k">=</span> <span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds">"</span>B method<span class="pl-pds">"</span></span>)</pre></div>
 <p><code>foo([1,2], B)</code> will give an ambiguity error, while if you use <code>allsubtypes</code>, you can fix the issue.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c"><span class="pl-c">#</span> my general vector method</span>
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# my general vector method
+@transform foo(a::Vector, b::allsubtypes(A)) = print(&quot;vector method&quot;)
+"><pre><span class="pl-c"><span class="pl-c">#</span> my general vector method</span>
 <span class="pl-c1">@transform</span> <span class="pl-en">foo</span>(a<span class="pl-k">::</span><span class="pl-c1">Vector</span>, b<span class="pl-k">::</span><span class="pl-c1">allsubtypes</span>(A)) <span class="pl-k">=</span> <span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds">"</span>vector method<span class="pl-pds">"</span></span>)</pre></div>
 <h2><a id="user-content-inverse_hasmethod" class="anchor" aria-hidden="true" href="#inverse_hasmethod"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>inverse_hasmethod</h2>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@transform</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">inverse_hasmethod</span>(string))
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@transform function foo(a, b::inverse_hasmethod(string))
+    println(&quot;a new method&quot;)
+end
+"><pre><span class="pl-c1">@transform</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(a, b<span class="pl-k">::</span><span class="pl-c1">inverse_hasmethod</span>(string))
     <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>a new method<span class="pl-pds">"</span></span>)
 <span class="pl-k">end</span></pre></div>
 </article></div>

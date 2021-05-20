@@ -8,17 +8,32 @@ in its current form.  By adopting this convention now you will be ready for the 
 determining which forms are most useful and which corner cases cause friction.</p>
 <h2><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Basic Usage</h2>
 <p>The most basic usage is to create a scope and execute code within it.  Within a scope you can schedule code for execution when the scope terminates.</p>
-<pre><code>@scope begin
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="@scope begin
+    @defer println(&quot;world&quot;)
+    println(&quot;hello&quot;)
+end
+"><pre><code>@scope begin
     @defer println("world")
     println("hello")
 end
-</code></pre>
+</code></pre></div>
 <p>prints</p>
-<pre><code>hello
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="hello
 world
-</code></pre>
+"><pre><code>hello
+world
+</code></pre></div>
 <p><code>@!</code> is a shortcut for deferring a call to close.</p>
-<pre><code>type A
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="type A
+    a::String
+end
+Base.close(a::A) = println(&quot;Closing $a&quot;)
+use(a::A) = println(&quot;Using $a&quot;)
+@scope begin
+    a = @! A(&quot;a&quot;)
+    use(a)
+end
+"><pre><code>type A
     a::String
 end
 Base.close(a::A) = println("Closing $a")
@@ -27,11 +42,13 @@ use(a::A) = println("Using $a")
     a = @! A("a")
     use(a)
 end
-</code></pre>
+</code></pre></div>
 <p>prints</p>
-<pre><code>Using A("a")
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="Using A(&quot;a&quot;)
+Closing A(&quot;a&quot;)
+"><pre><code>Using A("a")
 Closing A("a")
-</code></pre>
+</code></pre></div>
 <h2><a id="user-content-module-development" class="anchor" aria-hidden="true" href="#module-development"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Module Development</h2>
 <p>Module authors should use <code>defer</code> to schedule cleanup of resources allocated in the <code>__init__()</code> function.  (A global
 top-level scope is always exists.)  The user may execute all pending <code>defer</code>ed actions by calling <code>pop_scope!(1)</code>.  The
@@ -39,7 +56,36 @@ module can then be reinitialized by the user calling <code>__init__()</code>.</p
 <p>Modules should <em>not</em> use <code>defer</code> (or <code>finalizer</code>) to schedule cleanup of resources allocated by the user.  Instead, add a
 method to <code>Base.close</code>, so that your user may schedule cleanup of the resource easily by adding <code>@!</code> where your constructor
 is called.</p>
-<pre><code>module Example
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="module Example
+include(&quot;libfoo.jl&quot;)
+
+# Some global context that our library uses
+const foo_context = Ref{fooContext_t}(C_NULL)
+
+# Initialize the library when the module is (re-)loaded
+function __init__()
+  fooCreateContext(foo_context)
+  # don't use atexit, defer the action instead
+  @defer fooDestroyContext(foo_context[])
+end
+
+# An object in the library that will be made available to julia users
+immutable Foo
+  ptr::fooThing_t
+end
+
+# Create the object in the wrapper constructor
+function Foo(x...)
+  thing = Ref{fooThing_t}
+  fooCreateThing(foo_context[], thing, x...)
+  # don't schedule thing to be destroyed!
+  Foo(thing[])
+end
+
+# Extend the close function so the user can call @! Foo(...) to create an object and control when it will be destroyed.
+Base.close(foo::Foo) = fooDestroyThing(foo_context[], foo.ptr)
+end
+"><pre><code>module Example
 include("libfoo.jl")
 
 # Some global context that our library uses
@@ -68,28 +114,47 @@ end
 # Extend the close function so the user can call @! Foo(...) to create an object and control when it will be destroyed.
 Base.close(foo::Foo) = fooDestroyThing(foo_context[], foo.ptr)
 end
-</code></pre>
+</code></pre></div>
 <h2><a id="user-content-more-usage" class="anchor" aria-hidden="true" href="#more-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>More Usage</h2>
 <p>Sometimes <code>scope() do ... end</code> is inconvenient, so there's also a <code>@scope</code> macro.</p>
-<pre><code>function f()
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="function f()
+    a = @! A(&quot;a&quot;)
+    use(a)
+end
+@scope f()
+"><pre><code>function f()
     a = @! A("a")
     use(a)
 end
 @scope f()
-</code></pre>
+</code></pre></div>
 <p>is equivalent to the above.</p>
 <p>When applied to a method definition, <code>@scope</code> wraps the body in a scope.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@scope</span> <span class="pl-en">g</span>() <span class="pl-k">=</span> <span class="pl-c1">use</span>(@<span class="pl-k">!</span> <span class="pl-c1">A</span>(<span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>))
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@scope g() = use(@! A(&quot;a&quot;))
+g()
+"><pre><span class="pl-c1">@scope</span> <span class="pl-en">g</span>() <span class="pl-k">=</span> <span class="pl-c1">use</span>(@<span class="pl-k">!</span> <span class="pl-c1">A</span>(<span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>))
 <span class="pl-c1">g</span>()</pre></div>
 <p>is also equivalent.</p>
 <p><code>@scope</code> can also be applied to a <code>let</code> statement to wrap the statement in a scope
 and automatically schedule all of the <code>let</code>ed variables to be closed.</p>
-<div class="highlight highlight-source-julia"><pre><span class="pl-c1">@scope</span> <span class="pl-k">let</span> f <span class="pl-k">=</span> <span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>/dev/null<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>w<span class="pl-pds">"</span></span>)
+<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="@scope let f = open(&quot;/dev/null&quot;, &quot;w&quot;)
+  println(f, &quot;Hello, nobody!&quot;)
+end
+"><pre><span class="pl-c1">@scope</span> <span class="pl-k">let</span> f <span class="pl-k">=</span> <span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>/dev/null<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>w<span class="pl-pds">"</span></span>)
   <span class="pl-c1">println</span>(f, <span class="pl-s"><span class="pl-pds">"</span>Hello, nobody!<span class="pl-pds">"</span></span>)
 <span class="pl-k">end</span></pre></div>
 <p>Exceptions from the scope or its deferred actions propagate to the caller.  If there are multiple exceptions, they're wrapped in a
 <code>CompositeException</code>.</p>
-<pre><code>try
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="try
+    scope() do
+        @defer throw(&quot;Deferred exception&quot;)
+        throw(&quot;Exception&quot;)
+    end
+catch e
+    @show e
+    nothing
+end
+"><pre><code>try
     scope() do
         @defer throw("Deferred exception")
         throw("Exception")
@@ -98,10 +163,11 @@ catch e
     @show e
     nothing
 end
-</code></pre>
+</code></pre></div>
 <p>prints</p>
-<pre><code>e = CompositeException(Any["Exception","Deferred exception"])
-</code></pre>
+<div class="snippet-clipboard-content position-relative" data-snippet-clipboard-copy-content="e = CompositeException(Any[&quot;Exception&quot;,&quot;Deferred exception&quot;])
+"><pre><code>e = CompositeException(Any["Exception","Deferred exception"])
+</code></pre></div>
 <h1><a id="user-content-future-work" class="anchor" aria-hidden="true" href="#future-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Future Work</h1>
 <p>This package is offered as an example of how deferred resource clean-up may work in julia.
 Package authors may experiment to see if the feature is useful, and the maintainers of the
@@ -139,4 +205,13 @@ cleanup manually may be necessary.  It would be useful for the community to adop
 convention for package authors to follow in addressing these two competing desires.</p>
 </li>
 </ul>
+<h1><a id="user-content-disclaimer" class="anchor" aria-hidden="true" href="#disclaimer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Disclaimer.</h1>
+<p>DISTRIBUTION STATEMENT A. Approved for public release: distribution unlimited.</p>
+<p>© 2017 MASSACHUSETTS INSTITUTE OF TECHNOLOGY.</p>
+<ul>
+<li>Subject to FAR 52.227-11 – Patent Rights – Ownership by the Contractor (May 2014).</li>
+<li>SPDX-License-Identifier: MIT.</li>
+</ul>
+<p>This material is based upon work supported by the Undersecretary of Defense for Research and Engineering under Air Force Contract No. FA8721-05-C-0002. Any opinions, findings, conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of USD(R&amp;E).</p>
+<p>The software/firmware is provided to you on an As-Is basis.</p>
 </article></div>
