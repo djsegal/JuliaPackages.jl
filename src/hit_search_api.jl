@@ -26,12 +26,12 @@ function hit_search_api()
 
       request_headers = Dict(cur_request.headers)
 
-      cur_remaining = parse(Int, request_headers["X-Ratelimit-Remaining"])
+      cur_remaining = parse(Int, request_headers["X-RateLimit-Remaining"])
 
       if cur_remaining <= 1
         cur_seconds = 1.5 + (
           Dates.unix2datetime(
-            parse(Int, Dict(cur_request.headers)["X-Ratelimit-Reset"])
+            parse(Int, Dict(cur_request.headers)["X-RateLimit-Reset"])
           ) - now(Dates.UTC)
         ) / Millisecond(1000)
 

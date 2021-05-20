@@ -47,8 +47,6 @@ function scrape_general_packages()
         package_name = cur_package
       end
 
-      @assert lowercase(package_name) == lowercase(cur_package)
-
       if package_name in cur_packages
         continue
       end
@@ -124,6 +122,8 @@ function scrape_general_packages()
 
   cur_dict = OrderedDict(zip(cur_packages, cur_shallow_depending))
 
+  bad_package_names = []
+
   while true
     has_added = false
 
@@ -131,8 +131,14 @@ function scrape_general_packages()
       cur_set = [cur_values...]
 
       for cur_value in cur_values
-        @assert cur_value in keys(cur_dict)
-        append!(cur_set, cur_dict[cur_value])
+        if cur_value in keys(cur_dict)
+          append!(cur_set, cur_dict[cur_value])
+        else
+          if !(cur_value in bad_package_names)
+            push!(bad_package_names, cur_value)
+            println("Invalid package name: " * cur_value)
+          end
+        end
       end
 
       cur_set = Set(cur_set)
@@ -169,6 +175,10 @@ function scrape_general_packages()
   for (cur_depending_list, cur_dependents_list) in dependents_list
     for (cur_package, cur_depending) in zip(cur_packages, cur_depending_list)
       for cur_depender in cur_depending
+        if cur_depender in bad_package_names
+          continue
+        end
+
         cur_indices = findall(tmp_package -> tmp_package == cur_depender, cur_packages)
         @assert length(cur_indices) == 1
         cur_index = cur_indices[1]
