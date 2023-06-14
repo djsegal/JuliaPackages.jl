@@ -9,7 +9,7 @@ function _hit_readme_api_start(cur_paths)
   @showprogress for cur_tuple in cur_paths
     cur_package, cur_path = cur_tuple
 
-    package_file = "../data/readme_html/$(lowercase(cur_package)).txt"
+    package_file = "data/readme_html/$(lowercase(cur_package)).txt"
 
     cur_html = nothing
     is_cached = false
@@ -18,7 +18,11 @@ function _hit_readme_api_start(cur_paths)
       check_cache = isfile(package_file) && cur_attempt == 1
 
       for includes_jl in [true, false]
-        cur_headers = ["User-Agent" => "GitHub", "Accept" => "application/vnd.github.html"]
+        cur_headers = [
+          "User-Agent" => "GitHub",
+          "Accept" => "application/vnd.github.html",
+          "Authorization" => "token " * ENV["CLIENT_TOKEN"]
+        ]
 
         if check_cache
           modified_since = Dates.unix2datetime( Base.Filesystem.mtime(package_file) )
@@ -30,8 +34,7 @@ function _hit_readme_api_start(cur_paths)
 
         try
           cur_request = HTTP.get(
-            custom_make_url(cur_path, includes_jl, "/readme"), cur_headers,
-            userinfo = """$(ENV["CLIENT_ID"])/$(ENV["CLIENT_SECRET"])"""
+            custom_make_url(cur_path, includes_jl, "/readme"), cur_headers
           )
 
           cur_html = String(cur_request.body)
@@ -65,13 +68,13 @@ function _hit_readme_api_start(cur_paths)
 end
 
 function _hit_readme_api_finish(cur_paths)
-  foreach(rm, readdir("../data/readme_search", join=true))
-  foreach(rm, readdir("../data/readme_nlp", join=true))
+  foreach(rm, readdir("data/readme_search", join=true))
+  foreach(rm, readdir("data/readme_nlp", join=true))
 
   @showprogress for cur_tuple in cur_paths
     cur_package, cur_path = cur_tuple
 
-    package_file = "../data/readme_html/$(lowercase(cur_package)).txt"
+    package_file = "data/readme_html/$(lowercase(cur_package)).txt"
     cur_html = open(package_file) do file ; read(file, String) ; end
 
     cur_text = custom_text(parsehtml(cur_html))
@@ -92,11 +95,13 @@ function _hit_readme_api_finish(cur_paths)
       unique(split_text), " "
     )
 
-    nlp_text = join(
-      map(cur_word -> stem(Stemmer("english"), cur_word), split_text), " "
-    )
+    nlp_corpus = Corpus([StringDocument(lowercase(remove_corrupt_utf8(cur_text)))])
+    prepare!(nlp_corpus, strip_whitespace | strip_punctuation | strip_articles | strip_pronouns | strip_prepositions | strip_numbers | strip_non_letters | strip_stopwords)
 
-    open("../data/readme_search/$(lowercase(cur_package)).txt", "w") do io ; write(io, search_text) ; end
-    open("../data/readme_nlp/$(lowercase(cur_package)).txt", "w") do io ; write(io, nlp_text) ; end
+    stemmer = Stemmer("english")
+    nlp_text = stem(stemmer, nlp_corpus[1].text)
+
+    open("data/readme_search/$(lowercase(cur_package)).txt", "w") do io ; write(io, search_text) ; end
+    open("data/readme_nlp/$(lowercase(cur_package)).txt", "w") do io ; write(io, nlp_text) ; end
   end
 end

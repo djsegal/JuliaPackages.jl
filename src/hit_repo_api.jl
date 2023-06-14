@@ -10,10 +10,12 @@ end
 function _hit_repo_start(cur_paths)
   good_paths = []
 
+  isdir("tmp/packages") || mkdir("tmp/packages")
+
   @showprogress for cur_tuple in cur_paths
     cur_package, cur_path = cur_tuple
 
-    package_file = "../tmp/packages/$(lowercase(cur_package)).json"
+    package_file = "tmp/packages/$(lowercase(cur_package)).json"
 
     cur_html = nothing
     is_cached = false
@@ -22,7 +24,11 @@ function _hit_repo_start(cur_paths)
       check_cache = isfile(package_file) && cur_attempt == 1
 
       for includes_jl in [true, false]
-        cur_headers = ["User-Agent" => "GitHub", "Accept" => "application/vnd.github.html"]
+        cur_headers = [
+          "User-Agent" => "GitHub",
+          "Accept" => "application/vnd.github.html",
+          "Authorization" => "token " * ENV["CLIENT_TOKEN"]
+        ]
 
         if check_cache
           modified_since = Dates.unix2datetime( Base.Filesystem.mtime(package_file) )
@@ -34,8 +40,7 @@ function _hit_repo_start(cur_paths)
 
         try
           cur_request = HTTP.get(
-            custom_make_url(cur_path, includes_jl), cur_headers,
-            userinfo = """$(ENV["CLIENT_ID"])/$(ENV["CLIENT_SECRET"])"""
+            custom_make_url(cur_path, includes_jl), cur_headers
           )
 
           cur_html = String(cur_request.body)
@@ -84,8 +89,8 @@ function _hit_repo_finish(good_paths, general_db)
     "registered" => []
   )
 
-  if isfile("../data/searched_paths.csv")
-    searched_paths_db = CSV.read("../data/searched_paths.csv")
+  if isfile("data/searched_paths.csv")
+    searched_paths_db = CSV.read("data/searched_paths.csv", DataFrame)
 
     searched_paths = collect(
       zip(searched_paths_db.package, searched_paths_db.path)
@@ -106,10 +111,10 @@ function _hit_repo_finish(good_paths, general_db)
   skip_keys = ["owner", "package", "registered"]
 
   for (cur_package, cur_path) in cur_paths
-    package_file = "../tmp/packages/$(lowercase(cur_package)).json"
+    package_file = "tmp/packages/$(lowercase(cur_package)).json"
 
     if !isfile(package_file)
-      package_file = "../tmp/searched/$(lowercase(cur_package)).json"
+      package_file = "tmp/searched/$(lowercase(cur_package)).json"
     end
 
     @assert isfile(package_file)

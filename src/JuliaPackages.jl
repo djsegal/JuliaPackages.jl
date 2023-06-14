@@ -20,8 +20,16 @@ module JuliaPackages
   using Languages
   using TextAnalysis
 
+  using MLJ
+  using XGBoost
+  using MultivariateStats
+  using Glob
+
+  using InlineStrings
   using VersionParsing
   using RegistryTools: Compress
+
+  using OpenAI
 
   export general_db, decibans_db
   export packages_db, trending_db

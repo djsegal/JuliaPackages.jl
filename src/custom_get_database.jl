@@ -1,9 +1,9 @@
 function custom_get_database(cur_name)
-  cur_file = "../data/$(cur_name).csv"
+  cur_file = "data/$(cur_name).csv"
 
   if isfile(cur_file)
     work_db = coalesce.(
-      DataFrame(CSV.read(cur_file)), ""
+      CSV.read(cur_file, DataFrame), ""
     )
 
     if cur_name == "general"

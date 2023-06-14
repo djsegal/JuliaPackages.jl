@@ -1,11 +1,11 @@
 function scrape_general_packages()
-  isdir("../tmp/General") || run(
-    `git clone "https://github.com/JuliaRegistries/General" ../tmp/General`
+  isdir("tmp/General") || run(
+    `git clone "https://github.com/JuliaRegistries/General" tmp/General`
   )
 
-  run(`git -C ../tmp/General pull`)
-  run(`git -C ../tmp/General fetch --all`)
-  run(`git -C ../tmp/General reset origin --hard`)
+  run(`git -C tmp/General pull`)
+  run(`git -C tmp/General fetch --all`)
+  run(`git -C tmp/General reset origin --hard`)
 
   cur_packages = []
   cur_owners = []
@@ -13,15 +13,16 @@ function scrape_general_packages()
 
   gitlab_packages = []
   independent_packages = []
+  other_domain_packages = []
 
   rename_dict = Dict()
 
   for cur_char in 'A':'Z'
-    for cur_package in readdir("../tmp/General/$(cur_char)")
+    for cur_package in readdir("tmp/General/$(cur_char)")
       startswith(cur_package, ".") && continue
 
       package_dict = Pkg.TOML.parsefile(
-        "../tmp/General/$(cur_char)/$(cur_package)/Package.toml"
+        "tmp/General/$(cur_char)/$(cur_package)/Package.toml"
       )
 
       package_name = package_dict["name"]
@@ -30,8 +31,9 @@ function scrape_general_packages()
       if occursin("gitlab.com", package_url)
         push!(gitlab_packages, package_name)
         continue
-      else
-        @assert occursin("github.com", package_url)
+      elseif !occursin("github.com", package_url)
+        push!(other_domain_packages, package_name)
+        continue
       end
 
       @assert endswith(package_url, ".git")
@@ -54,7 +56,7 @@ function scrape_general_packages()
       push!(cur_packages, package_name)
       push!(cur_owners, cur_owner)
 
-      deps_file = "../tmp/General/$(cur_char)/$(cur_package)/Deps.toml"
+      deps_file = "tmp/General/$(cur_char)/$(cur_package)/Deps.toml"
       if !isfile(deps_file)
         push!(cur_shallow_depending, Set())
         continue
@@ -66,7 +68,7 @@ function scrape_general_packages()
         continue
       end
 
-      versions_file = "../tmp/General/$(cur_char)/$(cur_package)/Versions.toml"
+      versions_file = "tmp/General/$(cur_char)/$(cur_package)/Versions.toml"
       @assert isfile(versions_file)
 
       versions_toml = Pkg.TOML.parsefile(versions_file)
@@ -86,6 +88,7 @@ function scrape_general_packages()
 
   @show independent_packages
   @show gitlab_packages
+  @show other_domain_packages
 
   cur_request = JSON.parse(
     String(HTTP.get("https://api.github.com/repos/JuliaLang/julia/contents/stdlib").body)
@@ -93,6 +96,7 @@ function scrape_general_packages()
 
   other_list = [
     gitlab_packages...,
+    other_domain_packages...,
     "Pkg",
     "Statistics"
   ]

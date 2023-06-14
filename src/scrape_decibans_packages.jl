@@ -2,7 +2,8 @@ function scrape_decibans_packages()
   decibans_url = "https://raw.githubusercontent.com/svaksha/Julia.jl/master/db.csv"
 
   decibans_db = CSV.read(
-    HTTP.get(decibans_url).body, header=false
+    HTTP.get(decibans_url).body,
+    DataFrame, header=false,
   )
 
   rename!(decibans_db, Symbol.(split("category sub_category name url description")))
@@ -19,6 +20,38 @@ function scrape_decibans_packages()
   decibans_db = decibans_db[(occursin.("/blob/master/", lowercase.(decibans_db.url)) .== 0),:]
 
   decibans_db = decibans_db[(occursin.(" ", strip.(decibans_db.url)) .== 0),:]
+
+  for cur_sub_category in unique(decibans_db.sub_category)
+      if !contains(cur_sub_category, "<spanid=") ; continue ; end
+
+      @assert contains(cur_sub_category, "§")
+      cur_matches = match(r"§([\d\.]+)[^\<]+<spanid=\"([^\"]+)", cur_sub_category).captures
+      @assert length(cur_matches) == 2
+
+      work_category = replace(
+        cur_matches[2],
+        replace(cur_matches[1],"." => "-") => ""
+      )
+
+      work_category = replace(work_category, "-" => " ")
+
+      decibans_db[decibans_db.sub_category .== cur_sub_category, :sub_category] .= work_category
+  end
+
+  for cur_sub_category in unique(decibans_db.sub_category)
+      work_category = cur_sub_category
+
+      tmp_capture = match(r"([^\(\[\]\)]+)+", work_category)
+      if !isnothing(tmp_capture)
+        @assert length(tmp_capture.captures) == 1
+        work_category = tmp_capture.captures[1]
+      end
+
+      if startswith(work_category, "#")
+        work_category = work_category[2:end]
+      end
+      decibans_db[decibans_db.sub_category .== cur_sub_category, :sub_category] .= work_category
+  end
 
   for cur_sub_category in unique(decibans_db.sub_category)
       cur_match = match(r"(?<=\[)[^\]]+(?=\]\([^\)]+\))", cur_sub_category)
@@ -56,6 +89,11 @@ function scrape_decibans_packages()
       continue
     end
 
+    if lowercase(sub_category) in ["unclassified", "uncategorized", "org-"]
+      decibans_db[decibans_db.sub_category .== sub_category, :sub_category] .= ""
+      continue
+    end
+
     count_dict = countmap(decibans_db[decibans_db.sub_category .== sub_category, :category])
     length(count_dict) == 1 && continue
 
@@ -77,7 +115,9 @@ function custom_rename!(decibans_db)
     "FileIO" => "File IO",
     "Programming-Paradigms" => "Programming Paradigms",
     "Space-Science" => "Space Science",
-    "Super-Computing" => "Super Computing"
+    "Super-Computing" => "Super Computing",
+    "ActuarialScience" => "Actuarial Science",
+    "Probability-Statistics" => "Probability & Statistics"
   )
 
   for (cur_key, cur_value) in category_dict
@@ -181,7 +221,19 @@ function custom_rename!(decibans_db)
     "TurnaroundTime" => "Turnaround Time",
     "TypeParameters" => "Type Parameters",
     "VirtualInstrumentSoftwareArchitecture" => "",
-    "WorkerProcesses" => "Worker Processes"
+    "WorkerProcesses" => "Worker Processes",
+    "API's" => "API",
+    "Calculus&" => "Calculus",
+    "ComputerVision" => "Computer Vision",
+    "DiscreteGeometry" => "Discrete Geometry",
+    "FeatureDetection" => "Feature Detection",
+    "ImageProcessing" => "Image Processing",
+    "MedicalPhysics" => "Medical Physics",
+    "MultipleDispatch" => "Multiple Dispatch",
+    "PublishingSoftwareTools" => "Publishing Software Tools",
+    "QuantumPhysics" => "Quantum Physics",
+    "Solid State Chemistry andMaterialsScience" => "Solid State Chemistry and Materials Science",
+    "chemical file formats and input output" => "Chemical File Formats"
   )
 
   case_sub_categories = Dict(
@@ -245,7 +297,20 @@ function custom_rename!(decibans_db)
     "UNITTEST" => "Unit Tests",
     "UNSUPERVISEDLEARNING" => "Unsupervised Learning",
     "UTILS" => "Utils",
-    "WEB" => "Web"
+    "WEB" => "Web",
+    "CAUSAL" => "Causal",
+    "COMPOSITIONAL" => "Compositional",
+    "DENSITIES" => "Densities",
+    "ECONOMETRICS" => "Econometrics",
+    "EXTREMES" => "Extremes",
+    "FINANCE" => "Finance",
+    "MULTIVARIATE" => "Multivariate",
+    "ONLINE" => "Online",
+    "REGRESSION" => "Regression",
+    "SAMPLING" => "Sampling",
+    "SPATIAL" => "Spatial",
+    "TEMPORAL" => "Temporal",
+    "TESTS" => "Tests",
   )
 
   sub_category_dict = merge(two_word_sub_categories, case_sub_categories)

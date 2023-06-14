@@ -5,8 +5,8 @@ function __init__()
   global packages_db = nothing
   global trending_db = nothing
 
-  general_file, general_db = custom_get_database("general")
   decibans_file, decibans_db = custom_get_database("decibans")
+  general_file, general_db = custom_get_database("general")
 
   general_db, decibans_db = combine_datasets(general_db, decibans_db)
   general_csv = deepcopy(general_db)
@@ -26,8 +26,8 @@ function __init__()
   CSV.write(general_file, general_csv)
   CSV.write(decibans_file, decibans_db)
 
-  if isfile("../data/searched_paths.csv")
-    searched_paths_db = CSV.read("../data/searched_paths.csv")
+  if isfile("data/searched_paths.csv")
+    searched_paths_db = CSV.read("data/searched_paths.csv", DataFrame)
     searched_paths = collect(zip(searched_paths_db.package, searched_paths_db.path))
   else
     searched_paths = hit_search_api()
@@ -36,9 +36,9 @@ function __init__()
   trending_file, trending_db = custom_get_database("trending")
   CSV.write(trending_file, trending_db)
 
-  if isfile("../data/packages.csv")
-    @assert isfile("../data/paths.csv")
-    paths_db = CSV.read("../data/paths.csv")
+  if isfile("data/packages.csv")
+    @assert isfile("data/paths.csv")
+    paths_db = CSV.read("data/paths.csv", DataFrame)
     good_paths = collect(zip(paths_db.package, paths_db.path))
 
     packages_db = _hit_repo_finish(good_paths, general_db)
@@ -47,11 +47,13 @@ function __init__()
 
     paths_db = DataFrame(good_paths)
     rename!(paths_db, Symbol.(["package", "path"]))
-    CSV.write("../data/paths.csv", DataFrame(paths_db))
+    CSV.write("data/paths.csv", DataFrame(paths_db))
 
     hit_readme_api([good_paths..., searched_paths...])
   end
 
-  CSV.write("../data/packages.csv", packages_db)
+  CSV.write("data/packages.csv", packages_db)
+
+  println("done.")
 
 end

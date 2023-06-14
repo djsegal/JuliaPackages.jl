@@ -11,7 +11,11 @@ function hit_search_api()
   base_url *= "per_page=100&sort=updated&order=desc&q=.jl+in:name+language:julia+stars:>4+pushed:>$(updated_cutoff)"
   base_url *= "+created:"
 
-  cur_headers = ["User-Agent" => "GitHub", "Accept" => "application/vnd.github.html"]
+  cur_headers = [
+    "User-Agent" => "GitHub",
+    "Accept" => "application/vnd.github.html",
+    "Authorization" => "token " * ENV["CLIENT_TOKEN"]
+  ]
 
   cur_items = []
 
@@ -20,8 +24,7 @@ function hit_search_api()
 
     for page in 1:10
       cur_request = HTTP.get(
-        cur_url * "&page=$(page)", cur_headers,
-        userinfo = """$(ENV["CLIENT_ID"])/$(ENV["CLIENT_SECRET"])"""
+        cur_url * "&page=$(page)", cur_headers
       )
 
       request_headers = Dict(cur_request.headers)
@@ -70,7 +73,11 @@ function hit_search_api()
 
   # build dataframe and save file
 
-  foreach(rm, readdir("../tmp/searched", join=true))
+  if isdir("tmp/searched")
+    foreach(rm, readdir("tmp/searched", join=true))
+  else
+    mkdir("tmp/searched")
+  end
 
   path_db_packages = []
   path_db_paths = []
@@ -79,13 +86,13 @@ function hit_search_api()
     push!(path_db_packages, replace(cur_value["name"], ".jl" => ""))
     push!(path_db_paths, lowercase(cur_value["full_name"]))
 
-    package_file = "../tmp/searched/$(cur_key).json"
+    package_file = "tmp/searched/$(cur_key).json"
     open(package_file, "w") do io ; write(io, json(cur_value)) ; end
   end
 
   searched_paths_db = DataFrame(package=path_db_packages, path=path_db_paths)
 
-  CSV.write("../data/searched_paths.csv", searched_paths_db)
+  CSV.write("data/searched_paths.csv", searched_paths_db)
 
   searched_paths = collect(
     zip(path_db_packages, path_db_paths)

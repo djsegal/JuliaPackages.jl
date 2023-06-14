@@ -1,4 +1,8 @@
 function combine_datasets(general_db, decibans_db)
+
+    # needed to match string lengths on owner names
+    decibans_db.owner = String63.(decibans_db.owner)
+
     for cur_row in eachrow(general_db)
         cur_selector = lowercase.(decibans_db.package) .== lowercase(cur_row.package)
 
