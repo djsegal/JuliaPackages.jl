@@ -1,0 +1,35 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-choosydataloggers" class="anchor" aria-hidden="true" href="#choosydataloggers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ChoosyDataLoggers</h1>
+<p dir="auto">The ChoosyDataLoggers package is used to log various groups and variables in a large code base. The data can be sunk into an array sink which will populate a dictionary based on the group and variable being logged.</p>
+<p dir="auto">Using the logging functionality is very simple, and takes advantage of julia's logging features.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="data, logger = construct_logger([(:Exp, :log_v)])
+with_logger(logger) do
+    v = 1
+    # somthing
+    @data Exp log_v=v
+end"><pre>data, logger <span class="pl-k">=</span> <span class="pl-c1">construct_logger</span>([(<span class="pl-c1">:Exp</span>, <span class="pl-c1">:log_v</span>)])
+<span class="pl-c1">with_logger</span>(logger) <span class="pl-k">do</span>
+    v <span class="pl-k">=</span> <span class="pl-c1">1</span>
+    <span class="pl-c"><span class="pl-c">#</span> somthing</span>
+    <span class="pl-c1">@data</span> Exp log_v<span class="pl-k">=</span>v
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">A few caveats/extra pieces of info:</p>
+<ol dir="auto">
+<li>Each group and variable combination should only be called once in a path of an experiment/during runtime. If this isn't the case, or if you
+can't guarantee this I recommend you make unique groups for each file or function depending on your use case. Variables should make sense
+for the local scope, but groups can give insight into which scope you are in.</li>
+<li>The <code>idx</code> keyword can be used to have support for in-place storage if you pass in a <code>steps</code> variable at logger construction. This is still wip
+and not fully supported quite yet.</li>
+<li>A third argument can be passed with each group and name which indicates a processing step. This processing step calls <code>process_data(t::Val{symbol}, data)</code> where symbol is the symbol passed into the constructor. This function needs to be implemented by the user.</li>
+</ol>
+<h2 dir="auto"><a id="user-content-automatic-reporting-of-possible-logging-variables" class="anchor" aria-hidden="true" href="#automatic-reporting-of-possible-logging-variables"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Automatic reporting of possible logging variables</h2>
+<p dir="auto">Often code bases can get quite complicated. If you want to figure out what you can log w/o going through the entire code base ChoosyDataLoggers has support for automatic registration of uses. To use add to each <strong>module</strong> which uses the <code>@data</code> macro:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="ChoosyDataLogger.@init
+function __init__()
+    ChoosyDataLogger.@register_data_logs
+end"><pre>ChoosyDataLogger<span class="pl-k">.</span><span class="pl-c1">@init</span>
+<span class="pl-k">function</span> <span class="pl-en">__init__</span>()
+    ChoosyDataLogger<span class="pl-k">.</span><span class="pl-c1">@register_data_logs</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">These functions create all the necessary components for registering the data logs for view later. You can call the function <code>get_data_macro_uses</code> and <code>get_raw_data_macro_uses</code>
+to get the information. The first returns as a formatted markdown object which is still WIP, the second is the raw information stored (i.e. group, names, and source locations).</p>
+</article></div>

@@ -1,0 +1,52 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-foreigncallbacksjl" class="anchor" aria-hidden="true" href="#foreigncallbacksjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ForeignCallbacks.jl</h1>
+<p dir="auto">Callbacks executing on a foreign (to Julia) thread are not allowed to interact with the Julia runtime.
+The one canonical exception is the use of <code>Base.AsyncCondition</code> and <code>uv_async_send</code>. This has worked
+for 1:1 cases where there is one event trigger mapped to one <code>AsyncCondition</code>. The problem with
+<code>uv_async_send</code> is that many triggers to the same handle can be coalesced into one invocation.</p>
+<p dir="auto"><code>ForeignCallbacks</code> implements a lock-free-queue that can be used to pass data from the foreign thread
+to a Julia callback. The data being passed must satisfy <code>!Base.ismutabletype(T) &amp;&amp; Base.datatype_pointerfree(T)</code>.</p>
+<h2 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import ForeignCallbacks
+struct Message
+    id::Int
+    data::Ptr{Cvoid}
+end
+
+barrier = Base.Event()
+callback = ForeignCallbacks.ForeignCallback{Message}() do msg
+    @info &quot;Received message&quot; id=msg.id
+    notify(barrier)
+    return
+end
+
+GC.@preserve callback begin
+    token = ForeignCallbacks.ForeignToken(callback)
+    ptr = @cfunction(ForeignCallbacks.notify!, Cvoid, (ForeignCallbacks.ForeignToken, Message))
+    @sync Threads.@spawn begin
+        msg = Message(1, C_NULL)
+        ccall($ptr, Cvoid, (ForeignCallbacks.ForeignToken, Message), $token, msg)
+    end
+    wait(barrier)
+end"><pre><span class="pl-k">import</span> ForeignCallbacks
+<span class="pl-k">struct</span> Message
+    id<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    data<span class="pl-k">::</span><span class="pl-c1">Ptr{Cvoid}</span>
+<span class="pl-k">end</span>
+
+barrier <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">Event</span>()
+callback <span class="pl-k">=</span> ForeignCallbacks<span class="pl-k">.</span><span class="pl-c1">ForeignCallback</span><span class="pl-c1">{Message}</span>() <span class="pl-k">do</span> msg
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Received message<span class="pl-pds">"</span></span> id<span class="pl-k">=</span>msg<span class="pl-k">.</span>id
+    <span class="pl-c1">notify</span>(barrier)
+    <span class="pl-k">return</span>
+<span class="pl-k">end</span>
+
+GC<span class="pl-k">.</span><span class="pl-c1">@preserve</span> callback <span class="pl-k">begin</span>
+    token <span class="pl-k">=</span> ForeignCallbacks<span class="pl-k">.</span><span class="pl-c1">ForeignToken</span>(callback)
+    ptr <span class="pl-k">=</span> <span class="pl-c1">@cfunction</span>(ForeignCallbacks<span class="pl-k">.</span>notify!, Cvoid, (ForeignCallbacks<span class="pl-k">.</span>ForeignToken, Message))
+    <span class="pl-c1">@sync</span> Threads<span class="pl-k">.</span><span class="pl-c1">@spawn</span> <span class="pl-k">begin</span>
+        msg <span class="pl-k">=</span> <span class="pl-c1">Message</span>(<span class="pl-c1">1</span>, <span class="pl-c1">C_NULL</span>)
+        <span class="pl-c1">ccall</span>(<span class="pl-k">$</span>ptr, Cvoid, (ForeignCallbacks<span class="pl-k">.</span>ForeignToken, Message), <span class="pl-k">$</span>token, msg)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">wait</span>(barrier)
+<span class="pl-k">end</span></pre></div>
+</article></div>

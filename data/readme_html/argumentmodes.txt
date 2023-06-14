@@ -1,0 +1,207 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-argumentmodesjl" class="anchor" aria-hidden="true" href="#argumentmodesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ArgumentModes.jl</h1>
+<p dir="auto">The package provides type <code>Mode</code> which could be seen as an extension of <code>Val</code>.
+<code>Mode</code> is intended to be used as a type for a function method argument. A
+specialization of <code>Mode</code> type contains a list of accepted symbols (flags). The
+dispatch would choose the method only if the argument value (a <code>Mode</code> instance)
+containes only symbols from the list of accepted symbols as declared in the type
+of the argument.</p>
+<p dir="auto">Presumed uses of <code>Mode</code>:</p>
+<ol dir="auto">
+<li>
+<p dir="auto">Replacement of using ordinary <code>Symbol</code> as a function argument as a flag
+parameter. Here <code>Mode</code> allows to explicitly declare a function argument as a
+set of symbols (flags) with a distinct list of accepted symbols for each of
+a function's methods. The dispatch process then chooses a method with
+respect to those lists. That way it also indirectly performs the typo
+control. For example, <code>open(f, Mode(:read))</code>, <code>open(f, Mode(:write))</code>,
+<code>open(f, Mode(:write, :sync))</code> might correspond (depending on the design)
+to 3 different methods.</p>
+</li>
+<li>
+<p dir="auto">The way to explicitly show in which meaning a value to a function argument
+is provided. This might be useful when it is not possible to distinct the
+meaning of an argument only by the type.</p>
+<p dir="auto">For example, suppose a function <strong>f</strong> processes array-typed objects with
+arbitrary dimensions number. We might want to declare methods for both
+processing a single object and an iteratable collection of objects. It
+would be difficult to distinct the methods using only the type of the
+argument since <code>f([x,y])</code> could both mean to process a single object <code>[x,y]</code>
+or to process two objects <code>x</code> and <code>y</code>. However, using <code>Mode</code> in the
+declaration of method for a collection, the user would be allowed to
+explicitly indicate what is passed in the call: <code>f([x,y])</code> for a single
+object and <code>f(Mode(:collection)=&gt; [x, y])</code> for a collection of objects.</p>
+</li>
+</ol>
+<h1 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h1>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; f(x) = println(&quot;Anything: \$x&quot;)
+       f(x::Mode[:iterator =&gt; Any]) = println(&quot;Values from iterator: \$(x[]...)&quot;)
+       f(x::Mode[:fromargs], y...) = println(&quot;Fromargs: \$(y...)&quot;)
+       function f(x::Union{Int, Mode[:a, :b, :c =&gt; Int]})
+           checkmode(x, :a) do _;  println(&quot;:a&quot;)  end
+           checkmode(x, :c) do c;  println(&quot;:c = \$c&quot;)  end
+           checkmode(x, :b) &amp;&amp; println(&quot;:b&quot;)
+           if x isa Int;  println(&quot;x = \$x&quot;) end
+       end
+f (generic function with 4 methods)
+
+julia&gt; methods(f)
+# 4 methods for generic function &quot;f&quot;:
+[1] f(x::Mode[:iterator =&gt; Any]) in Main at REPL[34]:1
+[2] f(x::Mode[:fromargs], y...) in Main at REPL[36]:1
+[3] f(x::Union{Int64, Mode[:c =&gt; Int64, :a, :b]) in Main at REPL[38]:1
+[4] f(x) in Main at REPL[33]:1
+
+julia&gt; f(25.0)
+Anything: 25.0
+
+julia&gt; f(Mode(:iterator)=&gt; 1:5)
+Values from iterator: 12345
+
+julia&gt; f(Mode(:fromargs), 1, 2, 3, 4, 5)
+Fromargs: 12345
+
+julia&gt; f(1)
+x = 1
+
+julia&gt; f(Mode(:a, :c =&gt; 125))
+:a
+:c = 125
+
+julia&gt; f(Mode(:fromargs, :iterator =&gt; 1:5), 2)
+ERROR: MethodError: no method matching f(::Mode[==, :iterator =&gt; UnitRange, :fromargs], ::Int64)
+Closest candidates are:
+  f(::Mode[:fromargs], ::Any...) at REPL[36]:1
+  f(::Any) at REPL[33]:1
+Stacktrace:
+ [1] top-level scope
+   @ REPL[59]:1
+"><pre lang="julia-repl" class="notranslate"><code>julia&gt; f(x) = println("Anything: \$x")
+       f(x::Mode[:iterator =&gt; Any]) = println("Values from iterator: \$(x[]...)")
+       f(x::Mode[:fromargs], y...) = println("Fromargs: \$(y...)")
+       function f(x::Union{Int, Mode[:a, :b, :c =&gt; Int]})
+           checkmode(x, :a) do _;  println(":a")  end
+           checkmode(x, :c) do c;  println(":c = \$c")  end
+           checkmode(x, :b) &amp;&amp; println(":b")
+           if x isa Int;  println("x = \$x") end
+       end
+f (generic function with 4 methods)
+
+julia&gt; methods(f)
+# 4 methods for generic function "f":
+[1] f(x::Mode[:iterator =&gt; Any]) in Main at REPL[34]:1
+[2] f(x::Mode[:fromargs], y...) in Main at REPL[36]:1
+[3] f(x::Union{Int64, Mode[:c =&gt; Int64, :a, :b]) in Main at REPL[38]:1
+[4] f(x) in Main at REPL[33]:1
+
+julia&gt; f(25.0)
+Anything: 25.0
+
+julia&gt; f(Mode(:iterator)=&gt; 1:5)
+Values from iterator: 12345
+
+julia&gt; f(Mode(:fromargs), 1, 2, 3, 4, 5)
+Fromargs: 12345
+
+julia&gt; f(1)
+x = 1
+
+julia&gt; f(Mode(:a, :c =&gt; 125))
+:a
+:c = 125
+
+julia&gt; f(Mode(:fromargs, :iterator =&gt; 1:5), 2)
+ERROR: MethodError: no method matching f(::Mode[==, :iterator =&gt; UnitRange, :fromargs], ::Int64)
+Closest candidates are:
+  f(::Mode[:fromargs], ::Any...) at REPL[36]:1
+  f(::Any) at REPL[33]:1
+Stacktrace:
+ [1] top-level scope
+   @ REPL[59]:1
+
+</code></pre></div>
+<h1 dir="auto"><a id="user-content-detailed-description-of-mechanics" class="anchor" aria-hidden="true" href="#detailed-description-of-mechanics"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Detailed description of mechanics</h1>
+<p dir="auto">Here is a more detailed description of the mechanics of the type. A specialized
+<code>Mode</code> type <strong>M=Mode[s₁⇒t₁, s₂⇒t₂, ...]</strong> is determined by a collection of
+symbols <strong>s₁</strong>, <strong>s₂</strong>, ...  of type <code>Symbol</code> and corresponding types <strong>t₁</strong>,
+<strong>t₂</strong>, ... (of type <code>DataType</code> or <code>Union</code> of <code>DataType</code>s). An instance
+<strong>m::Mode</strong> of <code>Mode</code> additionally contains values <strong>vᵢ</strong> for each <strong>sᵢ</strong> of
+type <strong>tᵢ</strong>. Let <strong>param(x)</strong> denote the collection <strong>{sᵢ=&gt;tᵢ}ᵢ</strong> of <strong>x</strong>
+(here <strong>x</strong> is an instance or a specialized type of <code>Mode</code>). Then <strong>m</strong> is of
+type <strong>M</strong> only if <strong>param(m) ⊆ param(M)</strong>. This allows the dispatch to choose
+an appropriate method of a function based on <strong>param(m)</strong>.</p>
+<h1 dir="auto"><a id="user-content-constructor-of-the-type-specialization" class="anchor" aria-hidden="true" href="#constructor-of-the-type-specialization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Constructor of the type specialization</h1>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Mode[ s₁ [=&gt; t₁] [, s₂ [=&gt; t₂]]... ]"><pre class="notranslate"><code>Mode[ s₁ [=&gt; t₁] [, s₂ [=&gt; t₂]]... ]
+</code></pre></div>
+<p dir="auto">Construct a specialization <strong>M=Mode[s₁⇒t₁, s₂⇒t₂, ...]</strong> to be used as a
+type for a argument in a function method declaration. The argument with type
+<strong>M</strong> would accept only instances <strong>m::Mode</strong> with <strong>param(m) ⊆ param(M)</strong>.
+Some or all <strong>tᵢ</strong> may absent in the type declaration which defaults to
+<code>Nothing</code>. An example: <code>Mode[:a, :b =&gt; Int, :c =&gt; Tuple{Int, String}]</code>.</p>
+<p dir="auto">Symbol <code>==</code> could also be added as the first argument in a constructor call to
+indicate that the concrete type is wanted (not an <code>UnionAll</code> as above). This
+option is added only for auxiliary purposes and generally should not be useful.</p>
+<p dir="auto">Note that such nonconventional syntax with brackets <code>[</code>,<code>]</code> is used to make the
+code for a type declaration look similar to the presentation of the type name
+in a function signature.</p>
+<h1 dir="auto"><a id="user-content-constructors-of-an-instance" class="anchor" aria-hidden="true" href="#constructors-of-an-instance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Constructors of an instance</h1>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Mode( s₁[=&gt; v₁] [, s₂ [=&gt; v₂]]... )"><pre class="notranslate"><code>Mode( s₁[=&gt; v₁] [, s₂ [=&gt; v₂]]... )
+</code></pre></div>
+<p dir="auto">Construct an instance <strong>m::Mode[s₁⇒typeof(v₁), s₂⇒typeof(v₂), ...]</strong> with
+values <strong>v₁, v₂, ...</strong>. Some or all of <strong>vᵢ</strong> might be omited which defaults to
+<code>nothing</code>. An example: <code>Mode(:a =&gt; 25, :b, :c =&gt; "Hello world!")</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Mode(s)"><pre class="notranslate"><code>Mode(s)
+</code></pre></div>
+<p dir="auto">Construct an instance <strong>m::Mode[s⇒Nothing]</strong> with <code>nothing</code> value. The
+type and value could be set by a subsequent call <strong>m</strong><code>=&gt;</code><strong>v</strong>. Several
+instances could be joined with <code>~</code> operator. For example,
+<code>Mode(:a)=&gt; 25 ~ Mode(:b) ~ Mode(:c)=&gt; "Hello world!"</code> is equivalent to
+<code>Mode(:a =&gt; 25, :b, :c =&gt; "Hello world!")</code>.</p>
+<h1 dir="auto"><a id="user-content-operations-on-an-instance" class="anchor" aria-hidden="true" href="#operations-on-an-instance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Operations on an instance</h1>
+<p dir="auto">Let <strong>m, m₁, m₂::Mode</strong>. Then</p>
+<ul dir="auto">
+<li><code>m =&gt; v</code> given <code>m::Mode[s =&gt; Nothing]</code>: return a new instance with symbol
+<strong>s</strong> having value and type of <code>v</code>.</li>
+<li><code>m₁ ~ m₂</code>: join <code>m₁</code> and <code>m₂</code>. Throws an ArgumentError if <code>m₁</code> and <code>m₂</code>
+contain the same symbols.</li>
+<li><code>keys(m), values(m), pairs(m)</code>: return symbols / values / pairs of symbols
+and values.</li>
+<li><code>m[s₁ [, s₂]... ]</code> for <code>sᵢ::Symbol</code>: return the value of <code>s₁</code> / tuple of
+values of <code>s₁, s₂, ...</code>.</li>
+<li><code>m[]</code>: if <code>m</code> contains only one value, return it; throw an ArgumentError
+otherwise</li>
+<li><code>checkmode(m, ...)</code>: check if <code>m</code> is a <code>Mode</code> and contains the prescribed<br>
+symbols, and, possibly, do an action.</li>
+</ul>
+<h3 dir="auto"><a id="user-content-checkmode" class="anchor" aria-hidden="true" href="#checkmode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>checkmode</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="checkmode(m, s::Symbol)
+checkmode(m, [&amp;, |, ==, or !], s₁::Symbol[, s₂:Symbol]...)
+checkmode(f, m, [&amp;, |, ==, or !], s₁::Symbol[, s₂:Symbol]...)"><pre class="notranslate"><code>checkmode(m, s::Symbol)
+checkmode(m, [&amp;, |, ==, or !], s₁::Symbol[, s₂:Symbol]...)
+checkmode(f, m, [&amp;, |, ==, or !], s₁::Symbol[, s₂:Symbol]...)
+</code></pre></div>
+<p dir="auto">Tests if <code>m</code> is a <code>Mode</code> and contains the prescribed symbols.</p>
+<ul dir="auto">
+<li>In the 1st form the function tests for the presence of <code>s</code> in <code>m</code>.</li>
+<li>In the 2nd form the function tests either (for <code>&amp;</code> or if any operation symbol
+is omited) that all symbols <code>s₁</code>, <code>s₂</code>, ... are in <code>m</code>, or (for <code>|</code>) that at
+least one of them in <code>m</code>, or (for <code>==</code>) that <code>m</code> contains exactly the
+prescribed collection of the symbols, or (for <code>!</code>) that <code>m</code> does not contain
+any of the prescribed symbols.</li>
+<li>In the 3rd form the function tests whether all of the symbols <code>s₁</code>, <code>s₂</code>, ...
+are in <code>m</code> (also if <code>&amp;</code> is provided). If they are --- return <code>f(m[s₁], m[s₂],  ...)</code>; if not --- return <code>nothing</code>. If <code>==</code> is also added in the function
+call, the test will be positive only when <code>m</code> contains all and only the
+prescribed symbols. If <code>!</code> is added in the function call, the test will be
+positive only when <code>m</code> contains no any of the prescribed symbols; if that is
+true, <code>f</code> is called with no arguments. Similarly for <code>|</code> -- if test is true,
+<code>f</code> is called with no arguments.</li>
+</ul>
+<h1 dir="auto"><a id="user-content-performance" class="anchor" aria-hidden="true" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Performance</h1>
+<p dir="auto">Series of tests showed that the current implementation of <code>Mode</code> fully compiles
+out when it used for function arguments and method dispatch, so it seems that
+there is no runtime overhead for using it (at least for the use cases
+considered in the tests).</p>
+<p dir="auto">Tests on compile-time overhead showed that (for Julia 1.6) it is like 0.2-0.5s
+for the first call of <code>Mode[...]</code> and <code>Mode(...)</code>, and something like
+5-20ms for further uses (when a call signature is sufficiently changes).
+Unfortunatelly, I have not found so far the way to further reduce the latency.</p>
+</article></div>

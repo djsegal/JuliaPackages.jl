@@ -1,0 +1,236 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-cudapreconditionersjl" class="anchor" aria-hidden="true" href="#cudapreconditionersjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CUDAPreconditioners.jl</h1>
+<p dir="auto">Convenience wrappers to incomplete factorizations from CUSPARSE to be used for
+iterative solvers of sparse linear systems on the GPU. The implementations are
+adapted from the <a href="https://juliasmoothoptimizers.github.io/Krylov.jl/stable/gpu/#Example-with-a-symmetric-positive-definite-system" rel="nofollow">great
+tutorial</a>
+of the Krylov.jl package.</p>
+<p dir="auto">Supports both <strong>Incomplete Cholesky factorization with zero fill-in</strong> (<code>ic0</code>)
+for symmetric positive definite matrices and <strong>Incomplete LU factorization with zero fill-in</strong> (<code>ilu0</code>).</p>
+<p dir="auto">The created preconditioners can be used with any iterative linear solver that supports right-preconditioning (e.g. <code>gmres</code> from Krylov.jl).</p>
+<h2 dir="auto"><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Examples</h2>
+<h3 dir="auto"><a id="user-content-solving-the-1d-heat-equation-on-the-gpu" class="anchor" aria-hidden="true" href="#solving-the-1d-heat-equation-on-the-gpu"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Solving the 1D Heat Equation on the GPU</h3>
+<p dir="auto">The 1D Heat Equation</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+\frac{\partial u}{\partial t} = \alpha \frac{\partial^2 u}{\partial x^2}
+$$</math-renderer></p>
+<p dir="auto">with homogeneous Dirichlet boundary conditions</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+u(0,t) = u(1,t) = 0
+$$</math-renderer></p>
+<p dir="auto">and a backward-in-time central-in-space discretization (implicit Euler) requires the solution to a linear system of equations in each iteration</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+A u^{[t+1]} = u^{[t]}
+$$</math-renderer></p>
+<p dir="auto">for the vector of (interior) degrees of freedom. The matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$A$</math-renderer> is tridiagonal and sparse. It has the structure</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+A = \begin{pmatrix}
+1 + 2 \alpha \frac{\Delta t}{\Delta x^2} &amp; -\alpha \frac{\Delta t}{\Delta x^2} &amp; 0 &amp; \dots &amp; 0 \\
+-\alpha \frac{\Delta t}{\Delta x^2} &amp; 1 + 2 \alpha \frac{\Delta t}{\Delta x^2} &amp; -\alpha \frac{\Delta t}{\Delta x^2} &amp; \dots &amp; 0 \\
+0 &amp; -\alpha \frac{\Delta t}{\Delta x^2} &amp; 1 + 2 \alpha \frac{\Delta t}{\Delta x^2} &amp; \dots &amp; 0 \\
+\vdots &amp; \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+0 &amp; 0 &amp; 0 &amp; \dots &amp; 1 + 2 \alpha \frac{\Delta t}{\Delta x^2}
+\end{pmatrix}
+$$</math-renderer></p>
+<p dir="auto">It is unconditionally stable for all <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$\alpha$</math-renderer> and <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$\Delta t$</math-renderer>.</p>
+<p dir="auto">Let's first assemble the matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$A$</math-renderer> on the CPU and set up an initial condition.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using SparseArrays
+using LinearAlgebra
+
+N = 10_000  # Interior DoF without the 2 boundary points
+Δx = 1 / (N + 1)
+Δt = 0.1
+α = 1.0
+
+A = spdiagm(-1 =&gt; -α * Δt / Δx^2 * ones(N-1),
+             0 =&gt; 1 .+ 2 * α * Δt / Δx^2 * ones(N),
+             1 =&gt; -α * Δt / Δx^2 * ones(N-1))
+
+mesh = range(0.0, 1.0, length=N+2)
+u = ifelse.((mesh .&gt; 0.2) .&amp; (mesh .&lt; 0.4), 1.0, 0.0)[2:end-1]"><pre><span class="pl-k">using</span> SparseArrays
+<span class="pl-k">using</span> LinearAlgebra
+
+N <span class="pl-k">=</span> <span class="pl-c1">10_000</span>  <span class="pl-c"><span class="pl-c">#</span> Interior DoF without the 2 boundary points</span>
+Δx <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-k">/</span> (N <span class="pl-k">+</span> <span class="pl-c1">1</span>)
+Δt <span class="pl-k">=</span> <span class="pl-c1">0.1</span>
+α <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+
+A <span class="pl-k">=</span> <span class="pl-c1">spdiagm</span>(<span class="pl-k">-</span><span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-k">-</span>α <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">ones</span>(N<span class="pl-k">-</span><span class="pl-c1">1</span>),
+             <span class="pl-c1">0</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1</span> <span class="pl-k">.+</span> <span class="pl-c1">2</span> <span class="pl-k">*</span> α <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">ones</span>(N),
+             <span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-k">-</span>α <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">ones</span>(N<span class="pl-k">-</span><span class="pl-c1">1</span>))
+
+mesh <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>, length<span class="pl-k">=</span>N<span class="pl-k">+</span><span class="pl-c1">2</span>)
+u <span class="pl-k">=</span> <span class="pl-c1">ifelse</span>.((mesh <span class="pl-k">.&gt;</span> <span class="pl-c1">0.2</span>) <span class="pl-k">.&amp;</span> (mesh <span class="pl-k">.&lt;</span> <span class="pl-c1">0.4</span>), <span class="pl-c1">1.0</span>, <span class="pl-c1">0.0</span>)[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>]</pre></div>
+<p dir="auto">Let's move the matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$A$</math-renderer> to the GPU and create a preconditioner for it.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CUDA
+using CUDA.CUSPARSE
+using CUDAPreconditioners
+
+A_gpu = CuSparseMatrixCSR(A)
+P_r_gpu = ic0(A_gpu)"><pre><span class="pl-k">using</span> CUDA
+<span class="pl-k">using</span> CUDA<span class="pl-k">.</span>CUSPARSE
+<span class="pl-k">using</span> CUDAPreconditioners
+
+A_gpu <span class="pl-k">=</span> <span class="pl-c1">CuSparseMatrixCSR</span>(A)
+P_r_gpu <span class="pl-k">=</span> <span class="pl-c1">ic0</span>(A_gpu)</pre></div>
+<p dir="auto">Then, we can solve the linear system on the GPU using the <code>cg</code> (conjugate
+gradient) solver from
+<a href="https://github.com/JuliaSmoothOptimizers/Krylov.jl">Krylov.jl</a>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Krylov
+
+u_gpu = CuArray(u)
+
+# Solve without a preconditioner
+u_gpu_next_no_preconditioner, solve_stats_no_preconditioner = cg(
+    A_gpu,
+    u_gpu,
+)
+
+# Solve with the preconditioner
+u_gpu_next_with_preconditioner, solve_stats_with_preconditioner = cg(
+    A_gpu,
+    u_gpu,
+    M=P_r_gpu,
+    ldiv=true,
+)
+
+@show solve_stats_no_preconditioner.niter  # -&gt; 9999
+@show solve_stats_with_preconditioner.niter  # -&gt; 7"><pre><span class="pl-k">using</span> Krylov
+
+u_gpu <span class="pl-k">=</span> <span class="pl-c1">CuArray</span>(u)
+
+<span class="pl-c"><span class="pl-c">#</span> Solve without a preconditioner</span>
+u_gpu_next_no_preconditioner, solve_stats_no_preconditioner <span class="pl-k">=</span> <span class="pl-c1">cg</span>(
+    A_gpu,
+    u_gpu,
+)
+
+<span class="pl-c"><span class="pl-c">#</span> Solve with the preconditioner</span>
+u_gpu_next_with_preconditioner, solve_stats_with_preconditioner <span class="pl-k">=</span> <span class="pl-c1">cg</span>(
+    A_gpu,
+    u_gpu,
+    M<span class="pl-k">=</span>P_r_gpu,
+    ldiv<span class="pl-k">=</span><span class="pl-c1">true</span>,
+)
+
+<span class="pl-c1">@show</span> solve_stats_no_preconditioner<span class="pl-k">.</span>niter  <span class="pl-c"><span class="pl-c">#</span> -&gt; 9999</span>
+<span class="pl-c1">@show</span> solve_stats_with_preconditioner<span class="pl-k">.</span>niter  <span class="pl-c"><span class="pl-c">#</span> -&gt; 7</span></pre></div>
+<p dir="auto">The preconditioned version takes way fewer iterations to converge.</p>
+<h3 dir="auto">
+<a id="user-content-solving-the-1d-advection-equation" class="anchor" aria-hidden="true" href="#solving-the-1d-advection-equation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Solving the 1d Advection Equation</h3>
+<p dir="auto">The 1D Advection Equation</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+\frac{\partial u}{\partial t} + c \frac{\partial u}{\partial x} = 0
+$$</math-renderer></p>
+<p dir="auto">with periodic boundary conditions</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+u(0,t) = u(1,t)
+$$</math-renderer></p>
+<p dir="auto">and a backward-in-time first-order upwind discretization (implicit Euler)
+requires the solution to a linear system of equations in each iteration.</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+A u^{[t+1]} = u^{[t]}
+$$</math-renderer></p>
+<p dir="auto">If we fix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$c&amp;gt;0$</math-renderer>, we need backward-in-space approximation of the first derivative
+in order to stable. The system matrix, therefore, consists of a main diagonal
+and a lower diagonal band. It has the structure</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$$
+A = \begin{pmatrix}
+1 + c \frac{\Delta t}{\Delta x} &amp; 0 &amp; 0 &amp; \dots &amp; -c \frac{\Delta t}{\Delta x} \\
+-c \frac{\Delta t}{\Delta x} &amp; 1 + c \frac{\Delta t}{\Delta x} &amp; 0 &amp; \dots &amp; 0 \\
+0 &amp; -c \frac{\Delta t}{\Delta x} &amp; 1 + c \frac{\Delta t}{\Delta x} &amp; \dots &amp; 0 \\
+\vdots &amp; \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+0 &amp; 0 &amp; 0 &amp; \dots &amp; 1 + c \frac{\Delta t}{\Delta x}
+\end{pmatrix}
+$$</math-renderer></p>
+<p dir="auto">The system matrix is singular, i.e. <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$\det(A)=0$</math-renderer>, due to the periodic boundary conditions. Typically, this would require special care, but here our linear solver will converge anyway.</p>
+<p dir="auto">Again, let's first assemble the matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$A$</math-renderer> on the CPU and set up an initial condition.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using SparseArrays
+using LinearAlgebra
+
+N = 10_000  # Interior DoF without the right periodic boundary point
+Δx = 1 / N
+Δt = 0.1
+c = 1.0
+
+A = spdiagm(-1 =&gt; -c * Δt / Δx * ones(N-1),
+             0 =&gt; 1 .+ c * Δt / Δx * ones(N),
+             1 =&gt; -c * Δt / Δx * ones(N-1))
+
+A[end, 1] = -c * Δt / Δx
+
+mesh = range(0.0, 1.0, length=N+1)
+u = ifelse.((mesh .&gt; 0.2) .&amp; (mesh .&lt; 0.4), 1.0, 0.0)[1:end-1]"><pre><span class="pl-k">using</span> SparseArrays
+<span class="pl-k">using</span> LinearAlgebra
+
+N <span class="pl-k">=</span> <span class="pl-c1">10_000</span>  <span class="pl-c"><span class="pl-c">#</span> Interior DoF without the right periodic boundary point</span>
+Δx <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-k">/</span> N
+Δt <span class="pl-k">=</span> <span class="pl-c1">0.1</span>
+c <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+
+A <span class="pl-k">=</span> <span class="pl-c1">spdiagm</span>(<span class="pl-k">-</span><span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-k">-</span>c <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx <span class="pl-k">*</span> <span class="pl-c1">ones</span>(N<span class="pl-k">-</span><span class="pl-c1">1</span>),
+             <span class="pl-c1">0</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1</span> <span class="pl-k">.+</span> c <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx <span class="pl-k">*</span> <span class="pl-c1">ones</span>(N),
+             <span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-k">-</span>c <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx <span class="pl-k">*</span> <span class="pl-c1">ones</span>(N<span class="pl-k">-</span><span class="pl-c1">1</span>))
+
+A[<span class="pl-c1">end</span>, <span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-k">-</span>c <span class="pl-k">*</span> Δt <span class="pl-k">/</span> Δx
+
+mesh <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>, length<span class="pl-k">=</span>N<span class="pl-k">+</span><span class="pl-c1">1</span>)
+u <span class="pl-k">=</span> <span class="pl-c1">ifelse</span>.((mesh <span class="pl-k">.&gt;</span> <span class="pl-c1">0.2</span>) <span class="pl-k">.&amp;</span> (mesh <span class="pl-k">.&lt;</span> <span class="pl-c1">0.4</span>), <span class="pl-c1">1.0</span>, <span class="pl-c1">0.0</span>)[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>]</pre></div>
+<p dir="auto">Let's move the matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="28eec1917e42682a0846d87eb4482328">$A$</math-renderer> to the GPU and create a preconditioner for it. We need an <code>ilu0</code> preconditioner here, because the matrix is not symmetric.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CUDA
+using CUDA.CUSPARSE
+using CUDAPreconditioners
+
+A_gpu = CuSparseMatrixCSR(A)
+P_r_gpu = ilu0(A_gpu)"><pre><span class="pl-k">using</span> CUDA
+<span class="pl-k">using</span> CUDA<span class="pl-k">.</span>CUSPARSE
+<span class="pl-k">using</span> CUDAPreconditioners
+
+A_gpu <span class="pl-k">=</span> <span class="pl-c1">CuSparseMatrixCSR</span>(A)
+P_r_gpu <span class="pl-k">=</span> <span class="pl-c1">ilu0</span>(A_gpu)</pre></div>
+<p dir="auto">Then, we can solve the linear system on the GPU using the <code>bicgstab</code>
+(BiConjugate Gradient Stabilized) solver from
+<a href="https://github.com/JuliaSmoothOptimizers/Krylov.jl">Krylov.jl</a>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Krylov
+
+u_gpu = CuArray(u)
+
+# Solve without a preconditioner
+u_gpu_next_no_preconditioner, solve_stats_no_preconditioner = bicgstab(
+    A_gpu,
+    u_gpu,
+    itmax=100_000,
+)
+
+# Solve with the preconditioner
+u_gpu_next_with_preconditioner, solve_stats_with_preconditioner = bicgstab(
+    A_gpu,
+    u_gpu,
+    N=P_r_gpu,
+    ldiv=true,
+    itmax=100_000,
+)
+
+@show solve_stats_no_preconditioner.niter  # -&gt; 58020
+@show solve_stats_with_preconditioner.niter  # -&gt; 1"><pre><span class="pl-k">using</span> Krylov
+
+u_gpu <span class="pl-k">=</span> <span class="pl-c1">CuArray</span>(u)
+
+<span class="pl-c"><span class="pl-c">#</span> Solve without a preconditioner</span>
+u_gpu_next_no_preconditioner, solve_stats_no_preconditioner <span class="pl-k">=</span> <span class="pl-c1">bicgstab</span>(
+    A_gpu,
+    u_gpu,
+    itmax<span class="pl-k">=</span><span class="pl-c1">100_000</span>,
+)
+
+<span class="pl-c"><span class="pl-c">#</span> Solve with the preconditioner</span>
+u_gpu_next_with_preconditioner, solve_stats_with_preconditioner <span class="pl-k">=</span> <span class="pl-c1">bicgstab</span>(
+    A_gpu,
+    u_gpu,
+    N<span class="pl-k">=</span>P_r_gpu,
+    ldiv<span class="pl-k">=</span><span class="pl-c1">true</span>,
+    itmax<span class="pl-k">=</span><span class="pl-c1">100_000</span>,
+)
+
+<span class="pl-c1">@show</span> solve_stats_no_preconditioner<span class="pl-k">.</span>niter  <span class="pl-c"><span class="pl-c">#</span> -&gt; 58020</span>
+<span class="pl-c1">@show</span> solve_stats_with_preconditioner<span class="pl-k">.</span>niter  <span class="pl-c"><span class="pl-c">#</span> -&gt; 1</span></pre></div>
+</article></div>

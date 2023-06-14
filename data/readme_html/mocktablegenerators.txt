@@ -1,0 +1,147 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-mocktablegeneratorsjl" class="anchor" aria-hidden="true" href="#mocktablegeneratorsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MockTableGenerators.jl</h1>
+<p dir="auto"><a href="https://github.com/beacon-biosignals/MockTableGenerators.jl/actions/workflows/ci.yml"><img src="https://github.com/beacon-biosignals/MockTableGenerators.jl/actions/workflows/ci.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/beacon-biosignals/MockTableGenerators.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/f6166aefc0755363114a8b294f333751b833dacc38af41072899a07124bc8e27/68747470733a2f2f636f6465636f762e696f2f67682f626561636f6e2d62696f7369676e616c732f4d6f636b5461626c6547656e657261746f72732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e7376673f746f6b656e3d736c305a544972747957" alt="codecov" data-canonical-src="https://codecov.io/gh/beacon-biosignals/MockTableGenerators.jl/branch/main/graph/badge.svg?token=sl0ZTIrtyW" style="max-width: 100%;"></a>
+<a href="https://beacon-biosignals.github.io/MockTableGenerators.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://beacon-biosignals.github.io/MockTableGenerators.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">The MockTableGenerators.jl package provides an interface for composing the the generation of multiple dependent <a href="https://github.com/JuliaData/Tables.jl">Tables.jl</a> to produce realistic mock datasets.</p>
+<p dir="auto">Users should define subtypes of <code>TableGenerator</code> and extend the <code>table_key</code>, <code>num_rows</code>, and <code>emit!</code> functions. Special row generators may also need to make use of <code>visit!</code> for introducing state or <code>dependency_key</code> for multiple <code>TableGenerator</code> types which creating rows for the same table. Instances of <code>TableGenerator</code>s can be constructed into a DAG which defines dependences between generators.</p>
+<p dir="auto">Methods for functions that may introduce randomness (i.e., <code>num_rows</code>, <code>emit!</code>, and <code>visit!</code>) must accept a random number generator as the first argument in order to support reproducible generation.  In cases where <code>visit!</code> introduces randomness in the generated state and <code>emit!</code> and <code>num_rows</code> only consume this state, they still have to accept it but may ignore it.</p>
+<p dir="auto">An example showing row generation including the use of variable number of rows, state, and conditional dependencies:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using MockTableGenerators, Dates, StableRNGs, UUIDs
+
+const FIRST_NAMES = [&quot;Alice&quot;, &quot;Bob&quot;, &quot;Carol&quot;, &quot;David&quot;]
+const LAST_NAMES = [&quot;Smith&quot;, &quot;Johnson&quot;, &quot;Williams&quot;, &quot;Brown&quot;]
+
+struct PersonGenerator &lt;: TableGenerator
+    num::AbstractRange{Int}
+end
+
+PersonGenerator(num::Integer) = PersonGenerator(range(num))
+
+MockTableGenerators.table_key(g::PersonGenerator) = :person
+MockTableGenerators.num_rows(rng, g::PersonGenerator) = rand(rng, g.num)
+
+function MockTableGenerators.emit!(rng, g::PersonGenerator, deps)
+    return (; id=uuid4(rng), 
+            first_name=rand(rng, FIRST_NAMES), 
+            last_name=rand(rng, LAST_NAMES))
+end
+
+
+struct VisitGenerator &lt;: TableGenerator
+    num::AbstractRange{Int}
+end
+
+function MockTableGenerators.visit!(rng, g::VisitGenerator, deps)
+    n = rand(rng, g.num)
+    visits = sort!(rand(rng, Date(1970):Day(1):Date(2000), n))
+    return Dict(:i =&gt; 1, :visits =&gt; visits, :n =&gt; n)
+end
+
+MockTableGenerators.table_key(g::VisitGenerator) = :visit
+MockTableGenerators.num_rows(rng, g::VisitGenerator, state) = state[:n]
+
+function MockTableGenerators.emit!(rng, g::VisitGenerator, deps, state)
+    visit = popfirst!(state[:visits])
+
+    row = (; id=uuid4(), person_id=deps[:person].id, index=state[:i], date=visit)
+
+    state[:i] += 1
+    return row
+end
+
+
+const LIGHT_SYMPTOMS = [&quot;Fever&quot;, &quot;Chills&quot;, &quot;Fatigue&quot;, &quot;Runny nose&quot;, &quot;Cough&quot;]
+const SEVERE_SYMPTOMS = [&quot;Weakness&quot;, &quot;Muscle Loss&quot;, &quot;Fainting&quot;]
+
+struct SymptomGenerator &lt;: TableGenerator
+    num::AbstractRange{Int}
+end
+
+function MockTableGenerators.visit!(rng, g::SymptomGenerator, deps)
+    # Number of symptoms increase, on average, with number of visits
+    n = rand(rng, min(deps[:visit].index, last(g.num)):last(g.num))
+    return (; n)
+end
+
+MockTableGenerators.table_key(g::SymptomGenerator) = :symptom
+MockTableGenerators.num_rows(rng, g::SymptomGenerator, state) = state.n
+
+function MockTableGenerators.emit!(rng, g::SymptomGenerator, deps, state)
+    # Conditional generation based upon number of visits
+    symptoms = deps[:visit].index &gt; 2 ? SEVERE_SYMPTOMS : LIGHT_SYMPTOMS
+    return (; visit_id=deps[:visit].id, symptom=rand(rng, symptoms))
+end
+
+const DAG = [PersonGenerator(3:5) =&gt; [VisitGenerator(1:4) =&gt; [SymptomGenerator(1:2)]]]
+# pass RNG for reproducible generation:
+collect(MockTableGenerators.generate(StableRNG(11), DAG))"><pre><span class="pl-k">using</span> MockTableGenerators, Dates, StableRNGs, UUIDs
+
+<span class="pl-k">const</span> FIRST_NAMES <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Alice<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Bob<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Carol<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>David<span class="pl-pds">"</span></span>]
+<span class="pl-k">const</span> LAST_NAMES <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Smith<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Johnson<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Williams<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Brown<span class="pl-pds">"</span></span>]
+
+<span class="pl-k">struct</span> PersonGenerator <span class="pl-k">&lt;:</span> <span class="pl-c1">TableGenerator</span>
+    num<span class="pl-k">::</span><span class="pl-c1">AbstractRange{Int}</span>
+<span class="pl-k">end</span>
+
+<span class="pl-en">PersonGenerator</span>(num<span class="pl-k">::</span><span class="pl-c1">Integer</span>) <span class="pl-k">=</span> <span class="pl-c1">PersonGenerator</span>(<span class="pl-c1">range</span>(num))
+
+MockTableGenerators<span class="pl-k">.</span><span class="pl-en">table_key</span>(g<span class="pl-k">::</span><span class="pl-c1">PersonGenerator</span>) <span class="pl-k">=</span> <span class="pl-c1">:person</span>
+MockTableGenerators<span class="pl-k">.</span><span class="pl-en">num_rows</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">PersonGenerator</span>) <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, g<span class="pl-k">.</span>num)
+
+<span class="pl-k">function</span> MockTableGenerators<span class="pl-k">.</span><span class="pl-en">emit!</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">PersonGenerator</span>, deps)
+    <span class="pl-k">return</span> (; id<span class="pl-k">=</span><span class="pl-c1">uuid4</span>(rng), 
+            first_name<span class="pl-k">=</span><span class="pl-c1">rand</span>(rng, FIRST_NAMES), 
+            last_name<span class="pl-k">=</span><span class="pl-c1">rand</span>(rng, LAST_NAMES))
+<span class="pl-k">end</span>
+
+
+<span class="pl-k">struct</span> VisitGenerator <span class="pl-k">&lt;:</span> <span class="pl-c1">TableGenerator</span>
+    num<span class="pl-k">::</span><span class="pl-c1">AbstractRange{Int}</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> MockTableGenerators<span class="pl-k">.</span><span class="pl-en">visit!</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">VisitGenerator</span>, deps)
+    n <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, g<span class="pl-k">.</span>num)
+    visits <span class="pl-k">=</span> <span class="pl-c1">sort!</span>(<span class="pl-c1">rand</span>(rng, <span class="pl-c1">Date</span>(<span class="pl-c1">1970</span>)<span class="pl-k">:</span><span class="pl-c1">Day</span>(<span class="pl-c1">1</span>)<span class="pl-k">:</span><span class="pl-c1">Date</span>(<span class="pl-c1">2000</span>), n))
+    <span class="pl-k">return</span> <span class="pl-c1">Dict</span>(<span class="pl-c1">:i</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1</span>, <span class="pl-c1">:visits</span> <span class="pl-k">=&gt;</span> visits, <span class="pl-c1">:n</span> <span class="pl-k">=&gt;</span> n)
+<span class="pl-k">end</span>
+
+MockTableGenerators<span class="pl-k">.</span><span class="pl-en">table_key</span>(g<span class="pl-k">::</span><span class="pl-c1">VisitGenerator</span>) <span class="pl-k">=</span> <span class="pl-c1">:visit</span>
+MockTableGenerators<span class="pl-k">.</span><span class="pl-en">num_rows</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">VisitGenerator</span>, state) <span class="pl-k">=</span> state[<span class="pl-c1">:n</span>]
+
+<span class="pl-k">function</span> MockTableGenerators<span class="pl-k">.</span><span class="pl-en">emit!</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">VisitGenerator</span>, deps, state)
+    visit <span class="pl-k">=</span> <span class="pl-c1">popfirst!</span>(state[<span class="pl-c1">:visits</span>])
+
+    row <span class="pl-k">=</span> (; id<span class="pl-k">=</span><span class="pl-c1">uuid4</span>(), person_id<span class="pl-k">=</span>deps[<span class="pl-c1">:person</span>]<span class="pl-k">.</span>id, index<span class="pl-k">=</span>state[<span class="pl-c1">:i</span>], date<span class="pl-k">=</span>visit)
+
+    state[<span class="pl-c1">:i</span>] <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">return</span> row
+<span class="pl-k">end</span>
+
+
+<span class="pl-k">const</span> LIGHT_SYMPTOMS <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Fever<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Chills<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Fatigue<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Runny nose<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Cough<span class="pl-pds">"</span></span>]
+<span class="pl-k">const</span> SEVERE_SYMPTOMS <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Weakness<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Muscle Loss<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Fainting<span class="pl-pds">"</span></span>]
+
+<span class="pl-k">struct</span> SymptomGenerator <span class="pl-k">&lt;:</span> <span class="pl-c1">TableGenerator</span>
+    num<span class="pl-k">::</span><span class="pl-c1">AbstractRange{Int}</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> MockTableGenerators<span class="pl-k">.</span><span class="pl-en">visit!</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">SymptomGenerator</span>, deps)
+    <span class="pl-c"><span class="pl-c">#</span> Number of symptoms increase, on average, with number of visits</span>
+    n <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, <span class="pl-c1">min</span>(deps[<span class="pl-c1">:visit</span>]<span class="pl-k">.</span>index, <span class="pl-c1">last</span>(g<span class="pl-k">.</span>num))<span class="pl-k">:</span><span class="pl-c1">last</span>(g<span class="pl-k">.</span>num))
+    <span class="pl-k">return</span> (; n)
+<span class="pl-k">end</span>
+
+MockTableGenerators<span class="pl-k">.</span><span class="pl-en">table_key</span>(g<span class="pl-k">::</span><span class="pl-c1">SymptomGenerator</span>) <span class="pl-k">=</span> <span class="pl-c1">:symptom</span>
+MockTableGenerators<span class="pl-k">.</span><span class="pl-en">num_rows</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">SymptomGenerator</span>, state) <span class="pl-k">=</span> state<span class="pl-k">.</span>n
+
+<span class="pl-k">function</span> MockTableGenerators<span class="pl-k">.</span><span class="pl-en">emit!</span>(rng, g<span class="pl-k">::</span><span class="pl-c1">SymptomGenerator</span>, deps, state)
+    <span class="pl-c"><span class="pl-c">#</span> Conditional generation based upon number of visits</span>
+    symptoms <span class="pl-k">=</span> deps[<span class="pl-c1">:visit</span>]<span class="pl-k">.</span>index <span class="pl-k">&gt;</span> <span class="pl-c1">2</span> <span class="pl-k">?</span> SEVERE_SYMPTOMS <span class="pl-k">:</span> LIGHT_SYMPTOMS
+    <span class="pl-k">return</span> (; visit_id<span class="pl-k">=</span>deps[<span class="pl-c1">:visit</span>]<span class="pl-k">.</span>id, symptom<span class="pl-k">=</span><span class="pl-c1">rand</span>(rng, symptoms))
+<span class="pl-k">end</span>
+
+<span class="pl-k">const</span> DAG <span class="pl-k">=</span> [<span class="pl-c1">PersonGenerator</span>(<span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">5</span>) <span class="pl-k">=&gt;</span> [<span class="pl-c1">VisitGenerator</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span>) <span class="pl-k">=&gt;</span> [<span class="pl-c1">SymptomGenerator</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>)]]]
+<span class="pl-c"><span class="pl-c">#</span> pass RNG for reproducible generation:</span>
+<span class="pl-c1">collect</span>(MockTableGenerators<span class="pl-k">.</span><span class="pl-c1">generate</span>(<span class="pl-c1">StableRNG</span>(<span class="pl-c1">11</span>), DAG))</pre></div>
+</article></div>

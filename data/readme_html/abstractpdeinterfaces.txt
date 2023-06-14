@@ -1,0 +1,149 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-calculustcorejl" class="anchor" aria-hidden="true" href="#calculustcorejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CalculustCore.jl</h1>
+<p dir="auto">A common interface for PDE solving</p>
+<p dir="auto">PDEs are messy: weird boundary conditions, moving domains, singular operators, you name it! And solvers more so with their discretization schemes, stability charectoristics, and performance tradeoffs. Not to mention the layers of complications added by the software stack, or computer architecture, or pre/post-processing pipelines.</p>
+<p dir="auto">Numerical PDE problems drive high-performance computing. The biggest supercomputers on the planet run physics simulations on millions of MPI ranks over years of wall-time. An optimized workflow is the difference between having a solution, or going home emptyhanded, and every ounce of performance has to be squeezed. As such, highly tuned software packages that specialize on a set class of problems dominate the market. With specializations, however, generalizability and interpoeratibility take a hit.</p>
+<p dir="auto"><code>CalculustCore.jl</code> is written so that package authors won't need to write a method for <code>Δ</code> (Laplacian) every time a new scheme for the gradient <code>∇</code> (gradient) comes along. We provides abstractions over components of PDE solvers that reduce the amount of boilerplate code that any new solver would need, and improve interpoeratibility between solvers. Furthermore, a requisite for the developement of Machine Learning based PDE solvers is the ability to mix state of the art discretizations with large neural network models on a AD-compatible, accelerator-friendly test-bench. Julia's multiple-dispatch based programming model allows for abstractly-typed, composable code, that lets packages just plug-and-play. Engineers shouldn't waste their time reinventing the wheel, rather focus on what's new and interesting!</p>
+<p dir="auto">We believe switching from 'Fourier-spectral collocation method' to 'discontinuous Galerkin finite elements' should be a one-line change for the user. And users should not need to deal with inconsistent syntax between solvers for specifying boundary conditions, and forming vector-calculus operators.</p>
+<p dir="auto">Finally, <code>CalculustCore.jl</code> is fully compatible with the <code>SciML.ai</code> ecosystem, so after describing your problem, it should spit out the right <code>BoundaryValuePDEProblem</code>  or <code>ODEProblem</code> that you can solve using the relevant <code>DiffEq</code> package.</p>
+<h2 dir="auto"><a id="user-content-abstract-interfaces" class="anchor" aria-hidden="true" href="#abstract-interfaces"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Abstract Interfaces</h2>
+<p dir="auto"><code>CalculustCore.jl</code> contains separate abstract interaces for multidimensional domains, vector-calculus operators, and function spaces. It is general enough that anybody can plug in their discretizations (ie define an inner-product operator, and gradient operator) and start solving boundary value problems, or time-evolution problems.</p>
+<p dir="auto">Once you plug in your discretizations, you can do a lot of cool things like apply any random deformations to the space. CalculustCore.jl translate all your vector calculus operators correctly. That means the same code could solve convection diffusion on a square as well as an annulus with no extra work and basically conserved accuracy.</p>
+<h3 dir="auto"><a id="user-content-abstractdomain-interface" class="anchor" aria-hidden="true" href="#abstractdomain-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>AbstractDomain</code> interface</h3>
+<p dir="auto">concrete types, Boundary tags</p>
+<ul dir="auto">
+<li><code>deform</code> - all the mapping stuff</li>
+<li><code>\otimes</code></li>
+</ul>
+<p dir="auto">concrete types</p>
+<ul dir="auto">
+<li><code>IntervalDomain</code></li>
+<li><code>BoxDomain</code></li>
+</ul>
+<h3 dir="auto"><a id="user-content-abstractspace-interface" class="anchor" aria-hidden="true" href="#abstractspace-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>AbstractSpace</code> interface</h3>
+<p dir="auto">define these methods (grad, mass, common functions)</p>
+<ul dir="auto">
+<li><code>deform</code></li>
+<li><code>\otimes</code></li>
+<li><code>transform</code></li>
+</ul>
+<h3 dir="auto"><a id="user-content-abstractdiscretization-interface" class="anchor" aria-hidden="true" href="#abstractdiscretization-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>AbstractDiscretization</code> interface</h3>
+<ul dir="auto">
+<li><code>GalerkinProjection</code></li>
+<li><code>Collocation</code></li>
+</ul>
+<h3 dir="auto"><a id="user-content-operator-interface---scimloperatorsjl" class="anchor" aria-hidden="true" href="#operator-interface---scimloperatorsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Operator interface - <code>SciMLOperators.jl</code></h3>
+<h3 dir="auto"><a id="user-content-boundaryvalueproblem-interface" class="anchor" aria-hidden="true" href="#boundaryvalueproblem-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>BoundaryValueProblem</code> interface</h3>
+<p dir="auto">Usually a rank-deficient systems</p>
+<h2 dir="auto"><a id="user-content-associated-packages" class="anchor" aria-hidden="true" href="#associated-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Associated Packages</h2>
+<ul dir="auto">
+<li><a href="https://github.com/vpuri3/FourierSpaces.jl">FourierSpaces.jl</a></li>
+<li><a href="https://github.com/vpuri3/NodalPolynomialSpaces.jl">NodalPolynomialSpaces.jl</a></li>
+</ul>
+<h2 dir="auto"><a id="user-content-roadmap" class="anchor" aria-hidden="true" href="#roadmap"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Roadmap</h2>
+<ul class="contains-task-list">
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> <code>AbstractDomain</code> interface</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Move concrete types to a separate package - <code>PDEDomains.jl</code></li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Logically rectangular domains</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Deform domain</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Boundary tags</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Interior tags (for multiphase flows, conjugate heat-transfer)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Gordon Hall interpolation (transfinite interpolation)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> meshed domains</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> signed distance geometries</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Time-varying domains</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Is it possibe to just use <code>DomainSets.jl</code> and add some metadata info?</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> <code>AbstractField &lt;: AbstractVector</code> interface - special array types</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Spectral polynomial (nothing special needed)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> transform-based spectral (fourier, cheby) (nothing special needed)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Box/ full spectral elements</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Operator interface - moved to <code>SciMLOperators.jl</code></p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> linear algebra operations</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> lazy composition</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> can use array reductions</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> caching</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Gather-Scatter operator using <code>NNlib</code></li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> General interpolation operator on element-meshes</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Spaces</p>
+<ul class="contains-task-list">
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Deformed spaces</p>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Tensor product spaces</p>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> transformed space</p>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> orthogonal polynomials - <code>NodalPolynomialSpaces.jl</code></p>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Spectral with transforms</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Fourier - <code>FourierSpaces.jl</code></li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Cosine/ Sine spaces</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Box, full spectral elements - create <code>SpectralElementSpaces.jl</code></p>
+</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Create a distinction between <code>Space</code>, and <code>Discretization</code></p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Space is how to represent functions</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Discretization is how you form operators</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Rename "discretization" to "scheme" or "solve_scheme" or something. Because discretization is ambiguous. is it referring to spatial discretization? or time discretization? In this package we are using it as a "scheme" to form differential operators on a "discretized" space.</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Rename <code>Galerkin</code> -&gt; <code>GalerkinProjection</code> for clarity</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Flux handling in discontinuous galerkin/ finite volume</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> all the shennanigans in stabalized finite elements</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Boundary Condition interface (apply "this" boundary condition based on "that" domain boundary)</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Dirichlet</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Neumann</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Robin</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Problems</p>
+<ul class="contains-task-list">
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Problem frontend with <code>ModelingToolkit.jl</code></p>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Boundary Value Problems</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> move boundary information to RHS</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> dispatch to <code>LinearSolve.jl</code></li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> dispatch to <code>NonlinearSolve.jl</code> (after <code>LinearSolve.jl</code>, <code>NonlinearSolve.jl</code> integration)</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p dir="auto"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Time-evolution problems</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> play nice with <code>OrdinaryDiffEq</code></li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> for implicit time-steppers, solve a BVP at every time step. impose boundary condition on the operator (wait for <code>SciMLOperators</code>, <code>OrdinaryDiffEq</code> integration)</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> automatically spit out an ODEProblem</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</article></div>

@@ -1,0 +1,933 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-statictools" class="anchor" aria-hidden="true" href="#statictools"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>StaticTools</h1>
+<p dir="auto"><a href="https://brenhinkeller.github.io/StaticTools.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Docs" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/brenhinkeller/StaticTools.jl/actions/workflows/CI.yml"><img src="https://github.com/brenhinkeller/StaticTools.jl/workflows/CI/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://github.com/brenhinkeller/StaticTools.jl/actions/workflows/CI-integration.yml"><img src="https://github.com/brenhinkeller/StaticTools.jl/workflows/CI%20(Integration)/badge.svg" alt="CI (Integration)" style="max-width: 100%;"></a>
+<a href="https://github.com/brenhinkeller/StaticTools.jl/actions/workflows/CI-julia-nightly.yml"><img src="https://github.com/brenhinkeller/StaticTools.jl/workflows/CI%20(Julia%20nightly)/badge.svg" alt="CI (Julia nightly)" style="max-width: 100%;"></a>
+<a href="https://github.com/brenhinkeller/StaticTools.jl/actions/workflows/CI-integration-nightly.yml"><img src="https://github.com/brenhinkeller/StaticTools.jl/workflows/CI%20(Integration%20nightly)/badge.svg" alt="CI (Integration nightly)" style="max-width: 100%;"></a>
+<a href="http://app.codecov.io/github/brenhinkeller/StaticTools.jl?branch=main" rel="nofollow"><img src="https://camo.githubusercontent.com/54e9d817650af89c6dde66136de7b68643fa755b1b5b4971a9db664d6bee6ffd/687474703a2f2f636f6465636f762e696f2f6769746875622f6272656e68696e6b656c6c65722f537461746963546f6f6c732e6a6c2f636f7665726167652e7376673f6272616e63683d6d61696e" alt="Coverage" data-canonical-src="http://codecov.io/github/brenhinkeller/StaticTools.jl/coverage.svg?branch=main" style="max-width: 100%;"></a></p>
+<p dir="auto">Tools to enable <a href="https://github.com/tshort/StaticCompiler.jl">StaticCompiler.jl</a>-based static compilation of Julia code (or more accurately, a subset of Julia which we might call "unsafe Julia") to standalone native binaries by avoiding GC allocations and <code>llvmcall</code>-ing all the things! (Experimental! <g-emoji class="g-emoji" alias="bug" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f41b.png">🐛</g-emoji>)</p>
+<p dir="auto">This package currently requires Julia 1.8 or greater for best results (if in doubt, check <a href="https://github.com/brenhinkeller/StaticTools.jl/actions?query=workflow%3ACI++">which versions are passing CI</a>). Integration tests against StaticCompiler.jl and LoopVectorization.jl are currently run with Julia 1.8 and 1.9 on x86-64 linux and mac; other platforms and versions may or may not work but will depend on StaticCompiler.jl support.</p>
+<p dir="auto">While we'll do our best to keep things working, this package should still be considered experimental at present, and necessarily involves a lot of juggling of pointers and such (i.e., "unsafe Julia"). If there are errors in any of the <code>llvmcall</code>s (which we have to use instead of simpler <code>ccall</code>s for things to statically compile smoothly), there could be serious bugs or even undefined behavior. Please report any unexpected bugs you find, and PRs are welcome!</p>
+<p dir="auto">In addition to the exported names, Julia <code>Base</code> functions extended for StaticTools types (i.e., <code>StaticString</code>/ <code>MallocString</code> and <code>StackArray</code>/<code>MallocArray</code>) include:</p>
+<ul dir="auto">
+<li><code>print</code>, <code>println</code>, <code>error</code>,</li>
+<li><code>parse</code>, <code>read</code>, <code>write</code></li>
+<li><code>rand</code>/<code>rand!</code> (when using an <code>rng</code> initialied with <code>static_rng</code>, <code>SplitMix64</code>, or <code>Xoshiro256✴︎✴︎</code> )</li>
+<li><code>randn</code>/<code>randn!</code> (when using an <code>rng</code> initialied with <code>MarsagliaPolar</code>, <code>BoxMuller</code>, or <code>Ziggurat</code> )</li>
+<li>and much or all of the <code>AbstractArray</code> and <code>AbstractString</code> interfaces where relevant.</li>
+</ul>
+<p dir="auto">The stack-allocated statically-sized <code>StaticString</code>s and <code>StackArray</code>s in this package are heavily inspired by the techniques used in <a href="https://github.com/JuliaSIMD/ManualMemory.jl">JuliaSIMD/ManualMemory.jl</a>; you can use that package via <a href="https://github.com/JuliaSIMD/StrideArraysCore.jl">StrideArraysCore.jl</a> or <a href="https://github.com/chriselrod/StrideArrays.jl">StrideArrays.jl</a> to obtain fast stack-allocated statically-sized arrays which should also be StaticCompiler-friendly, up to the stack limit size. For larger arrays, space must be allocated with <code>malloc</code>, as in <code>MallocArray</code>s. However, as in any other language, any memory <code>malloc</code>ed must be freed once and only once. If you want <code>malloc</code>-backed StaticCompiler-able arrays without taking on this risk and responsibility, you may consider a bump allocator like <a href="https://github.com/MasonProtter/Bumper.jl">Bumper.jl</a></p>
+<p dir="auto"><a href="http://www.youtube.com/watch?v=YsNC4oO0rLA" rel="nofollow"><img src="docs/mandelcompilemov.jpg" alt="Mandelbrot Set in the terminal with compiled Julia" style="max-width: 100%;"></a>
+<a href="https://gist.github.com/brenhinkeller/ca2246ab0928e109e281a4d540010b2d">printmandel.jl</a></p>
+<h3 dir="auto"><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Limitations:</h3>
+<p dir="auto">In order to be standalone-compileable without linking to libjulia, you need to avoid (among probably other things):</p>
+<ul dir="auto">
+<li>GC allocations. Manual heap-allocation (<code>malloc</code>, <code>calloc</code>) and stack allocation (by convincing the Julia compiler to use <code>alloca</code> and put your object on the stack) are all fine though.</li>
+<li>Non-<code>const</code>ant global variables</li>
+<li>Type instability.</li>
+<li>Anything that could cause an <code>InexactError</code> or <code>OverflowError</code> -- so <code>x % Int32</code> may work in some cases when <code>Int32(x)</code> may not.</li>
+<li>Anything that could cause a <code>BoundsError</code> -- so <code>@inbounds</code> (or else <code>julia --check-bounds=no</code>) is mandatory. Consequently, <code>@inbounds</code> is <em>always on</em> for <code>MallocArray</code>s and <code>StackArray</code>s; be sure to treat them accordingly when indexing!</li>
+<li>Functions that don't want to inline (can cause sneaky allocations due to boxing) -- feel free to use <code>@inline</code> liberally to avoid.</li>
+<li>Multithreading</li>
+<li>Microsoft Windows (not supported by StaticCompiler yet), except via WSL</li>
+</ul>
+<p dir="auto">This package can help you with avoiding some of the above, but you'll still need to be quite careful in how you write your code! I'd recommend starting small and adding features slowly.</p>
+<p dir="auto">On the other hand, a surprising range of higher-order language features <em>will</em> work (e.g., multiple dispatch, metaprogramming) as long as they can happen before compile-time.</p>
+<p dir="auto">While, as noted above, manually allocating your own memory on the heap with <code>malloc</code> or <code>calloc</code> and operating on that memory via pointers will work just fine (as is done in <code>MallocArray</code>s and <code>MallocString</code>s), by doing this we have effectively stepped into a subset of Julia which we might call "unsafe Julia" -- the same subset you step into when you interact with C objects in Julia, but also one which means you're dealing with objects that don't follow the normal Julia object model. <g-emoji class="g-emoji" alias="ghost" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f47b.png">👻</g-emoji></p>
+<p dir="auto">Fortunately, going to all this trouble does have some side benefits besides compileability:</p>
+<ul dir="auto">
+<li>Type instability is one of the biggest sources of unnecessarily bad performance in naive Julia code, especially when you're new to multiple dispatch -- well, won't be able to make that mistake by accident here!</li>
+<li>No GC means no GC pauses</li>
+<li>Since we're only including what we need, binaries can be quite small (e.g. 8.4K for Hello World)</li>
+</ul>
+<h3 dir="auto"><a id="user-content-utilities" class="anchor" aria-hidden="true" href="#utilities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Utilities</h3>
+<p dir="auto">The utilities <code>static_type</code> and <code>static_type_contents</code> are utilities to help convert an object to something similar with fields and type parameters that are amenable to static compilation.</p>
+<p dir="auto"><code>static_type</code> is mainly useful for converting objects that are heavily paramaterized. The SciML infrastructure has a lot of this. The main objects like a <code>DiffEq.Integrator</code> has many type parameters, and by default, some are not amenable to static compilation. <code>static_type</code> can be used to convert them to forms that can help numerical code to be statically compiled.</p>
+<p dir="auto">For the default rules, <code>Array</code>s are converted to <code>MallocArray</code>s, and <code>String</code>s are converted to <code>MallocString</code>s. The default rules can be extended or redefined by using multiple dispatch and a context variable. Note however that these <code>MallocArray</code>s and <code>MallocString</code>s must be <code>free</code>d when you are done with them.</p>
+<h2 dir="auto"><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Examples</h2>
+<h3 dir="auto"><a id="user-content-compiled-command-line-executables" class="anchor" aria-hidden="true" href="#compiled-command-line-executables"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Compiled command-line executables</h3>
+<h4 dir="auto"><a id="user-content-simple-command-line-executable-with-variable-arguments" class="anchor" aria-hidden="true" href="#simple-command-line-executable-with-variable-arguments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Simple command-line executable with variable arguments:</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# This is all StaticCompiler-friendly
+using StaticTools
+
+function print_args(argc::Int, argv::Ptr{Ptr{UInt8}})
+    # c&quot;...&quot; lets you construct statically-sized, stack allocated `StaticString`s
+    # We also have m&quot;...&quot; and MallocString if you want the same thing but on the heap
+    printf(c&quot;Argument count is %d:\n&quot;, argc)
+    for i=1:argc
+        # iᵗʰ input argument string
+        pᵢ = unsafe_load(argv, i) # Get pointer
+        strᵢ = MallocString(pᵢ) # Can wrap to get high-level interface
+        println(strᵢ)
+        # No need to `free` since we didn't allocate this memory
+    end
+    println(c&quot;That was fun, see you next time!&quot;)
+    return 0
+end
+
+# Compile executable
+using StaticCompiler
+filepath = compile_executable(print_args, (Int64, Ptr{Ptr{UInt8}}), &quot;./&quot;)"><pre><span class="pl-c"><span class="pl-c">#</span> This is all StaticCompiler-friendly</span>
+<span class="pl-k">using</span> StaticTools
+
+<span class="pl-k">function</span> <span class="pl-en">print_args</span>(argc<span class="pl-k">::</span><span class="pl-c1">Int</span>, argv<span class="pl-k">::</span><span class="pl-c1">Ptr{Ptr{UInt8}}</span>)
+    <span class="pl-c"><span class="pl-c">#</span> c"..." lets you construct statically-sized, stack allocated `StaticString`s</span>
+    <span class="pl-c"><span class="pl-c">#</span> We also have m"..." and MallocString if you want the same thing but on the heap</span>
+    <span class="pl-c1">printf</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Argument count is %d:<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>, argc)
+    <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>argc
+        <span class="pl-c"><span class="pl-c">#</span> iᵗʰ input argument string</span>
+        pᵢ <span class="pl-k">=</span> <span class="pl-c1">unsafe_load</span>(argv, i) <span class="pl-c"><span class="pl-c">#</span> Get pointer</span>
+        strᵢ <span class="pl-k">=</span> <span class="pl-c1">MallocString</span>(pᵢ) <span class="pl-c"><span class="pl-c">#</span> Can wrap to get high-level interface</span>
+        <span class="pl-c1">println</span>(strᵢ)
+        <span class="pl-c"><span class="pl-c">#</span> No need to `free` since we didn't allocate this memory</span>
+    <span class="pl-k">end</span>
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>That was fun, see you next time!<span class="pl-pds">"</span></span>)
+    <span class="pl-k">return</span> <span class="pl-c1">0</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Compile executable</span>
+<span class="pl-k">using</span> StaticCompiler
+filepath <span class="pl-k">=</span> <span class="pl-c1">compile_executable</span>(print_args, (Int64, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">and...</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="shell&gt; ./print_args 1 2 3 4 5.0 foo
+Argument count is 7:
+./print_args
+1
+2
+3
+4
+5.0
+foo
+That was fun, see you next time!
+
+shell&gt; hyperfine './print_args hello there'
+Benchmark 1: ./print_args hello there
+  Time (mean ± σ):       2.6 ms ±   0.5 ms    [User: 0.9 ms, System: 0.0 ms]
+  Range (min … max):     1.8 ms …   5.9 ms    542 runs
+
+  Warning: Command took less than 5 ms to complete. Results might be inaccurate.
+
+shell&gt; ls -lh $filepath
+  -rwxr-xr-x  1 user  staff   8.4K May 22 13:58 print_args"><pre class="notranslate"><code>shell&gt; ./print_args 1 2 3 4 5.0 foo
+Argument count is 7:
+./print_args
+1
+2
+3
+4
+5.0
+foo
+That was fun, see you next time!
+
+shell&gt; hyperfine './print_args hello there'
+Benchmark 1: ./print_args hello there
+  Time (mean ± σ):       2.6 ms ±   0.5 ms    [User: 0.9 ms, System: 0.0 ms]
+  Range (min … max):     1.8 ms …   5.9 ms    542 runs
+
+  Warning: Command took less than 5 ms to complete. Results might be inaccurate.
+
+shell&gt; ls -lh $filepath
+  -rwxr-xr-x  1 user  staff   8.4K May 22 13:58 print_args
+</code></pre></div>
+<p dir="auto">Note that the resulting executable is only 8.4 kilobytes in size!</p>
+<h4 dir="auto"><a id="user-content-mallocarrays-with-size-determined-at-runtime" class="anchor" aria-hidden="true" href="#mallocarrays-with-size-determined-at-runtime"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MallocArrays with size determined at runtime:</h4>
+<p dir="auto">If we want to have dynamically-sized arrays, we'll have to allocate them ourselves.
+The <code>MallocArray</code> type is one way to do that.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StaticTools
+function times_table(argc::Int, argv::Ptr{Ptr{UInt8}})
+    argc == 3 || return printf(c&quot;Incorrect number of command-line arguments\n&quot;)
+    rows = argparse(Int64, argv, 2)            # First command-line argument
+    cols = argparse(Int64, argv, 3)            # Second command-line argument
+
+    M = MallocArray{Int64}(undef, rows, cols)
+    @inbounds for i=1:rows
+        for j=1:cols
+            M[i,j] = i*j
+        end
+    end
+    printf(M)
+    free(M)
+end
+
+using StaticCompiler
+filepath = compile_executable(times_table, (Int64, Ptr{Ptr{UInt8}}), &quot;./&quot;)"><pre><span class="pl-k">using</span> StaticTools
+<span class="pl-k">function</span> <span class="pl-en">times_table</span>(argc<span class="pl-k">::</span><span class="pl-c1">Int</span>, argv<span class="pl-k">::</span><span class="pl-c1">Ptr{Ptr{UInt8}}</span>)
+    argc <span class="pl-k">==</span> <span class="pl-c1">3</span> <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">printf</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Incorrect number of command-line arguments<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+    rows <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">2</span>)            <span class="pl-c"><span class="pl-c">#</span> First command-line argument</span>
+    cols <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">3</span>)            <span class="pl-c"><span class="pl-c">#</span> Second command-line argument</span>
+
+    M <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Int64}</span>(undef, rows, cols)
+    <span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>rows
+        <span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>cols
+            M[i,j] <span class="pl-k">=</span> i<span class="pl-k">*</span>j
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    <span class="pl-c1">printf</span>(M)
+    <span class="pl-c1">free</span>(M)
+<span class="pl-k">end</span>
+
+<span class="pl-k">using</span> StaticCompiler
+filepath <span class="pl-k">=</span> <span class="pl-c1">compile_executable</span>(times_table, (Int64, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">which gives us...</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="shell&gt; ls -lh $filepath
+-rwxr-xr-x  1 user  staff   8.6K May 22 14:00 times_table
+
+shell&gt; ./times_table 12, 7
+1   2   3   4   5   6   7
+2   4   6   8   10  12  14
+3   6   9   12  15  18  21
+4   8   12  16  20  24  28
+5   10  15  20  25  30  35
+6   12  18  24  30  36  42
+7   14  21  28  35  42  49
+8   16  24  32  40  48  56
+9   18  27  36  45  54  63
+10  20  30  40  50  60  70
+11  22  33  44  55  66  77
+12  24  36  48  60  72  84"><pre class="notranslate"><code>shell&gt; ls -lh $filepath
+-rwxr-xr-x  1 user  staff   8.6K May 22 14:00 times_table
+
+shell&gt; ./times_table 12, 7
+1   2   3   4   5   6   7
+2   4   6   8   10  12  14
+3   6   9   12  15  18  21
+4   8   12  16  20  24  28
+5   10  15  20  25  30  35
+6   12  18  24  30  36  42
+7   14  21  28  35  42  49
+8   16  24  32  40  48  56
+9   18  27  36  45  54  63
+10  20  30  40  50  60  70
+11  22  33  44  55  66  77
+12  24  36  48  60  72  84
+</code></pre></div>
+<p dir="auto">These <code>MallocArray</code>s can be <code>reshape</code>d and <code>reinterpret</code>ed  without causing any new allocations. Unlike base <code>Array</code>s, <code>getindex</code> produces fast views by default when indexing memory-contiguous slices.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; function times_table(argc::Int, argv::Ptr{Ptr{UInt8}})
+           argc == 3 || return printf(c&quot;Incorrect number of command-line arguments\n&quot;)
+           rows = argparse(Int64, argv, 2)            # First command-line argument
+           cols = argparse(Int64, argv, 3)            # Second command-line argument
+
+           M = MallocArray{Int64}(undef, rows, cols)
+           @inbounds for i=1:rows
+               for j=1:cols
+                   M[i,j] = i*j
+               end
+           end
+           printf(M)
+           M = reinterpret(Int32, M)
+           println(c&quot;\n\nThe same array, reinterpreted as Int32:&quot;)
+           printf(M)
+           free(M)
+       end
+times_table (generic function with 1 method)
+
+julia&gt; filepath = compile_executable(times_table, (Int64, Ptr{Ptr{UInt8}}), &quot;./&quot;)
+&quot;/Users/user/times_table&quot;
+
+shell&gt; ./times_table 3 3
+1	2	3
+2	4	6
+3	6	9
+
+
+The same array, reinterpreted as Int32:
+1	2	3
+0	0	0
+2	4	6
+0	0	0
+3	6	9
+0	0	0"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">times_table</span>(argc<span class="pl-k">::</span><span class="pl-c1">Int</span>, argv<span class="pl-k">::</span><span class="pl-c1">Ptr{Ptr{UInt8}}</span>)
+           argc <span class="pl-k">==</span> <span class="pl-c1">3</span> <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">printf</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Incorrect number of command-line arguments<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+           rows <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">2</span>)            <span class="pl-c"><span class="pl-c">#</span> First command-line argument</span>
+           cols <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">3</span>)            <span class="pl-c"><span class="pl-c">#</span> Second command-line argument</span>
+
+           M <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Int64}</span>(undef, rows, cols)
+           <span class="pl-c1">@inbounds</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>rows
+               <span class="pl-k">for</span> j<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span>cols
+                   M[i,j] <span class="pl-k">=</span> i<span class="pl-k">*</span>j
+               <span class="pl-k">end</span>
+           <span class="pl-k">end</span>
+           <span class="pl-c1">printf</span>(M)
+           M <span class="pl-k">=</span> <span class="pl-c1">reinterpret</span>(Int32, M)
+           <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span><span class="pl-cce">\n\n</span>The same array, reinterpreted as Int32:<span class="pl-pds">"</span></span>)
+           <span class="pl-c1">printf</span>(M)
+           <span class="pl-c1">free</span>(M)
+       <span class="pl-k">end</span>
+times_table (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> filepath <span class="pl-k">=</span> <span class="pl-c1">compile_executable</span>(times_table, (Int64, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>)
+<span class="pl-s"><span class="pl-pds">"</span>/Users/user/times_table<span class="pl-pds">"</span></span>
+
+shell<span class="pl-k">&gt;</span> <span class="pl-k">./</span>times_table <span class="pl-c1">3</span> <span class="pl-c1">3</span>
+<span class="pl-c1">1</span>	<span class="pl-c1">2</span>	<span class="pl-c1">3</span>
+<span class="pl-c1">2</span>	<span class="pl-c1">4</span>	<span class="pl-c1">6</span>
+<span class="pl-c1">3</span>	<span class="pl-c1">6</span>	<span class="pl-c1">9</span>
+
+
+The same array, reinterpreted <span class="pl-k">as</span> Int32<span class="pl-k">:</span>
+<span class="pl-c1">1</span>	<span class="pl-c1">2</span>	<span class="pl-c1">3</span>
+<span class="pl-c1">0</span>	<span class="pl-c1">0</span>	<span class="pl-c1">0</span>
+<span class="pl-c1">2</span>	<span class="pl-c1">4</span>	<span class="pl-c1">6</span>
+<span class="pl-c1">0</span>	<span class="pl-c1">0</span>	<span class="pl-c1">0</span>
+<span class="pl-c1">3</span>	<span class="pl-c1">6</span>	<span class="pl-c1">9</span>
+<span class="pl-c1">0</span>	<span class="pl-c1">0</span>	<span class="pl-c1">0</span></pre></div>
+<h4 dir="auto"><a id="user-content-stackarrays-with-size-determined-at-compile-time" class="anchor" aria-hidden="true" href="#stackarrays-with-size-determined-at-compile-time"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>StackArrays with size determined at compile-time:</h4>
+<p dir="auto">If we know the size of an array at compile-time, we can avoid the <code>malloc</code> and
+keep the array on the stack instead (as long as it's small enough to fit on the
+stack) with the <code>StackArray</code> type:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; function stack_times_table()
+           a = StackArray{Int64}(undef, 5, 5)
+           for i ∈ axes(a,1)
+               for j ∈ axes(a,2)
+                   a[i,j] = i*j
+               end
+           end
+           print(a)
+       end
+
+julia&gt; filepath = compile_executable(stack_times_table, (), &quot;./&quot;)
+&quot;/Users/user/stack_times_table&quot;
+
+shell&gt; ./stack_times_table
+1   2   3   4   5
+2   4   6   8   10
+3   6   9   12  15
+4   8   12  16  20
+5   10  15  20  25"><pre class="notranslate"><code>julia&gt; function stack_times_table()
+           a = StackArray{Int64}(undef, 5, 5)
+           for i ∈ axes(a,1)
+               for j ∈ axes(a,2)
+                   a[i,j] = i*j
+               end
+           end
+           print(a)
+       end
+
+julia&gt; filepath = compile_executable(stack_times_table, (), "./")
+"/Users/user/stack_times_table"
+
+shell&gt; ./stack_times_table
+1   2   3   4   5
+2   4   6   8   10
+3   6   9   12  15
+4   8   12  16  20
+5   10  15  20  25
+</code></pre></div>
+<h4 dir="auto"><a id="user-content-random-number-generation" class="anchor" aria-hidden="true" href="#random-number-generation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Random number generation:</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; function rand_matrix(argc::Int, argv::Ptr{Ptr{UInt8}})
+          argc == 3 || return printf(stderrp(), c&quot;Incorrect number of command-line arguments\n&quot;)
+          rows = argparse(Int64, argv, 2)            # First command-line argument
+          cols = argparse(Int64, argv, 3)            # Second command-line argument
+
+          rng = static_rng()
+
+          M = MallocArray{Float64}(undef, rows, cols)
+          rand!(rng, M)         # rand(rng) to generate a single number instead
+          printf(M)
+          free(M)
+       end
+rand_matrix (generic function with 1 method)
+
+julia&gt; compile_executable(rand_matrix, (Int64, Ptr{Ptr{UInt8}}), &quot;./&quot;)
+&quot;/Users/user/rand_matrix&quot;
+
+shell&gt; ./rand_matrix 5 5
+7.890932e-01    7.532989e-01    8.593202e-01    4.790301e-01    6.464508e-01
+5.619692e-01    9.800402e-02    8.545220e-02    5.545224e-02    2.966089e-01
+7.021460e-01    4.587692e-01    9.316740e-01    8.736913e-01    8.271038e-01
+8.098993e-01    5.368138e-01    3.055373e-02    3.972266e-01    8.146640e-01
+8.241520e-01    7.532375e-01    2.969434e-01    9.436580e-01    2.819992e-01
+
+shell&gt; hyperfine './rand_matrix 5 5'
+Benchmark 1: ./rand_matrix 5 5
+  Time (mean ± σ):       2.6 ms ±   0.4 ms    [User: 0.9 ms, System: 0.0 ms]
+  Range (min … max):     1.8 ms …   4.2 ms    501 runs
+
+  Warning: Command took less than 5 ms to complete. Results might be inaccurate.
+
+shell&gt; ls -alh rand_matrix
+  -rwxr-xr-x  1 user  staff   8.8K May 22 14:02 rand_matrix"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">rand_matrix</span>(argc<span class="pl-k">::</span><span class="pl-c1">Int</span>, argv<span class="pl-k">::</span><span class="pl-c1">Ptr{Ptr{UInt8}}</span>)
+          argc <span class="pl-k">==</span> <span class="pl-c1">3</span> <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">printf</span>(<span class="pl-c1">stderrp</span>(), <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Incorrect number of command-line arguments<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+          rows <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">2</span>)            <span class="pl-c"><span class="pl-c">#</span> First command-line argument</span>
+          cols <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">3</span>)            <span class="pl-c"><span class="pl-c">#</span> Second command-line argument</span>
+
+          rng <span class="pl-k">=</span> <span class="pl-c1">static_rng</span>()
+
+          M <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, rows, cols)
+          <span class="pl-c1">rand!</span>(rng, M)         <span class="pl-c"><span class="pl-c">#</span> rand(rng) to generate a single number instead</span>
+          <span class="pl-c1">printf</span>(M)
+          <span class="pl-c1">free</span>(M)
+       <span class="pl-k">end</span>
+rand_matrix (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">compile_executable</span>(rand_matrix, (Int64, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>)
+<span class="pl-s"><span class="pl-pds">"</span>/Users/user/rand_matrix<span class="pl-pds">"</span></span>
+
+shell<span class="pl-k">&gt;</span> <span class="pl-k">./</span>rand_matrix <span class="pl-c1">5</span> <span class="pl-c1">5</span>
+<span class="pl-c1">7.890932e-01</span>    <span class="pl-c1">7.532989e-01</span>    <span class="pl-c1">8.593202e-01</span>    <span class="pl-c1">4.790301e-01</span>    <span class="pl-c1">6.464508e-01</span>
+<span class="pl-c1">5.619692e-01</span>    <span class="pl-c1">9.800402e-02</span>    <span class="pl-c1">8.545220e-02</span>    <span class="pl-c1">5.545224e-02</span>    <span class="pl-c1">2.966089e-01</span>
+<span class="pl-c1">7.021460e-01</span>    <span class="pl-c1">4.587692e-01</span>    <span class="pl-c1">9.316740e-01</span>    <span class="pl-c1">8.736913e-01</span>    <span class="pl-c1">8.271038e-01</span>
+<span class="pl-c1">8.098993e-01</span>    <span class="pl-c1">5.368138e-01</span>    <span class="pl-c1">3.055373e-02</span>    <span class="pl-c1">3.972266e-01</span>    <span class="pl-c1">8.146640e-01</span>
+<span class="pl-c1">8.241520e-01</span>    <span class="pl-c1">7.532375e-01</span>    <span class="pl-c1">2.969434e-01</span>    <span class="pl-c1">9.436580e-01</span>    <span class="pl-c1">2.819992e-01</span>
+
+shell<span class="pl-k">&gt;</span> hyperfine <span class="pl-s"><span class="pl-pds">'</span>./rand_matrix 5 5<span class="pl-pds">'</span></span>
+Benchmark <span class="pl-c1">1</span><span class="pl-k">:</span> <span class="pl-k">./</span>rand_matrix <span class="pl-c1">5</span> <span class="pl-c1">5</span>
+  Time (mean ± σ)<span class="pl-k">:</span>       <span class="pl-c1">2.6</span> ms ±   <span class="pl-c1">0.4</span> ms    [User<span class="pl-k">:</span> <span class="pl-c1">0.9</span> ms, System<span class="pl-k">:</span> <span class="pl-c1">0.0</span> ms]
+  Range (min … max)<span class="pl-k">:</span>     <span class="pl-c1">1.8</span> ms …   <span class="pl-c1">4.2</span> ms    <span class="pl-c1">501</span> runs
+
+  Warning<span class="pl-k">:</span> Command took less than <span class="pl-c1">5</span> ms to complete. Results might be inaccurate.
+
+shell<span class="pl-k">&gt;</span> ls <span class="pl-k">-</span>alh rand_matrix
+  <span class="pl-k">-</span>rwxr<span class="pl-k">-</span>xr<span class="pl-k">-</span>x  <span class="pl-c1">1</span> user  staff   <span class="pl-c1">8.8</span>K May <span class="pl-c1">22</span> <span class="pl-c1">14</span><span class="pl-k">:</span><span class="pl-c1">02</span> rand_matrix</pre></div>
+<h4 dir="auto"><a id="user-content-loopvectoriztionjl-compatibility" class="anchor" aria-hidden="true" href="#loopvectoriztionjl-compatibility"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>LoopVectoriztion.jl compatibility!</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StaticCompiler
+using StaticTools
+using LoopVectorization
+
+@inline function mul!(C::MallocArray, A::MallocArray, B::MallocArray)
+    @turbo for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
+        Cmn = zero(eltype(C))
+        for k ∈ indices((A,B), (2,1))
+            Cmn += A[m,k] * B[k,n]
+        end
+        C[m,n] = Cmn
+    end
+    return C
+end
+
+function loopvec_matrix(argc::Int, argv::Ptr{Ptr{UInt8}})
+    argc == 3 || return printf(stderrp(), c&quot;Incorrect number of command-line arguments\n&quot;)
+    rows = argparse(Int64, argv, 2)            # First command-line argument
+    cols = argparse(Int64, argv, 3)            # Second command-line argument
+
+    # LHS
+    A = MallocArray{Float64}(undef, rows, cols)
+    @turbo for i ∈ axes(A, 1)
+        for j ∈ axes(A, 2)
+           A[i,j] = i*j
+        end
+    end
+
+    # RHS
+    B = MallocArray{Float64}(undef, cols, rows)
+    @turbo for i ∈ axes(B, 1)
+        for j ∈ axes(B, 2)
+           B[i,j] = i*j
+        end
+    end
+
+    # # Matrix multiplication
+    C = MallocArray{Float64}(undef, cols, cols)
+    mul!(C, B, A)
+
+    # Print to stdout
+    printf(C)
+
+    # Clean up matrices
+    free(A)
+    free(B)
+    free(C)
+end
+
+# Attempt to compile
+path = compile_executable(loopvec_matrix, (Int64, Ptr{Ptr{UInt8}}), &quot;./&quot;)"><pre><span class="pl-k">using</span> StaticCompiler
+<span class="pl-k">using</span> StaticTools
+<span class="pl-k">using</span> LoopVectorization
+
+<span class="pl-c1">@inline</span> <span class="pl-k">function</span> <span class="pl-en">mul!</span>(C<span class="pl-k">::</span><span class="pl-c1">MallocArray</span>, A<span class="pl-k">::</span><span class="pl-c1">MallocArray</span>, B<span class="pl-k">::</span><span class="pl-c1">MallocArray</span>)
+    <span class="pl-c1">@turbo</span> <span class="pl-k">for</span> n <span class="pl-k">∈</span> <span class="pl-c1">indices</span>((C,B), <span class="pl-c1">2</span>), m <span class="pl-k">∈</span> <span class="pl-c1">indices</span>((C,A), <span class="pl-c1">1</span>)
+        Cmn <span class="pl-k">=</span> <span class="pl-c1">zero</span>(<span class="pl-c1">eltype</span>(C))
+        <span class="pl-k">for</span> k <span class="pl-k">∈</span> <span class="pl-c1">indices</span>((A,B), (<span class="pl-c1">2</span>,<span class="pl-c1">1</span>))
+            Cmn <span class="pl-k">+=</span> A[m,k] <span class="pl-k">*</span> B[k,n]
+        <span class="pl-k">end</span>
+        C[m,n] <span class="pl-k">=</span> Cmn
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> C
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">loopvec_matrix</span>(argc<span class="pl-k">::</span><span class="pl-c1">Int</span>, argv<span class="pl-k">::</span><span class="pl-c1">Ptr{Ptr{UInt8}}</span>)
+    argc <span class="pl-k">==</span> <span class="pl-c1">3</span> <span class="pl-k">||</span> <span class="pl-k">return</span> <span class="pl-c1">printf</span>(<span class="pl-c1">stderrp</span>(), <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Incorrect number of command-line arguments<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+    rows <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">2</span>)            <span class="pl-c"><span class="pl-c">#</span> First command-line argument</span>
+    cols <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int64, argv, <span class="pl-c1">3</span>)            <span class="pl-c"><span class="pl-c">#</span> Second command-line argument</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> LHS</span>
+    A <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, rows, cols)
+    <span class="pl-c1">@turbo</span> <span class="pl-k">for</span> i <span class="pl-k">∈</span> <span class="pl-c1">axes</span>(A, <span class="pl-c1">1</span>)
+        <span class="pl-k">for</span> j <span class="pl-k">∈</span> <span class="pl-c1">axes</span>(A, <span class="pl-c1">2</span>)
+           A[i,j] <span class="pl-k">=</span> i<span class="pl-k">*</span>j
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> RHS</span>
+    B <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, cols, rows)
+    <span class="pl-c1">@turbo</span> <span class="pl-k">for</span> i <span class="pl-k">∈</span> <span class="pl-c1">axes</span>(B, <span class="pl-c1">1</span>)
+        <span class="pl-k">for</span> j <span class="pl-k">∈</span> <span class="pl-c1">axes</span>(B, <span class="pl-c1">2</span>)
+           B[i,j] <span class="pl-k">=</span> i<span class="pl-k">*</span>j
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> # Matrix multiplication</span>
+    C <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, cols, cols)
+    <span class="pl-c1">mul!</span>(C, B, A)
+
+    <span class="pl-c"><span class="pl-c">#</span> Print to stdout</span>
+    <span class="pl-c1">printf</span>(C)
+
+    <span class="pl-c"><span class="pl-c">#</span> Clean up matrices</span>
+    <span class="pl-c1">free</span>(A)
+    <span class="pl-c1">free</span>(B)
+    <span class="pl-c1">free</span>(C)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Attempt to compile</span>
+path <span class="pl-k">=</span> <span class="pl-c1">compile_executable</span>(loopvec_matrix, (Int64, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">which gives us a 21k executable that allocates, fills, multiplies two 100x100
+matrices and prints results in 6.3 ms singlethreaded</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="shell&gt; ./loopvec_matrix 10 3
+3.850000e+02	7.700000e+02	1.155000e+03
+7.700000e+02	1.540000e+03	2.310000e+03
+1.155000e+03	2.310000e+03	3.465000e+03
+
+shell&gt; hyperfine './loopvec_matrix 100 100'
+Benchmark 1: ./loopvec_matrix 100 100
+  Time (mean ± σ):       6.2 ms ±   0.6 ms    [User: 4.1 ms, System: 0.0 ms]
+  Range (min … max):     5.2 ms …   8.5 ms    337 runs
+
+shell&gt; ls -alh loopvec_matrix
+-rwxr-xr-x  1 cbkeller  staff    21K May 22 14:11 loopvec_matrix"><pre lang="julia-repl" class="notranslate"><code>shell&gt; ./loopvec_matrix 10 3
+3.850000e+02	7.700000e+02	1.155000e+03
+7.700000e+02	1.540000e+03	2.310000e+03
+1.155000e+03	2.310000e+03	3.465000e+03
+
+shell&gt; hyperfine './loopvec_matrix 100 100'
+Benchmark 1: ./loopvec_matrix 100 100
+  Time (mean ± σ):       6.2 ms ±   0.6 ms    [User: 4.1 ms, System: 0.0 ms]
+  Range (min … max):     5.2 ms …   8.5 ms    337 runs
+
+shell&gt; ls -alh loopvec_matrix
+-rwxr-xr-x  1 cbkeller  staff    21K May 22 14:11 loopvec_matrix
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-compiled-sodylib-shared-libraries" class="anchor" aria-hidden="true" href="#compiled-sodylib-shared-libraries"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Compiled <code>.so</code>/<code>.dylib</code> shared libraries</h3>
+<h4 dir="auto"><a id="user-content-calling-compiled-julia-library-from-python" class="anchor" aria-hidden="true" href="#calling-compiled-julia-library-from-python"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Calling compiled Julia library from Python</h4>
+<p dir="auto">Say we were to take the example above, but we wanted to compile it into a shared
+library to, say, call from another language. For example, let's say we wanted to
+be able to call our nice fast <code>LoopVectorization.jl</code>-based <code>mul!</code> function from
+Python...</p>
+<h5 dir="auto"><a id="user-content-julia" class="anchor" aria-hidden="true" href="#julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Julia:</h5>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StaticCompiler
+using StaticTools
+using LoopVectorization
+using Base: RefValue
+
+@inline function mul!(C::MallocArray, A::MallocArray, B::MallocArray)
+    @turbo for n ∈ indices((C,B), 2), m ∈ indices((C,A), 1)
+        Cmn = zero(eltype(C))
+        for k ∈ indices((A,B), (2,1))
+            Cmn += A[m,k] * B[k,n]
+        end
+        C[m,n] = Cmn
+    end
+    return 0
+end
+
+# this will let us accept pointers to MallocArrays
+mul!(C::Ref,A::Ref,B::Ref) = mul!(C[], A[], B[])
+
+# Note that we have to specify a contrete type for each argument when compiling!
+# So not just any MallocArra but in this case specifically MallocArray{Float64,2}
+# (AKA MallocMatrix{Float64})
+tt = (RefValue{MallocMatrix{Float64}}, RefValue{MallocMatrix{Float64}}, RefValue{MallocMatrix{Float64}})
+compile_shlib(mul!, tt, &quot;./&quot;, &quot;mul_inplace&quot;, filename=&quot;libmul&quot;)"><pre><span class="pl-k">using</span> StaticCompiler
+<span class="pl-k">using</span> StaticTools
+<span class="pl-k">using</span> LoopVectorization
+<span class="pl-k">using</span> Base<span class="pl-k">:</span> RefValue
+
+<span class="pl-c1">@inline</span> <span class="pl-k">function</span> <span class="pl-en">mul!</span>(C<span class="pl-k">::</span><span class="pl-c1">MallocArray</span>, A<span class="pl-k">::</span><span class="pl-c1">MallocArray</span>, B<span class="pl-k">::</span><span class="pl-c1">MallocArray</span>)
+    <span class="pl-c1">@turbo</span> <span class="pl-k">for</span> n <span class="pl-k">∈</span> <span class="pl-c1">indices</span>((C,B), <span class="pl-c1">2</span>), m <span class="pl-k">∈</span> <span class="pl-c1">indices</span>((C,A), <span class="pl-c1">1</span>)
+        Cmn <span class="pl-k">=</span> <span class="pl-c1">zero</span>(<span class="pl-c1">eltype</span>(C))
+        <span class="pl-k">for</span> k <span class="pl-k">∈</span> <span class="pl-c1">indices</span>((A,B), (<span class="pl-c1">2</span>,<span class="pl-c1">1</span>))
+            Cmn <span class="pl-k">+=</span> A[m,k] <span class="pl-k">*</span> B[k,n]
+        <span class="pl-k">end</span>
+        C[m,n] <span class="pl-k">=</span> Cmn
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> <span class="pl-c1">0</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> this will let us accept pointers to MallocArrays</span>
+<span class="pl-en">mul!</span>(C<span class="pl-k">::</span><span class="pl-c1">Ref</span>,A<span class="pl-k">::</span><span class="pl-c1">Ref</span>,B<span class="pl-k">::</span><span class="pl-c1">Ref</span>) <span class="pl-k">=</span> <span class="pl-c1">mul!</span>(C[], A[], B[])
+
+<span class="pl-c"><span class="pl-c">#</span> Note that we have to specify a contrete type for each argument when compiling!</span>
+<span class="pl-c"><span class="pl-c">#</span> So not just any MallocArra but in this case specifically MallocArray{Float64,2}</span>
+<span class="pl-c"><span class="pl-c">#</span> (AKA MallocMatrix{Float64})</span>
+tt <span class="pl-k">=</span> (RefValue{MallocMatrix{Float64}}, RefValue{MallocMatrix{Float64}}, RefValue{MallocMatrix{Float64}})
+<span class="pl-c1">compile_shlib</span>(mul!, tt, <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>mul_inplace<span class="pl-pds">"</span></span>, filename<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>libmul<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">Note that with shared libraries, we're no longer limited to just <code>argc::Int, argv::Ptr{Ptr{UInt8}}</code>.
+In principle, we can pass just about anything we want! However, it's usually easiest
+to pass either plain native number types or else pointers to more complicated objects.
+<code>MallocArray</code>s would qualify as the latter, hence passing pointers to refs</p>
+<h5 dir="auto"><a id="user-content-python-side" class="anchor" aria-hidden="true" href="#python-side"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Python side:</h5>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import ctypes as ct
+import numpy as np
+
+class MallocMatrix(ct.Structure):
+    _fields_ = [(&quot;pointer&quot;, ct.c_void_p),
+                (&quot;length&quot;, ct.c_int64),
+                (&quot;s1&quot;, ct.c_int64),
+                (&quot;s2&quot;, ct.c_int64)]
+
+def mmptr(A):
+    ptr = A.ctypes.data_as(ct.c_void_p)
+    a = MallocMatrix(ptr, ct.c_int64(A.size), ct.c_int64(A.shape[1]), ct.c_int64(A.shape[0]))
+    return ct.byref(a)
+
+lib = ct.CDLL(&quot;./libmul.dylib&quot;)
+
+A = np.ones((10,10))
+B = np.ones((10,10))
+C = np.ones((10,10))
+
+Aptr = mmptr(A)
+Bptr = mmptr(B)
+Cptr = mmptr(C)
+
+lib.julia_mul_inplace(Cptr, Bptr, Aptr)"><pre><span class="pl-k">import</span> <span class="pl-s1">ctypes</span> <span class="pl-k">as</span> <span class="pl-s1">ct</span>
+<span class="pl-k">import</span> <span class="pl-s1">numpy</span> <span class="pl-k">as</span> <span class="pl-s1">np</span>
+
+<span class="pl-k">class</span> <span class="pl-v">MallocMatrix</span>(<span class="pl-s1">ct</span>.<span class="pl-v">Structure</span>):
+    <span class="pl-s1">_fields_</span> <span class="pl-c1">=</span> [(<span class="pl-s">"pointer"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_void_p</span>),
+                (<span class="pl-s">"length"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_int64</span>),
+                (<span class="pl-s">"s1"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_int64</span>),
+                (<span class="pl-s">"s2"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_int64</span>)]
+
+<span class="pl-k">def</span> <span class="pl-en">mmptr</span>(<span class="pl-v">A</span>):
+    <span class="pl-s1">ptr</span> <span class="pl-c1">=</span> <span class="pl-v">A</span>.<span class="pl-s1">ctypes</span>.<span class="pl-en">data_as</span>(<span class="pl-s1">ct</span>.<span class="pl-s1">c_void_p</span>)
+    <span class="pl-s1">a</span> <span class="pl-c1">=</span> <span class="pl-v">MallocMatrix</span>(<span class="pl-s1">ptr</span>, <span class="pl-s1">ct</span>.<span class="pl-en">c_int64</span>(<span class="pl-v">A</span>.<span class="pl-s1">size</span>), <span class="pl-s1">ct</span>.<span class="pl-en">c_int64</span>(<span class="pl-v">A</span>.<span class="pl-s1">shape</span>[<span class="pl-c1">1</span>]), <span class="pl-s1">ct</span>.<span class="pl-en">c_int64</span>(<span class="pl-v">A</span>.<span class="pl-s1">shape</span>[<span class="pl-c1">0</span>]))
+    <span class="pl-k">return</span> <span class="pl-s1">ct</span>.<span class="pl-en">byref</span>(<span class="pl-s1">a</span>)
+
+<span class="pl-s1">lib</span> <span class="pl-c1">=</span> <span class="pl-s1">ct</span>.<span class="pl-v">CDLL</span>(<span class="pl-s">"./libmul.dylib"</span>)
+
+<span class="pl-v">A</span> <span class="pl-c1">=</span> <span class="pl-s1">np</span>.<span class="pl-en">ones</span>((<span class="pl-c1">10</span>,<span class="pl-c1">10</span>))
+<span class="pl-v">B</span> <span class="pl-c1">=</span> <span class="pl-s1">np</span>.<span class="pl-en">ones</span>((<span class="pl-c1">10</span>,<span class="pl-c1">10</span>))
+<span class="pl-v">C</span> <span class="pl-c1">=</span> <span class="pl-s1">np</span>.<span class="pl-en">ones</span>((<span class="pl-c1">10</span>,<span class="pl-c1">10</span>))
+
+<span class="pl-v">Aptr</span> <span class="pl-c1">=</span> <span class="pl-en">mmptr</span>(<span class="pl-v">A</span>)
+<span class="pl-v">Bptr</span> <span class="pl-c1">=</span> <span class="pl-en">mmptr</span>(<span class="pl-v">B</span>)
+<span class="pl-v">Cptr</span> <span class="pl-c1">=</span> <span class="pl-en">mmptr</span>(<span class="pl-v">C</span>)
+
+<span class="pl-s1">lib</span>.<span class="pl-en">julia_mul_inplace</span>(<span class="pl-v">Cptr</span>, <span class="pl-v">Bptr</span>, <span class="pl-v">Aptr</span>)</pre></div>
+<p dir="auto">Note that here we have basically just mimiced the structure of the <code>MallocArray</code> Julia <code>struct</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct MallocArray{T,N}
+    pointer::Ptr{T}
+    length::Int
+    size::NTuple{N, Int}
+end"><pre><span class="pl-k">struct</span> MallocArray{T,N}
+    pointer<span class="pl-k">::</span><span class="pl-c1">Ptr{T}</span>
+    length<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    size<span class="pl-k">::</span><span class="pl-c1">NTuple{N, Int}</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">with a python <code>class</code></p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="class MallocMatrix(ct.Structure):
+    _fields_ = [(&quot;pointer&quot;, ct.c_void_p),
+                (&quot;length&quot;, ct.c_int64),
+                (&quot;s1&quot;, ct.c_int64),
+                (&quot;s2&quot;, ct.c_int64)]"><pre><span class="pl-k">class</span> <span class="pl-v">MallocMatrix</span>(<span class="pl-s1">ct</span>.<span class="pl-v">Structure</span>):
+    <span class="pl-s1">_fields_</span> <span class="pl-c1">=</span> [(<span class="pl-s">"pointer"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_void_p</span>),
+                (<span class="pl-s">"length"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_int64</span>),
+                (<span class="pl-s">"s1"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_int64</span>),
+                (<span class="pl-s">"s2"</span>, <span class="pl-s1">ct</span>.<span class="pl-s1">c_int64</span>)]</pre></div>
+<p dir="auto">In particular, we can use two integers <code>s1</code> and <code>s2</code> for the two integers in <code>size</code>,
+which in this case is specifically an <code>Ntuple{2, Int}</code>, because we're talking
+about a 2d array -- but note that we have to flip the order, because Python is
+row-major in contrast to Julia which is column-major!</p>
+<p dir="auto">Then, wrap that in a ref with <code>ct.byref</code> before passing that to our shared library...</p>
+<h5 dir="auto"><a id="user-content-results" class="anchor" aria-hidden="true" href="#results"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Results:</h5>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="lib.julia_mul_inplace(Cptr, Bptr, Aptr)
+Out[2]: 0
+
+C
+Out[3]:
+array([[10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.],
+       [10., 10., 10., 10., 10., 10., 10., 10., 10., 10.]])
+
+%timeit lib.julia_mul_inplace(Cptr, Bptr, Aptr)
+549 ns ± 6.78 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
+
+%timeit np.matmul(A,B)
+2.24 µs ± 39.9 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)"><pre><span class="pl-s1">lib</span>.<span class="pl-en">julia_mul_inplace</span>(<span class="pl-v">Cptr</span>, <span class="pl-v">Bptr</span>, <span class="pl-v">Aptr</span>)
+<span class="pl-v">Out</span>[<span class="pl-c1">2</span>]: <span class="pl-c1">0</span>
+
+<span class="pl-v">C</span>
+<span class="pl-v">Out</span>[<span class="pl-c1">3</span>]:
+<span class="pl-en">array</span>([[<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>],
+       [<span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>, <span class="pl-c1">10.</span>]])
+
+<span class="pl-c1">%</span><span class="pl-s1">timeit</span> <span class="pl-s1">lib</span>.<span class="pl-en">julia_mul_inplace</span>(<span class="pl-v">Cptr</span>, <span class="pl-v">Bptr</span>, <span class="pl-v">Aptr</span>)
+<span class="pl-c1">549</span> <span class="pl-s1">ns</span> ± <span class="pl-c1">6.78</span> <span class="pl-s1">ns</span> <span class="pl-s1">per</span> <span class="pl-en">loop</span> (<span class="pl-s1">mean</span> ± <span class="pl-s1">std</span>. <span class="pl-s1">dev</span>. <span class="pl-s1">of</span> <span class="pl-c1">7</span> <span class="pl-s1">runs</span>, <span class="pl-c1">1000000</span> <span class="pl-s1">loops</span> <span class="pl-s1">each</span>)
+
+<span class="pl-c1">%</span><span class="pl-s1">timeit</span> <span class="pl-s1">np</span>.<span class="pl-en">matmul</span>(<span class="pl-v">A</span>,<span class="pl-v">B</span>)
+<span class="pl-c1">2.24</span> <span class="pl-s1">µs</span> ± <span class="pl-c1">39.9</span> <span class="pl-s1">ns</span> <span class="pl-s1">per</span> <span class="pl-en">loop</span> (<span class="pl-s1">mean</span> ± <span class="pl-s1">std</span>. <span class="pl-s1">dev</span>. <span class="pl-s1">of</span> <span class="pl-c1">7</span> <span class="pl-s1">runs</span>, <span class="pl-c1">100000</span> <span class="pl-s1">loops</span> <span class="pl-s1">each</span>)</pre></div>
+<p dir="auto">so about 4x faster than numpy.matmul for a 10x10 matrix, not counting the time to obtain the pointers.</p>
+<h4 dir="auto"><a id="user-content-calling-compiled-julia-library-from-julia" class="anchor" aria-hidden="true" href="#calling-compiled-julia-library-from-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Calling compiled Julia library from Julia</h4>
+<p dir="auto">That said, if we were to go back to Julia...</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Libdl
+lib = Libdl.dlopen(&quot;./libmul.$(Libdl.dlext)&quot;, Libdl.RTLD_LOCAL)
+mul_inplace = Libdl.dlsym(lib, &quot;julia_mul_inplace&quot;)
+
+A = MallocArray{Float64}(undef, 10, 10); A .= 1
+B = MallocArray{Float64}(undef, 10, 10); B .= 1
+C = MallocArray{Float64}(undef, 10, 10); C .= 0
+
+ra, rb, rc = Ref(A), Ref(B), Ref(C)
+pa, pb, pc = pointer_from_objref(ra), pointer_from_objref(rb), pointer_from_objref(rc)
+
+ccall(mul_inplace, Int, (Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing}), pc, pa, pb)
+
+Libdl.dlclose(lib)"><pre><span class="pl-k">using</span> Libdl
+lib <span class="pl-k">=</span> Libdl<span class="pl-k">.</span><span class="pl-c1">dlopen</span>(<span class="pl-s"><span class="pl-pds">"</span>./libmul.<span class="pl-v">$(Libdl<span class="pl-k">.</span>dlext)</span><span class="pl-pds">"</span></span>, Libdl<span class="pl-k">.</span>RTLD_LOCAL)
+mul_inplace <span class="pl-k">=</span> Libdl<span class="pl-k">.</span><span class="pl-c1">dlsym</span>(lib, <span class="pl-s"><span class="pl-pds">"</span>julia_mul_inplace<span class="pl-pds">"</span></span>)
+
+A <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">10</span>, <span class="pl-c1">10</span>); A <span class="pl-k">.=</span> <span class="pl-c1">1</span>
+B <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">10</span>, <span class="pl-c1">10</span>); B <span class="pl-k">.=</span> <span class="pl-c1">1</span>
+C <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">10</span>, <span class="pl-c1">10</span>); C <span class="pl-k">.=</span> <span class="pl-c1">0</span>
+
+ra, rb, rc <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(A), <span class="pl-c1">Ref</span>(B), <span class="pl-c1">Ref</span>(C)
+pa, pb, pc <span class="pl-k">=</span> <span class="pl-c1">pointer_from_objref</span>(ra), <span class="pl-c1">pointer_from_objref</span>(rb), <span class="pl-c1">pointer_from_objref</span>(rc)
+
+<span class="pl-c1">ccall</span>(mul_inplace, Int, (Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing}), pc, pa, pb)
+
+Libdl<span class="pl-k">.</span><span class="pl-c1">dlclose</span>(lib)</pre></div>
+<p dir="auto">there would seem to be still about another 5x on the table:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ccall(mul_inplace, Int, (Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing}), pc, pa, pb)
+0
+
+julia&gt; C
+10×10 MallocMatrix{Float64}:
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+
+julia&gt; using BenchmarkTools
+
+julia&gt; @benchmark ccall($mul_inplace, Int, (Ptr{nothing}, Ptr{nothing}, Ptr{nothing}), $pc, $pa, $pb)
+BenchmarkTools.Trial: 10000 samples with 956 evaluations.
+ Range (min … max):  90.455 ns … 285.144 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     93.046 ns               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   99.250 ns ±  16.589 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  ▄█▅▁▁▃▂▂▂   ▂▁       ▁                                       ▁
+  ██████████████████▇▇▇██▇▇▇▇▇▆▇▇▇▆▆▆▆▆▆▆▅▅▆▆▅▅▅▄▅▅▅▅▅▅▅▆▄▄▄▅▅ █
+  90.5 ns       Histogram: log(frequency) by time       178 ns &lt;
+
+ Memory estimate: 0 bytes, allocs estimate: 0."><pre lang="julia-repl" class="notranslate"><code>julia&gt; ccall(mul_inplace, Int, (Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing}), pc, pa, pb)
+0
+
+julia&gt; C
+10×10 MallocMatrix{Float64}:
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+ 10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0  10.0
+
+julia&gt; using BenchmarkTools
+
+julia&gt; @benchmark ccall($mul_inplace, Int, (Ptr{nothing}, Ptr{nothing}, Ptr{nothing}), $pc, $pa, $pb)
+BenchmarkTools.Trial: 10000 samples with 956 evaluations.
+ Range (min … max):  90.455 ns … 285.144 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     93.046 ns               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   99.250 ns ±  16.589 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  ▄█▅▁▁▃▂▂▂   ▂▁       ▁                                       ▁
+  ██████████████████▇▇▇██▇▇▇▇▇▆▇▇▇▆▆▆▆▆▆▆▅▅▆▆▅▅▅▄▅▅▅▅▅▅▅▆▄▄▄▅▅ █
+  90.5 ns       Histogram: log(frequency) by time       178 ns &lt;
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+</code></pre></div>
+<h4 dir="auto"><a id="user-content-calling-compiled-julia-library-from-compiled-julia" class="anchor" aria-hidden="true" href="#calling-compiled-julia-library-from-compiled-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Calling compiled Julia library from compiled Julia</h4>
+<p dir="auto">And of course if we want to bring this full-circle:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StaticTools, StaticCompiler
+
+function dlmul()
+    lib = StaticTools.dlopen(c&quot;./libmul.dylib&quot;)
+    mul_inplace = StaticTools.dlsym(lib, c&quot;julia_mul_inplace&quot;)
+
+    A = MallocArray{Float64}(undef, 5, 5); fill!(A, 1)
+    B = MallocArray{Float64}(undef, 5, 5); fill!(B, 1)
+    C = MallocArray{Float64}(undef, 5, 5); fill!(C, 0)
+
+    ra, rb, rc = Ref(A), Ref(B), Ref(C)
+    GC.@preserve ra rb rc begin
+        pa, pb, pc = pointer_from_objref(ra), pointer_from_objref(rb), pointer_from_objref(rc)
+        @ptrcall mul_inplace(pc::Ptr{Nothing}, pa::Ptr{Nothing}, pb::Ptr{Nothing})::Int
+    end
+    StaticTools.dlclose(lib)
+    printf(C)
+end
+
+compile_executable(dlmul, (), &quot;./&quot;)"><pre><span class="pl-k">using</span> StaticTools, StaticCompiler
+
+<span class="pl-k">function</span> <span class="pl-en">dlmul</span>()
+    lib <span class="pl-k">=</span> StaticTools<span class="pl-k">.</span><span class="pl-c1">dlopen</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>./libmul.dylib<span class="pl-pds">"</span></span>)
+    mul_inplace <span class="pl-k">=</span> StaticTools<span class="pl-k">.</span><span class="pl-c1">dlsym</span>(lib, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>julia_mul_inplace<span class="pl-pds">"</span></span>)
+
+    A <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>); <span class="pl-c1">fill!</span>(A, <span class="pl-c1">1</span>)
+    B <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>); <span class="pl-c1">fill!</span>(B, <span class="pl-c1">1</span>)
+    C <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>); <span class="pl-c1">fill!</span>(C, <span class="pl-c1">0</span>)
+
+    ra, rb, rc <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(A), <span class="pl-c1">Ref</span>(B), <span class="pl-c1">Ref</span>(C)
+    GC<span class="pl-k">.</span><span class="pl-c1">@preserve</span> ra rb rc <span class="pl-k">begin</span>
+        pa, pb, pc <span class="pl-k">=</span> <span class="pl-c1">pointer_from_objref</span>(ra), <span class="pl-c1">pointer_from_objref</span>(rb), <span class="pl-c1">pointer_from_objref</span>(rc)
+        <span class="pl-c1">@ptrcall</span> <span class="pl-c1">mul_inplace</span>(pc<span class="pl-k">::</span><span class="pl-c1">Ptr{Nothing}</span>, pa<span class="pl-k">::</span><span class="pl-c1">Ptr{Nothing}</span>, pb<span class="pl-k">::</span><span class="pl-c1">Ptr{Nothing}</span>)<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    <span class="pl-k">end</span>
+    StaticTools<span class="pl-k">.</span><span class="pl-c1">dlclose</span>(lib)
+    <span class="pl-c1">printf</span>(C)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">compile_executable</span>(dlmul, (), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="shell&gt; ./dlmul
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00"><pre lang="julia-repl" class="notranslate"><code>shell&gt; ./dlmul
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-linking-against-existing-libraries-during-compilation" class="anchor" aria-hidden="true" href="#linking-against-existing-libraries-during-compilation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Linking against existing libraries during compilation:</h3>
+<p dir="auto">Existing shared libraries can also be linked against by specifying the
+relevant compiler flags during compilation, just as you would with GCC or clang.
+For example, the following is equivalent to the above example where we explicitly
+<code>dlopen</code>ed our <code>libmul</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StaticTools, StaticCompiler
+
+function dlmul()
+    A = MallocArray{Float64}(undef, 5, 5); fill!(A, 1)
+    B = MallocArray{Float64}(undef, 5, 5); fill!(B, 1)
+    C = MallocArray{Float64}(undef, 5, 5); fill!(C, 0)
+
+    ra, rb, rc = Ref(A), Ref(B), Ref(C)
+    GC.@preserve ra rb rc begin
+        pa, pb, pc = pointer_from_objref(ra), pointer_from_objref(rb), pointer_from_objref(rc)
+        @symbolcall julia_mul_inplace(pc::Ptr{Nothing}, pa::Ptr{Nothing}, pb::Ptr{Nothing})::Int
+    end
+    printf(C)
+end
+
+compile_executable(dlmul, (), &quot;./&quot;, cflags=`-lmul -L./`)"><pre><span class="pl-k">using</span> StaticTools, StaticCompiler
+
+<span class="pl-k">function</span> <span class="pl-en">dlmul</span>()
+    A <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>); <span class="pl-c1">fill!</span>(A, <span class="pl-c1">1</span>)
+    B <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>); <span class="pl-c1">fill!</span>(B, <span class="pl-c1">1</span>)
+    C <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{Float64}</span>(undef, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>); <span class="pl-c1">fill!</span>(C, <span class="pl-c1">0</span>)
+
+    ra, rb, rc <span class="pl-k">=</span> <span class="pl-c1">Ref</span>(A), <span class="pl-c1">Ref</span>(B), <span class="pl-c1">Ref</span>(C)
+    GC<span class="pl-k">.</span><span class="pl-c1">@preserve</span> ra rb rc <span class="pl-k">begin</span>
+        pa, pb, pc <span class="pl-k">=</span> <span class="pl-c1">pointer_from_objref</span>(ra), <span class="pl-c1">pointer_from_objref</span>(rb), <span class="pl-c1">pointer_from_objref</span>(rc)
+        <span class="pl-c1">@symbolcall</span> <span class="pl-c1">julia_mul_inplace</span>(pc<span class="pl-k">::</span><span class="pl-c1">Ptr{Nothing}</span>, pa<span class="pl-k">::</span><span class="pl-c1">Ptr{Nothing}</span>, pb<span class="pl-k">::</span><span class="pl-c1">Ptr{Nothing}</span>)<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    <span class="pl-k">end</span>
+    <span class="pl-c1">printf</span>(C)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">compile_executable</span>(dlmul, (), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>, cflags<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">`</span>-lmul -L./<span class="pl-pds">`</span></span>)</pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="shell&gt; ./dlmul
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00
+5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00    5.000000e+00"><pre>shell<span class="pl-k">&gt;</span> <span class="pl-k">./</span>dlmul
+<span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>
+<span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>
+<span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>
+<span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>
+<span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span>    <span class="pl-c1">5.000000e+00</span></pre></div>
+<p dir="auto">For a more complicated example, here we link at compile time against
+<a href="https://en.wikipedia.org/wiki/Message_Passing_Interface" rel="nofollow">MPI</a>,
+the Message Passing Interface used in high-performance computing -- in this
+case via <a href="https://github.com/brenhinkeller/StaticMPI.jl">StaticMPI.jl</a>, which
+merely provides convenience functions to <code>@symbolcall</code> the relevant functions
+from <code>libmpi.dylib</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using StaticCompiler, StaticTools, StaticMPI
+
+julia&gt; function mpihello(argc, argv)
+           MPI_Init(argc, argv)
+
+           comm = MPI_COMM_WORLD
+           world_size, world_rank = MPI_Comm_size(comm), MPI_Comm_rank(comm)
+
+           printf((c&quot;Hello from &quot;, world_rank, c&quot; of &quot;, world_size, c&quot; processors!\n&quot;))
+           MPI_Finalize()
+       end
+mpihello (generic function with 1 method)
+
+julia&gt; compile_executable(mpihello, (Int, Ptr{Ptr{UInt8}}), &quot;./&quot;;
+           cflags=`-lmpi -L/opt/local/lib/mpich-mp/`
+           # -lmpi instructs compiler to link against libmpi.so / libmpi.dylib
+           # -L/opt/local/lib/mpich-mp/ provides path to my local MPICH installation where libmpi can be found
+       )
+
+ld: warning: object file (./mpihello.o) was built for newer OSX version (12.0) than being linked (10.13)
+&quot;/Users/me/code/StaticTools.jl/mpihello&quot;
+
+shell&gt; mpiexec -np 4 ./mpihello
+Hello from 1 of 4 processors!
+Hello from 3 of 4 processors!
+Hello from 2 of 4 processors!
+Hello from 0 of 4 processors!"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> StaticCompiler, StaticTools, StaticMPI
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">mpihello</span>(argc, argv)
+           <span class="pl-c1">MPI_Init</span>(argc, argv)
+
+           comm <span class="pl-k">=</span> MPI_COMM_WORLD
+           world_size, world_rank <span class="pl-k">=</span> <span class="pl-c1">MPI_Comm_size</span>(comm), <span class="pl-c1">MPI_Comm_rank</span>(comm)
+
+           <span class="pl-c1">printf</span>((<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Hello from <span class="pl-pds">"</span></span>, world_rank, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span> of <span class="pl-pds">"</span></span>, world_size, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span> processors!<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>))
+           <span class="pl-c1">MPI_Finalize</span>()
+       <span class="pl-k">end</span>
+mpihello (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">compile_executable</span>(mpihello, (Int, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>;
+           cflags<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">`</span>-lmpi -L/opt/local/lib/mpich-mp/<span class="pl-pds">`</span></span>
+           <span class="pl-c"><span class="pl-c">#</span> -lmpi instructs compiler to link against libmpi.so / libmpi.dylib</span>
+           <span class="pl-c"><span class="pl-c">#</span> -L/opt/local/lib/mpich-mp/ provides path to my local MPICH installation where libmpi can be found</span>
+       )
+
+ld<span class="pl-k">:</span> warning<span class="pl-k">:</span> object file (<span class="pl-k">./</span>mpihello<span class="pl-k">.</span>o) was built <span class="pl-k">for</span> newer OSX version (<span class="pl-c1">12.0</span>) than being linked (<span class="pl-c1">10.13</span>)
+<span class="pl-s"><span class="pl-pds">"</span>/Users/me/code/StaticTools.jl/mpihello<span class="pl-pds">"</span></span>
+
+shell<span class="pl-k">&gt;</span> mpiexec <span class="pl-k">-</span>np <span class="pl-c1">4</span> <span class="pl-k">./</span>mpihello
+Hello from <span class="pl-c1">1</span> of <span class="pl-c1">4</span> processors!
+Hello from <span class="pl-c1">3</span> of <span class="pl-c1">4</span> processors!
+Hello from <span class="pl-c1">2</span> of <span class="pl-c1">4</span> processors!
+Hello from <span class="pl-c1">0</span> of <span class="pl-c1">4</span> processors!</pre></div>
+</article></div>

@@ -1,0 +1,177 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-baytesfilters" class="anchor" aria-hidden="true" href="#baytesfilters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BaytesFilters</h1>
+
+<p dir="auto"><a href="https://paschermayr.github.io/BaytesFilters.jl/" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Documentation, Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/paschermayr/BaytesFilters.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/paschermayr/BaytesFilters.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/paschermayr/BaytesFilters.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/cd99cd0e81ccb144fa46ab2774189a87f590ad299b9d10c642aa527f61506692/68747470733a2f2f636f6465636f762e696f2f67682f706173636865726d6179722f42617974657346696c746572732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/paschermayr/BaytesFilters.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/SciML/ColPrac"><img src="https://camo.githubusercontent.com/a6c1efcb19a957860ecb25966a730260b03d6e05380d0c27992ee7f9e3b1feb3/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f436f6c507261632d436f6e7472696275746f72277325323047756964652d626c756576696f6c6574" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" data-canonical-src="https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet" style="max-width: 100%;"></a></p>
+<p dir="auto">BaytesFilters.jl is a library to perform particle filtering for one parameter in a <code>ModelWrapper</code> struct, see <a href="https://github.com/paschermayr/ModelWrappers.jl">ModelWrappers.jl</a>.</p>
+<h2 dir="auto"><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Introduction</h2>
+<p dir="auto">Let us start with creating a univariate normal Mixture model with two states via <a href="https://github.com/paschermayr/ModelWrappers.jl">ModelWrappers.jl</a>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ModelWrappers, BaytesFilters
+using Distributions, Random, UnPack
+_rng = Random.MersenneTwister(1)
+N = 10^3
+# Parameter
+μ = [-2., 2.]
+σ = [1., 1.]
+p = [.05, .95]
+# Latent data
+latent = rand(_rng, Categorical(p), N)
+data = [rand(_rng, Normal(μ[iter], σ[iter])) for iter in latent]
+
+# Create ModelWrapper struct, assuming we do not know latent
+latent_init = rand(_rng, Categorical(p), N)
+myparameter = (;
+    μ = Param([Normal(-2., 5), Normal(2., 5)], μ, ),
+    σ = Param([Gamma(2.,2.), Gamma(2.,2.)], σ, ),
+    p = Param(Dirichlet(2, 2), p, ),
+    latent = Param([Categorical(p) for _ in Base.OneTo(N)], latent_init, ),
+)
+mymodel = ModelWrapper(myparameter)
+myobjective = Objective(mymodel, data)"><pre><span class="pl-k">using</span> ModelWrappers, BaytesFilters
+<span class="pl-k">using</span> Distributions, Random, UnPack
+_rng <span class="pl-k">=</span> Random<span class="pl-k">.</span><span class="pl-c1">MersenneTwister</span>(<span class="pl-c1">1</span>)
+N <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">3</span>
+<span class="pl-c"><span class="pl-c">#</span> Parameter</span>
+μ <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">2.</span>, <span class="pl-c1">2.</span>]
+σ <span class="pl-k">=</span> [<span class="pl-c1">1.</span>, <span class="pl-c1">1.</span>]
+p <span class="pl-k">=</span> [.<span class="pl-c1">05</span>, .<span class="pl-c1">95</span>]
+<span class="pl-c"><span class="pl-c">#</span> Latent data</span>
+latent <span class="pl-k">=</span> <span class="pl-c1">rand</span>(_rng, <span class="pl-c1">Categorical</span>(p), N)
+data <span class="pl-k">=</span> [<span class="pl-c1">rand</span>(_rng, <span class="pl-c1">Normal</span>(μ[iter], σ[iter])) <span class="pl-k">for</span> iter <span class="pl-k">in</span> latent]
+
+<span class="pl-c"><span class="pl-c">#</span> Create ModelWrapper struct, assuming we do not know latent</span>
+latent_init <span class="pl-k">=</span> <span class="pl-c1">rand</span>(_rng, <span class="pl-c1">Categorical</span>(p), N)
+myparameter <span class="pl-k">=</span> (;
+    μ <span class="pl-k">=</span> <span class="pl-c1">Param</span>([<span class="pl-c1">Normal</span>(<span class="pl-k">-</span><span class="pl-c1">2.</span>, <span class="pl-c1">5</span>), <span class="pl-c1">Normal</span>(<span class="pl-c1">2.</span>, <span class="pl-c1">5</span>)], μ, ),
+    σ <span class="pl-k">=</span> <span class="pl-c1">Param</span>([<span class="pl-c1">Gamma</span>(<span class="pl-c1">2.</span>,<span class="pl-c1">2.</span>), <span class="pl-c1">Gamma</span>(<span class="pl-c1">2.</span>,<span class="pl-c1">2.</span>)], σ, ),
+    p <span class="pl-k">=</span> <span class="pl-c1">Param</span>(<span class="pl-c1">Dirichlet</span>(<span class="pl-c1">2</span>, <span class="pl-c1">2</span>), p, ),
+    latent <span class="pl-k">=</span> <span class="pl-c1">Param</span>([<span class="pl-c1">Categorical</span>(p) <span class="pl-k">for</span> _ <span class="pl-k">in</span> Base<span class="pl-k">.</span><span class="pl-c1">OneTo</span>(N)], latent_init, ),
+)
+mymodel <span class="pl-k">=</span> <span class="pl-c1">ModelWrapper</span>(myparameter)
+myobjective <span class="pl-k">=</span> <span class="pl-c1">Objective</span>(mymodel, data)</pre></div>
+<p dir="auto">BaytesFilters.jl let's you target one parameter of your model with equal dimension of the provided data. In order to create a <code>ParticleFilter</code> struct, you first have to assign the model dynamics by dispatching your model on the following function:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function BaytesFilters.dynamics(objective::Objective{&lt;:ModelWrapper{BaseModel}})
+    @unpack model, data = objective
+    @unpack μ, σ, p = model.val
+
+    initial_latent = Categorical(p)
+    transition_latent(particles, iter) = initial_latent
+    transition_data(particles, iter) = Normal(μ[particles[iter]], σ[particles[iter]])
+
+    return Markov(initial_latent, transition_latent, transition_data)
+end
+dynamics(myobjective)"><pre><span class="pl-k">function</span> BaytesFilters<span class="pl-k">.</span><span class="pl-en">dynamics</span>(objective<span class="pl-k">::</span><span class="pl-c1">Objective{&lt;:ModelWrapper{BaseModel}}</span>)
+    <span class="pl-c1">@unpack</span> model, data <span class="pl-k">=</span> objective
+    <span class="pl-c1">@unpack</span> μ, σ, p <span class="pl-k">=</span> model<span class="pl-k">.</span>val
+
+    initial_latent <span class="pl-k">=</span> <span class="pl-c1">Categorical</span>(p)
+    <span class="pl-en">transition_latent</span>(particles, iter) <span class="pl-k">=</span> initial_latent
+    <span class="pl-en">transition_data</span>(particles, iter) <span class="pl-k">=</span> <span class="pl-c1">Normal</span>(μ[particles[iter]], σ[particles[iter]])
+
+    <span class="pl-k">return</span> <span class="pl-c1">Markov</span>(initial_latent, transition_latent, transition_data)
+<span class="pl-k">end</span>
+<span class="pl-c1">dynamics</span>(myobjective)</pre></div>
+<p dir="auto">The model dynamics consist of initial and transition latent dynamics, as well as data dynamics. Note that the return struct <code>Markov</code> is very flexible, and can be of higher order as well. Some more remarks:</p>
+<ol dir="auto">
+<li><code>transition_latent(particles, iter)</code> is a function of a full particle trajectory <code>particles</code> and the current iteration <code>iter</code>. In the mixture case, there is no Markov structure in the latent process, but
+you can also define higher order Markov dependencies, i.e.,</li>
+</ol>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="transition_latent(particles, iter) = Normal(mean(@view(particles[iter-5:iter-1])), 1)"><pre><span class="pl-en">transition_latent</span>(particles, iter) <span class="pl-k">=</span> <span class="pl-c1">Normal</span>(<span class="pl-c1">mean</span>(<span class="pl-c1">@view</span>(particles[iter<span class="pl-k">-</span><span class="pl-c1">5</span><span class="pl-k">:</span>iter<span class="pl-k">-</span><span class="pl-c1">1</span>])), <span class="pl-c1">1</span>)</pre></div>
+<ol start="2" dir="auto">
+<li><code>transition_data(particles, iter)</code> is a function of a full particle trajectory <code>particles</code> and the current iteration <code>iter</code>.</li>
+<li>Note that at each iteration, <code>transition_latent</code> and <code>transition_data</code> have access to the underlying data, so it is easy to adjust the filter for dependency. For instance, an auto-regressive data structure could look like:</li>
+</ol>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="transition_data(particles, iter) = Normal(mean(@view(particles[iter-5:iter-1])), mean(@view(data[iter-2:iter-1])))"><pre><span class="pl-en">transition_data</span>(particles, iter) <span class="pl-k">=</span> <span class="pl-c1">Normal</span>(<span class="pl-c1">mean</span>(<span class="pl-c1">@view</span>(particles[iter<span class="pl-k">-</span><span class="pl-c1">5</span><span class="pl-k">:</span>iter<span class="pl-k">-</span><span class="pl-c1">1</span>])), <span class="pl-c1">mean</span>(<span class="pl-c1">@view</span>(data[iter<span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span>iter<span class="pl-k">-</span><span class="pl-c1">1</span>])))</pre></div>
+<h2 dir="auto"><a id="user-content-estimating-particle-trajectories" class="anchor" aria-hidden="true" href="#estimating-particle-trajectories"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Estimating particle trajectories</h2>
+<p dir="auto">Let us now create a <code>ParticleFilter</code>, and estimate the latent trajectory given all other model parameter. Note that we can only target one parameter via a <code>ParticleFilter</code>, so we slightly adjust our objective to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="mydynamics = dynamics(myobjective)
+myobjective2 = Objective(mymodel, data, :latent)
+myfilter = ParticleFilter(_rng, myobjective2)"><pre>mydynamics <span class="pl-k">=</span> <span class="pl-c1">dynamics</span>(myobjective)
+myobjective2 <span class="pl-k">=</span> <span class="pl-c1">Objective</span>(mymodel, data, <span class="pl-c1">:latent</span>)
+myfilter <span class="pl-k">=</span> <span class="pl-c1">ParticleFilter</span>(_rng, myobjective2)</pre></div>
+<p dir="auto">Proposal steps works exactly as in BaytesMCMC.jl, you can either use <code>propose(_rng, algorithm, objective)</code> or <code>propose!(_rng, algorithm, mode, data)</code> depending on the use case. You can check out the BaytesMCMC.jl if you need further clarification on the difference of these two functions. Let us run the filter to get a new estimate for the latent data sequence:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="_val, _diagnostics = propose(_rng, mydynamics, myfilter, myobjective2)
+
+using Plots
+plot(latent, label = &quot;true&quot;)
+plot!(_val.latent, label = &quot;filter estimate&quot;)"><pre>_val, _diagnostics <span class="pl-k">=</span> <span class="pl-c1">propose</span>(_rng, mydynamics, myfilter, myobjective2)
+
+<span class="pl-k">using</span> Plots
+<span class="pl-c1">plot</span>(latent, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>true<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(_val<span class="pl-k">.</span>latent, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>filter estimate<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">Very close, nice! Another interesting output we get is an estimate from the model evidence. Luckily, for a discrete mixture model we can also evaluate the evidence analytically relatively easy. Let us check how good the estimate is against the analtyical solution:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Define analytical form for mixture likelihood
+using LogExpFunctions
+function (objective::Objective{&lt;:ModelWrapper{BaseModel}})(θ::NamedTuple)
+    @unpack model, data = objective
+    @unpack μ, σ, p = model.val
+    Nstates = length(μ)
+    dynamics_latent = Categorical(p)
+    dynamics_data = [Normal(μ[iter], σ[iter]) for iter in Base.OneTo(Nstates)]
+    ll = 0.0
+    for time in Base.OneTo(length(data))
+        ll += logsumexp(logpdf(dynamics_latent, iter) + logpdf(dynamics_data[iter], data[time]) for iter in Base.OneTo(Nstates))
+    end
+    return ll
+end
+
+# Compare 1 Filter run with analytical likelihood
+_diagnostics.base.ℓobjective #~-1633.01
+myobjective2(_val) #-1633.05"><pre><span class="pl-c"><span class="pl-c">#</span> Define analytical form for mixture likelihood</span>
+<span class="pl-k">using</span> LogExpFunctions
+<span class="pl-k">function</span> (objective<span class="pl-k">::</span><span class="pl-c1">Objective{&lt;:ModelWrapper{BaseModel}}</span>)(θ<span class="pl-k">::</span><span class="pl-c1">NamedTuple</span>)
+    <span class="pl-c1">@unpack</span> model, data <span class="pl-k">=</span> objective
+    <span class="pl-c1">@unpack</span> μ, σ, p <span class="pl-k">=</span> model<span class="pl-k">.</span>val
+    Nstates <span class="pl-k">=</span> <span class="pl-c1">length</span>(μ)
+    dynamics_latent <span class="pl-k">=</span> <span class="pl-c1">Categorical</span>(p)
+    dynamics_data <span class="pl-k">=</span> [<span class="pl-c1">Normal</span>(μ[iter], σ[iter]) <span class="pl-k">for</span> iter <span class="pl-k">in</span> Base<span class="pl-k">.</span><span class="pl-c1">OneTo</span>(Nstates)]
+    ll <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    <span class="pl-k">for</span> time <span class="pl-k">in</span> Base<span class="pl-k">.</span><span class="pl-c1">OneTo</span>(<span class="pl-c1">length</span>(data))
+        ll <span class="pl-k">+=</span> <span class="pl-c1">logsumexp</span>(<span class="pl-c1">logpdf</span>(dynamics_latent, iter) <span class="pl-k">+</span> <span class="pl-c1">logpdf</span>(dynamics_data[iter], data[time]) <span class="pl-k">for</span> iter <span class="pl-k">in</span> Base<span class="pl-k">.</span><span class="pl-c1">OneTo</span>(Nstates))
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> ll
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Compare 1 Filter run with analytical likelihood</span>
+_diagnostics<span class="pl-k">.</span>base<span class="pl-k">.</span>ℓobjective <span class="pl-c"><span class="pl-c">#</span>~-1633.01</span>
+<span class="pl-c1">myobjective2</span>(_val) <span class="pl-c"><span class="pl-c">#</span>-1633.05</span></pre></div>
+<p dir="auto">There are more output statistics stored in the diagnostics struct, such as the number of resampling steps or a one-step-ahead prediction for the next latent and observed data point. If you want to do further inference on the likelihood estimate, you might want to run the filter several times to check the variance of this estimate.</p>
+<h2 dir="auto"><a id="user-content-configuration" class="anchor" aria-hidden="true" href="#configuration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Configuration</h2>
+<p dir="auto">You can configure the <code>ParticleFilter</code> with the <code>ParticleFilterDefault</code> struct.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pfdefault = ParticleFilterDefault(;
+    weighting=Bootstrap(), #Weighting Methods for particles
+    resampling=Systematic(), #Resampling methods for particle trajectories
+    referencing=Marginal(), #Referencing type for last particle at each iteration - either Conditional, Ancestral or Marginal Implementation.
+    coverage=0.50, #Coverage of Nparticles/Ndata.
+    threshold=0.75, #ESS threshold for resampling particle trajectories.
+)
+myfilter = ParticleFilter(_rng, myobjective2, pfdefault)"><pre>pfdefault <span class="pl-k">=</span> <span class="pl-c1">ParticleFilterDefault</span>(;
+    weighting<span class="pl-k">=</span><span class="pl-c1">Bootstrap</span>(), <span class="pl-c"><span class="pl-c">#</span>Weighting Methods for particles</span>
+    resampling<span class="pl-k">=</span><span class="pl-c1">Systematic</span>(), <span class="pl-c"><span class="pl-c">#</span>Resampling methods for particle trajectories</span>
+    referencing<span class="pl-k">=</span><span class="pl-c1">Marginal</span>(), <span class="pl-c"><span class="pl-c">#</span>Referencing type for last particle at each iteration - either Conditional, Ancestral or Marginal Implementation.</span>
+    coverage<span class="pl-k">=</span><span class="pl-c1">0.50</span>, <span class="pl-c"><span class="pl-c">#</span>Coverage of Nparticles/Ndata.</span>
+    threshold<span class="pl-k">=</span><span class="pl-c1">0.75</span>, <span class="pl-c"><span class="pl-c">#</span>ESS threshold for resampling particle trajectories.</span>
+)
+myfilter <span class="pl-k">=</span> <span class="pl-c1">ParticleFilter</span>(_rng, myobjective2, pfdefault)</pre></div>
+<p dir="auto">There are a variety of methods for <code>ParticleFilterDefault</code> fields. For now, you have to check all options in the code base if you want to adjust the default arguments.</p>
+<h2 dir="auto"><a id="user-content-scaling" class="anchor" aria-hidden="true" href="#scaling"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Scaling</h2>
+<p dir="auto">The particle filter implementation scales linearly in both the number of particles as well as the number of data points. We can verify this by comparing the time spent in the proposal steps for different coverage ratios:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BenchmarkTools
+pfdefault1 = ParticleFilterDefault(; coverage=0.5)
+pfdefault2 = ParticleFilterDefault(; coverage=1.0)
+myfilter1 = ParticleFilter(_rng, myobjective2, pfdefault1)
+myfilter2 = ParticleFilter(_rng, myobjective2, pfdefault2)
+@btime propose($_rng, $mydynamics, $myfilter1, $myobjective2) #12.522 ms (7 allocations: 16.20 KiB)
+@btime propose($_rng, $mydynamics, $myfilter2, $myobjective2) #25.992 ms (7 allocations: 16.20 KiB)"><pre><span class="pl-k">using</span> BenchmarkTools
+pfdefault1 <span class="pl-k">=</span> <span class="pl-c1">ParticleFilterDefault</span>(; coverage<span class="pl-k">=</span><span class="pl-c1">0.5</span>)
+pfdefault2 <span class="pl-k">=</span> <span class="pl-c1">ParticleFilterDefault</span>(; coverage<span class="pl-k">=</span><span class="pl-c1">1.0</span>)
+myfilter1 <span class="pl-k">=</span> <span class="pl-c1">ParticleFilter</span>(_rng, myobjective2, pfdefault1)
+myfilter2 <span class="pl-k">=</span> <span class="pl-c1">ParticleFilter</span>(_rng, myobjective2, pfdefault2)
+<span class="pl-c1">@btime</span> <span class="pl-c1">propose</span>(<span class="pl-k">$</span>_rng, <span class="pl-k">$</span>mydynamics, <span class="pl-k">$</span>myfilter1, <span class="pl-k">$</span>myobjective2) <span class="pl-c"><span class="pl-c">#</span>12.522 ms (7 allocations: 16.20 KiB)</span>
+<span class="pl-c1">@btime</span> <span class="pl-c1">propose</span>(<span class="pl-k">$</span>_rng, <span class="pl-k">$</span>mydynamics, <span class="pl-k">$</span>myfilter2, <span class="pl-k">$</span>myobjective2) <span class="pl-c"><span class="pl-c">#</span>25.992 ms (7 allocations: 16.20 KiB)</span></pre></div>
+<p dir="auto">Moreover, if your <code>dynamics(objective)</code> function is efficiently implemented, there should be only very few allocations during the proposal step.</p>
+<h2 dir="auto"><a id="user-content-going-forward" class="anchor" aria-hidden="true" href="#going-forward"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Going Forward</h2>
+<p dir="auto">This package is still highly experimental - suggestions and comments are always welcome!</p>
+
+</article></div>

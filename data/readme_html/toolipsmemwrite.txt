@@ -1,0 +1,107 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a target="_blank" rel="noopener noreferrer" href="https://github.com/ChifiSource/image_dump/blob/main/toolips/toolipsmemwrite.png"><img src="https://github.com/ChifiSource/image_dump/raw/main/toolips/toolipsmemwrite.png" style="max-width: 100%;"></a></p>
+<ul dir="auto">
+<li><a href="doc.toolips.app/extensions/toolips_base64">Documentation</a></li>
+<li><a href="https://github.com/ChifiSource/Toolips.jl">Toolips</a></li>
+<li><a href="https://toolips.app/?page=gallery&amp;selected=memwrite" rel="nofollow">Extension Gallery</a><br>
+Writes Components into memory and can also save serialized Component Vectors automatically. Writing to memory is done with the <code>memwrite!</code> function. This function can also be used inside of a conditional.</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Toolips
+using ToolipsMemWrite
+
+function myroute(c::Connection)
+    mycomp = divider(&quot;mydivider&quot;, align = &quot;center&quot;)
+    myp = p(&quot;myp&quot;, text = &quot;hello world!&quot;)
+    push!(mycomp, myp)
+    othercomp = a(&quot;othercomp&quot;, text = &quot;othercomp&quot;)
+    # Saved:
+    memwrite!(c, mycomp)
+    # Not saved:
+    write!(c, othercomp)
+end
+
+st = ServerTemplate(extensions = [Logger(), ComponentMemory()])
+st.start()"><pre><span class="pl-k">using</span> Toolips
+<span class="pl-k">using</span> ToolipsMemWrite
+
+<span class="pl-k">function</span> <span class="pl-en">myroute</span>(c<span class="pl-k">::</span><span class="pl-c1">Connection</span>)
+    mycomp <span class="pl-k">=</span> <span class="pl-c1">divider</span>(<span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>, align <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>)
+    myp <span class="pl-k">=</span> <span class="pl-c1">p</span>(<span class="pl-s"><span class="pl-pds">"</span>myp<span class="pl-pds">"</span></span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>hello world!<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">push!</span>(mycomp, myp)
+    othercomp <span class="pl-k">=</span> <span class="pl-c1">a</span>(<span class="pl-s"><span class="pl-pds">"</span>othercomp<span class="pl-pds">"</span></span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>othercomp<span class="pl-pds">"</span></span>)
+    <span class="pl-c"><span class="pl-c">#</span> Saved:</span>
+    <span class="pl-c1">memwrite!</span>(c, mycomp)
+    <span class="pl-c"><span class="pl-c">#</span> Not saved:</span>
+    <span class="pl-c1">write!</span>(c, othercomp)
+<span class="pl-k">end</span>
+
+st <span class="pl-k">=</span> <span class="pl-c1">ServerTemplate</span>(extensions <span class="pl-k">=</span> [<span class="pl-c1">Logger</span>(), <span class="pl-c1">ComponentMemory</span>()])
+st<span class="pl-k">.</span><span class="pl-c1">start</span>()</pre></div>
+<p dir="auto">This approach is alright, but still puts CPU power towards writing the Components. It is way better to instead use <code>memwrite!</code> with write set to false first, then use <code>memwrite!</code> normally. You can follow this with a <code>return</code>, which breaks the function pipeline and ceases the writing of the function.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Toolips
+using ToolipsMemWrite
+
+function myroute(c::Connection)
+    if memwrite!(c, &quot;mydivider&quot;, write = false)
+        memwrite!(c, &quot;mydivider&quot;)
+        return
+    end
+    mycomp = divider(&quot;mydivider&quot;, align = &quot;center&quot;)
+    myp = p(&quot;myp&quot;, text = &quot;hello world!&quot;)
+    push!(mycomp, myp)
+    othercomp = a(&quot;othercomp&quot;, text = &quot;othercomp&quot;)
+    memwrite!(c, mycomp)
+end
+
+st = ServerTemplate(extensions = [Logger(), ComponentMemory()])
+st.start()"><pre><span class="pl-k">using</span> Toolips
+<span class="pl-k">using</span> ToolipsMemWrite
+
+<span class="pl-k">function</span> <span class="pl-en">myroute</span>(c<span class="pl-k">::</span><span class="pl-c1">Connection</span>)
+    <span class="pl-k">if</span> <span class="pl-c1">memwrite!</span>(c, <span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>, write <span class="pl-k">=</span> <span class="pl-c1">false</span>)
+        <span class="pl-c1">memwrite!</span>(c, <span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>)
+        <span class="pl-k">return</span>
+    <span class="pl-k">end</span>
+    mycomp <span class="pl-k">=</span> <span class="pl-c1">divider</span>(<span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>, align <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>)
+    myp <span class="pl-k">=</span> <span class="pl-c1">p</span>(<span class="pl-s"><span class="pl-pds">"</span>myp<span class="pl-pds">"</span></span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>hello world!<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">push!</span>(mycomp, myp)
+    othercomp <span class="pl-k">=</span> <span class="pl-c1">a</span>(<span class="pl-s"><span class="pl-pds">"</span>othercomp<span class="pl-pds">"</span></span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>othercomp<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">memwrite!</span>(c, mycomp)
+<span class="pl-k">end</span>
+
+st <span class="pl-k">=</span> <span class="pl-c1">ServerTemplate</span>(extensions <span class="pl-k">=</span> [<span class="pl-c1">Logger</span>(), <span class="pl-c1">ComponentMemory</span>()])
+st<span class="pl-k">.</span><span class="pl-c1">start</span>()</pre></div>
+<p dir="auto">You can also use the same techniques with <code>diskwrite!</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Toolips
+using ToolipsMemWrite
+
+function myroute(c::Connection)
+    if diskwrite!(c, &quot;mydivider&quot;, write = false)
+        diskwrite!(c, &quot;mydivider&quot;)
+        return
+    end
+    mycomp = divider(&quot;mydivider&quot;, align = &quot;center&quot;)
+    myp = p(&quot;myp&quot;, text = &quot;hello world!&quot;)
+    push!(mycomp, myp)
+    othercomp = a(&quot;othercomp&quot;, text = &quot;othercomp&quot;)
+    diskwrite!(c, mycomp)
+end
+
+st = ServerTemplate(extensions = [Logger(), ComponentMemory()])
+st.start()"><pre><span class="pl-k">using</span> Toolips
+<span class="pl-k">using</span> ToolipsMemWrite
+
+<span class="pl-k">function</span> <span class="pl-en">myroute</span>(c<span class="pl-k">::</span><span class="pl-c1">Connection</span>)
+    <span class="pl-k">if</span> <span class="pl-c1">diskwrite!</span>(c, <span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>, write <span class="pl-k">=</span> <span class="pl-c1">false</span>)
+        <span class="pl-c1">diskwrite!</span>(c, <span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>)
+        <span class="pl-k">return</span>
+    <span class="pl-k">end</span>
+    mycomp <span class="pl-k">=</span> <span class="pl-c1">divider</span>(<span class="pl-s"><span class="pl-pds">"</span>mydivider<span class="pl-pds">"</span></span>, align <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>)
+    myp <span class="pl-k">=</span> <span class="pl-c1">p</span>(<span class="pl-s"><span class="pl-pds">"</span>myp<span class="pl-pds">"</span></span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>hello world!<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">push!</span>(mycomp, myp)
+    othercomp <span class="pl-k">=</span> <span class="pl-c1">a</span>(<span class="pl-s"><span class="pl-pds">"</span>othercomp<span class="pl-pds">"</span></span>, text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>othercomp<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">diskwrite!</span>(c, mycomp)
+<span class="pl-k">end</span>
+
+st <span class="pl-k">=</span> <span class="pl-c1">ServerTemplate</span>(extensions <span class="pl-k">=</span> [<span class="pl-c1">Logger</span>(), <span class="pl-c1">ComponentMemory</span>()])
+st<span class="pl-k">.</span><span class="pl-c1">start</span>()</pre></div>
+</article></div>

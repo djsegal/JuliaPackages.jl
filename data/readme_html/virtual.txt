@@ -1,0 +1,159 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-virtual" class="anchor" aria-hidden="true" href="#virtual"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Virtual</h1>
+<p dir="auto">Virtual call in Julia, and calls are de-virtualized if possible!</p>
+<p dir="auto"><a href="https://thautwarm.github.io/Virtual.jl/stable/" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://thautwarm.github.io/Virtual.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/thautwarm/Virtual.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/thautwarm/Virtual.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<ul dir="auto">
+<li>Requirement: Julia &gt;= 1.6 (You can build this package for Julia 1.1+ by invoking <code>bash.sh</code>)</li>
+</ul>
+<p dir="auto">This package can be regarded as a generalization to ValSplit.jl. Virtual functions created with this package bring us the following features:</p>
+<ul dir="auto">
+<li><strong>No virtual call when it's statically decidable!</strong></li>
+<li>Otherwise, use an efficient virtual call that is slightly <strong>faster than a manual if-else split</strong>!</li>
+<li>Support multiple dispatch, i.e., not single dispatch on the first parameter!</li>
+</ul>
+<p dir="auto">This package aims to address an issue in practice: container manipulation used to be considerably slow in Julia, if the element type is abstract.</p>
+<p dir="auto"><strong>The following code shows how Virtual.jl speeds up multiple dispatch in a factor of 40 when processing containers with abstract element types.</strong></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Virtual, BenchmarkTools
+abstract type Animal end
+struct Dog &lt;: Animal end
+struct Tiger &lt;: Animal end
+struct Duck &lt;: Animal end
+
+@virtual fast_func(x::Animal, y::Int) = error(&quot;No default method for score!&quot;)
+@override fast_func(x::Dog, y::Int) = 2 + y
+@override fast_func(x::Tiger, y::Int) = 3 + y
+@override fast_func(x::Duck, y::Int) = 4 + y
+
+dyn_func(x::Animal, y::Int) = error(&quot;No default method for score!&quot;)
+dyn_func(x::Dog, y::Int) = 2 + y
+dyn_func(x::Tiger, y::Int) = 3 + y
+dyn_func(x::Duck, y::Int) = 4 + y
+
+manual_func(x::Animal, y::Int) =
+    if x isa Dog
+        2 + y
+    elseif x isa Tiger
+        3 + y
+    elseif x isa Duck
+        4 + y
+    else
+        error(&quot;No default method for score!&quot;)
+    end
+
+const samples = Animal[Dog(), Duck(), Tiger()]
+animals = Animal[samples[rand(1:3)] for i = 1:100]
+
+function sum_score(score_func, xs::AbstractVector{Animal})
+    s = 0
+    for x in xs
+        s += score_func(x, 3)
+    end
+    return s
+end
+
+@info &quot;fast_func via Virtual.jl&quot;
+display(@benchmark(sum_score(fast_func, animals)))
+@info &quot;manual split by hand&quot;
+display(@benchmark(sum_score(manual_func, animals)))
+@info &quot;dyn_func by dynamic multiple dispatch&quot;
+display(@benchmark(sum_score(dyn_func, animals)))
+"><pre><span class="pl-k">using</span> Virtual, BenchmarkTools
+<span class="pl-k">abstract type</span> Animal <span class="pl-k">end</span>
+<span class="pl-k">struct</span> Dog <span class="pl-k">&lt;:</span> <span class="pl-c1">Animal</span> <span class="pl-k">end</span>
+<span class="pl-k">struct</span> Tiger <span class="pl-k">&lt;:</span> <span class="pl-c1">Animal</span> <span class="pl-k">end</span>
+<span class="pl-k">struct</span> Duck <span class="pl-k">&lt;:</span> <span class="pl-c1">Animal</span> <span class="pl-k">end</span>
+
+<span class="pl-c1">@virtual</span> <span class="pl-en">fast_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Animal</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>No default method for score!<span class="pl-pds">"</span></span>)
+<span class="pl-c1">@override</span> <span class="pl-en">fast_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Dog</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">2</span> <span class="pl-k">+</span> y
+<span class="pl-c1">@override</span> <span class="pl-en">fast_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Tiger</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">3</span> <span class="pl-k">+</span> y
+<span class="pl-c1">@override</span> <span class="pl-en">fast_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Duck</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">4</span> <span class="pl-k">+</span> y
+
+<span class="pl-en">dyn_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Animal</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>No default method for score!<span class="pl-pds">"</span></span>)
+<span class="pl-en">dyn_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Dog</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">2</span> <span class="pl-k">+</span> y
+<span class="pl-en">dyn_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Tiger</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">3</span> <span class="pl-k">+</span> y
+<span class="pl-en">dyn_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Duck</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> <span class="pl-c1">4</span> <span class="pl-k">+</span> y
+
+<span class="pl-en">manual_func</span>(x<span class="pl-k">::</span><span class="pl-c1">Animal</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span>
+    <span class="pl-k">if</span> x <span class="pl-k">isa</span> Dog
+        <span class="pl-c1">2</span> <span class="pl-k">+</span> y
+    <span class="pl-k">elseif</span> x <span class="pl-k">isa</span> Tiger
+        <span class="pl-c1">3</span> <span class="pl-k">+</span> y
+    <span class="pl-k">elseif</span> x <span class="pl-k">isa</span> Duck
+        <span class="pl-c1">4</span> <span class="pl-k">+</span> y
+    <span class="pl-k">else</span>
+        <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>No default method for score!<span class="pl-pds">"</span></span>)
+    <span class="pl-k">end</span>
+
+<span class="pl-k">const</span> samples <span class="pl-k">=</span> Animal[<span class="pl-c1">Dog</span>(), <span class="pl-c1">Duck</span>(), <span class="pl-c1">Tiger</span>()]
+animals <span class="pl-k">=</span> Animal[samples[<span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>)] <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>]
+
+<span class="pl-k">function</span> <span class="pl-en">sum_score</span>(score_func, xs<span class="pl-k">::</span><span class="pl-c1">AbstractVector{Animal}</span>)
+    s <span class="pl-k">=</span> <span class="pl-c1">0</span>
+    <span class="pl-k">for</span> x <span class="pl-k">in</span> xs
+        s <span class="pl-k">+=</span> <span class="pl-c1">score_func</span>(x, <span class="pl-c1">3</span>)
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> s
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>fast_func via Virtual.jl<span class="pl-pds">"</span></span>
+<span class="pl-c1">display</span>(<span class="pl-c1">@benchmark</span>(<span class="pl-c1">sum_score</span>(fast_func, animals)))
+<span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>manual split by hand<span class="pl-pds">"</span></span>
+<span class="pl-c1">display</span>(<span class="pl-c1">@benchmark</span>(<span class="pl-c1">sum_score</span>(manual_func, animals)))
+<span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>dyn_func by dynamic multiple dispatch<span class="pl-pds">"</span></span>
+<span class="pl-c1">display</span>(<span class="pl-c1">@benchmark</span>(<span class="pl-c1">sum_score</span>(dyn_func, animals)))
+</pre></div>
+<p dir="auto">The results are given as follow:</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="readme-fig.png"><img src="readme-fig.png" alt="" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Limitations</h2>
+<ol dir="auto">
+<li>
+<p dir="auto"><code>@override</code> methods must have a more specific signature than that of the default method. I'm planning to add checkers for this.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@virtual f(x::Number, y::Number) = 0
+
+# wrong: Tuple{Float64, Any} &lt;: Tuple{Number, Number} === false
+@override f(x::Float64, y) = x * 3
+
+# correct: Tuple{Float64, Number} &lt;: Tuple{Number, Number} === true
+@override f(x::Float64, y::Number) = x * 3"><pre><span class="pl-c1">@virtual</span> <span class="pl-en">f</span>(x<span class="pl-k">::</span><span class="pl-c1">Number</span>, y<span class="pl-k">::</span><span class="pl-c1">Number</span>) <span class="pl-k">=</span> <span class="pl-c1">0</span>
+
+<span class="pl-c"><span class="pl-c">#</span> wrong: Tuple{Float64, Any} &lt;: Tuple{Number, Number} === false</span>
+<span class="pl-c1">@override</span> <span class="pl-en">f</span>(x<span class="pl-k">::</span><span class="pl-c1">Float64</span>, y) <span class="pl-k">=</span> x <span class="pl-k">*</span> <span class="pl-c1">3</span>
+
+<span class="pl-c"><span class="pl-c">#</span> correct: Tuple{Float64, Number} &lt;: Tuple{Number, Number} === true</span>
+<span class="pl-c1">@override</span> <span class="pl-en">f</span>(x<span class="pl-k">::</span><span class="pl-c1">Float64</span>, y<span class="pl-k">::</span><span class="pl-c1">Number</span>) <span class="pl-k">=</span> x <span class="pl-k">*</span> <span class="pl-c1">3</span></pre></div>
+</li>
+<li>
+<p dir="auto">Variadic parameters and keyword parameters are not supported (default parameters are supported!)</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# wrong
+@virtual g(x::Number; y::Number = 1) = y
+ERROR: LoadError: virtual function does not take keyword parameters
+
+# correct, using default parameters
+@virtual g(x::Number, y::Number = 1) = y
+
+# so far a strange behavior to use default parameters in virtual functions
+@override g(x::Int, y::Int) = x + y
+
+g(2)   # 2 + 1 =&gt; 3
+g(2.0) # 1
+
+@virtual h(xs...) = 1
+ERROR: LoadError: virtual function does not take variadic parameters"><pre><span class="pl-c"><span class="pl-c">#</span> wrong</span>
+<span class="pl-c1">@virtual</span> <span class="pl-en">g</span>(x<span class="pl-k">::</span><span class="pl-c1">Number</span>; y<span class="pl-k">::</span><span class="pl-c1">Number</span> <span class="pl-k">=</span> <span class="pl-c1">1</span>) <span class="pl-k">=</span> y
+ERROR<span class="pl-k">:</span> LoadError<span class="pl-k">:</span> virtual <span class="pl-k">function</span> does not take keyword parameters
+
+<span class="pl-c"><span class="pl-c">#</span> correct, using default parameters</span>
+<span class="pl-c1">@virtual</span> <span class="pl-en">g</span>(x<span class="pl-k">::</span><span class="pl-c1">Number</span>, y<span class="pl-k">::</span><span class="pl-c1">Number</span> <span class="pl-k">=</span> <span class="pl-c1">1</span>) <span class="pl-k">=</span> y
+
+<span class="pl-c"><span class="pl-c">#</span> so far a strange behavior to use default parameters in virtual functions</span>
+<span class="pl-c1">@override</span> <span class="pl-en">g</span>(x<span class="pl-k">::</span><span class="pl-c1">Int</span>, y<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+
+<span class="pl-c1">g</span>(<span class="pl-c1">2</span>)   <span class="pl-c"><span class="pl-c">#</span> 2 + 1 =&gt; 3</span>
+<span class="pl-c1">g</span>(<span class="pl-c1">2.0</span>) <span class="pl-c"><span class="pl-c">#</span> 1</span>
+
+<span class="pl-c1">@virtual</span> <span class="pl-en">h</span>(xs<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">1</span>
+ERROR<span class="pl-k">:</span> LoadError<span class="pl-k">:</span> virtual <span class="pl-k">function</span> does not take variadic parameters</pre></div>
+</li>
+</ol>
+</article></div>

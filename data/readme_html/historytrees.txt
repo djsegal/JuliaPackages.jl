@@ -1,0 +1,42 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-historytreesjl" class="anchor" aria-hidden="true" href="#historytreesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>HistoryTrees.jl</h1>
+<p dir="auto">There are multiple ways to construct an immutable record of history. The simplest way is to interleave each new element with what we shall call a root. Like if one has seven elements <code>[1, 2, 3, 4, 5, 6, 7]</code>, then every element can be protected by publishing tree hash calculated on tuples like <code>root = ((((((1, 2), 3), 4), 5), 6), 7)</code>. This is great as long as one does not need to prove the inclusion of an element. For instance, proof that the 3rd element has been included is (root, 7, 6, 5, 4, 3) and grows linearly with the size of the list.</p>
+<p dir="auto">An alternative is to hash list as a Merkle tree. For a list of four elements <code>[1, 2, 3, 4]</code>, the root hash would be <code>root = ((1, 2), (3, 4)]</code>, which allows constructing a proof of inclusion for 3rd element as [root, 4, (1, 2)] which grows logarithmically with the size of the list. However, an issue with this approach is that the list needs to be of size 2^N. One could use padding to overcome that, but that requires large recomputations when new elements are added to the list.</p>
+<p dir="auto">A better approach is to use history trees which place leaves directly under the incomplete node. For seven elements that reduce root hash to <code>root = (((1, 2), (3, 4)), ((5, 6), 7))</code> and is more satisfying than padding and provides logarithmically sized proofs for inclusion of element and consistency of the tree.</p>
+<p dir="auto">To use a history tree first, one is constructed as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="tree = HistoryTree(Int, tuple)
+
+for i in 1:7
+    push!(tree, i)
+end"><pre>tree <span class="pl-k">=</span> <span class="pl-c1">HistoryTree</span>(Int, tuple)
+
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>
+    <span class="pl-c1">push!</span>(tree, i)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">where the first element is input element hashes and the second element is a callable for a hash function for two elements. We can use a tuple and interchange it with a real hash function importing it from <code>Nettle.jl</code> for demonstrative purposes.</p>
+<p dir="auto">The most important quantities of the tree are the root and its length, which we can access:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="_root = root(tree)
+_length = length(tree)"><pre class="notranslate"><code>_root = root(tree)
+_length = length(tree)
+</code></pre></div>
+<p dir="auto">which can be signed by the main server and distributed to clients.</p>
+<p dir="auto">The clients then can ask for proof that a particular element is included in the list, to which the server replies with</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="proof = InclusionProof(tree, 3)"><pre class="notranslate"><code>proof = InclusionProof(tree, 3)
+</code></pre></div>
+<p dir="auto">as an example for the third element. This proof client quickly verifies:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="verify(proof, _root, _length; hash = tuple)"><pre class="notranslate"><code>verify(proof, _root, _length; hash = tuple)
+</code></pre></div>
+<p dir="auto">Another possibility is for the client to verify if the server has only added elements to sync the last synchronisation. To do so client asks for consistency proof constructed as follows:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="proof = ConsistencyProof(tree, 3)"><pre class="notranslate"><code>proof = ConsistencyProof(tree, 3)
+</code></pre></div>
+<p dir="auto">which the client verifies as:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="verify(proof, _root, _length; hash = tuple)"><pre class="notranslate"><code>verify(proof, _root, _length; hash = tuple)
+</code></pre></div>
+<p dir="auto">A scenario where they are combined is when a client sends an element for inclusion in the list for which it receives a signed (root1, length1) and inclusion proof. Later on, the client wants to check that the element is still within the list. Instead of again asking for an inclusion proof server sends back a consistency proof for (root1, length1) at the current state (root2, length2), which is signed. That way, a client also enforces that other clients' messages have not been modified.</p>
+<p dir="auto"><strong>Note:</strong> <del>a whole tree hash is currently recomputed for every new element added; thus, performance is not so great.</del>  <strong>Currently, multiple tree hashes are computed to construct proofs like <code>InclusionProof</code> and <code>ConsistencyProof</code>. A further improvement would be to store a complete subtree hash and retrieve them in the calculation. Prepending bytes with a leaf or node byte may be necessary for security.</strong></p>
+<h2 dir="auto"><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>References</h2>
+<ul dir="auto">
+<li>Crosby, Scott A. and Dan S. Wallach. <em>Efficient Data Structures For Tamper-Evident Logging.</em> USENIX Security Symposium (2009).</li>
+<li>RFC6962 and RFC9162</li>
+<li>Farhan Aly. <em>Don't trust your logs! Implementing a Merkle tree for an Immutable Verifiable Log (in Go)</em> (2022)</li>
+</ul>
+</article></div>

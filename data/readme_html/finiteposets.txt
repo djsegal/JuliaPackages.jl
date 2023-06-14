@@ -1,0 +1,1001 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a id="user-content-finiteposets"></a></p>
+<p dir="auto"><a id="user-content-finiteposets-1"></a></p>
+<h1 dir="auto"><a id="user-content-finiteposets" class="anchor" aria-hidden="true" href="#finiteposets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>FinitePosets</h1>
+<p dir="auto"><a id="user-content-finiteposets" href="#FinitePosets">#</a>
+<strong><code>FinitePosets</code></strong> — <em>Module</em>.</p>
+<p dir="auto">This  package deals with  finite posets.</p>
+<p dir="auto">There  are two types of  posets. A "canonical poset"  or <code>CPoset</code> is on the elements  <code>1:n</code>  where  <code>n=length(P)</code>.  A  <code>Poset</code>  is  on  a given list of elements  which can be of any type. A <code>Poset</code> internally contains a<code>CPoset</code> which  works on the indices  of the elements, which  is more efficient than working  with the elements themselves.  For efficiency, many functions work on  the internal <code>CPoset</code> by transforming  their input to indices and their output to elements.</p>
+<p dir="auto">A  <code>CPoset</code> has the field:</p>
+<ul dir="auto">
+<li><code>hasse</code>:  a list representing  the Hasse diagram  of the poset: the <code>i</code>-th  entry is the list of elements which cover (are immediate  successors of) <code>i</code>, that  is the list of <code>j</code> such that <code>i&lt;j</code> and there is no <code>k</code> such that <code>i&lt;k&lt;j</code>.</li>
+</ul>
+<p dir="auto">The following is cached when computed to speed up subsequent computations:</p>
+<ul dir="auto">
+<li><code>incidence</code>: a  boolean matrix  such that <code>incidence[i,j]==true</code> iff <code>i&lt;=j</code>. This is sometimes called the ζ-matrix of the poset.</li>
+</ul>
+<p dir="auto">There are several ways of defining a poset.  By entering the Hasse diagram:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset([[2,3],[4],[4],Int[]])
+1&lt;2,3&lt;4"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset([[2,3],[4],[4],Int[]])
+1&lt;2,3&lt;4
+</code></pre></div>
+<p dir="auto">As  seen above, <code>p</code> is shown as a list of covering maximal chains; elements which  are  equivalent  for  the  poset  are  printed together separated by commas.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; length(p) # the number of elements of `p`
+4
+
+julia&gt; incidence(p)
+4×4 Matrix{Bool}:
+ 1  1  1  1
+ 0  1  0  1
+ 0  0  1  1
+ 0  0  0  1
+
+julia&gt; linear_extension(p) # a total order compatible with p
+4-element Vector{Int64}:
+ 1
+ 2
+ 3
+ 4"><pre lang="julia-repl" class="notranslate"><code>julia&gt; length(p) # the number of elements of `p`
+4
+
+julia&gt; incidence(p)
+4×4 Matrix{Bool}:
+ 1  1  1  1
+ 0  1  0  1
+ 0  0  1  1
+ 0  0  0  1
+
+julia&gt; linear_extension(p) # a total order compatible with p
+4-element Vector{Int64}:
+ 1
+ 2
+ 3
+ 4
+</code></pre></div>
+<p dir="auto">A <code>Poset</code> is constructed from a <code>CPoset</code> and a list of elements</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; P=Poset(p,[:a,:b,:c,:d])
+a&lt;b,c&lt;d
+
+julia&gt; P.C # the CPoset attached to P
+1&lt;2,3&lt;4"><pre lang="julia-repl" class="notranslate"><code>julia&gt; P=Poset(p,[:a,:b,:c,:d])
+a&lt;b,c&lt;d
+
+julia&gt; P.C # the CPoset attached to P
+1&lt;2,3&lt;4
+</code></pre></div>
+<p dir="auto">A  convenient  constructor  for  <code>Poset</code>s  takes  a  function  representing <code>isless</code>  for the poset and  the list of elements  and constructs the poset from  the incidence matrix, computed by  applying the function to each pair of  elements. For <code>isless</code> one can  give either a function implementing <code>&lt;</code> or a function implementing <code>≤</code> (it is <code>or</code>-ed with <code>==</code> in any case).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; l=vec(collect(Iterators.product(1:2,1:2)))
+4-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (2, 1)
+ (1, 2)
+ (2, 2)
+
+julia&gt; P=Poset((x,y)-&gt;all(map(&lt;=,x,y)),l)
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)
+
+julia&gt; eltype(P) # the type of the elements of P
+Tuple{Int64, Int64}
+
+julia&gt; summary(P) # useful for big posets
+&quot;Poset{Tuple{Int64, Int64}} of length 4&quot;"><pre lang="julia-repl" class="notranslate"><code>julia&gt; l=vec(collect(Iterators.product(1:2,1:2)))
+4-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (2, 1)
+ (1, 2)
+ (2, 2)
+
+julia&gt; P=Poset((x,y)-&gt;all(map(&lt;=,x,y)),l)
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)
+
+julia&gt; eltype(P) # the type of the elements of P
+Tuple{Int64, Int64}
+
+julia&gt; summary(P) # useful for big posets
+"Poset{Tuple{Int64, Int64}} of length 4"
+</code></pre></div>
+<p dir="auto">A  poset  can  also  be  constructed  from  an incidence matrix so the last example could also be entered as</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; P=Poset(CPoset([all(map(&lt;=,x,y)) for x in l, y in l]),l)
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; P=Poset(CPoset([all(map(&lt;=,x,y)) for x in l, y in l]),l)
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)
+</code></pre></div>
+<p dir="auto">Flexibility  on  printing  a  <code>Poset</code>  is  obtained by setting the function <code>show_element</code>  which takes as arguments an  <code>IO</code>, the poset, and the index of the element to print:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; P.show_element=(io,p,n)-&gt;join(io,p.elements[n],&quot;.&quot;);
+
+julia&gt; P
+1.1&lt;2.1,1.2&lt;2.2
+
+julia&gt; delete!(P,:show_element); # back to default"><pre lang="julia-repl" class="notranslate"><code>julia&gt; P.show_element=(io,p,n)-&gt;join(io,p.elements[n],".");
+
+julia&gt; P
+1.1&lt;2.1,1.2&lt;2.2
+
+julia&gt; delete!(P,:show_element); # back to default
+</code></pre></div>
+<p dir="auto">The above fancy printing applies only when printing at the REPL or in pluto or  Jupyter. The default printing  gives a form which  can be input back in Julia</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; print(P) 
+Poset(CPoset([[2, 3], [4], [4], Int64[]]),[(1, 1), (2, 1), (1, 2), (2, 2)])"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; print(P) 
+Poset(CPoset([[2, 3], [4], [4], Int64[]]),[(1, 1), (2, 1), (1, 2), (2, 2)])
+</code></pre></div>
+<p dir="auto">A  poset can be specified  by a list of  tuples specifying order relations. The  transitive closure  of these  relations is  computed, resulting  in an incidence  matrix from which the poset  is constructed. The elements of the poset, if not specified separately, are all the elements that appear in the tuples.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Poset([(:a,:b),(:c,:d)])
+a&lt;b
+c&lt;d
+
+julia&gt; CPoset([(1,3),(2,5)]) # the CPoset is on 1:maximum(entries)
+4
+1&lt;3
+2&lt;5"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Poset([(:a,:b),(:c,:d)])
+a&lt;b
+c&lt;d
+
+julia&gt; CPoset([(1,3),(2,5)]) # the CPoset is on 1:maximum(entries)
+4
+1&lt;3
+2&lt;5
+</code></pre></div>
+<p dir="auto">To get the order relation <code>≤</code> of the poset <code>p</code> between elements <code>i</code> and <code>j</code> just call <code>≤(p,i,j)</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ≤(P,(1,1),(2,1))
+true
+
+julia&gt; ≤(P.C,1,2) # the same
+true"><pre lang="julia-repl" class="notranslate"><code>julia&gt; ≤(P,(1,1),(2,1))
+true
+
+julia&gt; ≤(P.C,1,2) # the same
+true
+</code></pre></div>
+<p dir="auto">Intervals in a poset can be computed with strict or not bounds.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; interval(P,≤,(1,2)) # elements below (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (1, 2)
+
+julia&gt; interval(P,≥,(1,2)) # elements above (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 2)
+ (2, 2)
+
+julia&gt; interval(P,&lt;,(1,2)) # elements strictly below (1,2)
+1-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+
+julia&gt; interval(P,≥,(2,1),≤,(2,2)) # elements between (2,1) and (2,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (2, 2)
+
+julia&gt; interval(P,&gt;,(1,1),&lt;,(2,2)) # elements strictly between
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (1, 2)
+julia&gt; interval(P.C,&gt;,1,&lt;,4) # in terms of indices
+2-element Vector{Int64}:
+ 2
+ 3"><pre lang="julia-repl" class="notranslate"><code>julia&gt; interval(P,≤,(1,2)) # elements below (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (1, 2)
+
+julia&gt; interval(P,≥,(1,2)) # elements above (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 2)
+ (2, 2)
+
+julia&gt; interval(P,&lt;,(1,2)) # elements strictly below (1,2)
+1-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+
+julia&gt; interval(P,≥,(2,1),≤,(2,2)) # elements between (2,1) and (2,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (2, 2)
+
+julia&gt; interval(P,&gt;,(1,1),&lt;,(2,2)) # elements strictly between
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (1, 2)
+julia&gt; interval(P.C,&gt;,1,&lt;,4) # in terms of indices
+2-element Vector{Int64}:
+ 2
+ 3
+</code></pre></div>
+<p dir="auto">A sample of other functions available on posets:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; maximal_chains(P)
+2-element Vector{Vector{Tuple{Int64, Int64}}}:
+ [(1, 1), (2, 1), (2, 2)]
+ [(1, 1), (1, 2), (2, 2)]
+
+julia&gt; height(P) # the length of a maximal chain
+3
+
+julia&gt; moebiusmatrix(P)
+4×4 Matrix{Int64}:
+ 1  -1  -1   1
+ 0   1   0  -1
+ 0   0   1  -1
+ 0   0   0   1
+
+julia&gt; minima(P)
+1-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+
+julia&gt; maxima(P)
+1-element Vector{Tuple{Int64, Int64}}:
+ (2, 2)
+
+julia&gt; Q=CPoset(:chain,3)
+1&lt;2&lt;3
+
+julia&gt; P1=Poset(Q) # transformed to a Poset with elements 1:3
+1&lt;2&lt;3
+
+julia&gt; P⊕ P1 # the ordinal sum
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)&lt;1&lt;2&lt;3
+
+julia&gt; P1*P1
+(1, 1)&lt;(2, 1)&lt;(3, 1)&lt;(3, 2)&lt;(3, 3)
+(1, 1)&lt;(1, 2)&lt;(2, 2)&lt;(3, 2)
+(2, 1)&lt;(2, 2)
+(1, 2)&lt;(1, 3)&lt;(2, 3)&lt;(3, 3)
+(2, 2)&lt;(2, 3)
+
+julia&gt; P1⊗ P1 # the ordinal product
+(1, 1)&lt;(1, 2)&lt;(1, 3)&lt;(2, 1)&lt;(2, 2)&lt;(2, 3)&lt;(3, 1)&lt;(3, 2)&lt;(3, 3)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; maximal_chains(P)
+2-element Vector{Vector{Tuple{Int64, Int64}}}:
+ [(1, 1), (2, 1), (2, 2)]
+ [(1, 1), (1, 2), (2, 2)]
+
+julia&gt; height(P) # the length of a maximal chain
+3
+
+julia&gt; moebiusmatrix(P)
+4×4 Matrix{Int64}:
+ 1  -1  -1   1
+ 0   1   0  -1
+ 0   0   1  -1
+ 0   0   0   1
+
+julia&gt; minima(P)
+1-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+
+julia&gt; maxima(P)
+1-element Vector{Tuple{Int64, Int64}}:
+ (2, 2)
+
+julia&gt; Q=CPoset(:chain,3)
+1&lt;2&lt;3
+
+julia&gt; P1=Poset(Q) # transformed to a Poset with elements 1:3
+1&lt;2&lt;3
+
+julia&gt; P⊕ P1 # the ordinal sum
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)&lt;1&lt;2&lt;3
+
+julia&gt; P1*P1
+(1, 1)&lt;(2, 1)&lt;(3, 1)&lt;(3, 2)&lt;(3, 3)
+(1, 1)&lt;(1, 2)&lt;(2, 2)&lt;(3, 2)
+(2, 1)&lt;(2, 2)
+(1, 2)&lt;(1, 3)&lt;(2, 3)&lt;(3, 3)
+(2, 2)&lt;(2, 3)
+
+julia&gt; P1⊗ P1 # the ordinal product
+(1, 1)&lt;(1, 2)&lt;(1, 3)&lt;(2, 1)&lt;(2, 2)&lt;(2, 3)&lt;(3, 1)&lt;(3, 2)&lt;(3, 3)
+</code></pre></div>
+<p dir="auto">Finally <code>showpic(p)</code> where <code>p</code> is a <code>CPoset</code> or a <code>Poset</code> gives a graphical display of the poset (on Linux) provided you have the command <code>dot</code> and the command  <code>display</code> of  <code>imagemagick</code> installed.  It may  work on  MacOs and Windows but I did not test it.</p>
+<p dir="auto">see the on-line help on <code>⊕, ⊗,  +, *, chains, chainpoly, covering_chains, coxetermatrix,  dual,  hasse,  height, incidence,  induced,  interval,  isjoinlattice,  ismeetlattice,  linear_extension,  maxima, maximal_chains,  minima, moebius,  moebiusmatrix,  partition,  showpic, transitive_closure</code> for more information</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1-L236">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.poset" href="#FinitePosets.Poset">#</a>
+<strong><code>FinitePosets.Poset</code></strong> — <em>Type</em>.</p>
+<p dir="auto"><code>Poset(p::CPoset,e::AbstractVector=1:length(p))</code></p>
+<p dir="auto">creates a <code>Poset</code> with order specified by <code>p</code> and elements <code>e</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Poset(CPoset([[2,3],[4],[4],Int[]]),[:a,:b,:c,:d])
+a&lt;b,c&lt;d"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Poset(CPoset([[2,3],[4],[4],Int[]]),[:a,:b,:c,:d])
+a&lt;b,c&lt;d
+</code></pre></div>
+<p dir="auto">with no second argument transforms a <code>CPoset</code> into a <code>Poset</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L359-L368">source</a><br></p>
+<p dir="auto"><code>Poset(f::Function,e::AbstractVector)</code></p>
+<p dir="auto">creates a <code>Poset</code> with elements <code>e</code> and order between two elements given by function <code>f</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Poset((x,y)-&gt;all(x.≤y),vec(collect(Iterators.product(1:2,1:3))))
+(1, 1)&lt;(2, 1)&lt;(2, 2)&lt;(2, 3)
+(1, 1)&lt;(1, 2)&lt;(2, 2)
+(1, 2)&lt;(1, 3)&lt;(2, 3)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Poset((x,y)-&gt;all(x.≤y),vec(collect(Iterators.product(1:2,1:3))))
+(1, 1)&lt;(2, 1)&lt;(2, 2)&lt;(2, 3)
+(1, 1)&lt;(1, 2)&lt;(2, 2)
+(1, 2)&lt;(1, 3)&lt;(2, 3)
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L410-L421">source</a><br></p>
+<p dir="auto"><code>Poset(covers::Vector{Tuple{T,T}}) where T</code></p>
+<p dir="auto">creates a poset representing the transitive closure of the given relations. The  poset is on the elements which appear in the relations.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Poset([(:a,:b),(:d,:c)])
+a&lt;b
+d&lt;c"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Poset([(:a,:b),(:d,:c)])
+a&lt;b
+d&lt;c
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L461-L471">source</a><br></p>
+<ul dir="auto">
+<li><code>Poset(:chain,e)</code>  a chain with elements <code>e</code></li>
+<li><code>Poset(:antichain,e)</code>  an antichain with elements <code>e</code></li>
+<li><code>Poset(:powerset,n::Integer)</code>  the powerset of the set <code>1:n</code> with inclusion</li>
+</ul>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=Poset(:powerset,3);p.show_element=(io,p,n)-&gt;join(io,p.elements[n]);
+
+julia&gt; p
+&lt;1&lt;12&lt;123
+&lt;2&lt;12
+&lt;3&lt;13&lt;123
+1&lt;13
+2&lt;23&lt;123
+3&lt;23"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=Poset(:powerset,3);p.show_element=(io,p,n)-&gt;join(io,p.elements[n]);
+
+julia&gt; p
+&lt;1&lt;12&lt;123
+&lt;2&lt;12
+&lt;3&lt;13&lt;123
+1&lt;13
+2&lt;23&lt;123
+3&lt;23
+</code></pre></div>
+<ul dir="auto">
+<li><code>Poset(:powerset,e)</code>  the powerset of the set <code>e</code> with inclusion</li>
+<li><code>Poset(:partitionsdominance,n)</code>  the poset of partitions of <code>n</code> with dominance order</li>
+</ul>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Poset(:partitionsdominance,5)
+[1, 1, 1, 1, 1]&lt;[2, 1, 1, 1]&lt;[2, 2, 1]&lt;[3, 1, 1]&lt;[3, 2]&lt;[4, 1]&lt;[5]"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Poset(:partitionsdominance,5)
+[1, 1, 1, 1, 1]&lt;[2, 1, 1, 1]&lt;[2, 2, 1]&lt;[3, 1, 1]&lt;[3, 2]&lt;[4, 1]&lt;[5]
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L486-L507">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.cposet" href="#FinitePosets.CPoset">#</a>
+<strong><code>FinitePosets.CPoset</code></strong> — <em>Type</em>.</p>
+<p dir="auto"><code>CPoset(m::Matrix{Bool})</code></p>
+<p dir="auto">Creates a poset from an incidence matrix <code>m</code>, that is <code>m[i,j]==true</code> if and only if <code>i≤j</code> in the poset,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset(Bool[1 1 1 1 1;0 1 0 1 1;0 0 1 1 1;0 0 0 1 0;0 0 0 0 1])
+1&lt;2,3&lt;4,5"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset(Bool[1 1 1 1 1;0 1 0 1 1;0 0 1 1 1;0 0 0 1 0;0 0 0 0 1])
+1&lt;2,3&lt;4,5
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L383-L393">source</a><br></p>
+<p dir="auto"><code>CPoset(h::Vector{&lt;:Vector{&lt;:Integer}})</code></p>
+<p dir="auto">Creates a poset from a Hasse diagram given as a <code>Vector</code> whose <code>i</code>-th entry is  the  list  of  indices  which  are immediate successors (covers) of the <code>i</code>-th  element, that is <code>h[i]</code>  is the list of  <code>j</code> such that <code>i&lt;j</code> in the poset and such that there is no <code>k</code> such that <code>i&lt;k&lt;j</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset([[2,3],[4,5],[4,5],Int[],Int[]])
+1&lt;2,3&lt;4,5"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset([[2,3],[4,5],[4,5],Int[],Int[]])
+1&lt;2,3&lt;4,5
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L396-L407">source</a><br></p>
+<p dir="auto"><code>CPoset(f::Function,n::integer)</code></p>
+<p dir="auto">creates the <code>Poset</code> on <code>1:n</code> with order given by function <code>f</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset((x,y)-&gt;y%x==0,8)  # the divisibility poset
+1&lt;5,7
+1&lt;2&lt;4&lt;8
+1&lt;3&lt;6
+2&lt;6"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset((x,y)-&gt;y%x==0,8)  # the divisibility poset
+1&lt;5,7
+1&lt;2&lt;4&lt;8
+1&lt;3&lt;6
+2&lt;6
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L425-L436">source</a><br></p>
+<p dir="auto"><code>CPoset(covers::Vector{Tuple{Int,Int}})</code></p>
+<p dir="auto">creates a poset representing the transitive closure of the given relations. The  poset is on <code>1:n</code> where <code>n</code> is the maximum number which appears in the relations.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset([(6,2),(5,1)])
+3,4
+5&lt;1
+6&lt;2"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset([(6,2),(5,1)])
+3,4
+5&lt;1
+6&lt;2
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L439-L451">source</a><br></p>
+<ul dir="auto">
+<li><code>CPoset(:chain,n)</code>  a chain on <code>1:n</code></li>
+<li><code>CPoset(:antichain,n)</code>  an antichain on <code>1:n</code></li>
+<li><code>CPoset(:diamond,n)</code>  a diamond poset on <code>1:n</code></li>
+</ul>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L478-L482">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.hasse" href="#FinitePosets.hasse">#</a>
+<strong><code>FinitePosets.hasse</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>hasse(m::Matrix{Bool})</code> Given  an  incidence  matrix  for  a  poset returns the corresponding Hasse diagram.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; m=incidence(CPoset(:diamond,5))
+5×5 Matrix{Bool}:
+ 1  1  1  1  1
+ 0  1  0  0  1
+ 0  0  1  0  1
+ 0  0  0  1  1
+ 0  0  0  0  1
+
+julia&gt; hasse(m)
+5-element Vector{Vector{Int64}}:
+ [2, 3, 4]
+ [5]
+ [5]
+ [5]
+ []"><pre lang="julia-repl" class="notranslate"><code>julia&gt; m=incidence(CPoset(:diamond,5))
+5×5 Matrix{Bool}:
+ 1  1  1  1  1
+ 0  1  0  0  1
+ 0  0  1  0  1
+ 0  0  0  1  1
+ 0  0  0  0  1
+
+julia&gt; hasse(m)
+5-element Vector{Vector{Int64}}:
+ [2, 3, 4]
+ [5]
+ [5]
+ [5]
+ []
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L304-L325">source</a><br></p>
+<p dir="auto"><code>hasse(P::CPoset)</code></p>
+<p dir="auto">the Hasse diagram of <code>P</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;j%i==0,5)
+1&lt;3,5
+1&lt;2&lt;4
+
+julia&gt; hasse(p)
+5-element Vector{Vector{Int64}}:
+ [2, 3, 5]
+ [4]      
+ []       
+ []       
+ []       "><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;j%i==0,5)
+1&lt;3,5
+1&lt;2&lt;4
+
+julia&gt; hasse(p)
+5-element Vector{Vector{Int64}}:
+ [2, 3, 5]
+ [4]      
+ []       
+ []       
+ []       
+</code></pre></div>
+<p dir="auto"><code>hasse(P::Poset)</code> returns <code>hasse(P.C)</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L592-L611">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.incidence" href="#FinitePosets.incidence">#</a>
+<strong><code>FinitePosets.incidence</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>incidence(P::CPoset)</code></p>
+<p dir="auto">returns the incidence matrix (also called the ζ matrix) of <code>P</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset([i==6 ? Int[] : [i+1] for i in 1:6])
+1&lt;2&lt;3&lt;4&lt;5&lt;6
+
+julia&gt; incidence(p)
+6×6 Matrix{Bool}:
+ 1  1  1  1  1  1
+ 0  1  1  1  1  1
+ 0  0  1  1  1  1
+ 0  0  0  1  1  1
+ 0  0  0  0  1  1
+ 0  0  0  0  0  1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset([i==6 ? Int[] : [i+1] for i in 1:6])
+1&lt;2&lt;3&lt;4&lt;5&lt;6
+
+julia&gt; incidence(p)
+6×6 Matrix{Bool}:
+ 1  1  1  1  1  1
+ 0  1  1  1  1  1
+ 0  0  1  1  1  1
+ 0  0  0  1  1  1
+ 0  0  0  0  1  1
+ 0  0  0  0  0  1
+</code></pre></div>
+<p dir="auto"><code>incidence(P::Poset)</code> returns <code>incidence(P.C)</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L614-L633">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.transitive_closure" href="#FinitePosets.transitive_closure">#</a>
+<strong><code>FinitePosets.transitive_closure</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>transitive_closure(M)</code> <code>transitive_closure!(M)</code></p>
+<p dir="auto"><code>M</code>   should  be   a  square   boolean  matrix   representing  a  relation; <code>transitive_closure</code>  returns a boolean  matrix representing the transitive closure  of  this  relation;  <code>transitive_closure!</code>  modifies <code>M</code> in place, doing   no  allocations.  The   transitive  closure  is   computed  by  the Floyd-Warshall algorithm, which is quite fast even for large matrices.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; m=[j-i in [0,1] for i in 1:5, j in 1:5]
+5×5 Matrix{Bool}:
+ 1  1  0  0  0
+ 0  1  1  0  0
+ 0  0  1  1  0
+ 0  0  0  1  1
+ 0  0  0  0  1
+
+julia&gt;transitive_closure(m)
+5×5 Matrix{Bool}:
+ 1  1  1  1  1
+ 0  1  1  1  1
+ 0  0  1  1  1
+ 0  0  0  1  1
+ 0  0  0  0  1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; m=[j-i in [0,1] for i in 1:5, j in 1:5]
+5×5 Matrix{Bool}:
+ 1  1  0  0  0
+ 0  1  1  0  0
+ 0  0  1  1  0
+ 0  0  0  1  1
+ 0  0  0  0  1
+
+julia&gt;transitive_closure(m)
+5×5 Matrix{Bool}:
+ 1  1  1  1  1
+ 0  1  1  1  1
+ 0  0  1  1  1
+ 0  0  0  1  1
+ 0  0  0  0  1
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L265-L292">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.linear_extension" href="#FinitePosets.linear_extension">#</a>
+<strong><code>FinitePosets.linear_extension</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>linear_extension(P::CPoset)</code></p>
+<p dir="auto">returns a linear extension of the <code>CPoset</code>, that is a vector <code>l</code> containing a permutation of the integers <code>1:length(P)</code> such that if <code>i&lt;j</code> in <code>P</code> (that is  <code>incidence(P)[i,j]</code> is <code>true</code>), then <code>i</code> is  before <code>j</code> in <code>l</code>. This is also called a topological sort of <code>P</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;j%i==0,6) # divisibility poset on 1:6
+1&lt;5
+1&lt;2&lt;4
+1&lt;3&lt;6
+2&lt;6
+
+julia&gt; linear_extension(p)
+6-element Vector{Int64}:
+ 1
+ 2
+ 3
+ 5
+ 4
+ 6"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;j%i==0,6) # divisibility poset on 1:6
+1&lt;5
+1&lt;2&lt;4
+1&lt;3&lt;6
+2&lt;6
+
+julia&gt; linear_extension(p)
+6-element Vector{Int64}:
+ 1
+ 2
+ 3
+ 5
+ 4
+ 6
+</code></pre></div>
+<p dir="auto"><code>linear_extension(P::Poset)</code> returns a linear extension of <code>P.C</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L547-L572">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.dual" href="#FinitePosets.dual">#</a>
+<strong><code>FinitePosets.dual</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>dual(P)</code></p>
+<p dir="auto">the dual poset to the <code>Poset</code> or <code>CPoset</code> (the order relation is reversed).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;i%4&lt;j%4,8)
+4,8&lt;1,5&lt;2,6&lt;3,7
+
+julia&gt; dual(p)
+3,7&lt;2,6&lt;1,5&lt;4,8"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;i%4&lt;j%4,8)
+4,8&lt;1,5&lt;2,6&lt;3,7
+
+julia&gt; dual(p)
+3,7&lt;2,6&lt;1,5&lt;4,8
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L789-L801">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.partition" href="#FinitePosets.partition">#</a>
+<strong><code>FinitePosets.partition</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>partition(P::CPoset)</code></p>
+<p dir="auto">returns  the partition of <code>1:length(P)</code> induced by the equivalence relation associated  to  <code>P</code>;  that  is,  <code>i</code>  and  <code>j</code>  are in the same part of the partition  if the <code>k</code> such that <code>i&lt;k</code> and <code>j&lt;k</code> are the same as well as the <code>k</code> such that <code>k&lt;i</code> and <code>k&lt;j</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset([i==j || i%4&lt;j%4 for i in 1:8, j in 1:8])
+4,8&lt;1,5&lt;2,6&lt;3,7
+
+julia&gt; partition(p)
+4-element Vector{Vector{Int64}}:
+ [4, 8]
+ [2, 6]
+ [3, 7]
+ [1, 5]"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset([i==j || i%4&lt;j%4 for i in 1:8, j in 1:8])
+4,8&lt;1,5&lt;2,6&lt;3,7
+
+julia&gt; partition(p)
+4-element Vector{Vector{Int64}}:
+ [4, 8]
+ [2, 6]
+ [3, 7]
+ [1, 5]
+</code></pre></div>
+<p dir="auto"><code>partition(P::Poset)</code> returns <code>partition(P.C)</code></p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L813-L833">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.induced" href="#FinitePosets.induced">#</a>
+<strong><code>FinitePosets.induced</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>induced(P,S)</code></p>
+<p dir="auto">returns the subposet induced by <code>P</code> on <code>S</code>, a sublist of <code>P.elements</code> if <code>P isa  Poset</code> or a subset  of <code>1:length(P)</code> if <code>P  isa CPoset</code>. Note that the sublist  <code>S</code> does not have to be in the same order as <code>P.elements</code>, so this can be just used to renumber the elements of <code>P</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;i%4&lt;j%4,8)
+4,8&lt;1,5&lt;2,6&lt;3,7
+
+julia&gt; induced(p,2:6) # indices are renumbered
+3&lt;4&lt;1,5&lt;2
+
+julia&gt; induced(Poset(p),2:6) # elements are kept
+4&lt;5&lt;2,6&lt;3"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;i%4&lt;j%4,8)
+4,8&lt;1,5&lt;2,6&lt;3,7
+
+julia&gt; induced(p,2:6) # indices are renumbered
+3&lt;4&lt;1,5&lt;2
+
+julia&gt; induced(Poset(p),2:6) # elements are kept
+4&lt;5&lt;2,6&lt;3
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L844-L862">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.isjoinlattice" href="#FinitePosets.isjoinlattice">#</a>
+<strong><code>FinitePosets.isjoinlattice</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>isjoinlattice(P::CPoset)</code></p>
+<p dir="auto">returns  <code>true</code> if <code>P</code> is  a join semilattice, that  is any two elements of <code>P</code> have a unique smallest upper bound; returns <code>false</code> otherwise.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;j%i==0,8)
+1&lt;5,7
+1&lt;2&lt;4&lt;8
+1&lt;3&lt;6
+2&lt;6
+
+julia&gt; isjoinlattice(p)
+false"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;j%i==0,8)
+1&lt;5,7
+1&lt;2&lt;4&lt;8
+1&lt;3&lt;6
+2&lt;6
+
+julia&gt; isjoinlattice(p)
+false
+</code></pre></div>
+<p dir="auto"><code>isjoinlattice(P::Poset)</code> returns <code>isjoinlattice(P.C)</code></p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L906-L923">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.ismeetlattice" href="#FinitePosets.ismeetlattice">#</a>
+<strong><code>FinitePosets.ismeetlattice</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>ismeetlattice(P)</code></p>
+<p dir="auto">returns  <code>true</code> if <code>P</code> is  a meet semilattice, that  is any two elements of <code>P</code> have a unique highest lower bound; returns <code>false</code> otherwise.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;j%i==0,8)
+1&lt;5,7
+1&lt;2&lt;4&lt;8
+1&lt;3&lt;6
+2&lt;6
+
+julia&gt; ismeetlattice(p)
+true"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;j%i==0,8)
+1&lt;5,7
+1&lt;2&lt;4&lt;8
+1&lt;3&lt;6
+2&lt;6
+
+julia&gt; ismeetlattice(p)
+true
+</code></pre></div>
+<p dir="auto"><code>ismeetlattice(P::Poset)</code> returns <code>ismeetlattice(P.C)</code></p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L926-L943">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.maxima" href="#FinitePosets.maxima">#</a>
+<strong><code>FinitePosets.maxima</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>maxima(P)</code> the maximal elements of the <code>Poset</code> or <code>CPoset</code></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset([[3],[3],[4,5],Int[],Int[]])
+1,2&lt;3&lt;4,5
+
+julia&gt; maxima(p)
+2-element Vector{Int64}:
+ 4
+ 5"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset([[3],[3],[4,5],Int[],Int[]])
+1,2&lt;3&lt;4,5
+
+julia&gt; maxima(p)
+2-element Vector{Int64}:
+ 4
+ 5
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1038-L1050">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.minima" href="#FinitePosets.minima">#</a>
+<strong><code>FinitePosets.minima</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>minima(P)</code> the minimal elements of the <code>Poset</code> or <code>CPoset</code></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset([[3],[3],[4,5],Int[],Int[]])
+1,2&lt;3&lt;4,5
+
+julia&gt; minima(p)
+2-element Vector{Int64}:
+ 1
+ 2"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=CPoset([[3],[3],[4,5],Int[],Int[]])
+1,2&lt;3&lt;4,5
+
+julia&gt; minima(p)
+2-element Vector{Int64}:
+ 1
+ 2
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1019-L1031">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.covering_chains" href="#FinitePosets.covering_chains">#</a>
+<strong><code>FinitePosets.covering_chains</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>covering_chains(P::CPoset)</code></p>
+<p dir="auto">A (greedy: the first is longest possible) list of covering chains for P.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L767-L771">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.interval" href="#FinitePosets.interval">#</a>
+<strong><code>FinitePosets.interval</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>interval(P,f::Function,a)</code> <code>interval(P,f::Function,a,g::Function,b)</code></p>
+<p dir="auto">returns  an interval in the <code>Poset</code> or  <code>CPoset</code> given by <code>P</code>. The function <code>f</code> must be one of the comparison functions <code>≤, &lt;, ≥, &gt;</code>. In the first form it returns the interval between <code>a</code> and one end (or the other, depending on the  comparison function). In  the second form  it returns the intersection of the intervals <code>interval(P,f,a)</code> and <code>interval(P,g,b)</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; l=vec(collect(Iterators.product(1:2,1:2)))
+4-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (2, 1)
+ (1, 2)
+ (2, 2)
+
+julia&gt; P=Poset((x,y)-&gt;all(map(&lt;=,x,y)),l)
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)
+
+julia&gt; interval(P,≤,(1,2)) # elements below (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (1, 2)
+
+julia&gt; interval(P,≥,(1,2)) # elements above (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 2)
+ (2, 2)
+
+julia&gt; interval(P,&lt;,(1,2)) # elements strictly below (1,2)
+1-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+
+julia&gt; interval(P,≥,(2,1),≤,(2,2)) # elements between (2,1) and (2,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (2, 2)
+
+julia&gt; interval(P,&gt;,(1,1),&lt;,(2,2)) # elements strictly between
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (1, 2)
+julia&gt; interval(P.C,&gt;,1,&lt;,4) # in terms of indices
+2-element Vector{Int64}:
+ 2
+ 3"><pre lang="julia-repl" class="notranslate"><code>julia&gt; l=vec(collect(Iterators.product(1:2,1:2)))
+4-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (2, 1)
+ (1, 2)
+ (2, 2)
+
+julia&gt; P=Poset((x,y)-&gt;all(map(&lt;=,x,y)),l)
+(1, 1)&lt;(2, 1),(1, 2)&lt;(2, 2)
+
+julia&gt; interval(P,≤,(1,2)) # elements below (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (1, 2)
+
+julia&gt; interval(P,≥,(1,2)) # elements above (1,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (1, 2)
+ (2, 2)
+
+julia&gt; interval(P,&lt;,(1,2)) # elements strictly below (1,2)
+1-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+
+julia&gt; interval(P,≥,(2,1),≤,(2,2)) # elements between (2,1) and (2,2)
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (2, 2)
+
+julia&gt; interval(P,&gt;,(1,1),&lt;,(2,2)) # elements strictly between
+2-element Vector{Tuple{Int64, Int64}}:
+ (2, 1)
+ (1, 2)
+julia&gt; interval(P.C,&gt;,1,&lt;,4) # in terms of indices
+2-element Vector{Int64}:
+ 2
+ 3
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1061-L1109">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.maximal_chains" href="#FinitePosets.maximal_chains">#</a>
+<strong><code>FinitePosets.maximal_chains</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>maximal_chains(P)</code> the maximal chains of the <code>Poset</code> or <code>CPoset</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=Poset([(:a,:b),(:a,:c),(:b,:d),(:c,:d)])
+a&lt;b,c&lt;d
+
+julia&gt; maximal_chains(p)
+2-element Vector{Vector{Symbol}}:
+ [:a, :b, :d]
+ [:a, :c, :d]
+
+julia&gt; maximal_chains(p.C)
+2-element Vector{Vector{Int64}}:
+ [1, 2, 4]
+ [1, 3, 4]"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=Poset([(:a,:b),(:a,:c),(:b,:d),(:c,:d)])
+a&lt;b,c&lt;d
+
+julia&gt; maximal_chains(p)
+2-element Vector{Vector{Symbol}}:
+ [:a, :b, :d]
+ [:a, :c, :d]
+
+julia&gt; maximal_chains(p.C)
+2-element Vector{Vector{Int64}}:
+ [1, 2, 4]
+ [1, 3, 4]
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1130-L1146">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.chains" href="#FinitePosets.chains">#</a>
+<strong><code>FinitePosets.chains</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>chains(P)</code> the chains of the <code>Poset</code> or <code>CPoset</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; chains(CPoset(:chain,3))
+8-element Vector{Vector{Int64}}:
+ []
+ [1]
+ [2]
+ [3]
+ [1, 2]
+ [1, 3]
+ [2, 3]
+ [1, 2, 3]"><pre lang="julia-repl" class="notranslate"><code>julia&gt; chains(CPoset(:chain,3))
+8-element Vector{Vector{Int64}}:
+ []
+ [1]
+ [2]
+ [3]
+ [1, 2]
+ [1, 3]
+ [2, 3]
+ [1, 2, 3]
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1169-L1183">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.height" href="#FinitePosets.height">#</a>
+<strong><code>FinitePosets.height</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>height(P)</code>  the height of the <code>Poset</code> or <code>CPoset</code> (the longest length of a chain).</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1210-L1213">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.chainpoly" href="#FinitePosets.chainpoly">#</a>
+<strong><code>FinitePosets.chainpoly</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>chainspoly(P)</code> the chain polynomial of the <code>Poset</code> or <code>CPoset</code>, returned as the list of its coefficients.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; chainpoly(Poset(:powerset,3))
+5-element Vector{Int64}:
+  1
+  8
+ 19
+ 18
+  6"><pre lang="julia-repl" class="notranslate"><code>julia&gt; chainpoly(Poset(:powerset,3))
+5-element Vector{Int64}:
+  1
+  8
+ 19
+ 18
+  6
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L1190-L1202">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.moebius" href="#FinitePosets.moebius">#</a>
+<strong><code>FinitePosets.moebius</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>moebius(P::CPoset,y=first(maxima(P)))</code></p>
+<p dir="auto">the vector of values <code>μ(x,y)</code> of the Moebius function of <code>P</code> for <code>x</code> varying. Here is an example giving the ususal Moebius function on integers.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=CPoset((i,j)-&gt;i%j==0,1:8)
+5,7&lt;1
+6&lt;2&lt;1
+6&lt;3&lt;1
+8&lt;4&lt;2
+
+julia&gt; moebius(p)
+8-element Vector{Int64}:
+  1
+ -1
+ -1
+  0
+ -1
+  1
+ -1
+  0"><pre lang="julia_repl" class="notranslate"><code>julia&gt; p=CPoset((i,j)-&gt;i%j==0,1:8)
+5,7&lt;1
+6&lt;2&lt;1
+6&lt;3&lt;1
+8&lt;4&lt;2
+
+julia&gt; moebius(p)
+8-element Vector{Int64}:
+  1
+ -1
+ -1
+  0
+ -1
+  1
+ -1
+  0
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L946-L969">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.moebiusmatrix" href="#FinitePosets.moebiusmatrix">#</a>
+<strong><code>FinitePosets.moebiusmatrix</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>moebiusmatrix(P::CPoset)</code>  the  matrix  of  the  Moebius  function  <code>μ(x,y)</code>  (the inverse of the ζ or incidence matrix)</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; moebiusmatrix(CPoset(:diamond,5))
+5×5 Matrix{Int64}:
+ 1  -1  -1  -1   2
+ 0   1   0   0  -1
+ 0   0   1   0  -1
+ 0   0   0   1  -1
+ 0   0   0   0   1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; moebiusmatrix(CPoset(:diamond,5))
+5×5 Matrix{Int64}:
+ 1  -1  -1  -1   2
+ 0   1   0   0  -1
+ 0   0   1   0  -1
+ 0   0   0   1  -1
+ 0   0   0   0   1
+</code></pre></div>
+<p dir="auto"><code>moebiusmatrix(P::Poset)</code> returns <code>moebiusmatrix(P.C)</code></p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L998-L1012">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.coxetermatrix" href="#FinitePosets.coxetermatrix">#</a>
+<strong><code>FinitePosets.coxetermatrix</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>coxetermatrix(p)</code> the Coxeter matrix of the <code>Poset</code> or <code>CPoset</code>, defined as <code>-m*transpose(inv(m))</code> where <code>m</code> is the ζ or incidence matrix.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; coxetermatrix(CPoset(:diamond,5))
+5×5 Matrix{Int64}:
+  0  -1  -1  -1  -2
+  0   0   1   1   1
+  0   1   0   1   1
+  0   1   1   0   1
+ -1  -1  -1  -1  -1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; coxetermatrix(CPoset(:diamond,5))
+5×5 Matrix{Int64}:
+  0  -1  -1  -1  -2
+  0   0   1   1   1
+  0   1   0   1   1
+  0   1   1   0   1
+ -1  -1  -1  -1  -1
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L752-L764">source</a><br></p>
+<p dir="auto"><a id="user-content-base.:+-tuple{cposet, cposet}">#</a>
+<strong><code>Base.:+</code></strong> — <em>Method</em>.</p>
+<p dir="auto"><code>P+Q</code> returns the sum of two <code>CPoset</code>s or of two <code>Poset</code>s.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset(:chain,2)+CPoset(:chain,3)
+1&lt;2
+3&lt;4&lt;5
+
+julia&gt; Poset(:chain,[1,2])+Poset(:chain,[:a,:b,:c])
+1&lt;2
+a&lt;b&lt;c"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset(:chain,2)+CPoset(:chain,3)
+1&lt;2
+3&lt;4&lt;5
+
+julia&gt; Poset(:chain,[1,2])+Poset(:chain,[:a,:b,:c])
+1&lt;2
+a&lt;b&lt;c
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L645-L656">source</a><br></p>
+<p dir="auto"><a id="user-content-base.:*-tuple{cposet, cposet}">#</a>
+<strong><code>Base.:*</code></strong> — <em>Method</em>.</p>
+<p dir="auto"><code>P*Q</code> returns the product of two <code>CPoset</code>s or of two <code>Poset</code>s.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset(:chain,2)*CPoset(:chain,3)
+1&lt;2&lt;3&lt;6
+1&lt;4&lt;5&lt;6
+2&lt;5
+
+julia&gt; Poset(:chain,[1,2])*Poset(:chain,[:a,:b,:c])
+(1, :a)&lt;(2, :a)&lt;(1, :b)&lt;(2, :c)
+(1, :a)&lt;(2, :b)&lt;(1, :c)&lt;(2, :c)
+(2, :a)&lt;(1, :c)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset(:chain,2)*CPoset(:chain,3)
+1&lt;2&lt;3&lt;6
+1&lt;4&lt;5&lt;6
+2&lt;5
+
+julia&gt; Poset(:chain,[1,2])*Poset(:chain,[:a,:b,:c])
+(1, :a)&lt;(2, :a)&lt;(1, :b)&lt;(2, :c)
+(1, :a)&lt;(2, :b)&lt;(1, :c)&lt;(2, :c)
+(2, :a)&lt;(1, :c)
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L677-L690">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.:⊕">#</a>
+<strong><code>FinitePosets.:⊕</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>P⊕ Q</code> returns the ordinal sum of two <code>CPoset</code>s or of two <code>Poset</code>s.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset(:chain,2)⊕ CPoset(:chain,3)
+1&lt;2&lt;3&lt;4&lt;5
+
+julia&gt; Poset(:chain,[1,2])⊕ Poset(:chain,[:a,:b,:c])
+1&lt;2&lt;a&lt;b&lt;c"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset(:chain,2)⊕ CPoset(:chain,3)
+1&lt;2&lt;3&lt;4&lt;5
+
+julia&gt; Poset(:chain,[1,2])⊕ Poset(:chain,[:a,:b,:c])
+1&lt;2&lt;a&lt;b&lt;c
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L660-L669">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.:⊗">#</a>
+<strong><code>FinitePosets.:⊗</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>P⊗ Q</code> returns the ordinal product of two <code>CPoset</code>s or of two <code>Poset</code>s.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; CPoset(:chain,2)⊗ CPoset(:chain,3)
+1&lt;3&lt;5&lt;2&lt;4&lt;6
+
+julia&gt; Poset(:chain,[1,2])⊗ Poset(:chain,[:a,:b,:c])
+(1, :a)&lt;(1, :b)&lt;(1, :c)&lt;(2, :a)&lt;(2, :b)&lt;(2, :c)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; CPoset(:chain,2)⊗ CPoset(:chain,3)
+1&lt;3&lt;5&lt;2&lt;4&lt;6
+
+julia&gt; Poset(:chain,[1,2])⊗ Poset(:chain,[:a,:b,:c])
+(1, :a)&lt;(1, :b)&lt;(1, :c)&lt;(2, :a)&lt;(2, :b)&lt;(2, :c)
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L726-L735">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.showpic" href="#FinitePosets.showpic">#</a>
+<strong><code>FinitePosets.showpic</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>showpic(p)</code> display a graphical representation of the Hasse diagram of the <code>Poset</code> or <code>CPoset</code> using the commands <code>dot</code> and <code>display</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L716-L719">source</a><br></p>
+<p dir="auto"><a id="user-content-finiteposets.dot" href="#FinitePosets.dot">#</a>
+<strong><code>FinitePosets.dot</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>dot(p)</code> gives a rendering of the Hasse diagram of the <code>Poset</code> or <code>CPoset</code> in the graphical language <code>dot</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/FinitePosets.jl/blob/325837804984953cbfe59b731161db2a870e038d/src/FinitePosets.jl#L697-L700">source</a><br></p>
+</article></div>

@@ -1,6 +1,12 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-h5sparsejl" class="anchor" aria-hidden="true" href="#h5sparsejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>H5Sparse.jl</h1>
-<p>This package provides <code>H5SparseMatrixCSC</code>, an an out-of-core <code>AbstractSparseMatrixCSC</code> backed by a HDF5 dataset stored on disk. The main purpose of this package is to provide support for iteratively constructing large sparse matrices that do not fit in memory and for querying a subset of the columns of that matrix.</p>
-<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="# Conversion from SparseMatrixCSC; writes B to a dataset &quot;A&quot; in the file &quot;foo.h5&quot;
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-h5sparsejl" class="anchor" aria-hidden="true" href="#h5sparsejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>H5Sparse.jl</h1>
+<p dir="auto">This package provides <code>H5SparseMatrixCSC</code>, an an out-of-core <code>AbstractSparseMatrixCSC</code> backed by a dataset stored on disk of type <code>&lt;:HDF5.H5DataStore</code>, e.g., a <code>HDF5.File</code>; see the <a href="https://github.com/JuliaIO/HDF5.jl">HDF5.jl</a> documentation.</p>
+<p dir="auto">The intended workflow is:</p>
+<ol dir="auto">
+<li>Construct a large sparse matrix that does not fit in memory by repeatedly concatenating a <code>H5SparseMatrixCSC</code> with matrices of type <code>SparseMatrixCSC</code>, which may be generated one at a time and then discarded to free up memory. Each concatenation writes the columns of the <code>SparseMatrixCSC</code> to the file backing the <code>H5SparseMatrixCSC</code>.</li>
+<li>Read a subset of the columns of the resulting <code>H5SparseMatrixCSC</code> into memory at a time for processing.</li>
+</ol>
+<p dir="auto">Since Julia matrices are stored in column-major format, for efficiency only horizontal concatenation (<code>hcat</code>) is supported. By default, the backing file is compressed with <a href="https://www.blosc.org/" rel="nofollow">blosc</a>, resulting in exceptionally small files, and making reading from disk very fast.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Conversion from SparseMatrixCSC; writes B to a dataset &quot;A&quot; in the file &quot;foo.h5&quot;
 using SparseArrays
 B = sprand(10, 10, 0.5)
 A = H5SparseMatrixCSC(&quot;foo.h5&quot;, &quot;A&quot;, B)
@@ -32,10 +38,17 @@ A[1, 1]
 C = sprand(10, 5, 0.5)
 A = hcat(A, C)      # A is now of size (10, 15)
 
-# Use sparse or Matrix to load H5SparseMatrixCSC matrix into memory
+# Load a H5SparseMatrixCSC matrix into memory using SparseArrays.sparse
+# Only the columns covered by this particular H5SparseMatrixCSC will be read from disk
+# However, A must cover all rows of the underlying matrix
 sparse(A)           # SparseMatrixCSC
-Matrix(A)           # Matrix
-"><pre><span class="pl-c"><span class="pl-c">#</span> Conversion from SparseMatrixCSC; writes B to a dataset "A" in the file "foo.h5"</span>
+sparse(A[:, 1:4])   # The first 4 columns of A as a new SparseMatrixCSC
+sparse(A[1:4, :])   # Results in an error (not implemented)
+
+# If converting to a dense matrix, Matrix(sparse(A)) is likely orders of magnitude faster than calling Matrix(A) directly
+# (since Matrix(A) does not take advantage of A being sparse)
+Matrix(A)           # Matrix (slow)
+Matrix(sparse(A))   # Matrix (fast)"><pre><span class="pl-c"><span class="pl-c">#</span> Conversion from SparseMatrixCSC; writes B to a dataset "A" in the file "foo.h5"</span>
 <span class="pl-k">using</span> SparseArrays
 B <span class="pl-k">=</span> <span class="pl-c1">sprand</span>(<span class="pl-c1">10</span>, <span class="pl-c1">10</span>, <span class="pl-c1">0.5</span>)
 A <span class="pl-k">=</span> <span class="pl-c1">H5SparseMatrixCSC</span>(<span class="pl-s"><span class="pl-pds">"</span>foo.h5<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>A<span class="pl-pds">"</span></span>, B)
@@ -67,7 +80,15 @@ A[<span class="pl-c1">1</span>, <span class="pl-c1">1</span>]
 C <span class="pl-k">=</span> <span class="pl-c1">sprand</span>(<span class="pl-c1">10</span>, <span class="pl-c1">5</span>, <span class="pl-c1">0.5</span>)
 A <span class="pl-k">=</span> <span class="pl-c1">hcat</span>(A, C)      <span class="pl-c"><span class="pl-c">#</span> A is now of size (10, 15)</span>
 
-<span class="pl-c"><span class="pl-c">#</span> Use sparse or Matrix to load H5SparseMatrixCSC matrix into memory</span>
+<span class="pl-c"><span class="pl-c">#</span> Load a H5SparseMatrixCSC matrix into memory using SparseArrays.sparse</span>
+<span class="pl-c"><span class="pl-c">#</span> Only the columns covered by this particular H5SparseMatrixCSC will be read from disk</span>
+<span class="pl-c"><span class="pl-c">#</span> However, A must cover all rows of the underlying matrix</span>
 <span class="pl-c1">sparse</span>(A)           <span class="pl-c"><span class="pl-c">#</span> SparseMatrixCSC</span>
-<span class="pl-c1">Matrix</span>(A)           <span class="pl-c"><span class="pl-c">#</span> Matrix</span></pre></div>
+<span class="pl-c1">sparse</span>(A[:, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span>])   <span class="pl-c"><span class="pl-c">#</span> The first 4 columns of A as a new SparseMatrixCSC</span>
+<span class="pl-c1">sparse</span>(A[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span>, :])   <span class="pl-c"><span class="pl-c">#</span> Results in an error (not implemented)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> If converting to a dense matrix, Matrix(sparse(A)) is likely orders of magnitude faster than calling Matrix(A) directly</span>
+<span class="pl-c"><span class="pl-c">#</span> (since Matrix(A) does not take advantage of A being sparse)</span>
+<span class="pl-c1">Matrix</span>(A)           <span class="pl-c"><span class="pl-c">#</span> Matrix (slow)</span>
+<span class="pl-c1">Matrix</span>(<span class="pl-c1">sparse</span>(A))   <span class="pl-c"><span class="pl-c">#</span> Matrix (fast)</span></pre></div>
 </article></div>

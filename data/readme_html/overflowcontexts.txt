@@ -1,0 +1,87 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-overflowcontextsjl" class="anchor" aria-hidden="true" href="#overflowcontextsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>OverflowContexts.jl</h1>
+<p dir="auto">This package conceptually extends <code>CheckedArithmetic.jl</code> to provide the following overall features:</p>
+<ol dir="auto">
+<li>Ability to set a Module-level default to overflow-checked or overflow-permissive operations.</li>
+<li>Ability to specify whether a block of code should use overflow-checked or overflow-permissive operations regardless of the default.</li>
+</ol>
+<p dir="auto">Together, these provide checked and unchecked contexts, as in other languages like C#:
+<a href="https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/checked-and-unchecked" rel="nofollow">https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/checked-and-unchecked</a></p>
+<p dir="auto"><code>@default_checked</code> and <code>@default_unchecked</code> create shadow copies of the <code>+</code>, <code>-</code>, <code>*</code>, <code>^</code>, and <code>abs</code> functions that redirect to overflow-checked
+or overflow-permissive operations, respectively, within the module it was executed in. All non-integer arguments are passed through to their
+respective Base methods.</p>
+<p dir="auto">The expression-level <code>@checked</code> and <code>@unchecked</code> rewrite instances of <code>+</code>, <code>-</code>, <code>*</code>, <code>^</code>, and <code>abs</code> functions, to functions specific to the
+checked or permissive operation, and thus are not affected by switching the default. Symbols for the functions will also be replaced, to support
+calls like <code>foldl(+, v)</code>. If these macros are nested, the lowest level takes precedence so that an unchecked context can be nested inside a checked
+context and vice versa.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using OverflowContexts
+x = typemax(Int) # 9223372036854775807
+x + 1 # -9223372036854775808
+
+@default_checked
+x + 1 # ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64
+
+@unchecked x * 2 # -2
+
+@unchecked begin
+    x * 2 # -2
+    @checked x + 1 # ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64
+end
+
+@default_unchecked
+x + 1 # -9223372036854775808
+
+d() = x + 1; c() = d(); b() = c(); a() = b();
+
+a() #-9223372036854775808
+@checked a() # doesn't cross function boundary; no OverflowError
+
+@default_checked
+a() # ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64
+
+@unchecked a() # doesn't cross function boundary; still throws OverflowError
+@default_unchecked
+
+a()  # -9223372036854775808
+
+# rewrite a symbol
+@checked foldl(+, (typemax(Int), 1))
+
+# assignment operators
+a = typemax(Int)
+@checked a += 1"><pre><span class="pl-k">using</span> OverflowContexts
+x <span class="pl-k">=</span> <span class="pl-c1">typemax</span>(Int) <span class="pl-c"><span class="pl-c">#</span> 9223372036854775807</span>
+x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> -9223372036854775808</span>
+
+<span class="pl-c1">@default_checked</span>
+x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64</span>
+
+<span class="pl-c1">@unchecked</span> x <span class="pl-k">*</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> -2</span>
+
+<span class="pl-c1">@unchecked</span> <span class="pl-k">begin</span>
+    x <span class="pl-k">*</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> -2</span>
+    <span class="pl-c1">@checked</span> x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@default_unchecked</span>
+x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> -9223372036854775808</span>
+
+<span class="pl-en">d</span>() <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">1</span>; <span class="pl-en">c</span>() <span class="pl-k">=</span> <span class="pl-en">d</span>(); <span class="pl-en">b</span>() <span class="pl-k">=</span> <span class="pl-en">c</span>(); <span class="pl-en">a</span>() <span class="pl-k">=</span> <span class="pl-c1">b</span>();
+
+<span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span>-9223372036854775808</span>
+<span class="pl-c1">@checked</span> <span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span> doesn't cross function boundary; no OverflowError</span>
+
+<span class="pl-c1">@default_checked</span>
+<span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span> ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64</span>
+
+<span class="pl-c1">@unchecked</span> <span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span> doesn't cross function boundary; still throws OverflowError</span>
+<span class="pl-c1">@default_unchecked</span>
+
+<span class="pl-c1">a</span>()  <span class="pl-c"><span class="pl-c">#</span> -9223372036854775808</span>
+
+<span class="pl-c"><span class="pl-c">#</span> rewrite a symbol</span>
+<span class="pl-c1">@checked</span> <span class="pl-c1">foldl</span>(<span class="pl-k">+</span>, (<span class="pl-c1">typemax</span>(Int), <span class="pl-c1">1</span>))
+
+<span class="pl-c"><span class="pl-c">#</span> assignment operators</span>
+a <span class="pl-k">=</span> <span class="pl-c1">typemax</span>(Int)
+<span class="pl-c1">@checked</span> a <span class="pl-k">+=</span> <span class="pl-c1">1</span></pre></div>
+</article></div>

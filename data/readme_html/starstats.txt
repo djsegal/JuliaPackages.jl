@@ -1,0 +1,127 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-starstatsjl" class="anchor" aria-hidden="true" href="#starstatsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>StarStats.jl</h1>
+<p dir="auto">This package is designed to read grids of stellar evolution models from different evolutionary codes and perform interpolation and Bayesian inference against observed systems.</p>
+<p dir="auto">The following code  block shows an example of loading a grid with three variable parameters</p>
+<ul dir="auto">
+<li>masses: sampled logarithmically <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="f763fd7a0ef991b79b21510025ad0830">$\log M/M_{\odot}=0.9-2.1$</math-renderer> in steps of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="f763fd7a0ef991b79b21510025ad0830">$0.025$</math-renderer>
+</li>
+<li>rotation:  <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="f763fd7a0ef991b79b21510025ad0830">$\omega/\omega_{crit}=0.0-0.9$</math-renderer> sampled linearly in steps of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="f763fd7a0ef991b79b21510025ad0830">$0.1$</math-renderer>
+</li>
+<li>overshoot:  step overshooting parameter <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="f763fd7a0ef991b79b21510025ad0830">$\alpha_{overshoot}/0.335=0.5-4.5$</math-renderer> in steps of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="f763fd7a0ef991b79b21510025ad0830">$0.5$</math-renderer>
+</li>
+</ul>
+<p dir="auto">The function <code>path_constructor</code> defines the location of each simulation based on the input parameters.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StarStats
+using Printf
+
+function path_constructor(strings::Vector{String})
+    DATA_FOLDER = ENV[&quot;STARSTATS_TEST_DATA_FOLDER&quot;]
+    return DATA_FOLDER*&quot;/LMC/LMC_$(strings[1])_$(strings[2])_$(strings[3]).track.gz&quot;
+end
+masses = [@sprintf(&quot;%.3f&quot;, x) for x in range(0.9,2.1,step=0.025)]
+rotation = [@sprintf(&quot;%.2f&quot;, x) for x in range(0.0,0.9,step=0.1)]
+overshoot = [@sprintf(&quot;%.2f
+&quot;, x) for x in range(0.5,4.5,step=0.5)]
+
+star_grid = ModelDataGrid([rotation,masses,overshoot],[:rotation,:logM,:overshoot])
+load_grid(star_grid,path_constructor,gz_dataframe_loader_with_Teff_and_star_age_fix); 
+compute_distances_and_EEPs(grid)"><pre><span class="pl-k">using</span> StarStats
+<span class="pl-k">using</span> Printf
+
+<span class="pl-k">function</span> <span class="pl-en">path_constructor</span>(strings<span class="pl-k">::</span><span class="pl-c1">Vector{String}</span>)
+    DATA_FOLDER <span class="pl-k">=</span> <span class="pl-c1">ENV</span>[<span class="pl-s"><span class="pl-pds">"</span>STARSTATS_TEST_DATA_FOLDER<span class="pl-pds">"</span></span>]
+    <span class="pl-k">return</span> DATA_FOLDER<span class="pl-k">*</span><span class="pl-s"><span class="pl-pds">"</span>/LMC/LMC_<span class="pl-v">$(strings[<span class="pl-c1">1</span>])</span>_<span class="pl-v">$(strings[<span class="pl-c1">2</span>])</span>_<span class="pl-v">$(strings[<span class="pl-c1">3</span>])</span>.track.gz<span class="pl-pds">"</span></span>
+<span class="pl-k">end</span>
+masses <span class="pl-k">=</span> [<span class="pl-c1">@sprintf</span>(<span class="pl-s"><span class="pl-pds">"</span>%.3f<span class="pl-pds">"</span></span>, x) <span class="pl-k">for</span> x <span class="pl-k">in</span> <span class="pl-c1">range</span>(<span class="pl-c1">0.9</span>,<span class="pl-c1">2.1</span>,step<span class="pl-k">=</span><span class="pl-c1">0.025</span>)]
+rotation <span class="pl-k">=</span> [<span class="pl-c1">@sprintf</span>(<span class="pl-s"><span class="pl-pds">"</span>%.2f<span class="pl-pds">"</span></span>, x) <span class="pl-k">for</span> x <span class="pl-k">in</span> <span class="pl-c1">range</span>(<span class="pl-c1">0.0</span>,<span class="pl-c1">0.9</span>,step<span class="pl-k">=</span><span class="pl-c1">0.1</span>)]
+overshoot <span class="pl-k">=</span> [<span class="pl-c1">@sprintf</span>(<span class="pl-s"><span class="pl-pds">"</span>%.2f</span>
+<span class="pl-s"><span class="pl-pds">"</span></span>, x) <span class="pl-k">for</span> x <span class="pl-k">in</span> <span class="pl-c1">range</span>(<span class="pl-c1">0.5</span>,<span class="pl-c1">4.5</span>,step<span class="pl-k">=</span><span class="pl-c1">0.5</span>)]
+
+star_grid <span class="pl-k">=</span> <span class="pl-c1">ModelDataGrid</span>([rotation,masses,overshoot],[<span class="pl-c1">:rotation</span>,<span class="pl-c1">:logM</span>,<span class="pl-c1">:overshoot</span>])
+<span class="pl-c1">load_grid</span>(star_grid,path_constructor,gz_dataframe_loader_with_Teff_and_star_age_fix); 
+<span class="pl-c1">compute_distances_and_EEPs</span>(grid)</pre></div>
+<p dir="auto">After loading the grid one can perform interpolations to produce a grid at arbitrary input values. See example below</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using LaTeXStrings
+using Plots
+plot(legend=false,
+xflip=true, 
+xlabel=L&quot;log (T$_{eff}$/K)&quot;,
+ylabel=L&quot;log (L/L$_{\odot}$)&quot;)
+
+xvals = LinRange(0,5, 1000)
+rotation = 0.13
+logM = 1.21
+overshoot = 1.05
+logTeff = interpolate_grid_quantity.(Ref(grid),Ref([rotation,logM,overshoot]),:logTeff, xvals)
+logL = interpolate_grid_quantity.(Ref(grid),Ref([0.13,1.21,1.05]),:logL, xvals)
+
+plot!(logTeff, logL)
+savefig(&quot;HR.png&quot;)"><pre><span class="pl-k">using</span> LaTeXStrings
+<span class="pl-k">using</span> Plots
+<span class="pl-c1">plot</span>(legend<span class="pl-k">=</span><span class="pl-c1">false</span>,
+xflip<span class="pl-k">=</span><span class="pl-c1">true</span>, 
+xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>log (T$_{eff}$/K)<span class="pl-pds">"</span></span>,
+ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>log (L/L$_{<span class="pl-cce">\o</span>dot}$)<span class="pl-pds">"</span></span>)
+
+xvals <span class="pl-k">=</span> <span class="pl-c1">LinRange</span>(<span class="pl-c1">0</span>,<span class="pl-c1">5</span>, <span class="pl-c1">1000</span>)
+rotation <span class="pl-k">=</span> <span class="pl-c1">0.13</span>
+logM <span class="pl-k">=</span> <span class="pl-c1">1.21</span>
+overshoot <span class="pl-k">=</span> <span class="pl-c1">1.05</span>
+logTeff <span class="pl-k">=</span> <span class="pl-c1">interpolate_grid_quantity</span>.(<span class="pl-c1">Ref</span>(grid),<span class="pl-c1">Ref</span>([rotation,logM,overshoot]),<span class="pl-c1">:logTeff</span>, xvals)
+logL <span class="pl-k">=</span> <span class="pl-c1">interpolate_grid_quantity</span>.(<span class="pl-c1">Ref</span>(grid),<span class="pl-c1">Ref</span>([<span class="pl-c1">0.13</span>,<span class="pl-c1">1.21</span>,<span class="pl-c1">1.05</span>]),<span class="pl-c1">:logL</span>, xvals)
+
+<span class="pl-c1">plot!</span>(logTeff, logL)
+<span class="pl-c1">savefig</span>(<span class="pl-s"><span class="pl-pds">"</span>HR.png<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="test_notebook/HR.png"><img src="test_notebook/HR.png" alt="example HR" style="max-width: 100%;"></a></p>
+<p dir="auto">Using the loaded grid one can perform Bayesian inference of initial parameters of an observed star.</p>
+<p dir="auto">We use the <code>Turing</code> package to perform an MCMC   for a given  observed values of a star. Below we construct the model that receives values for effective temperature, luminosity and rotation with their corresponding errors.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Turing, Distributions
+
+@model function star_model(logTeff_obs, logTeff_err, logL_obs, logL_err, vrot_obs, vrot_err, star_grid)
+  x ~ Uniform(0,3)
+  logM ~ Uniform(0.9, 1.5)
+  rotation ~ Uniform(0,0.9)
+  overshoot ~ Uniform(0.5,1.5)
+  logTeff = interpolate_grid_quantity(star_grid,[rotation, logM, overshoot],:logTeff,x)
+  logL = interpolate_grid_quantity(star_grid,[rotation, logM, overshoot],:logL,x)
+  vrot = interpolate_grid_quantity(star_grid,[rotation, logM, overshoot],:vrot,x)
+  logTeff_obs ~ Normal(logTeff, logTeff_err)
+  logL_obs ~ Normal(logL, logL_err)
+  vrot_obs ~ Normal(vrot, vrot_err)
+  return logTeff_obs, logL_obs, vrot_obs
+end"><pre><span class="pl-k">using</span> Turing, Distributions
+
+<span class="pl-c1">@model</span> <span class="pl-k">function</span> <span class="pl-en">star_model</span>(logTeff_obs, logTeff_err, logL_obs, logL_err, vrot_obs, vrot_err, star_grid)
+  x <span class="pl-k">~</span> <span class="pl-c1">Uniform</span>(<span class="pl-c1">0</span>,<span class="pl-c1">3</span>)
+  logM <span class="pl-k">~</span> <span class="pl-c1">Uniform</span>(<span class="pl-c1">0.9</span>, <span class="pl-c1">1.5</span>)
+  rotation <span class="pl-k">~</span> <span class="pl-c1">Uniform</span>(<span class="pl-c1">0</span>,<span class="pl-c1">0.9</span>)
+  overshoot <span class="pl-k">~</span> <span class="pl-c1">Uniform</span>(<span class="pl-c1">0.5</span>,<span class="pl-c1">1.5</span>)
+  logTeff <span class="pl-k">=</span> <span class="pl-c1">interpolate_grid_quantity</span>(star_grid,[rotation, logM, overshoot],<span class="pl-c1">:logTeff</span>,x)
+  logL <span class="pl-k">=</span> <span class="pl-c1">interpolate_grid_quantity</span>(star_grid,[rotation, logM, overshoot],<span class="pl-c1">:logL</span>,x)
+  vrot <span class="pl-k">=</span> <span class="pl-c1">interpolate_grid_quantity</span>(star_grid,[rotation, logM, overshoot],<span class="pl-c1">:vrot</span>,x)
+  logTeff_obs <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(logTeff, logTeff_err)
+  logL_obs <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(logL, logL_err)
+  vrot_obs <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(vrot, vrot_err)
+  <span class="pl-k">return</span> logTeff_obs, logL_obs, vrot_obs
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">With this model so defined we run four independent MCMC chains using the NUTS algorithm.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Logging
+Logging.disable_logging(Logging.Warn)
+## Here needs more analysis for optimization
+num_chains=4
+
+observed_star_model = star_model(4.51974, 0.2, 4.289877, 0.2, 70.7195, 20, star_grid)
+star_chains = mapreduce(c -&gt; sample(observed_star_model, NUTS(500,0.9), 20000;stream=false, progress=true), chainscat, 1:num_chains)"><pre><span class="pl-k">using</span> Logging
+Logging<span class="pl-k">.</span><span class="pl-c1">disable_logging</span>(Logging<span class="pl-k">.</span>Warn)
+<span class="pl-c"><span class="pl-c">#</span># Here needs more analysis for optimization</span>
+num_chains<span class="pl-k">=</span><span class="pl-c1">4</span>
+
+observed_star_model <span class="pl-k">=</span> <span class="pl-c1">star_model</span>(<span class="pl-c1">4.51974</span>, <span class="pl-c1">0.2</span>, <span class="pl-c1">4.289877</span>, <span class="pl-c1">0.2</span>, <span class="pl-c1">70.7195</span>, <span class="pl-c1">20</span>, star_grid)
+star_chains <span class="pl-k">=</span> <span class="pl-c1">mapreduce</span>(c <span class="pl-k">-&gt;</span> <span class="pl-c1">sample</span>(observed_star_model, <span class="pl-c1">NUTS</span>(<span class="pl-c1">500</span>,<span class="pl-c1">0.9</span>), <span class="pl-c1">20000</span>;stream<span class="pl-k">=</span><span class="pl-c1">false</span>, progress<span class="pl-k">=</span><span class="pl-c1">true</span>), chainscat, <span class="pl-c1">1</span><span class="pl-k">:</span>num_chains)</pre></div>
+<p dir="auto">One can  construct the corner plot and obtain the credible intervals for the initial parameters using the <code>get_star_corner_plot</code> function.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Makie
+figure = get_star_corner_plot(star_grid,star_chains)
+save(&quot;corner_plot.png&quot;,figure)```"><pre><span class="pl-k">using</span> Makie
+figure <span class="pl-k">=</span> <span class="pl-c1">get_star_corner_plot</span>(star_grid,star_chains)
+<span class="pl-c1">save</span>(<span class="pl-s"><span class="pl-pds">"</span>corner_plot.png<span class="pl-pds">"</span></span>,figure)<span class="pl-s"><span class="pl-pds">```</span></span></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="test_notebook/corner_plot.png"><img src="test_notebook/corner_plot.png" alt="example corner plot" style="max-width: 100%;"></a></p>
+</article></div>

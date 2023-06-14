@@ -1,0 +1,89 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-discretechoicemodelsjl" class="anchor" aria-hidden="true" href="#discretechoicemodelsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>DiscreteChoiceModels.jl</h1>
+<p dir="auto">This is a pure <a href="https://julialang.org" rel="nofollow">Julia</a> package for estimating discrete choice/random utility models. The models supported so far are:</p>
+<ul dir="auto">
+<li>Multinomial logit</li>
+</ul>
+<p dir="auto">Support is planned for:</p>
+<ul dir="auto">
+<li>Nested logit</li>
+<li>Mixed logit</li>
+</ul>
+<p dir="auto">At this point, the package should be considered experimental.</p>
+<p dir="auto">The package allows specifying discrete choice models using an intuitive, expressive syntax. For instance, the following code reproduces <a href="https://biogeme.epfl.ch/examples/swissmetro/01logit.html" rel="nofollow">Biogeme's multinomial logit model</a> in 28 lines of code, vs. 65 for the Biogeme example:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using DiscreteChoiceModels, CSV, DataFrames
+
+# read and filter data, and create binary availability columns
+data = CSV.read(replace(pathof(DiscreteChoiceModels), &quot;src/DiscreteChoiceModels.jl&quot; =&gt; &quot;&quot;) * &quot;/test/data/biogeme_swissmetro.dat&quot;, DataFrame, delim='\t')
+
+data = data[in.(data.PURPOSE, [Set([1, 3])]) .&amp; (data.CHOICE .!= 0), :]
+
+data.avtr = (data.TRAIN_AV .== 1) .&amp; (data.SP .!= 0)
+data.avsm = data.SM_AV .== 1
+data.avcar = (data.CAR_AV .== 1) .&amp; (data.SP .!= 0)
+
+model = multinomial_logit(
+    @utility(begin
+        1 ~ αtrain + βtravel_time * TRAIN_TT / 100 + βcost * (TRAIN_CO * (GA == 0)) / 100
+        2 ~ αswissmetro + βtravel_time * SM_TT / 100 + βcost * SM_CO * (GA == 0) / 100
+        3 ~ αcar + βtravel_time * CAR_TT / 100 + βcost * CAR_CO / 100
+
+        :αswissmetro = 0, fixed  # fix swissmetro ASC to zero 
+    end),
+    :CHOICE,
+    data,
+    availability=[
+        1 =&gt; :avtr,
+        2 =&gt; :avsm,
+        3 =&gt; :avcar
+    ]
+)
+
+summary(model)"><pre><span class="pl-k">using</span> DiscreteChoiceModels, CSV, DataFrames
+
+<span class="pl-c"><span class="pl-c">#</span> read and filter data, and create binary availability columns</span>
+data <span class="pl-k">=</span> CSV<span class="pl-k">.</span><span class="pl-c1">read</span>(<span class="pl-c1">replace</span>(<span class="pl-c1">pathof</span>(DiscreteChoiceModels), <span class="pl-s"><span class="pl-pds">"</span>src/DiscreteChoiceModels.jl<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>) <span class="pl-k">*</span> <span class="pl-s"><span class="pl-pds">"</span>/test/data/biogeme_swissmetro.dat<span class="pl-pds">"</span></span>, DataFrame, delim<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span><span class="pl-cce">\t</span><span class="pl-pds">'</span></span>)
+
+data <span class="pl-k">=</span> data[<span class="pl-c1">in</span>.(data<span class="pl-k">.</span>PURPOSE, [<span class="pl-c1">Set</span>([<span class="pl-c1">1</span>, <span class="pl-c1">3</span>])]) <span class="pl-k">.&amp;</span> (data<span class="pl-k">.</span>CHOICE <span class="pl-k">.!=</span> <span class="pl-c1">0</span>), :]
+
+data<span class="pl-k">.</span>avtr <span class="pl-k">=</span> (data<span class="pl-k">.</span>TRAIN_AV <span class="pl-k">.==</span> <span class="pl-c1">1</span>) <span class="pl-k">.&amp;</span> (data<span class="pl-k">.</span>SP <span class="pl-k">.!=</span> <span class="pl-c1">0</span>)
+data<span class="pl-k">.</span>avsm <span class="pl-k">=</span> data<span class="pl-k">.</span>SM_AV <span class="pl-k">.==</span> <span class="pl-c1">1</span>
+data<span class="pl-k">.</span>avcar <span class="pl-k">=</span> (data<span class="pl-k">.</span>CAR_AV <span class="pl-k">.==</span> <span class="pl-c1">1</span>) <span class="pl-k">.&amp;</span> (data<span class="pl-k">.</span>SP <span class="pl-k">.!=</span> <span class="pl-c1">0</span>)
+
+model <span class="pl-k">=</span> <span class="pl-c1">multinomial_logit</span>(
+    <span class="pl-c1">@utility</span>(<span class="pl-k">begin</span>
+        <span class="pl-c1">1</span> <span class="pl-k">~</span> αtrain <span class="pl-k">+</span> βtravel_time <span class="pl-k">*</span> TRAIN_TT <span class="pl-k">/</span> <span class="pl-c1">100</span> <span class="pl-k">+</span> βcost <span class="pl-k">*</span> (TRAIN_CO <span class="pl-k">*</span> (GA <span class="pl-k">==</span> <span class="pl-c1">0</span>)) <span class="pl-k">/</span> <span class="pl-c1">100</span>
+        <span class="pl-c1">2</span> <span class="pl-k">~</span> αswissmetro <span class="pl-k">+</span> βtravel_time <span class="pl-k">*</span> SM_TT <span class="pl-k">/</span> <span class="pl-c1">100</span> <span class="pl-k">+</span> βcost <span class="pl-k">*</span> SM_CO <span class="pl-k">*</span> (GA <span class="pl-k">==</span> <span class="pl-c1">0</span>) <span class="pl-k">/</span> <span class="pl-c1">100</span>
+        <span class="pl-c1">3</span> <span class="pl-k">~</span> αcar <span class="pl-k">+</span> βtravel_time <span class="pl-k">*</span> CAR_TT <span class="pl-k">/</span> <span class="pl-c1">100</span> <span class="pl-k">+</span> βcost <span class="pl-k">*</span> CAR_CO <span class="pl-k">/</span> <span class="pl-c1">100</span>
+
+        <span class="pl-c1">:αswissmetro</span> <span class="pl-k">=</span> <span class="pl-c1">0</span>, fixed  <span class="pl-c"><span class="pl-c">#</span> fix swissmetro ASC to zero </span>
+    <span class="pl-k">end</span>),
+    <span class="pl-c1">:CHOICE</span>,
+    data,
+    availability<span class="pl-k">=</span>[
+        <span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:avtr</span>,
+        <span class="pl-c1">2</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:avsm</span>,
+        <span class="pl-c1">3</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:avcar</span>
+    ]
+)
+
+<span class="pl-c1">summary</span>(model)</pre></div>
+<h2 dir="auto"><a id="user-content-specifying-a-model" class="anchor" aria-hidden="true" href="#specifying-a-model"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Specifying a model</h2>
+<p dir="auto">Models are specified using the <code>@utility</code> macro. Utility functions are specified using <code>~</code>, where the left-hand side is the value in the choice vector passed into the model estimation function (which can be a number, string, etc.). Values on the right-hand side that start with α or β are quantities to estimate (which can be typed into a properly-configured Julia environment as <code>\alpha</code> and <code>\beta</code>), all other values are assumed to be variables in the dataset. For example,
+<code>"car" ~ αcar + βtravel_time * travel_time_car</code>
+specifies that the utility function for the choice "car" is an ASC plus a generic travel time coefficient multiplied by car travel time. By convention, α is used for alternative-specific constants, and β is used for coefficients, but the software treats them as interchangeable.</p>
+<p dir="auto">Starting values for coefficients can be specified using <code>=</code>. For example,
+<code>αcar = 1.3247</code>
+will start estimation for this coefficient at 1.3247. If a coefficient appears in a utility function specification without a starting value being defined, the starting value will be set to zero.</p>
+<p dir="auto">If a coefficient should be fixed (rather than estimated), this can be specified with a <code>, fixed</code> postfix:
+<code>αcar = 0, fixed</code>
+This is most commonly used with 0 to indicate a left-out ASC, but any value can be fixed for a coefficient.</p>
+<p dir="auto">If one choice outcome should not have any values in its utility function (i.e. it is the base outcome), that must be explicitly stated by declaring <code>"walk" ~ 0</code></p>
+<h2 dir="auto"><a id="user-content-features" class="anchor" aria-hidden="true" href="#features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Features</h2>
+<ul dir="auto">
+<li>Expressive syntax for model specification</li>
+<li>Many optimization algorithms available using <a href="https://github.com/JuliaNLSolvers/Optim.jl">Optim.jl</a></li>
+<li>Variance-covariance matrices estimated using <a href="https://github.com/JuliaDiff/ForwardDiff.jl">automatic differentiation</a></li>
+</ul>
+<h2 dir="auto"><a id="user-content-performance" class="anchor" aria-hidden="true" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Performance</h2>
+<p dir="auto">It's good. (Benchmarks to come.)</p>
+</article></div>

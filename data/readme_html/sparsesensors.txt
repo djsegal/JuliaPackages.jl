@@ -1,0 +1,123 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-sparsesensorsjl" class="anchor" aria-hidden="true" href="#sparsesensorsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>SparseSensors.jl</h1>
+<p dir="auto">This repository is an implementation of the core sparse sensor placement with QR factorization and cost-constrained QR factorization algorithms from Manohar, <em>et al.,</em> "Data-Driven Sparse Sensor Placcement for Reconstruction", and other papers, in Julia. This is a hobbyist port of the fantastic Python library <a href="https://github.com/dynamicslab/pysensors">pysensors</a> in Julia.</p>
+<p dir="auto">All collaborations and contributions are welcome.</p>
+<h2 dir="auto"><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation</h2>
+<p dir="auto">To install, use Pkg. From the Julia REPL, press ] to enter Pkg-mode and run</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; add SparseSensors"><pre>pkg<span class="pl-k">&gt;</span> add SparseSensors</pre></div>
+<h2 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using SparseSensors
+using LinearAlgebra
+using Gadfly
+using DataFrames
+
+#Setup the experiment
+r = 11; # Number of basis modes
+n = 1000;
+x = collect(0.0:1/n:1.0);
+vde_basis = VandermondeBasis(x,r);
+Ψ = vde_basis.Ψ; #Get the vandermonde basis matrix from the Basis struct
+
+#Make design matrix
+X = copy(transpose(Ψ));
+n_samples,n_features = size(X);
+
+#Setup QR pivot sensor placement algorithm
+qr_pivot = QRPivot(X);
+fit(qr_pivot);
+pivots = qr_pivot.pivots;
+
+#Select the top 15 sensor locations
+f = abs.(x.^2 .- 0.5);
+selected_sensors = get_sensors(pivots,15);
+x_sensed = x[selected_sensors];
+y_sensed = f[selected_sensors];
+
+#Ground truth
+df_true = DataFrame();
+df_true[!,&quot;x_true&quot;] = x
+df_true[!,&quot;y_true&quot;] = f
+
+#Sensed
+df = DataFrame()
+df[!,&quot;x_sensed&quot;] = x_sensed;
+df[!,&quot;y_sensed&quot;] = y_sensed;
+
+#Plot the results
+p1 = plot(df,
+    layer(x=:x_sensed,y=:y_sensed,color=[&quot;Optimized Sensors&quot;]),
+    layer(df_true,x=:x_true,y=:y_true,Geom.line,Geom.point,color=[&quot;True Function&quot;]),
+    Guide.xlabel(&quot;x&quot;),Guide.ylabel(&quot;y&quot;))"><pre><span class="pl-k">using</span> SparseSensors
+<span class="pl-k">using</span> LinearAlgebra
+<span class="pl-k">using</span> Gadfly
+<span class="pl-k">using</span> DataFrames
+
+<span class="pl-c"><span class="pl-c">#</span>Setup the experiment</span>
+r <span class="pl-k">=</span> <span class="pl-c1">11</span>; <span class="pl-c"><span class="pl-c">#</span> Number of basis modes</span>
+n <span class="pl-k">=</span> <span class="pl-c1">1000</span>;
+x <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">0.0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">/</span>n<span class="pl-k">:</span><span class="pl-c1">1.0</span>);
+vde_basis <span class="pl-k">=</span> <span class="pl-c1">VandermondeBasis</span>(x,r);
+Ψ <span class="pl-k">=</span> vde_basis<span class="pl-k">.</span>Ψ; <span class="pl-c"><span class="pl-c">#</span>Get the vandermonde basis matrix from the Basis struct</span>
+
+<span class="pl-c"><span class="pl-c">#</span>Make design matrix</span>
+X <span class="pl-k">=</span> <span class="pl-c1">copy</span>(<span class="pl-c1">transpose</span>(Ψ));
+n_samples,n_features <span class="pl-k">=</span> <span class="pl-c1">size</span>(X);
+
+<span class="pl-c"><span class="pl-c">#</span>Setup QR pivot sensor placement algorithm</span>
+qr_pivot <span class="pl-k">=</span> <span class="pl-c1">QRPivot</span>(X);
+<span class="pl-c1">fit</span>(qr_pivot);
+pivots <span class="pl-k">=</span> qr_pivot<span class="pl-k">.</span>pivots;
+
+<span class="pl-c"><span class="pl-c">#</span>Select the top 15 sensor locations</span>
+f <span class="pl-k">=</span> <span class="pl-c1">abs</span>.(x<span class="pl-k">.^</span><span class="pl-c1">2</span> <span class="pl-k">.-</span> <span class="pl-c1">0.5</span>);
+selected_sensors <span class="pl-k">=</span> <span class="pl-c1">get_sensors</span>(pivots,<span class="pl-c1">15</span>);
+x_sensed <span class="pl-k">=</span> x[selected_sensors];
+y_sensed <span class="pl-k">=</span> f[selected_sensors];
+
+<span class="pl-c"><span class="pl-c">#</span>Ground truth</span>
+df_true <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>();
+df_true[<span class="pl-k">!</span>,<span class="pl-s"><span class="pl-pds">"</span>x_true<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> x
+df_true[<span class="pl-k">!</span>,<span class="pl-s"><span class="pl-pds">"</span>y_true<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> f
+
+<span class="pl-c"><span class="pl-c">#</span>Sensed</span>
+df <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>()
+df[<span class="pl-k">!</span>,<span class="pl-s"><span class="pl-pds">"</span>x_sensed<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> x_sensed;
+df[<span class="pl-k">!</span>,<span class="pl-s"><span class="pl-pds">"</span>y_sensed<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> y_sensed;
+
+<span class="pl-c"><span class="pl-c">#</span>Plot the results</span>
+p1 <span class="pl-k">=</span> <span class="pl-c1">plot</span>(df,
+    <span class="pl-c1">layer</span>(x<span class="pl-k">=</span><span class="pl-c1">:x_sensed</span>,y<span class="pl-k">=</span><span class="pl-c1">:y_sensed</span>,color<span class="pl-k">=</span>[<span class="pl-s"><span class="pl-pds">"</span>Optimized Sensors<span class="pl-pds">"</span></span>]),
+    <span class="pl-c1">layer</span>(df_true,x<span class="pl-k">=</span><span class="pl-c1">:x_true</span>,y<span class="pl-k">=</span><span class="pl-c1">:y_true</span>,Geom<span class="pl-k">.</span>line,Geom<span class="pl-k">.</span>point,color<span class="pl-k">=</span>[<span class="pl-s"><span class="pl-pds">"</span>True Function<span class="pl-pds">"</span></span>]),
+    Guide<span class="pl-k">.</span><span class="pl-c1">xlabel</span>(<span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>),Guide<span class="pl-k">.</span><span class="pl-c1">ylabel</span>(<span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>))</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="example.svg"><img src="example.svg" alt="" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-dependencies" class="anchor" aria-hidden="true" href="#dependencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Dependencies</h2>
+<p dir="auto">julia &gt;v1.6.
+LinearAlgebra, Gadfly and DataFrames for plotting.</p>
+<h2 dir="auto"><a id="user-content-todo" class="anchor" aria-hidden="true" href="#todo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Todo:</h2>
+<ul dir="auto">
+<li>Implement high level SSPOR and SSPOC interfaces</li>
+<li>Implement high level basis representation wrapper for SVD, etc.</li>
+<li>Set up compatibility with JuliaML/MLJ.jl/ScikitLearn.jl</li>
+</ul>
+<h2 dir="auto"><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>References</h2>
+<ul dir="auto">
+<li>
+<p dir="auto">Manohar, Krithika, Bingni W. Brunton, J. Nathan Kutz, and Steven L. Brunton.
+"Data-driven sparse sensor placement for reconstruction: Demonstrating the
+benefits of exploiting known patterns."
+IEEE Control Systems Magazine 38, no. 3 (2018): 63-86.
+<code>[DOI] &lt;https://doi.org/10.1109/MCS.2018.2810460&gt;</code></p>
+</li>
+<li>
+<p dir="auto">Clark, Emily, Travis Askham, Steven L. Brunton, and J. Nathan Kutz.
+"Greedy sensor placement with cost constraints." IEEE Sensors Journal 19, no. 7
+(2018): 2642-2656.
+<code>[DOI] &lt;https://doi.org/10.1109/JSEN.2018.2887044&gt;</code></p>
+</li>
+<li>
+<p dir="auto">de Silva, Brian M., Krithika Manohar, Emily Clark, Bingni W. Brunton,
+Steven L. Brunton, J. Nathan Kutz.
+"PySensors: A Python package for sparse sensor placement."
+arXiv preprint arXiv:2102.13476 (2021). <code>[arXiv] &lt;https://arxiv.org/abs/2102.13476&gt;</code></p>
+</li>
+</ul>
+</article></div>

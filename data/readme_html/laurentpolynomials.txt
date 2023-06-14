@@ -1,0 +1,408 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a id="user-content-laurent-polynomials"></a></p>
+<p dir="auto"><a id="user-content-laurent-polynomials-1"></a></p>
+<h1 dir="auto"><a id="user-content-laurent-polynomials" class="anchor" aria-hidden="true" href="#laurent-polynomials"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Laurent polynomials</h1>
+<ul dir="auto">
+<li><a href="index.md#Laurent-polynomials">Laurent polynomials</a></li>
+</ul>
+<p dir="auto"><a id="user-content-laurentpolynomials" href="#LaurentPolynomials">#</a>
+<strong><code>LaurentPolynomials</code></strong> — <em>Module</em>.</p>
+<p dir="auto">This  package, which depends only on <code>LinearAlgebra</code>, implements univariate Laurent  polynomials  (type  <code>Pol{T}</code>),  and  univariate rational fractions (type <code>Frac{Pol{T}}</code>).</p>
+<p dir="auto">The  initial motivation was to have a simple way to port GAP polynomials to Julia. The reasons for still having my own package are multiple:</p>
+<ul dir="auto">
+<li>I need  to have  a simple  and flexible  interface, which  I hope this provides.</li>
+<li>I need my polynomials to behave  well when coefficients are in a ring, in which case I use pseudo-division and subresultant gcd.</li>
+<li>For my uses my polynomials are several times faster than those in the package <code>Polynomials</code>.</li>
+<li>I need my polynomials to  work as well as possible with coefficients of types  <code>T</code> where elements have a <code>zero</code>  method but <code>T</code> itself does not have  one (because <code>T</code> does not  contain the necessary information). An example is modular arithmetic with a <code>BigInt</code> modulus which thus cannot be part of the type.</li>
+<li>a final justification is that <code>LaurentPolynomials</code> is used by <code>PuiseuxPolynomials</code>.</li>
+</ul>
+<p dir="auto">Laurent polynomials have the parametric type <code>Pol{T}</code>, where <code>T</code>is the type of   the  coefficients.  They  are  constructed   by  giving  a  vector  of coefficients  of  type  <code>T</code>,  and  a  valuation  (an  <code>Int</code>).  We call true polynomials those whose valuation is <code>≥0</code>.</p>
+<p dir="auto">There  is a  current variable  name (a  <code>Symbol</code>) used to print polynomials nicely  at  the  repl  or  in  IJulia  or  Pluto.  This name can be changed globally,  or just changed for printing a given polynomial. But polynomials do not record individually with which symbol they should be printed.</p>
+<p dir="auto"><strong>Examples</strong></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Pol(:q) # define symbol used for printing and return Pol([1],1)
+Pol{Int64}: q
+
+julia&gt; @Pol q  # same as q=Pol(:q)  useful to start session with polynomials
+Pol{Int64}: q
+
+julia&gt; Pol([1,2]) # valuation is taken to be 0 if omitted
+Pol{Int64}: 2q+1
+
+julia&gt; 2q+1       # same polynomial
+Pol{Int64}: 2q+1
+
+julia&gt; Pol()   # omitting all arguments gives Pol([1],1)
+Pol{Int64}: q
+
+julia&gt; p=Pol([1,2,1],-1) # here the valuation is specified to be -1
+Pol{Int64}: q+2+q⁻¹
+
+julia&gt; q+2+q^-1 # same polynomial
+Pol{Int64}: q+2+q⁻¹"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Pol(:q) # define symbol used for printing and return Pol([1],1)
+Pol{Int64}: q
+
+julia&gt; @Pol q  # same as q=Pol(:q)  useful to start session with polynomials
+Pol{Int64}: q
+
+julia&gt; Pol([1,2]) # valuation is taken to be 0 if omitted
+Pol{Int64}: 2q+1
+
+julia&gt; 2q+1       # same polynomial
+Pol{Int64}: 2q+1
+
+julia&gt; Pol()   # omitting all arguments gives Pol([1],1)
+Pol{Int64}: q
+
+julia&gt; p=Pol([1,2,1],-1) # here the valuation is specified to be -1
+Pol{Int64}: q+2+q⁻¹
+
+julia&gt; q+2+q^-1 # same polynomial
+Pol{Int64}: q+2+q⁻¹
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; print(p) # if not nice printing give an output which can be read back
+Pol([1, 2, 1],-1)
+
+# change the variable for printing just this time
+julia&gt; print(IOContext(stdout,:limit=&gt;true,:varname=&gt;&quot;x&quot;),p)
+x+2+x⁻¹
+
+julia&gt; print(IOContext(stdout,:TeX=&gt;true),p) # TeXable output (used in Pluto, IJulia)
+q+2+q^{-1}"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; print(p) # if not nice printing give an output which can be read back
+Pol([1, 2, 1],-1)
+
+# change the variable for printing just this time
+julia&gt; print(IOContext(stdout,:limit=&gt;true,:varname=&gt;"x"),p)
+x+2+x⁻¹
+
+julia&gt; print(IOContext(stdout,:TeX=&gt;true),p) # TeXable output (used in Pluto, IJulia)
+q+2+q^{-1}
+</code></pre></div>
+<p dir="auto">A  polynomial can be  taken apart with  the functions <code>valuation</code>, <code>degree</code> and <code>getindex</code>. An index <code>p[i]</code> gives the coefficient of degree <code>i</code> of <code>p</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; valuation(p),degree(p)
+(-1, 1)
+
+julia&gt; p[0], p[1], p[-1], p[10]
+(2, 1, 1, 0)
+
+julia&gt; p[valuation(p):degree(p)]
+3-element Vector{Int64}:
+ 1
+ 2
+ 1
+
+julia&gt; p[begin:end]  # the same as the above line
+3-element Vector{Int64}:
+ 1
+ 2
+ 1
+
+julia&gt; coefficients(p)  # the same again
+3-element Vector{Int64}:
+ 1
+ 2
+ 1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; valuation(p),degree(p)
+(-1, 1)
+
+julia&gt; p[0], p[1], p[-1], p[10]
+(2, 1, 1, 0)
+
+julia&gt; p[valuation(p):degree(p)]
+3-element Vector{Int64}:
+ 1
+ 2
+ 1
+
+julia&gt; p[begin:end]  # the same as the above line
+3-element Vector{Int64}:
+ 1
+ 2
+ 1
+
+julia&gt; coefficients(p)  # the same again
+3-element Vector{Int64}:
+ 1
+ 2
+ 1
+</code></pre></div>
+<p dir="auto">A  polynomial  is  a  <em>scalar</em>  if  the  valuation  and degree are <code>0</code>. The function  <code>scalar</code> returns the constant coefficient  if the polynomial is a scalar, and <code>nothing</code> otherwise.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; Pol(1)
+Pol{Int64}: 1
+
+julia&gt; convert(Pol{Int},1) # the same thing
+Pol{Int64}: 1
+
+julia&gt; scalar(Pol(1))
+1
+
+julia&gt; convert(Int,Pol(1)) # the same thing
+1
+
+julia&gt; Int(Pol(1))         # the same thing
+1
+
+julia&gt; scalar(q+1) # nothing; convert would give an error"><pre lang="julia-repl" class="notranslate"><code>julia&gt; Pol(1)
+Pol{Int64}: 1
+
+julia&gt; convert(Pol{Int},1) # the same thing
+Pol{Int64}: 1
+
+julia&gt; scalar(Pol(1))
+1
+
+julia&gt; convert(Int,Pol(1)) # the same thing
+1
+
+julia&gt; Int(Pol(1))         # the same thing
+1
+
+julia&gt; scalar(q+1) # nothing; convert would give an error
+</code></pre></div>
+<p dir="auto">In arrays <code>Pol{T}</code> of different types <code>T</code> are promoted to the same type <code>T</code> (when  the <code>T</code>  involved have  a promotion)  and a  number is promoted to a polynomial.</p>
+<p dir="auto">Usual  arithmetic (<code>+</code>, <code>-</code>,  <code>*</code>, <code>^</code>, <code>/</code>,  <code>//</code>, <code>one</code>, <code>isone</code>, <code>zero</code>, <code>iszero</code>,  <code>==</code>) works. Elements  of type <code>&lt;:Number</code>  or of type  <code>T</code> for a <code>Pol{T}</code>   are  considered  as   scalars  for  scalar   operations  on  the coefficients.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; derivative(p)
+Pol{Int64}: 1-q⁻²
+
+julia&gt; p=(q+1)^2
+Pol{Int64}: q²+2q+1
+
+julia&gt; p/2
+Pol{Float64}: 0.5q²+1.0q+0.5
+
+julia&gt; p//2
+Pol{Rational{Int64}}: (1//2)q²+(1//1)q+1//2
+
+julia&gt; p(1//2) # value of p at 1//2
+9//4
+
+julia&gt; p(0.5)
+2.25
+
+# interpolation: find p taking values [2.0,1.0,3.0] at [1,2,3]
+julia&gt; Pol([1,2,3],[2.0,1.0,3.0])  
+Pol{Float64}: 1.5q²-5.5q+6.0"><pre lang="julia-repl" class="notranslate"><code>julia&gt; derivative(p)
+Pol{Int64}: 1-q⁻²
+
+julia&gt; p=(q+1)^2
+Pol{Int64}: q²+2q+1
+
+julia&gt; p/2
+Pol{Float64}: 0.5q²+1.0q+0.5
+
+julia&gt; p//2
+Pol{Rational{Int64}}: (1//2)q²+(1//1)q+1//2
+
+julia&gt; p(1//2) # value of p at 1//2
+9//4
+
+julia&gt; p(0.5)
+2.25
+
+# interpolation: find p taking values [2.0,1.0,3.0] at [1,2,3]
+julia&gt; Pol([1,2,3],[2.0,1.0,3.0])  
+Pol{Float64}: 1.5q²-5.5q+6.0
+</code></pre></div>
+<p dir="auto">Polynomials  are scalars  for broadcasting.  They can  be sorted (they have <code>cmp</code>   and  <code>isless</code>  functions  which   compare  the  valuation  and  the coefficients), they can be keys in a <code>Dict</code> (they have a <code>hash</code> function).</p>
+<p dir="auto">The  functions  <code>divrem</code>,  <code>div</code>,  <code>%</code>,  <code>gcd</code>,  <code>gcdx</code>,  <code>lcm</code>, <code>powermod</code> operate  between  true  polynomials  over  a  field,  using  the polynomial division.  Over a ring it is better  to use <code>pseudodiv</code> and <code>srgcd</code> instead of  <code>divrem</code>  and  <code>gcd</code>  (by  default  <code>gcd</code>  between  integer polynomials delegates to <code>srgcd</code>).</p>
+<p dir="auto"><code>LinearAlgebra.exactdiv</code>  does division (over a field or a ring) when it is exact, otherwise gives an error.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; divrem(q^3+1,2q+1) # changes coefficients to field elements
+(0.5q²-0.25q+0.125, 0.875)
+
+julia&gt; divrem(q^3+1,2q+1//1) # case of coefficients already field elements
+((1//2)q²+(-1//4)q+1//8, 7//8)
+
+julia&gt; pseudodiv(q^3+1,2q+1) # pseudo-division keeps the ring
+(4q²-2q+1, 7)
+
+julia&gt; (4q^2-2q+1)*(2q+1)+7 # but multiplying back gives a multiple of the polynomial
+Pol{Int64}: 8q³+8
+
+julia&gt; LinearAlgebra.exactdiv(q+1,2.0) # LinearAlgebra.exactdiv(q+1,2) would give an error
+Pol{Float64}: 0.5q+0.5"><pre lang="julia-repl" class="notranslate"><code>julia&gt; divrem(q^3+1,2q+1) # changes coefficients to field elements
+(0.5q²-0.25q+0.125, 0.875)
+
+julia&gt; divrem(q^3+1,2q+1//1) # case of coefficients already field elements
+((1//2)q²+(-1//4)q+1//8, 7//8)
+
+julia&gt; pseudodiv(q^3+1,2q+1) # pseudo-division keeps the ring
+(4q²-2q+1, 7)
+
+julia&gt; (4q^2-2q+1)*(2q+1)+7 # but multiplying back gives a multiple of the polynomial
+Pol{Int64}: 8q³+8
+
+julia&gt; LinearAlgebra.exactdiv(q+1,2.0) # LinearAlgebra.exactdiv(q+1,2) would give an error
+Pol{Float64}: 0.5q+0.5
+</code></pre></div>
+<p dir="auto">Finally,   <code>Pol</code>s  have   methods  <code>conj</code>,   <code>adjoint</code>  which   operate  on coefficients,  methods <code>positive_part</code>,  <code>negative_part</code> and  <code>bar</code> (useful for  Kazhdan-Lusztig  theory)  and  a  method  <code>randpol</code>  to produce random polynomials.</p>
+<p dir="auto">Inverting polynomials is a way to get a rational fraction  <code>Frac{Pol{T}}</code>. Rational fractions are normalized so that the numerator and denominator are true  polynomials prime to each other.  They have the arithmetic operations <code>+</code>,  <code>-</code> ,  <code>*</code>, <code>/</code>,  <code>//</code>, <code>^</code>,  <code>inv</code>, <code>one</code>, <code>isone</code>, <code>zero</code>, <code>iszero</code> (which can operate between a <code>Pol</code> or a <code>Number</code> and a <code>Frac{Pol{T}}</code>).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; a=1/(q+1)
+Frac{Pol{Int64}}: 1/(q+1)
+
+julia&gt; Pol(2/a) # convert back to `Pol`
+Pol{Int64}: 2q+2
+
+julia&gt; numerator(a)
+Pol{Int64}: 1
+
+julia&gt; denominator(a)
+Pol{Int64}: q+1
+
+julia&gt; m=[q+1 q+2;q-2 q-3]
+2×2 Matrix{Pol{Int64}}:
+ q+1  q+2
+ q-2  q-3
+
+julia&gt; n=inv(Frac.(m)) # convert to rational fractions to invert the matrix
+2×2 Matrix{Frac{Pol{Int64}}}:
+ (-q+3)/(2q-1)  (-q-2)/(-2q+1)
+ (q-2)/(2q-1)   (q+1)/(-2q+1)
+
+julia&gt; map(x-&gt;x(1),n) # evaluate at 1 the inverse matrix
+2×2 Matrix{Float64}:
+  2.0   3.0
+ -1.0  -2.0
+
+julia&gt; map(x-&gt;x(1;Rational=true),n) # evaluate at 1 using //
+2×2 Matrix{Rational{Int64}}:
+  2//1   3//1
+ -1//1  -2//1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; a=1/(q+1)
+Frac{Pol{Int64}}: 1/(q+1)
+
+julia&gt; Pol(2/a) # convert back to `Pol`
+Pol{Int64}: 2q+2
+
+julia&gt; numerator(a)
+Pol{Int64}: 1
+
+julia&gt; denominator(a)
+Pol{Int64}: q+1
+
+julia&gt; m=[q+1 q+2;q-2 q-3]
+2×2 Matrix{Pol{Int64}}:
+ q+1  q+2
+ q-2  q-3
+
+julia&gt; n=inv(Frac.(m)) # convert to rational fractions to invert the matrix
+2×2 Matrix{Frac{Pol{Int64}}}:
+ (-q+3)/(2q-1)  (-q-2)/(-2q+1)
+ (q-2)/(2q-1)   (q+1)/(-2q+1)
+
+julia&gt; map(x-&gt;x(1),n) # evaluate at 1 the inverse matrix
+2×2 Matrix{Float64}:
+  2.0   3.0
+ -1.0  -2.0
+
+julia&gt; map(x-&gt;x(1;Rational=true),n) # evaluate at 1 using //
+2×2 Matrix{Rational{Int64}}:
+  2//1   3//1
+ -1//1  -2//1
+</code></pre></div>
+<p dir="auto">Rational fractions are also scalars for broadcasting and can be sorted (have <code>cmp</code> and <code>isless</code> methods).</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L1-L230">source</a><br></p>
+<p dir="auto"><a id="user-content-laurentpolynomials.pol" href="#LaurentPolynomials.Pol">#</a>
+<strong><code>LaurentPolynomials.Pol</code></strong> — <em>Type</em>.</p>
+<p dir="auto"><code>Pol(c::AbstractVector,v::Integer=0;check=true,copy=true)</code></p>
+<p dir="auto">Make a polynomial of valuation <code>v</code> with coefficients <code>c</code>.</p>
+<p dir="auto">Unless  <code>check</code> is <code>false</code>  normalize the result  by making sure that <code>c</code>   has  no leading or  trailing zeroes (do  not set <code>check=false</code> unless you   are sure this is already the case).</p>
+<p dir="auto">Unless  <code>copy=false</code> the  contents of  <code>c</code> are  copied (you  can gain one   allocation by setting <code>copy=false</code> if you know the contents can be shared)</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L246-L257">source</a><br></p>
+<p dir="auto"><code>Pol(t::Symbol)</code></p>
+<p dir="auto">Sets the name of the variable for printing <code>Pol</code>s to <code>t</code>, and returns  the polynomial of degree 1 equal to that variable.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L271-L276">source</a><br></p>
+<p dir="auto"><code>Pol(x::AbstractVector,y::AbstractVector)</code></p>
+<p dir="auto">Interpolation:  find a <code>Pol</code> (of  nonnegative valuation) of smallest degree taking  values <code>y</code> at points  <code>x</code>. The values <code>y</code>  should be in a field for the function to be type stable.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; p=Pol([1,1,1])
+Pol{Int64}: q²+q+1
+
+julia&gt; vals=p.(1:5)
+5-element Vector{Int64}:
+  3
+  7
+ 13
+ 21
+ 31
+
+julia&gt; Pol(1:5,vals*1//1)
+Pol{Rational{Int64}}: (1//1)q²+(1//1)q+1//1
+
+julia&gt; Pol(1:5,vals*1.0)
+Pol{Float64}: 1.0q²+1.0q+1.0"><pre lang="julia-repl" class="notranslate"><code>julia&gt; p=Pol([1,1,1])
+Pol{Int64}: q²+q+1
+
+julia&gt; vals=p.(1:5)
+5-element Vector{Int64}:
+  3
+  7
+ 13
+ 21
+ 31
+
+julia&gt; Pol(1:5,vals*1//1)
+Pol{Rational{Int64}}: (1//1)q²+(1//1)q+1//1
+
+julia&gt; Pol(1:5,vals*1.0)
+Pol{Float64}: 1.0q²+1.0q+1.0
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L732-L757">source</a><br></p>
+<p dir="auto"><a id="user-content-laurentpolynomials.@pol" href="#LaurentPolynomials.@Pol">#</a>
+<strong><code>LaurentPolynomials.@Pol</code></strong> — <em>Macro</em>.</p>
+<p dir="auto"><code>@Pol q</code></p>
+<p dir="auto">is equivalent to <code>q=Pol(:q)</code> excepted it creates <code>q</code> in the global scope of  the current module, since it uses <code>eval</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L282-L287">source</a><br></p>
+<p dir="auto"><a id="user-content-base.divrem" href="#Base.divrem">#</a>
+<strong><code>Base.divrem</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>divrem(a::Pol, b::Pol)</code></p>
+<p dir="auto"><code>a</code> and <code>b</code> should be true polynomials (nonnegative valuation). Computes  <code>(q,r)</code> such  that <code>a=q*b+r</code>  and <code>degree(r)&lt;degree(b)</code>. Type stable if the coefficients of <code>b</code> are in a field.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L530-L536">source</a><br></p>
+<p dir="auto"><a id="user-content-base.gcd-tuple{pol, pol}" href="#Base.gcd-Tuple{Pol, Pol}">#</a>
+<strong><code>Base.gcd</code></strong> — <em>Method</em>.</p>
+<p dir="auto"><code>gcd(p::Pol,  q::Pol)</code> computes the  <code>gcd</code> of the  polynomials. It uses the subresultant algorithms for the <code>gcd</code> of integer polynomials.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; gcd(2q+2,q^2-1)
+Pol{Int64}: q+1
+
+julia&gt; gcd(q+1//1,q^2-1//1)
+Pol{Rational{Int64}}: (1//1)q+1//1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; gcd(2q+2,q^2-1)
+Pol{Int64}: q+1
+
+julia&gt; gcd(q+1//1,q^2-1//1)
+Pol{Rational{Int64}}: (1//1)q+1//1
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L650-L661">source</a><br></p>
+<p dir="auto"><a id="user-content-base.gcdx-tuple{pol, pol}" href="#Base.gcdx-Tuple{Pol, Pol}">#</a>
+<strong><code>Base.gcdx</code></strong> — <em>Method</em>.</p>
+<p dir="auto"><code>gcdx(a::Pol,b::Pol)</code></p>
+<p dir="auto">for  polynomials  over  a  field  returns <code>d,u,v</code>  such  that <code>d=ua+vb</code> and <code>d=gcd(a,b)</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; gcdx(q^3-1//1,q^2-1//1)
+((1//1)q-1//1, 1//1, (-1//1)q)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; gcdx(q^3-1//1,q^2-1//1)
+((1//1)q-1//1, 1//1, (-1//1)q)
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L674-L684">source</a><br></p>
+<p dir="auto"><a id="user-content-laurentpolynomials.pseudodiv" href="#LaurentPolynomials.pseudodiv">#</a>
+<strong><code>LaurentPolynomials.pseudodiv</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>pseudodiv(a::Pol, b::Pol)</code></p>
+<p dir="auto">pseudo-division  of <code>a</code> by <code>b</code>.  If <code>d</code> is the  leading coefficient of <code>b</code>, computes   <code>(q,r)</code>   such   that   <code>d^(degree(a)+1-degree(b))a=q*b+r</code>   and <code>degree(r)&lt;degree(b)</code>. Does not do division so works over any ring. For true polynomials (errors if the valuation of <code>a</code> or of <code>b</code> is negative).</p>
+<p dir="auto">See Knuth AOCP2 4.6.1 Algorithm R</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L577-L586">source</a><br></p>
+<p dir="auto"><a id="user-content-laurentpolynomials.srgcd" href="#LaurentPolynomials.srgcd">#</a>
+<strong><code>LaurentPolynomials.srgcd</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>srgcd(a::Pol,b::Pol)</code></p>
+<p dir="auto">sub-resultant gcd: gcd of polynomials over a unique factorization domain</p>
+<p dir="auto">See Knuth AOCP2 4.6.1 Algorithm C</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L609-L615">source</a><br></p>
+<p dir="auto"><a id="user-content-base.powermod" href="#Base.powermod">#</a>
+<strong><code>Base.powermod</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>powermod(p::Pol, x::Integer, q::Pol)</code> computes <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="48bf76eb3b209226a06c8796a40b01ee">$p^x \pmod m$</math-renderer>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; powermod(q-1//1,3,q^2+q+1)
+Pol{Rational{Int64}}: (6//1)q+3//1"><pre lang="julia-repl" class="notranslate"><code>julia&gt; powermod(q-1//1,3,q^2+q+1)
+Pol{Rational{Int64}}: (6//1)q+3//1
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L701-L707">source</a><br></p>
+<p dir="auto"><a id="user-content-LaurentPolynomials.randpol" href="#LaurentPolynomials.randpol">#</a>
+<strong><code>LaurentPolynomials.randpol</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>randpol(T,d)</code></p>
+<p dir="auto">random polynomial of degree <code>d</code> with coefficients from <code>T</code></p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L725-L729">source</a><br></p>
+<p dir="auto"><a id="user-content-LaurentPolynomials.Frac" href="#LaurentPolynomials.Frac">#</a>
+<strong><code>LaurentPolynomials.Frac</code></strong> — <em>Type</em>.</p>
+<p dir="auto">`Frac(a::Pol,b::Pol;prime=false)</p>
+<p dir="auto">Polynomials  <code>a</code> and <code>b</code> are promoted to same coefficient type, and checked for  being true polynomials (otherwise they are both multiplied by the same power  of  the  variable  so  they  become  true  polynomials),  and unless <code>prime=true</code> they are checked for having a non-trivial <code>gcd</code>.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/LaurentPolynomials.jl/blob/8aef54e3e463f8c5cf498a1a33e1b5230de1ff61/src/LaurentPolynomials.jl#L873-L880">source</a><br></p>
+</article></div>

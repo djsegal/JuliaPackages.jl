@@ -1,0 +1,74 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-permutedarrays" class="anchor" aria-hidden="true" href="#permutedarrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>PermutedArrays</h1>
+<p dir="auto"><a href="https://cscherrer.github.io/PermutedArrays.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://cscherrer.github.io/PermutedArrays.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/cscherrer/PermutedArrays.jl/actions"><img src="https://github.com/cscherrer/PermutedArrays.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/cscherrer/PermutedArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/8efdec655508a2ef1342624fe66796342fef109ef352af1b56ab840e39eb57d0/68747470733a2f2f636f6465636f762e696f2f67682f6373636865727265722f5065726d757465644172726179732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/cscherrer/PermutedArrays.jl/branch/master/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">It's very common in Julia to build <code>&lt;:AbstractArray</code> data structures with memory layouts different than an array of pointers. Examples include <a href="https://github.com/JuliaArrays/StructArrays.jl">StructArrays</a>, <a href="https://github.com/JuliaArrays/ArraysOfArrays.jl">ArraysOfArrays</a>, and <a href="https://github.com/cscherrer/TupleVectors.jl">TupleVectors</a>, and of course standard <code>Array</code>s where each element is the same immutable type.</p>
+<p dir="auto">This is great, until you need to permute the values. For example, say we have a TupleVector</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using TupleVectors
+using PermutedArrays
+using Random
+using BenchmarkHistograms
+
+n = 100
+k = 1000
+x = TupleVectors.chainvec(randn(k), n);
+for j in 2:n
+    x[j] .= randn(k);
+end
+
+tv1 = TupleVector((x=x,));"><pre><span class="pl-k">using</span> TupleVectors
+<span class="pl-k">using</span> PermutedArrays
+<span class="pl-k">using</span> Random
+<span class="pl-k">using</span> BenchmarkHistograms
+
+n <span class="pl-k">=</span> <span class="pl-c1">100</span>
+k <span class="pl-k">=</span> <span class="pl-c1">1000</span>
+x <span class="pl-k">=</span> TupleVectors<span class="pl-k">.</span><span class="pl-c1">chainvec</span>(<span class="pl-c1">randn</span>(k), n);
+<span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">2</span><span class="pl-k">:</span>n
+    x[j] <span class="pl-k">.=</span> <span class="pl-c1">randn</span>(k);
+<span class="pl-k">end</span>
+
+tv1 <span class="pl-k">=</span> <span class="pl-c1">TupleVector</span>((x<span class="pl-k">=</span>x,));</pre></div>
+<p dir="auto">Then the cost of a random permutation is</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @btime permute!($tv1, p) setup=(p=randperm(n));
+  3.204 ms (502 allocations: 76.31 MiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">permute!</span>(<span class="pl-k">$</span>tv1, p) setup<span class="pl-k">=</span>(p<span class="pl-k">=</span><span class="pl-c1">randperm</span>(n));
+  <span class="pl-c1">3.204</span> ms (<span class="pl-c1">502</span> allocations<span class="pl-k">:</span> <span class="pl-c1">76.31</span> MiB)</pre></div>
+<p dir="auto"><code>PermutedArrays</code> lets us reduce this to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @btime permute!($tv2, p) setup=(p=randperm(n));
+  438.015 ns (3 allocations: 1.81 KiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">permute!</span>(<span class="pl-k">$</span>tv2, p) setup<span class="pl-k">=</span>(p<span class="pl-k">=</span><span class="pl-c1">randperm</span>(n));
+  <span class="pl-c1">438.015</span> ns (<span class="pl-c1">3</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.81</span> KiB)</pre></div>
+<p dir="auto">Note that doing this by converting to a <code>Vector</code> would require copying the data:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @btime tv3 = Vector($tv1);
+  818.211 ns (1 allocation: 7.19 KiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> tv3 <span class="pl-k">=</span> <span class="pl-c1">Vector</span>(<span class="pl-k">$</span>tv1);
+  <span class="pl-c1">818.211</span> ns (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">7.19</span> KiB)</pre></div>
+<p dir="auto">But after paying that cost, that approach can be just as fast:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; tv3 = Vector(tv1);
+
+julia&gt; @btime permute!($tv3, p) setup=(p=randperm(n));
+  473.760 ns (1 allocation: 896 bytes)"><pre>julia<span class="pl-k">&gt;</span> tv3 <span class="pl-k">=</span> <span class="pl-c1">Vector</span>(tv1);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">permute!</span>(<span class="pl-k">$</span>tv3, p) setup<span class="pl-k">=</span>(p<span class="pl-k">=</span><span class="pl-c1">randperm</span>(n));
+  <span class="pl-c1">473.760</span> ns (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">896</span> bytes)</pre></div>
+<p dir="auto">However, the memory requirements have now doubled, and the <code>Vector</code> loses the original advantages of the packed format.</p>
+<h2 dir="auto"><a id="user-content-implementation" class="anchor" aria-hidden="true" href="#implementation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Implementation</h2>
+<p dir="auto">The setup is relatively simple:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct PermutedVector{T, V} &lt;: AbstractVector{T}
+    data::V
+    perm::Vector{Int}
+    iperm::Vector{Int}
+end"><pre><span class="pl-k">struct</span> PermutedVector{T, V} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractVector{T}</span>
+    data<span class="pl-k">::</span><span class="pl-c1">V</span>
+    perm<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+    iperm<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto"><code>perm</code> is the permutation to be applied implicitly to <code>data</code>, and <code>iperm</code> is its inverse.</p>
+<p dir="auto">Many permutations are built from a composition of "swaps", each exchanging two elements. This is expressed in <code>swap!</code>, with a default implementation</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function swap!(v::AbstractVector, i::Int, j::Int)
+    (v[i], v[j]) = (v[j], v[i])
+    return v
+end"><pre><span class="pl-k">function</span> <span class="pl-en">swap!</span>(v<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>, i<span class="pl-k">::</span><span class="pl-c1">Int</span>, j<span class="pl-k">::</span><span class="pl-c1">Int</span>)
+    (v[i], v[j]) <span class="pl-k">=</span> (v[j], v[i])
+    <span class="pl-k">return</span> v
+<span class="pl-k">end</span></pre></div>
+</article></div>

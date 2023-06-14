@@ -1,0 +1,63 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-scramjl" class="anchor" aria-hidden="true" href="#scramjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>SCRAM.jl</h1>
+<p dir="auto">SCRAM.jl is a simple package for Salted Challenge Response Authentication Mechanism (SCRAM). For more information
+on SCRAM see here <a href="https://www.rfc-editor.org/rfc/rfc5802" rel="nofollow">SCRAM RFC 5802</a>.</p>
+<p dir="auto">SCRAM.jl is a "bring your own string" implementation. That is to say, you are responsible for extracting the necessary components from each
+server response and passing them as arguments. Within this package, a base64 encoded string is referred to as a message and a decoded
+message is referred to as a string. It currently supports the following hashing mechanisms: SHA-1, SHA-256, SHA-384, SHA-512. It can
+support any desired hashing mechanism by defining the necessary hash and hmac functions and adding them to the function dictionary.</p>
+<p dir="auto">Usage would look something like this:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="
+    username = &quot;user&quot;
+    password = &quot;pencil&quot;
+    
+
+    url = &quot;your request url&quot;
+
+    # Send Hello message
+
+    r = helloRequest(url,username) # HTTP.Messages.Response object from which you will extract your string of interest 
+
+    serverHello = r.headers[8][2] |&gt; string  # &quot;scram handshakeToken=aaabbb, hash=SHA-256&quot;
+
+    # Construct and send client first request
+
+    clientFirst = clientFirstString(username)   # &quot;n,,n=user,r=rOprNGfwEbeRWgbNEkqO&quot;
+
+    r1 = clientFirstRequest(url,clientFirst,serverHello) # HTTP.Messages.Response object from which you will extract your string of interest 
+
+    # Construct and send client final request
+
+    serverFirst = raw&quot;r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096&quot; #You extracted this from r1
+
+    clientFinal = makeClientFinal(serverFirst,clientFirst,password) # &quot;c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ=&quot;
+
+    r2 = finalRequest(url,serverHello,clientFinal) # HTTP.Messages.Response object from which you will extract your Auth Token
+    "><pre>    username <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>user<span class="pl-pds">"</span></span>
+    password <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>pencil<span class="pl-pds">"</span></span>
+    
+
+    url <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>your request url<span class="pl-pds">"</span></span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Send Hello message</span>
+
+    r <span class="pl-k">=</span> <span class="pl-c1">helloRequest</span>(url,username) <span class="pl-c"><span class="pl-c">#</span> HTTP.Messages.Response object from which you will extract your string of interest </span>
+
+    serverHello <span class="pl-k">=</span> r<span class="pl-k">.</span>headers[<span class="pl-c1">8</span>][<span class="pl-c1">2</span>] <span class="pl-k">|&gt;</span> string  <span class="pl-c"><span class="pl-c">#</span> "scram handshakeToken=aaabbb, hash=SHA-256"</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Construct and send client first request</span>
+
+    clientFirst <span class="pl-k">=</span> <span class="pl-c1">clientFirstString</span>(username)   <span class="pl-c"><span class="pl-c">#</span> "n,,n=user,r=rOprNGfwEbeRWgbNEkqO"</span>
+
+    r1 <span class="pl-k">=</span> <span class="pl-c1">clientFirstRequest</span>(url,clientFirst,serverHello) <span class="pl-c"><span class="pl-c">#</span> HTTP.Messages.Response object from which you will extract your string of interest </span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Construct and send client final request</span>
+
+    serverFirst <span class="pl-k">=</span> <span class="pl-s"><span class="pl-c1">raw</span><span class="pl-pds">"</span>r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096<span class="pl-pds">"</span></span> <span class="pl-c"><span class="pl-c">#</span>You extracted this from r1</span>
+
+    clientFinal <span class="pl-k">=</span> <span class="pl-c1">makeClientFinal</span>(serverFirst,clientFirst,password) <span class="pl-c"><span class="pl-c">#</span> "c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ="</span>
+
+    r2 <span class="pl-k">=</span> <span class="pl-c1">finalRequest</span>(url,serverHello,clientFinal) <span class="pl-c"><span class="pl-c">#</span> HTTP.Messages.Response object from which you will extract your Auth Token</span>
+    </pre></div>
+<p dir="auto">SCRAM.jl does not support channel binding, is not robust, and is a barebones solution at this point. It does work and could be made better.
+It was built out of necessity to solve a specific problem quickly. Hopefully it can help you do the same, but a little quicker.</p>
+</article></div>

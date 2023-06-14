@@ -1,0 +1,112 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-bayessizeandshape" class="anchor" aria-hidden="true" href="#bayessizeandshape"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><strong>BayesSizeAndShape</strong></h1>
+<p dir="auto">This package implements a Bayesian regression for size-and-shape data, based on "Di Noia, A., Mastrantonio, G., and Jona Lasinio, G., “Bayesian Size-and-Shape regression modelling”, <i>arXiv e-prints</i>, 2023". To install, simply do</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; ]
+
+pkg&gt; add BayesSizeAndShape"><pre>julia<span class="pl-k">&gt;</span> ]
+
+pkg<span class="pl-k">&gt;</span> add BayesSizeAndShape</pre></div>
+<p dir="auto">at the julia prompt.
+At the present moment, the package implements a model for two-dimensional data with reflection information. The function to use is <code>SizeAndShapeMCMC</code></p>
+<h3 dir="auto"><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><strong>Basic Usage</strong></h3>
+<p dir="auto">In the <strong>demo</strong> directory, there is a <strong>julia</strong> file <strong>Ex_p2withreflection.jl</strong> with an example of how to implement the model, which we will describe also here.</p>
+<p dir="auto">Let</p>
+<ul dir="auto">
+<li><code>n</code> be the number of shapes;</li>
+<li><code>k</code> be the number of landmarks (for the pre-form matrix <strong>X</strong>);</li>
+<li><code>p</code> be the dimension of each landmark (only p=2 is implemented)</li>
+<li><code>d</code> be the number of covariates to use;</li>
+</ul>
+<p dir="auto">First we load the required packages</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Random, Distributions, LinearAlgebra, StatsBase
+using Kronecker, DataFrames, StatsModels, CategoricalArrays
+using BayesSizeAndShape"><pre><span class="pl-k">using</span> Random, Distributions, LinearAlgebra, StatsBase
+<span class="pl-k">using</span> Kronecker, DataFrames, StatsModels, CategoricalArrays
+<span class="pl-k">using</span> BayesSizeAndShape</pre></div>
+<p dir="auto">To be able to use the function, we have to simulate some data. We first simulate the regressive coefficients, which are in the <code>reg</code> object - <code>reg</code> must be of dimension (kd, p):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="n::Int64 = 100;
+p::Int64 = 2;
+k::Int64 = 10;
+d::Int64 = 3;
+
+# regression
+reg::Matrix{Float64} = zeros(Float64, k*d, p);
+reg[:] = rand(Normal(0.0, 5.0), prod(size(reg)));"><pre>n<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">100</span>;
+p<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">2</span>;
+k<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">10</span>;
+d<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">3</span>;
+
+<span class="pl-c"><span class="pl-c">#</span> regression</span>
+reg<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span> <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float64, k<span class="pl-k">*</span>d, p);
+reg[:] <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">5.0</span>), <span class="pl-c1">prod</span>(<span class="pl-c1">size</span>(reg)));</pre></div>
+<p dir="auto">The regressive coefficients are standardized with the function <code>standardize_reg</code>, for identifiability purposes. The second argument is here used to specify the dimension of each landmark, <code>Value2()</code> is used for two-dimensional data, while <code>Valuep3()</code> (not yet implemented) is for three-dimensional data:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="standardize_reg(reg::Matrix{Float64}, Valuep2())"><pre><span class="pl-c1">standardize_reg</span>(reg<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>, <span class="pl-c1">Valuep2</span>())</pre></div>
+<p dir="auto">A <code>DataFrame</code> named <code>zmat</code>, containing the covariates is simulated, and the function <code>compute_designmatrix</code> is used to compute the design matrix - <code>zmat</code> must be of dimension (n, d):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="zmat = DataFrame(
+    x1 = rand(Normal(10.0,1.0 ),n),
+    x2 = sample([&quot;A&quot;, &quot;B&quot;],n)
+)
+zmat[:,1] = (zmat[:,1] .- mean(zmat[:,1])) ./ std(zmat[:,1])
+zmat.x2 = categorical(zmat.x2)
+
+zmat_modmat_ModelFrame = ModelFrame(@formula(1 ~ 1+x1+x2), zmat);
+zmat_modmat = ModelMatrix(zmat_modmat_ModelFrame).m
+design_matrix = compute_designmatrix(zmat_modmat, k);"><pre>zmat <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>(
+    x1 <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">10.0</span>,<span class="pl-c1">1.0</span> ),n),
+    x2 <span class="pl-k">=</span> <span class="pl-c1">sample</span>([<span class="pl-s"><span class="pl-pds">"</span>A<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>B<span class="pl-pds">"</span></span>],n)
+)
+zmat[:,<span class="pl-c1">1</span>] <span class="pl-k">=</span> (zmat[:,<span class="pl-c1">1</span>] <span class="pl-k">.-</span> <span class="pl-c1">mean</span>(zmat[:,<span class="pl-c1">1</span>])) <span class="pl-k">./</span> <span class="pl-c1">std</span>(zmat[:,<span class="pl-c1">1</span>])
+zmat<span class="pl-k">.</span>x2 <span class="pl-k">=</span> <span class="pl-c1">categorical</span>(zmat<span class="pl-k">.</span>x2)
+
+zmat_modmat_ModelFrame <span class="pl-k">=</span> <span class="pl-c1">ModelFrame</span>(<span class="pl-c1">@formula</span>(<span class="pl-c1">1</span> <span class="pl-k">~</span> <span class="pl-c1">1</span><span class="pl-k">+</span>x1<span class="pl-k">+</span>x2), zmat);
+zmat_modmat <span class="pl-k">=</span> <span class="pl-c1">ModelMatrix</span>(zmat_modmat_ModelFrame)<span class="pl-k">.</span>m
+design_matrix <span class="pl-k">=</span> <span class="pl-c1">compute_designmatrix</span>(zmat_modmat, k);</pre></div>
+<p dir="auto">Please notice that, since in the MCMC algorithm the predictors are standardized, we standardize them before simulating the data.</p>
+<p dir="auto">The pre-form matrix <strong>X</strong>, here saved in the object <code>dataset_complete</code>, is simulated from a multivariate normal, and its size-and-shape version, contained in the object <code>dataset</code>, is obtained by using the function <code>compute_ss_from_pre</code>. The third argument of the function is used to specify if reflection must be kept (<code>true</code> is the only available option in this implementation)</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sigma::Symmetric{Float64,Matrix{Float64}} = Symmetric(rand(InverseWishart(k + 2, 5.0 * Matrix{Float64}(I, k, k))));
+dataset_complete = zeros(Float64,k,p,n);
+dataset = zeros(Float64, k, p, n);
+for i_n = 1:n
+    for i_p = 1:p
+        dataset_complete[:, i_p, i_n] = rand(MvNormal(design_matrix[:, :, i_n] * reg[:, i_p], sigma))
+        
+    end
+end
+rmat = compute_ss_from_pre(dataset_complete, dataset, true);"><pre>sigma<span class="pl-k">::</span><span class="pl-c1">Symmetric{Float64,Matrix{Float64}}</span> <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">InverseWishart</span>(k <span class="pl-k">+</span> <span class="pl-c1">2</span>, <span class="pl-c1">5.0</span> <span class="pl-k">*</span> <span class="pl-c1">Matrix</span><span class="pl-c1">{Float64}</span>(I, k, k))));
+dataset_complete <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float64,k,p,n);
+dataset <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float64, k, p, n);
+<span class="pl-k">for</span> i_n <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n
+    <span class="pl-k">for</span> i_p <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>p
+        dataset_complete[:, i_p, i_n] <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">MvNormal</span>(design_matrix[:, :, i_n] <span class="pl-k">*</span> reg[:, i_p], sigma))
+        
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+rmat <span class="pl-k">=</span> <span class="pl-c1">compute_ss_from_pre</span>(dataset_complete, dataset, <span class="pl-c1">true</span>);</pre></div>
+<p dir="auto">If instead of the preform you want to simulate a landmark matrix (or if you have landmark data), you can use the function <code>compute_helmertized_configuration</code> to obtain the preforms from the landmark.</p>
+<p dir="auto">Posterior samples are obtained with the function <code>SizeAndShapeMCMC_p2withreflection</code>. To specify the regressive formula, you can use <code>@formula</code>, where on the left-hand side there must be 1 and on the right-hand side is the actual regressive formula.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="betaout, sigmaout = SizeAndShapeMCMC(;
+    dataset = dataset,
+    fm = @formula(1 ~ 1 + x1 + x2),
+    covariates = zmat,
+    iterations = (iter=1000, burnin=200, thin=2),
+    betaprior = Normal(0.0, 10000.0),
+    sigmaprior = InverseWishart(k + 2, 5.0 * Matrix{Float64}(I, k, k)),
+    beta_init = zeros(Float64, k * d, p),
+    sigma_init = Symmetric(Matrix{Float64}(I, k, k)),
+    rmat_init = reshape(vcat([Matrix{Float64}(I, p, p)[:] for i = 1:n]...), (p, p, n)),
+    reflection = true
+);"><pre>betaout, sigmaout <span class="pl-k">=</span> <span class="pl-c1">SizeAndShapeMCMC</span>(;
+    dataset <span class="pl-k">=</span> dataset,
+    fm <span class="pl-k">=</span> <span class="pl-c1">@formula</span>(<span class="pl-c1">1</span> <span class="pl-k">~</span> <span class="pl-c1">1</span> <span class="pl-k">+</span> x1 <span class="pl-k">+</span> x2),
+    covariates <span class="pl-k">=</span> zmat,
+    iterations <span class="pl-k">=</span> (iter<span class="pl-k">=</span><span class="pl-c1">1000</span>, burnin<span class="pl-k">=</span><span class="pl-c1">200</span>, thin<span class="pl-k">=</span><span class="pl-c1">2</span>),
+    betaprior <span class="pl-k">=</span> <span class="pl-c1">Normal</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">10000.0</span>),
+    sigmaprior <span class="pl-k">=</span> <span class="pl-c1">InverseWishart</span>(k <span class="pl-k">+</span> <span class="pl-c1">2</span>, <span class="pl-c1">5.0</span> <span class="pl-k">*</span> <span class="pl-c1">Matrix</span><span class="pl-c1">{Float64}</span>(I, k, k)),
+    beta_init <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(Float64, k <span class="pl-k">*</span> d, p),
+    sigma_init <span class="pl-k">=</span> <span class="pl-c1">Symmetric</span>(<span class="pl-c1">Matrix</span><span class="pl-c1">{Float64}</span>(I, k, k)),
+    rmat_init <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(<span class="pl-c1">vcat</span>([<span class="pl-c1">Matrix</span><span class="pl-c1">{Float64}</span>(I, p, p)[:] <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]<span class="pl-k">.</span><span class="pl-k">..</span>), (p, p, n)),
+    reflection <span class="pl-k">=</span> <span class="pl-c1">true</span>
+);</pre></div>
+<p dir="auto">The objects <code>betaout</code> and <code>sigmaout</code> contain the posterior samples of the regressive coefficients and covariance matrix, respectively.</p>
+<h2 dir="auto"><a id="user-content-citing" class="anchor" aria-hidden="true" href="#citing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Citing</h2>
+<p dir="auto">See <code>CITATION.bib</code></p>
+</article></div>

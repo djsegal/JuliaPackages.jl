@@ -1,0 +1,44 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-openstreetmappbfjl" class="anchor" aria-hidden="true" href="#openstreetmappbfjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>OpenStreetMapPBF.jl</h1>
+<p dir="auto">Julia library for reading <a href="https://wiki.openstreetmap.org/wiki/PBF_Format" rel="nofollow">OSM PBF</a>. The basic interface is through the functions <code>scan_nodes</code>, <code>scan_ways</code>, and <code>scan_relations</code>, which calls the callback for each node, way, or relation, respectively. It may require several passes through the file to read everything, as there is no guarantee that (say) nodes come before ways. For instance, this code will extract all nodes that occur in highways. The interface is inspired by the very useful but unfortunately unmaintained <a href="https://github.com/omniscale/imposm-parser">imposm.parser</a> for Python.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="
+using OpenStreetMapPBF
+
+highway_node_ids = Set{Int64}()
+highway_nodes = Dict{Int64, Node}()
+
+# parse ways
+scan_ways(pbf_file_name) do way
+    if haskey(way.tags, &quot;highway&quot;)
+        union!(highway_node_ids, way.nodes)
+    end
+end
+
+# second pass, parse nodes
+scan_nodes(pbf_file_name) do node
+    # store node
+    if in(node.id, highway_node_ids)
+        highway_nodes[node.id] = node
+    end
+end
+"><pre><span class="pl-k">using</span> OpenStreetMapPBF
+
+highway_node_ids <span class="pl-k">=</span> <span class="pl-c1">Set</span><span class="pl-c1">{Int64}</span>()
+highway_nodes <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{Int64, Node}</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> parse ways</span>
+<span class="pl-c1">scan_ways</span>(pbf_file_name) <span class="pl-k">do</span> way
+    <span class="pl-k">if</span> <span class="pl-c1">haskey</span>(way<span class="pl-k">.</span>tags, <span class="pl-s"><span class="pl-pds">"</span>highway<span class="pl-pds">"</span></span>)
+        <span class="pl-c1">union!</span>(highway_node_ids, way<span class="pl-k">.</span>nodes)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> second pass, parse nodes</span>
+<span class="pl-c1">scan_nodes</span>(pbf_file_name) <span class="pl-k">do</span> node
+    <span class="pl-c"><span class="pl-c">#</span> store node</span>
+    <span class="pl-k">if</span> <span class="pl-c1">in</span>(node<span class="pl-k">.</span>id, highway_node_ids)
+        highway_nodes[node<span class="pl-k">.</span>id] <span class="pl-k">=</span> node
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+</pre></div>
+<p dir="auto">In some cases it may be valuable to parse nodes, ways, and relations in a single pass. This can be done with the function <code>scan_pbf</code>, which takes the name of the file as the first argument and named arguments <code>nodes</code>, <code>ways</code>, and <code>relations</code> with the appropriate callbacks (which can be anonymous functions or named functions, and any you don't need can be omitted).</p>
+</article></div>

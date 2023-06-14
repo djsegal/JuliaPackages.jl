@@ -1,0 +1,53 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-smartphoresjl" class="anchor" aria-hidden="true" href="#smartphoresjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Smartphores.jl</h1>
+<p dir="auto"><a href="https://NittanyLion.github.io/Smartphores.jl/stable/" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://NittanyLion.github.io/Smartphores.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/NittanyLion/Smartphores.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/NittanyLion/Smartphores.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="smartphores.png"><img src="smartphores.png" alt="header" style="max-width: 100%;"></a></p>
+<p dir="auto"><em>Smartphores.jl</em> provides the standard semaphores machinery with the sole distinction that smartphores provide ids to available slots.  This can be helpful if one has allocated <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="886748c334e48fc94311d98d3d34c032">$n$</math-renderer> chunks of memory that are to be shared, so a call to <code>acquire</code> then returns an integer value that indicates which chunk is assigned, which should be released using <code>release</code>.</p>
+<p dir="auto">There are only three calls:</p>
+<p dir="auto"><code>Smartphore( size :: Int )</code> creates</p>
+<p dir="auto"><code>acquire( s :: Smartphore )</code> acquires a permit and returns its id</p>
+<p dir="auto"><code>release( s :: Smartphore, permitid :: Int )</code> releases the permit</p>
+<p dir="auto">All of this is a mild hack of the standard Julia Semaphore machinery found in <em>lock.jl</em>.  The same MIT license applies.</p>
+<p dir="auto">Here is a simple example to demonstrate:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Smartphores
+
+function howthisworks( n )
+    blocks = [ zeros(5) for i ∈ 1:n ]
+    
+    s = Smartphore( n )
+    Threads.@threads for i ∈ 1 : 20
+        local a = acquire( s )
+        println( &quot;thread $(Threads.threadid()) says: block $a is mine, all mine&quot; )
+        blocks[a] .= i
+        println( &quot;thread $(Threads.threadid()) says: I'm giving block $a back&quot; )
+        release( s, a )
+    end
+    for a ∈ 1:n
+        println( blocks[a] )
+    end
+end
+
+howthisworks( 3 )
+"><pre class="notranslate"><code>using Smartphores
+
+function howthisworks( n )
+    blocks = [ zeros(5) for i ∈ 1:n ]
+    
+    s = Smartphore( n )
+    Threads.@threads for i ∈ 1 : 20
+        local a = acquire( s )
+        println( "thread $(Threads.threadid()) says: block $a is mine, all mine" )
+        blocks[a] .= i
+        println( "thread $(Threads.threadid()) says: I'm giving block $a back" )
+        release( s, a )
+    end
+    for a ∈ 1:n
+        println( blocks[a] )
+    end
+end
+
+howthisworks( 3 )
+
+</code></pre></div>
+</article></div>

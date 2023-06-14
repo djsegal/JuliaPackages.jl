@@ -1,0 +1,64 @@
+<div id="readme" class="md" data-path="readme.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-evilarraysjl" class="anchor" aria-hidden="true" href="#evilarraysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>EvilArrays.jl</h1>
+<p dir="auto"><code>EvilArray</code> is an AbstractArray that will throw errors if you try to index it directly without using <code>eachindex</code>, <code>firstindex</code> or <code>lastindex</code>, <code>axes</code> or similar.</p>
+<p dir="auto"><code>EvilArray</code>s will also throw errors if you try to broadcast with them and another array (scalars will work).</p>
+<p dir="auto">The intention is that you can use this array type in your tests to ensure that your code is not making assumptions about the indexes of your arrays.</p>
+<h2 dir="auto"><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage</h2>
+<p dir="auto">Use EvilArrays in your test files, something like this:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Function to test
+function sum_first_5(A)
+    @assert length(A) &gt;= 5
+    acc = 0
+    for idx in 1:5
+        acc += A[idx]
+    end
+    acc
+end
+
+@test sum_first_5(1:10) == sum_first_5(EvilArray(1:10))"><pre><span class="pl-c"><span class="pl-c">#</span> Function to test</span>
+<span class="pl-k">function</span> <span class="pl-en">sum_first_5</span>(A)
+    <span class="pl-c1">@assert</span> <span class="pl-c1">length</span>(A) <span class="pl-k">&gt;=</span> <span class="pl-c1">5</span>
+    acc <span class="pl-k">=</span> <span class="pl-c1">0</span>
+    <span class="pl-k">for</span> idx <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>
+        acc <span class="pl-k">+=</span> A[idx]
+    <span class="pl-k">end</span>
+    acc
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@test</span> <span class="pl-c1">sum_first_5</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>) <span class="pl-k">==</span> <span class="pl-c1">sum_first_5</span>(<span class="pl-c1">EvilArray</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>))</pre></div>
+<p dir="auto">If your function makes bad assumptions about the indices of arrays, then you will likely get a <code>BoundsError</code> or the output of your function will change depending on whether you use <code>EvilArray</code> or not.</p>
+<p dir="auto">Fix your functions by directly iterating the array, or using <code>eachindex</code> or <code>axes</code> or whatever:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function sum_first_5(A)
+    @assert length(A) &gt;= 5
+    acc = 0
+    for v in Iterators.take(A, 5)
+        acc += v
+    end
+    acc
+end
+
+@test sum_first_5(1:10) == sum_first_5(EvilArray(1:10))"><pre><span class="pl-k">function</span> <span class="pl-en">sum_first_5</span>(A)
+    <span class="pl-c1">@assert</span> <span class="pl-c1">length</span>(A) <span class="pl-k">&gt;=</span> <span class="pl-c1">5</span>
+    acc <span class="pl-k">=</span> <span class="pl-c1">0</span>
+    <span class="pl-k">for</span> v <span class="pl-k">in</span> Iterators<span class="pl-k">.</span><span class="pl-c1">take</span>(A, <span class="pl-c1">5</span>)
+        acc <span class="pl-k">+=</span> v
+    <span class="pl-k">end</span>
+    acc
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@test</span> <span class="pl-c1">sum_first_5</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>) <span class="pl-k">==</span> <span class="pl-c1">sum_first_5</span>(<span class="pl-c1">EvilArray</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>))</pre></div>
+<h2 dir="auto"><a id="user-content-implementation" class="anchor" aria-hidden="true" href="#implementation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Implementation</h2>
+<p dir="auto">EvilArrays are implemented in one line using OffsetArrays.jl:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&quot;&quot;&quot;
+   EvilArray(A)
+
+Create a new array of the same size and contents as `A` but with each axis
+starting at a random large negative offset.
+&quot;&quot;&quot;
+EvilArray(A) = OffsetArray(A, (rand(typemin(Int):typemin(Int)÷2) for _ in 1:ndims(A))...)"><pre><span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">   EvilArray(A)</span>
+<span class="pl-s"></span>
+<span class="pl-s">Create a new array of the same size and contents as `A` but with each axis</span>
+<span class="pl-s">starting at a random large negative offset.</span>
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-en">EvilArray</span>(A) <span class="pl-k">=</span> <span class="pl-c1">OffsetArray</span>(A, (<span class="pl-c1">rand</span>(<span class="pl-c1">typemin</span>(Int)<span class="pl-k">:</span><span class="pl-c1">typemin</span>(Int)<span class="pl-k">÷</span><span class="pl-c1">2</span>) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">ndims</span>(A))<span class="pl-k">...</span>)</pre></div>
+</article></div>

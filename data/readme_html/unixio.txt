@@ -1,0 +1,273 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-unixiojl" class="anchor" aria-hidden="true" href="#unixiojl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>UnixIO.jl</h1>
+<p dir="auto">Unix IO Interface.</p>
+<p dir="auto">For Julia programs that need to interact with Unix-specific IO interfaces.</p>
+<p dir="auto">e.g. Character devices, Terminals, Unix domain sockets, Block devices etc.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using UnixIO
+using UnixIO: C
+
+UnixIO.read(`curl https://julialang.org`, String; timeout=5)
+
+io = UnixIO.open(&quot;/dev/ttyUSB0&quot;, C.O_RDWR | C.O_NOCTTY)
+UnixIO.tcsetattr(io) do attr
+    attr.speed=9600
+    attr.c_lflag |= C.ICANON
+end
+readline(io; timeout=5)
+
+fd = C.open(&quot;file.txt&quot;, C.O_CREAT | C.O_WRONLY, 0o644)
+C.write(fd, pointer(&quot;Hello!&quot;), 7)
+C.close(fd)
+
+io = UnixIO.open(&quot;file.txt&quot;, C.O_CREAT | C.O_WRONLY)
+write(io, &quot;Hello!&quot;)
+close(io)"><pre class="notranslate"><code>using UnixIO
+using UnixIO: C
+
+UnixIO.read(`curl https://julialang.org`, String; timeout=5)
+
+io = UnixIO.open("/dev/ttyUSB0", C.O_RDWR | C.O_NOCTTY)
+UnixIO.tcsetattr(io) do attr
+    attr.speed=9600
+    attr.c_lflag |= C.ICANON
+end
+readline(io; timeout=5)
+
+fd = C.open("file.txt", C.O_CREAT | C.O_WRONLY, 0o644)
+C.write(fd, pointer("Hello!"), 7)
+C.close(fd)
+
+io = UnixIO.open("file.txt", C.O_CREAT | C.O_WRONLY)
+write(io, "Hello!")
+close(io)
+</code></pre></div>
+<p dir="auto">Blocking IO is multiplexed by running <a href="https://man7.org/linux/man-pages/man2/poll.2.html" rel="nofollow"><code>poll(2)</code></a> under a task started by <code>Threads.@spawn</code>. See <a href="src/poll.jl"><code>src/poll.jl</code></a></p>
+<p dir="auto">If <code>ENV["JULIA_IO_EVENT_SOURCE"]</code> is set to <code>epoll</code> the Linux <a href="https://man7.org/linux/man-pages/man7/epoll.7.html" rel="nofollow"><code>epoll(7)</code></a> API is used instead.</p>
+<p dir="auto">If <code>ENV["JULIA_IO_EVENT_SOURCE"]</code> is set to <code>sleep</code> IO polling is done by a dumb loop with a 10ms delay. This may be more efficient for small systems with simple IO requirements. (e.g. communicating with a few serial ports and sub-processes on a Raspberry Pi).</p>
+<h2 dir="auto"><a id="user-content-opening-and-closing-unix-files" class="anchor" aria-hidden="true" href="#opening-and-closing-unix-files"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Opening and Closing Unix Files.</h2>
+<h3 dir="auto"><a id="user-content-unixioopen----open-files" class="anchor" aria-hidden="true" href="#unixioopen----open-files"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.open</code> -- Open Files.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.open([FDType], pathname, [flags = C.O_RDWR],
+                                [mode = 0o644]];
+                                [timeout=Inf],
+                                [tcattr=nothing]) -&gt; UnixIO{FDType}"><pre class="notranslate"><code>UnixIO.open([FDType], pathname, [flags = C.O_RDWR],
+                                [mode = 0o644]];
+                                [timeout=Inf],
+                                [tcattr=nothing]) -&gt; UnixIO{FDType}
+</code></pre></div>
+<p dir="auto">Open the file specified by pathname.</p>
+<p dir="auto">Use <code>Base.close</code> to close the file.</p>
+<p dir="auto">The <code>IO</code> returned by <code>UnixIO.open</code> can be used with
+<code>UnixIO.read</code> and <code>UnixIO.write</code>. It can also be used with
+the standard <code>Base.IO</code> functions
+(<code>Base.read</code>, <code>Base.write</code>, <code>Base.readbytes!</code>, <code>Base.close</code> etc).
+See <a href="https://man7.org/linux/man-pages/man2/open.2.html" rel="nofollow">open(2)</a></p>
+<p dir="auto"><code>open</code> returns <code>UnixFD{FDType}</code>, where <code>FDType</code> is one of:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="FDType
+ ├─ File
+ │   ├─ S_IFBLK
+ │   └─ S_IFREG
+ ├─ MetaFile
+ │   ├─ S_IFDIR
+ │   └─ S_IFLNK
+ ├─ PidFD
+ └─ Stream
+     ├─ S_IFCHR
+     │   ├─ CanonicalMode
+     │   └─ Pseudoterminal
+     ├─ S_IFIFO
+     └─ S_IFSOCK
+"><pre class="notranslate"><code>FDType
+ ├─ File
+ │   ├─ S_IFBLK
+ │   └─ S_IFREG
+ ├─ MetaFile
+ │   ├─ S_IFDIR
+ │   └─ S_IFLNK
+ ├─ PidFD
+ └─ Stream
+     ├─ S_IFCHR
+     │   ├─ CanonicalMode
+     │   └─ Pseudoterminal
+     ├─ S_IFIFO
+     └─ S_IFSOCK
+
+</code></pre></div>
+<p dir="auto">If the <code>FDType</code> argument is provided then <code>open</code> guarantees to return
+<code>UnixIO{FDType}</code> (or throw an <code>ArgumentError</code> if <code>FDType</code> is not applicable
+to <code>pathname</code>.</p>
+<p dir="auto"><em>Note: <code>C.O_NONBLOCK</code> is always added to <code>flags</code> to ensure compatibility with
+<a href="https://man7.org/linux/man-pages/man2/poll.2.html" rel="nofollow"><code>poll(2)</code></a>.
+A <code>RawFD</code> can be opened in blocking mode by calling <code>C.open</code> directly.</em></p>
+<h3 dir="auto"><a id="user-content-unixioset_timeout----configure-timeouts" class="anchor" aria-hidden="true" href="#unixioset_timeout----configure-timeouts"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.set_timeout</code> -- Configure Timeouts.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.set_timeout(fd::UnixFD, timeout)"><pre class="notranslate"><code>UnixIO.set_timeout(fd::UnixFD, timeout)
+</code></pre></div>
+<p dir="auto">Configure <code>fd</code> to limit IO operations to <code>timeout</code> seconds.</p>
+<h3 dir="auto"><a id="user-content-unixiotcgetattr" class="anchor" aria-hidden="true" href="#unixiotcgetattr"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.tcgetattr</code></h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.tcgetattr(tty) -&gt; C.termios_m"><pre class="notranslate"><code>UnixIO.tcgetattr(tty) -&gt; C.termios_m
+</code></pre></div>
+<p dir="auto">Get terminal device options.
+See <a href="https://man7.org/linux/man-pages/man3/tcgetattr.3.html" rel="nofollow">tcgetattr(3)</a>.</p>
+<h3 dir="auto"><a id="user-content-unixiotcsetattr----configure-terminals-and-serial-ports" class="anchor" aria-hidden="true" href="#unixiotcsetattr----configure-terminals-and-serial-ports"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.tcsetattr</code> -- Configure Terminals and Serial Ports.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.tcsetattr(tty, attr::C.termios_m)
+UnixIO.tcsetattr(tty) do attr
+     [attr.c_iflag = ...]
+     [attr.c_oflag = ...]
+     [attr.c_cflag = ...]
+     [attr.c_lflag = ...]
+     [attr.speed = ...]
+end"><pre class="notranslate"><code>UnixIO.tcsetattr(tty, attr::C.termios_m)
+UnixIO.tcsetattr(tty) do attr
+     [attr.c_iflag = ...]
+     [attr.c_oflag = ...]
+     [attr.c_cflag = ...]
+     [attr.c_lflag = ...]
+     [attr.speed = ...]
+end
+</code></pre></div>
+<p dir="auto">Set terminal device options.</p>
+<p dir="auto">e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="io = UnixIO.open(&quot;/dev/ttyUSB0&quot;, C.O_RDWR | C.O_NOCTTY)
+UnixIO.tcsetattr(io) do attr
+    setraw(attr)
+    attr.speed=9600
+    attr.c_lflag |= C.ICANON
+end"><pre class="notranslate"><code>io = UnixIO.open("/dev/ttyUSB0", C.O_RDWR | C.O_NOCTTY)
+UnixIO.tcsetattr(io) do attr
+    setraw(attr)
+    attr.speed=9600
+    attr.c_lflag |= C.ICANON
+end
+</code></pre></div>
+<p dir="auto">If <code>raw</code> is <code>true</code> the attributes are initialised to:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="attr.c_iflag = 0
+attr.c_oflag = 0
+attr.c_cflag = C.CS8
+attr.c_lflag = 0"><pre class="notranslate"><code>attr.c_iflag = 0
+attr.c_oflag = 0
+attr.c_cflag = C.CS8
+attr.c_lflag = 0
+</code></pre></div>
+<p dir="auto">See <a href="https://man7.org/linux/man-pages/man3/tcsetattr.3.html" rel="nofollow">tcsetattr(3)</a>
+for flag descriptions.</p>
+<h3 dir="auto"><a id="user-content-unixioflush----discard-untransmitted-data" class="anchor" aria-hidden="true" href="#unixioflush----discard-untransmitted-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.flush</code> -- Discard untransmitted data.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="tcflush(tty, flags)"><pre class="notranslate"><code>tcflush(tty, flags)
+</code></pre></div>
+<p dir="auto">See <a href="https://man7.org/linux/man-pages/man3/tcflush.3p.html" rel="nofollow">tcflush(3p)</a></p>
+<h3 dir="auto"><a id="user-content-unixiotiocgwinsz----get-terminal-size" class="anchor" aria-hidden="true" href="#unixiotiocgwinsz----get-terminal-size"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.tiocgwinsz</code> -- Get Terminal size.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="tiocgwinsz(tty) -&gt; C.winsize"><pre class="notranslate"><code>tiocgwinsz(tty) -&gt; C.winsize
+</code></pre></div>
+<p dir="auto">See <a href="https://man7.org/linux/man-pages/man4/tty_ioctl.4.html" rel="nofollow">tty_ioctl(4)</a></p>
+<h3 dir="auto"><a id="user-content-unixioshutdown----signal-end-of-transmission-or-reception" class="anchor" aria-hidden="true" href="#unixioshutdown----signal-end-of-transmission-or-reception"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.shutdown</code> -- Signal end of transmission or reception.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.shutdown(sockfd, how)"><pre class="notranslate"><code>UnixIO.shutdown(sockfd, how)
+</code></pre></div>
+<p dir="auto">Shut down part of a full-duplex connection.
+<code>how</code> is one of <code>C.SHUT_RD</code>, <code>C.SHUT_WR</code> or <code>C.SHUT_RDWR</code>.
+See <a href="https://man7.org/linux/man-pages/man2/shutdown.2.html" rel="nofollow">shutdown(2)</a></p>
+<h2 dir="auto"><a id="user-content-reading-from-unix-files" class="anchor" aria-hidden="true" href="#reading-from-unix-files"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Reading from Unix Files.</h2>
+<h3 dir="auto"><a id="user-content-unixioread----read-bytes-into-a-buffer" class="anchor" aria-hidden="true" href="#unixioread----read-bytes-into-a-buffer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.read</code> -- Read bytes into a buffer.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.read(fd, buf, [count=length(buf)];
+            [timeout=Inf] ) -&gt; number of bytes read"><pre class="notranslate"><code>UnixIO.read(fd, buf, [count=length(buf)];
+            [timeout=Inf] ) -&gt; number of bytes read
+</code></pre></div>
+<p dir="auto">Attempt to read up to count bytes from file descriptor <code>fd</code>
+into the buffer starting at <code>buf</code>.
+See <a href="https://man7.org/linux/man-pages/man2/read.2.html" rel="nofollow">read(2)</a></p>
+<h2 dir="auto"><a id="user-content-writing-to-unix-files" class="anchor" aria-hidden="true" href="#writing-to-unix-files"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Writing to Unix Files.</h2>
+<h3 dir="auto"><a id="user-content-unixioprintln----write-messages-to-the-terminal" class="anchor" aria-hidden="true" href="#unixioprintln----write-messages-to-the-terminal"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.println</code> -- Write messages to the terminal.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.println(x...)
+UnixIO.printerr(x...)"><pre class="notranslate"><code>UnixIO.println(x...)
+UnixIO.printerr(x...)
+</code></pre></div>
+<p dir="auto">Write directly to <code>STDOUT</code> or <code>STDERR</code>.
+Does not yield control from the current task.</p>
+<h2 dir="auto"><a id="user-content-unix-domain-sockets" class="anchor" aria-hidden="true" href="#unix-domain-sockets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Unix Domain Sockets.</h2>
+<h3 dir="auto"><a id="user-content-unixiosocketpair----unix-domain-sockets-for-ipc" class="anchor" aria-hidden="true" href="#unixiosocketpair----unix-domain-sockets-for-ipc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.socketpair()</code> -- Unix Domain Sockets for IPC.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.socketpair() -&gt; fd1, fd2"><pre class="notranslate"><code>UnixIO.socketpair() -&gt; fd1, fd2
+</code></pre></div>
+<p dir="auto">Create a pair of connected Unix Domain Sockets (<code>AF_UNIX</code>, <code>SOCK_STREAM</code>).
+See <a href="https://man7.org/linux/man-pages/man2/socketpair.2.html" rel="nofollow">socketpair(2)</a></p>
+<h3 dir="auto"><a id="user-content-unixi-in-debugopenpt----open-a-pseudoterminal-device" class="anchor" aria-hidden="true" href="#unixi-in-debugopenpt----open-a-pseudoterminal-device"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixI in debug.openpt()</code> -- Open a pseudoterminal device.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.openpt([flags = C._NOCTTY | C.O_RDWR]) -&gt; ptfd::UnixFD, &quot;/dev/pts/X&quot;"><pre class="notranslate"><code>UnixIO.openpt([flags = C._NOCTTY | C.O_RDWR]) -&gt; ptfd::UnixFD, "/dev/pts/X"
+</code></pre></div>
+<p dir="auto">Open an unused pseudoterminal device, returning:
+a file descriptor that can be used to refer to that device,
+and the path of the pseudoterminal device.</p>
+<p dir="auto">See <a href="https://man7.org/linux/man-pages/man2/posix_openpt.3.html" rel="nofollow">posix_openpt(3)</a>
+and <a href="https://man7.org/linux/man-pages/man2/prsname.3.html" rel="nofollow">prsname(3)</a>.</p>
+<h2 dir="auto"><a id="user-content-executing-unix-commands" class="anchor" aria-hidden="true" href="#executing-unix-commands"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Executing Unix Commands.</h2>
+<h3 dir="auto"><a id="user-content-shcmd----shell-command-string" class="anchor" aria-hidden="true" href="#shcmd----shell-command-string"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>sh"cmd"</code> -- Shell command string.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="sh&quot;shell command&quot;"><pre class="notranslate"><code>sh"shell command"
+</code></pre></div>
+<p dir="auto">String containing result of shell command. e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; println(&quot;Machine is &quot;, sh&quot;uname -m&quot;)
+Machine is x86_64
+
+julia&gt; println(&quot;V: &quot;, sh&quot;grep version Project.toml | awk '{print$3}'&quot;)
+V: &quot;0.1.0&quot;"><pre class="notranslate"><code>julia&gt; println("Machine is ", sh"uname -m")
+Machine is x86_64
+
+julia&gt; println("V: ", sh"grep version Project.toml | awk '{print$3}'")
+V: "0.1.0"
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-unixiosystem----run-a-shell-command" class="anchor" aria-hidden="true" href="#unixiosystem----run-a-shell-command"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.system</code> -- Run a shell command.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.system(command) -&gt; exit status"><pre class="notranslate"><code>UnixIO.system(command) -&gt; exit status
+</code></pre></div>
+<p dir="auto">See <a href="https://man7.org/linux/man-pages/man3/system.3.html" rel="nofollow">system(3)</a></p>
+<p dir="auto">e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; UnixIO.system(&quot;uname -srm&quot;)
+Darwin 20.3.0 x86_64"><pre class="notranslate"><code>julia&gt; UnixIO.system("uname -srm")
+Darwin 20.3.0 x86_64
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-unixioopencmd-do----communicate-with-a-sub-process" class="anchor" aria-hidden="true" href="#unixioopencmd-do----communicate-with-a-sub-process"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.open(::Cmd) do...</code> -- Communicate with a sub-process.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.open(f, cmd::Cmd; [check_status=true, capture_stderr=false])"><pre class="notranslate"><code>UnixIO.open(f, cmd::Cmd; [check_status=true, capture_stderr=false])
+</code></pre></div>
+<p dir="auto">Run <code>cmd</code> using <code>posix_spawn</code>.</p>
+<p dir="auto">Call <code>f(cmdin, cmdout)</code>
+with (STDIN, STDOUT) of <code>cmd</code> connected to (<code>cmdin</code>, <code>cmdout</code>).</p>
+<p dir="auto">If <code>capture_stderr</code> is <code>true</code> STDERR of <code>cmd</code> is merged into <code>cmdout</code>.</p>
+<p dir="auto">If <code>check_status</code> is <code>true</code> an exception is thrown on non-zero exit status.</p>
+<p dir="auto">e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; UnixIO.open(`hexdump -C`) do cmdin, cmdout
+           write(cmdin, &quot;Hello World!&quot;)
+           close(cmdin)
+           read(cmdout, String)
+       end |&gt; println
+00000000  48 65 6c 6c 6f 20 57 6f  72 6c 64 21              |Hello World!|
+0000000c"><pre class="notranslate"><code>julia&gt; UnixIO.open(`hexdump -C`) do cmdin, cmdout
+           write(cmdin, "Hello World!")
+           close(cmdin)
+           read(cmdout, String)
+       end |&gt; println
+00000000  48 65 6c 6c 6f 20 57 6f  72 6c 64 21              |Hello World!|
+0000000c
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-unixioptopencmd-do----run-a-sub-process-in-a-pseudoterminal" class="anchor" aria-hidden="true" href="#unixioptopencmd-do----run-a-sub-process-in-a-pseudoterminal"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.ptopen(::Cmd) do...</code> -- Run a sub-process in a pseudoterminal.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.ptopen(f, cmd::Cmd; [env=ENV, check_status=true])"><pre class="notranslate"><code>UnixIO.ptopen(f, cmd::Cmd; [env=ENV, check_status=true])
+</code></pre></div>
+<p dir="auto">Run <code>cmd</code> using <code>posix_spawn</code>.</p>
+<p dir="auto">Call <code>f(cmdin, cmdout)</code> with (STDIN, STDOUT and STDERR) of <code>cmd</code>
+connected to (<code>cmdin</code>, <code>cmdout</code>) via a pseudoterminal.</p>
+<p dir="auto">If <code>check_status</code> is <code>true</code> an exception is thrown on non-zero exit status.</p>
+<p dir="auto">Run <code>cmd</code> using <code>posix_spawn</code>.</p>
+<h3 dir="auto"><a id="user-content-unixioreadcmd----read-sub-process-output" class="anchor" aria-hidden="true" href="#unixioreadcmd----read-sub-process-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.read(::Cmd)</code> -- Read sub-process output.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="read(cmd::Cmd; [timeout=Inf,
+                check_status=true,
+                capture_stderr=false]) -&gt; Vector{UInt8}
+read(cmd::Cmd, String; kw...) -&gt; String"><pre class="notranslate"><code>read(cmd::Cmd; [timeout=Inf,
+                check_status=true,
+                capture_stderr=false]) -&gt; Vector{UInt8}
+read(cmd::Cmd, String; kw...) -&gt; String
+</code></pre></div>
+<p dir="auto">Run <code>cmd</code> using <code>fork</code> and <code>execv</code>.</p>
+<p dir="auto">Return byes written to stdout by <code>cmd</code>.</p>
+<p dir="auto">e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; UnixIO.read(`uname -srm`, String)
+&quot;Darwin 20.3.0 x86_64
+&quot;"><pre class="notranslate"><code>julia&gt; UnixIO.read(`uname -srm`, String)
+"Darwin 20.3.0 x86_64
+"
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-unixiowaitpid----wait-for-a-sub-process-to-terminate" class="anchor" aria-hidden="true" href="#unixiowaitpid----wait-for-a-sub-process-to-terminate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>UnixIO.waitpid</code> -- Wait for a sub-process to terminate.</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="UnixIO.waitpid(pid) -&gt; status"><pre class="notranslate"><code>UnixIO.waitpid(pid) -&gt; status
+</code></pre></div>
+<p dir="auto">See <a href="https://man7.org/linux/man-pages/man3/waitpid.3.html" rel="nofollow">waitpid(3)</a></p>
+</article></div>

@@ -1,0 +1,150 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-onlinelogbinning" class="anchor" aria-hidden="true" href="#onlinelogbinning"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>OnlineLogBinning</h1>
+<p dir="auto"><a href="https://meese-wj.github.io/OnlineLogBinning.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://meese-wj.github.io/OnlineLogBinning.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/meese-wj/OnlineLogBinning.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/meese-wj/OnlineLogBinning.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">Julia package to determine effective number of uncorrelated data points in a correlated data stream via an <code>O(log N)</code> online binning algorithm.</p>
+<p dir="auto">This package uses the online logarithmic binning algorithm discussed in Refs. <a href="@ref">[1]</a> and <a href="@ref">[2]</a>, but uses the numerically stable <em>first-pass pairwise</em> algorithm from Ref. <a href="@ref">[3]</a> to update the mean and variance accumulators. Importantly, the binning analysis is <em>online</em> in the sense that the whole data stream of size <code>O(N)</code> need not be stored. Instead, a much smaller data stream of size <code>O(log N)</code> needs to be. This makes properly assessing the correlated errors generated from Markov Chain Monte Carlo simulations practical to update <em>on-the-fly</em> <a href="@ref">[4]</a>.</p>
+<h2 dir="auto"><a id="user-content-how-to-use-onlinelogbinning" class="anchor" aria-hidden="true" href="#how-to-use-onlinelogbinning"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>How to use <code>OnlineLogBinning</code></h2>
+<p dir="auto">First, construct an empty <code>BinningAccumulator</code> with of <code>T &lt;: Number</code> parametric type. Let's take the default <code>T = Float64</code> as an example.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Initialize a BinningAccumulator{T}
+bacc = BinningAccumulator()"><pre><span class="pl-c"><span class="pl-c">#</span> Initialize a BinningAccumulator{T}</span>
+bacc <span class="pl-k">=</span> <span class="pl-c1">BinningAccumulator</span>()</pre></div>
+<p dir="auto">We currently only support <code>Float</code> types, i.e. <code>T &lt;: AbstractFloat</code> or <code>T</code> is a <code>Complex{Float#}</code>. The tested types are listed in <a href="src/Accumulators/AccumulatorHelpers.jl"><code>OLB_tested_numbers</code></a>.</p>
+<p dir="auto">Then, <code>push!</code> either a single value or a data stream (sequence of values of <code>itr</code> type) to the <code>BinningAccumulator</code>. The <em>online</em> analysis will be taken care of automatically.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# push! a single value into the BinningAccumulator
+# Values of incorrect type are converted to the correct type internally
+push!(bacc, 1)
+
+# push! a data stream into the BinningAccumulator
+push!(bacc, [1, 2, 3, 4, 3, 2, 1])"><pre><span class="pl-c"><span class="pl-c">#</span> push! a single value into the BinningAccumulator</span>
+<span class="pl-c"><span class="pl-c">#</span> Values of incorrect type are converted to the correct type internally</span>
+<span class="pl-c1">push!</span>(bacc, <span class="pl-c1">1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> push! a data stream into the BinningAccumulator</span>
+<span class="pl-c1">push!</span>(bacc, [<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">3</span>, <span class="pl-c1">2</span>, <span class="pl-c1">1</span>])</pre></div>
+<p dir="auto">One can then calculate the following statistics from the <code>BinningAccumulator</code> at any binning <code>level = lvl</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="mean(bacc::BinningAccumulator; level = lvl)           # arithmetic mean
+var(bacc::BinningAccumulator; level = lvl)            # sample variance 
+std(bacc::BinningAccumulator; level = lvl)            # sample standard deviation 
+var_of_mean(bacc::BinningAccumulator; level = lvl)    # variance of the mean 
+std_error(bacc::BinningAccumulator; level = lvl)      # standard error of the mean "><pre><span class="pl-c1">mean</span>(bacc<span class="pl-k">::</span><span class="pl-c1">BinningAccumulator</span>; level <span class="pl-k">=</span> lvl)           <span class="pl-c"><span class="pl-c">#</span> arithmetic mean</span>
+<span class="pl-c1">var</span>(bacc<span class="pl-k">::</span><span class="pl-c1">BinningAccumulator</span>; level <span class="pl-k">=</span> lvl)            <span class="pl-c"><span class="pl-c">#</span> sample variance </span>
+<span class="pl-c1">std</span>(bacc<span class="pl-k">::</span><span class="pl-c1">BinningAccumulator</span>; level <span class="pl-k">=</span> lvl)            <span class="pl-c"><span class="pl-c">#</span> sample standard deviation </span>
+<span class="pl-c1">var_of_mean</span>(bacc<span class="pl-k">::</span><span class="pl-c1">BinningAccumulator</span>; level <span class="pl-k">=</span> lvl)    <span class="pl-c"><span class="pl-c">#</span> variance of the mean </span>
+<span class="pl-c1">std_error</span>(bacc<span class="pl-k">::</span><span class="pl-c1">BinningAccumulator</span>; level <span class="pl-k">=</span> lvl)      <span class="pl-c"><span class="pl-c">#</span> standard error of the mean </span></pre></div>
+<p dir="auto">The binning <code>level</code> is optional. By default, the binning <code>level</code> is set to <code>level = 0</code>. This level, accessed by <code>bacc[level = 0]</code>, represents the unbinnned statistics from of the original data stream. The <code>LevelAccumulator</code>s from any binning <code>level</code> can also be extracted using the overloaded <code>[]</code> notation as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; bacc[level = 0]
+LevelAccumulator{Float64} with online fields:
+    level    = 0
+    num_bins = 6
+    Taccum   = 15.0
+    Saccum   = 5.5
+    Paccum   = PairAccumulator{Float64}(false, [0.0, 1.0])
+
+    Calculated Level Statistics:
+    Current Mean             = 2.5
+    Current Variance         = 1.1
+    Current Std. Deviation   = 1.0488088481701516
+    Current Var. of the Mean = 0.18333333333333335
+    Current Std. Error       = 0.42817441928883765
+
+julia&gt; bacc[level = 1]
+LevelAccumulator{Float64} with online fields:
+    level    = 1
+    num_bins = 2
+    Taccum   = 5.0
+    Saccum   = 2.0
+    Paccum   = PairAccumulator{Float64}(false, [0.0, 2.5])
+
+    Calculated Level Statistics:
+    Current Mean             = 2.5
+    Current Variance         = 2.0
+    Current Std. Deviation   = 1.4142135623730951
+    Current Var. of the Mean = 1.0
+    Current Std. Error       = 1.0"><pre>julia<span class="pl-k">&gt;</span> bacc[level <span class="pl-k">=</span> <span class="pl-c1">0</span>]
+LevelAccumulator{Float64} with online fields<span class="pl-k">:</span>
+    level    <span class="pl-k">=</span> <span class="pl-c1">0</span>
+    num_bins <span class="pl-k">=</span> <span class="pl-c1">6</span>
+    Taccum   <span class="pl-k">=</span> <span class="pl-c1">15.0</span>
+    Saccum   <span class="pl-k">=</span> <span class="pl-c1">5.5</span>
+    Paccum   <span class="pl-k">=</span> <span class="pl-c1">PairAccumulator</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">false</span>, [<span class="pl-c1">0.0</span>, <span class="pl-c1">1.0</span>])
+
+    Calculated Level Statistics<span class="pl-k">:</span>
+    Current Mean             <span class="pl-k">=</span> <span class="pl-c1">2.5</span>
+    Current Variance         <span class="pl-k">=</span> <span class="pl-c1">1.1</span>
+    Current Std. Deviation   <span class="pl-k">=</span> <span class="pl-c1">1.0488088481701516</span>
+    Current Var. of the Mean <span class="pl-k">=</span> <span class="pl-c1">0.18333333333333335</span>
+    Current Std. Error       <span class="pl-k">=</span> <span class="pl-c1">0.42817441928883765</span>
+
+julia<span class="pl-k">&gt;</span> bacc[level <span class="pl-k">=</span> <span class="pl-c1">1</span>]
+LevelAccumulator{Float64} with online fields<span class="pl-k">:</span>
+    level    <span class="pl-k">=</span> <span class="pl-c1">1</span>
+    num_bins <span class="pl-k">=</span> <span class="pl-c1">2</span>
+    Taccum   <span class="pl-k">=</span> <span class="pl-c1">5.0</span>
+    Saccum   <span class="pl-k">=</span> <span class="pl-c1">2.0</span>
+    Paccum   <span class="pl-k">=</span> <span class="pl-c1">PairAccumulator</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">false</span>, [<span class="pl-c1">0.0</span>, <span class="pl-c1">2.5</span>])
+
+    Calculated Level Statistics<span class="pl-k">:</span>
+    Current Mean             <span class="pl-k">=</span> <span class="pl-c1">2.5</span>
+    Current Variance         <span class="pl-k">=</span> <span class="pl-c1">2.0</span>
+    Current Std. Deviation   <span class="pl-k">=</span> <span class="pl-c1">1.4142135623730951</span>
+    Current Var. of the Mean <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+    Current Std. Error       <span class="pl-k">=</span> <span class="pl-c1">1.0</span></pre></div>
+<h2 dir="auto"><a id="user-content-how-onlinelogbinning-works" class="anchor" aria-hidden="true" href="#how-onlinelogbinning-works"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>How <code>OnlineLogBinning</code> works</h2>
+<p dir="auto">The online binning functionality works by combining the method described in <a href="@ref">[1]</a>, where one keeps track of several <em>accumulators</em>, with the <em>first-pass pairwise</em> algorithm from <a href="@ref">[3]</a>. The <em>online</em> (i.e. <code>O(1)</code>) quantities that are obtained from this process are the <code>Tvalue</code>, <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$T$</math-renderer>, and <code>Svalue</code>, <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$S$</math-renderer>, from <a href="@ref">[3]</a>, representing the <em>total accumulator</em> and <em>square accumulator</em>, respectively, as well as the total number of bins <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$m$</math-renderer>. Together, these online quantities can be combined at any point to yield other (technically) online statistics like the <code>mean</code> or <code>var</code>iance. These statistics are online in the sense that they are simple function of online accumulators, and so we emphasize their calculation is still amortized with complexity <code>O(1)</code>. This is despite that the <code>mean</code>, <code>var</code>iance, <em>etc.</em> are <em><strong>not</strong></em> updated continuously; only <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$m$</math-renderer>, <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$T$</math-renderer>, and <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$S$</math-renderer> are.</p>
+<p dir="auto">Using the notation of Ref. <a href="@ref">[3]</a>, the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$T$</math-renderer> and <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$S$</math-renderer> calculated in a data stream comprised of a sequence of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$m$</math-renderer> elements,</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+x_k \in \left\lbrace x_1,x_2,\dots,x_m\right\rbrace
+$$</math-renderer></p>
+<p dir="auto">is given by</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+T_{1,m} = \sum_{k = 1}^m x_k,
+$$</math-renderer></p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+S_{1,m} = \sum_{k = 1}^m \left(x_k - \bar{x} \right)^2,
+$$</math-renderer></p>
+<p dir="auto">where the mean is given by</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$ \bar{x} = \frac{T_{1,m}}{m}. $$</math-renderer></p>
+<p dir="auto">The variance is then given by</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$ \sigma^2 = \frac{S_{1,m}}{m-1}. $$</math-renderer></p>
+<p dir="auto">These two quantities can be computed <em>online</em> with the <em>first-pass</em> <em>pairwise</em> algorithm given an additional two elements <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$\left\lbrace x_{m+1}, x_{m+2} \right\rbrace$</math-renderer> using the following expressions:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+T_{1,m + 2} = T_{1,m} + T_{m+1,m+2},
+$$</math-renderer></p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+S_{1,m + 2} = S_{1, m} + S_{m+1, m+2} + \frac{m}{2(m+2)} \left( \frac{2}{m} T_{1,m} - T_{m+1,m+2} \right)^2,
+$$</math-renderer></p>
+<p dir="auto">where</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+T_{m+1,m+2} = x_{m+1} + x_{m+2},
+$$</math-renderer></p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$$
+S_{m+1, m+2} = \frac{1}{2}\left(x_{m+2} - x_{m+1} \right)^2.
+$$</math-renderer></p>
+<p dir="auto">We implement this with three nested <code>Accumulator</code> <code>struct</code>s: the outermost <code>BinningAccumulator</code>, the middle-level <code>LevelAccumulator</code>, and the innermost <code>PairAccumulator</code>. The <code>BinningAccumulator</code> stores a <code>Vector</code> of <code>LevelAccumulators</code>, each of which store their own <code>PairAccumulator</code>.</p>
+<p dir="auto">The <code>PairAccumulator</code> <code>struct</code> is the outward facing element of the <code>BinningAccumulator</code> in that it takes in data directly from the data stream. After a <em>pair</em> of values has been imported from the stream, then <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$\left\lbrace T_{m+1,m+2}, S_{m+1,m+2} \right\rbrace$</math-renderer> are computed and exported to the encapsulating <code>LevelAccumulator</code>, where the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$\left\lbrace m, T_{1,m}, S_{1,m} \right\rbrace$</math-renderer> accumulator values are stored. Then, the <code>PairAccumulator</code> is <code>reset!</code>. At the same time, the outermost <code>BinningAccumulator</code> passes the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$T_{m+1,m+2} / 2$</math-renderer> (<em>ie</em> the pairwise mean) value onto the <code>PairAccumulator</code> in the <code>LevelAccumulator</code> at the next binning level, where the whole process is repeated again, except the accumulated <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">$T_{1,m+2} / 2$</math-renderer> values comprise the new data stream.</p>
+<p dir="auto">The fact that the data stream is processed in pairs before being passed along to the other binning levels inherently leads to a <code>bin_depth</code> given by <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="cce97cb8ef21262838d7d075d7e1a98c">${\rm floor}\left[\log_2 (m)\right]$</math-renderer>, which is the total number of binning levels in the data stream.</p>
+<h2 dir="auto">
+<a id="user-content-see-also" class="anchor" aria-hidden="true" href="#see-also"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>See Also</h2>
+<ol dir="auto">
+<li>
+<p dir="auto"><a href="https://github.com/carstenbauer/BinningAnalysis.jl"><code>BinningAnalysis.jl</code></a> for a very similar Julia package which served as an inspiration for this one. Our package does not have as broad of a scope as theirs.</p>
+<ul dir="auto">
+<li>One of the authors of <a href="https://github.com/carstenbauer/BinningAnalysis.jl"><code>BinningAnalysis.jl</code></a> also wrote Ref. <a href="@ref">[4]</a> which gives a great introduction to the statistical analysis of Monte Carlo data.</li>
+</ul>
+</li>
+<li>
+<p dir="auto"><a href="https://github.com/joshday/OnlineStats.j"><code>OnlineStats.jl</code></a> for many more online statistics and routines, most of which are beyond the scope of this package.</p>
+</li>
+</ol>
+<h2 dir="auto">
+<a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>References</h2>
+<p dir="auto"><a id="user-content-1">[1]</a>
+See Section D of M. Wallerberger's <em>Efficient estimation of autocorrelation spectra</em> (2018) at <a href="https://arxiv.org/pdf/1810.05079.pdf" rel="nofollow">arXiv:1810.05079</a>.</p>
+<p dir="auto"><a id="user-content-2">[2]</a>
+Ambegaokar, V. and Troyer, M. <em>Estimating errors reliably in Monte Carlo simulations of the Ehrenfest model</em>, American Journal of Physics <strong>78</strong>, 150-157 (2010) <a href="https://doi.org/10.1119/1.3247985" rel="nofollow">doi.org/10.1119/1.3247985</a></p>
+<p dir="auto"><a id="user-content-3">[3]</a>
+Chan, T. F., Golub, G. H., &amp; LeVeque, R. J. (1983). <em>Algorithms for Computing the Sample Variance: Analysis and Recommendations</em>. The American Statistician, <strong>37</strong>(3), 242–247. <a href="https://doi.org/10.2307/2683386" rel="nofollow">doi.org/10.2307/2683386</a></p>
+<p dir="auto"><a id="user-content-4">[4]</a>
+Bauer, C. <em>Simulating and machine learning quantum criticality in a nearly antiferromagnetic metal</em>. PhD Dissertation, 2020. Specifically <a href="http://www.thp.uni-koeln.de/trebst/thesis/PhD_CarstenBauer.pdf" rel="nofollow">Section 2.6</a>.</p>
+</article></div>

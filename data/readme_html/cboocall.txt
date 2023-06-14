@@ -1,0 +1,150 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-cboocall" class="anchor" aria-hidden="true" href="#cboocall"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CBOOCall</h1>
+<p dir="auto"><a href="https://github.com/jlapeyre/CBOOCall.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/jlapeyre/CBOOCall.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/jlapeyre/CBOOCall.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/8bf8390ef69300a0e3520f02c6ab08e6dec9007eb61efc4b134bb93fa790be09/68747470733a2f2f636f6465636f762e696f2f67682f6a6c6170657972652f43424f4f43616c6c2e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/jlapeyre/CBOOCall.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">This package provides <code>@cbooify</code> which allows you to write the function call <code>f(a::A, args...)</code> as <code>a.f(args...)</code> as well.
+You can use it by adding a single line to your module. Using the alternative call syntax incurs no performance
+penalty.</p>
+<p dir="auto">The main motivation is to make it easy to call many functions with short names without bringing
+them into scope. For example <code>s.x(1)</code>, <code>s.y(3)</code>,  <code>s.z(3)</code>, etc. We want to do this without
+claiming <code>x</code>, <code>y</code>, <code>z</code>, among others. This is all the package does.</p>
+<p dir="auto">For example, in building  quantum computing circuits programmatically, people really want
+to write <code>circ.x(1)</code> to add an <code>X</code> gate on wire <code>1</code>. You could do</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using QCircuit: add!  # ok to import this probably
+
+add!(circ, QCircuit.x, 1) # But, I really don't want to import x, y, z, etc."><pre><span class="pl-k">using</span> QCircuit<span class="pl-k">:</span> add!  <span class="pl-c"><span class="pl-c">#</span> ok to import this probably</span>
+
+<span class="pl-c1">add!</span>(circ, QCircuit<span class="pl-k">.</span>x, <span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> But, I really don't want to import x, y, z, etc.</span></pre></div>
+<p dir="auto">Here is <a href="https://github.com/rafal-pracht/QuantumCircuits.jl/blob/b1463aa6aac3c088c3ca14b90067a525788ddf8b/src/QCircuits/Circuit.jl#L93">an example</a> from an application</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@cbooify QCircuit (x, sx, y, z, h, cx, s, sdg, t, tdg, u, u3, rx, ry, rz, rzx, u4, barrier, measure)"><pre><span class="pl-c1">@cbooify</span> QCircuit (x, sx, y, z, h, cx, s, sdg, t, tdg, u, u3, rx, ry, rz, rzx, u4, barrier, measure)</pre></div>
+<p dir="auto">This package doesn't offer other features of typical OO systems. This package writes a <code>getproperty</code>
+method. So any other OO features that need to be in <code>getproperty</code> might go in CBOOCall.jl</p>
+<p dir="auto">A requirement of design is no performance penalty. I mean I would not have brought
+this to a package if there were a performance penalty.
+And benchmarking the code in the test suite shows there is none.
+But, there may be some lurking somewhere.</p>
+<p dir="auto">For example the script <a href="./smalltest.jl">smalltest.jl</a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="push!(LOAD_PATH, &quot;./test/MyAs/&quot;, &quot;./test/MyBs/&quot;)
+using MyAs
+using BenchmarkTools
+const y2 = MyA(5)
+@btime [y2.sx(i) for i in 1:100];
+@btime [MyAs.sx(y2, i) for i in 1:100];"><pre><span class="pl-c1">push!</span>(<span class="pl-c1">LOAD_PATH</span>, <span class="pl-s"><span class="pl-pds">"</span>./test/MyAs/<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>./test/MyBs/<span class="pl-pds">"</span></span>)
+<span class="pl-k">using</span> MyAs
+<span class="pl-k">using</span> BenchmarkTools
+<span class="pl-k">const</span> y2 <span class="pl-k">=</span> <span class="pl-c1">MyA</span>(<span class="pl-c1">5</span>)
+<span class="pl-c1">@btime</span> [y2<span class="pl-k">.</span><span class="pl-c1">sx</span>(i) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>];
+<span class="pl-c1">@btime</span> [MyAs<span class="pl-k">.</span><span class="pl-c1">sx</span>(y2, i) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>];</pre></div>
+<p dir="auto">Prints:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="  40.218 ns (1 allocation: 896 bytes)
+  40.025 ns (1 allocation: 896 bytes)"><pre class="notranslate"><code>  40.218 ns (1 allocation: 896 bytes)
+  40.025 ns (1 allocation: 896 bytes)
+</code></pre></div>
+<h4 dir="auto"><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="module Amod
+
+using CBOOCall: @cbooify
+
+struct A
+  x::Int
+end
+
+@cbooify A (f, g)
+
+f(a::A, x, y) = a.x + x + y
+g(a::A) = a.x
+
+end # module Amod"><pre><span class="pl-k">module</span> Amod
+
+<span class="pl-k">using</span> CBOOCall<span class="pl-k">:</span> <span class="pl-c1">@cbooify</span>
+
+<span class="pl-k">struct</span> A
+  x<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@cbooify</span> A (f, g)
+
+<span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, x, y) <span class="pl-k">=</span> a<span class="pl-k">.</span>x <span class="pl-k">+</span> x <span class="pl-k">+</span> y
+<span class="pl-en">g</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>) <span class="pl-k">=</span> a<span class="pl-k">.</span>x
+
+<span class="pl-k">end</span> <span class="pl-c"><span class="pl-c">#</span> module Amod</span></pre></div>
+<p dir="auto">Then you can write either <code>Amod.f(a, 1, 2)</code> or <code>a.f(1, 2)</code>.</p>
+<p dir="auto">For more features and details, see the docstring.</p>
+<h4 dir="auto"><a id="user-content-functions-and-macros" class="anchor" aria-hidden="true" href="#functions-and-macros"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Functions and macros</h4>
+<p dir="auto"><code>@cbooify</code>, <code>add_cboo_calls</code>, <code>is_cbooified</code>, <code>whichmodule</code>, <code>cbooified_properties</code>.</p>
+<h4 dir="auto"><a id="user-content-docstring" class="anchor" aria-hidden="true" href="#docstring"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Docstring</h4>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="@cbooify(Type_to_cbooify, (f1, f2, fa = Mod.f2...), callmethod=nothing, getproperty=getfield)"><pre class="notranslate"><code>@cbooify(Type_to_cbooify, (f1, f2, fa = Mod.f2...), callmethod=nothing, getproperty=getfield)
+</code></pre></div>
+<p dir="auto">Allow functions of the form <code>f1(s::Type_to_cbooify, args...)</code> to also be called with <code>s.f1(args...)</code> with no performance penalty.</p>
+<p dir="auto"><code>callmethod</code> and <code>getproperty</code> are keyword arguments.</p>
+<p dir="auto">If an element of the <code>Tuple</code> is an assignment <code>sym = func</code>, then <code>sym</code> is the property
+that will call <code>func</code>. <code>sym</code> must be a simple identifier (a symbol). <code>func</code> is not
+required to be a symbol. For example <code>myf = Base._unexportedf</code>.</p>
+<p dir="auto">If <code>callmethod</code> is supplied, then <code>s.f1(args...)</code> is translated to <code>callmethod(s, f1, args...)</code> instead of <code>f1(s, args...)</code>.</p>
+<p dir="auto"><code>@cbooify</code> works by writing methods (or clobbering methods) for the functions
+<code>Base.getproperty</code> and <code>Base.propertnames</code>.</p>
+<p dir="auto"><code>getproperty</code> must be a function. If supplied, then it is called, rather than <code>getfield</code>, when looking up a
+property that is not on the list of functions. This can be useful if you want further
+specialzed behavior of <code>getproperty</code>.</p>
+<p dir="auto"><code>@cbooify</code> must by called after the definition of <code>Type_to_cbooify</code>, but may
+be called before the functions are defined.</p>
+<p dir="auto">If an entry is not function, then it is returned, rather than called.  For example
+<code>@cbooify MyStruct (y=3,)</code>. Callable objects meant to be called must be wrapped in a
+function.</p>
+<h4 dir="auto"><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Examples:</h4>
+<ul dir="auto">
+<li>Use within a module</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="module Amod
+import CBOOCall
+
+struct A
+    x::Int
+end
+
+CBOOCall.@cbooify A (w, z)
+
+w(a::A, y) = a.x + y
+z(a::A, x, y) = a.x + y + x
+end # module"><pre><span class="pl-k">module</span> Amod
+<span class="pl-k">import</span> CBOOCall
+
+<span class="pl-k">struct</span> A
+    x<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span>
+
+CBOOCall<span class="pl-k">.</span><span class="pl-c1">@cbooify</span> A (w, z)
+
+<span class="pl-en">w</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, y) <span class="pl-k">=</span> a<span class="pl-k">.</span>x <span class="pl-k">+</span> y
+<span class="pl-en">z</span>(a<span class="pl-k">::</span><span class="pl-c1">A</span>, x, y) <span class="pl-k">=</span> a<span class="pl-k">.</span>x <span class="pl-k">+</span> y <span class="pl-k">+</span> x
+<span class="pl-k">end</span> <span class="pl-c"><span class="pl-c">#</span> module</span></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; a = Amod.A(3);
+
+julia&gt; Amod.w(a, 4) == a.w(4) == 7
+true
+
+julia&gt; CBOOCall.whichmodule(a)
+Main.Amod
+
+julia&gt; CBOOCall.cboofied_properties(a)
+(w = Main.Amod.w, z = Main.Amod.z)"><pre lang="julia-repl" class="notranslate"><code>julia&gt; a = Amod.A(3);
+
+julia&gt; Amod.w(a, 4) == a.w(4) == 7
+true
+
+julia&gt; CBOOCall.whichmodule(a)
+Main.Amod
+
+julia&gt; CBOOCall.cboofied_properties(a)
+(w = Main.Amod.w, z = Main.Amod.z)
+</code></pre></div>
+<ul dir="auto">
+<li>The following two calls have the same effect.</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@cbooify(Type_to_cbooify, (f1, f2, ...))
+
+@cbooify(Type_to_cbooify, (f1, f2, ...), callmethod=nothing, getproperty=getfield)"><pre><span class="pl-c1">@cbooify</span>(Type_to_cbooify, (f1, f2, <span class="pl-k">...</span>))
+
+<span class="pl-c1">@cbooify</span>(Type_to_cbooify, (f1, f2, <span class="pl-k">...</span>), callmethod<span class="pl-k">=</span><span class="pl-c1">nothing</span>, getproperty<span class="pl-k">=</span>getfield)</pre></div>
+
+
+</article></div>

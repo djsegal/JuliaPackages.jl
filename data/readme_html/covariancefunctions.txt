@@ -1,0 +1,476 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-covariancefunctionsjl" class="anchor" aria-hidden="true" href="#covariancefunctionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CovarianceFunctions.jl</h1>
+<p dir="auto"><a href="https://github.com/SebastianAment/CovarianceFunctions.jl/actions/workflows/CI.yml"><img src="https://github.com/SebastianAment/CovarianceFunctions.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/SebastianAment/CovarianceFunctions.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c82841042389c0ee76eb2fdd65e42fc90fd76e88f4b3d4ef9652f0b77ea66fb4/68747470733a2f2f636f6465636f762e696f2f67682f53656261737469616e416d656e742f436f76617269616e636546756e6374696f6e732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e7376673f746f6b656e3d30344e534e4a43394831" alt="codecov" data-canonical-src="https://codecov.io/gh/SebastianAment/CovarianceFunctions.jl/branch/main/graph/badge.svg?token=04NSNJC9H1" style="max-width: 100%;"></a>
+<a href="http://opensource.org/licenses/MIT" rel="nofollow"><img src="https://camo.githubusercontent.com/9f6b5dca9fd95975898fb95c2cc5b995351004a6c4443ccb13e1916a97bb122a/687474703a2f2f696d672e736869656c64732e696f2f62616467652f6c6963656e73652d4d49542d627269676874677265656e2e737667" alt="MIT license" data-canonical-src="http://img.shields.io/badge/license-MIT-brightgreen.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">CovarianceFunctions.jl's primary goal are efficient computations with kernel matrices, also called <code>Gramian</code>'s.
+To this end, the package implements a <em>lazy</em> <code>Gramian</code> type, which
+can be used to solve linear algebraic problems arising in
+kernel methods efficiently without running out of memory.
+Further, the code automatically recognizes when certain linear algebraic structures are present and exploits them for computational efficiency, in particular for fast matrix-vector multiplications (MVMs).</p>
+<p dir="auto">Feature highlights include</p>
+<ul dir="auto">
+<li><a href="#basic-usage">Lazy representation</a>: kernel matrices with <code>O(1)</code> memory footprint and efficient, parallelized MVMs.</li>
+<li><a href="#gradient-kernels">Gradient observations</a>: <code>O(n²d)</code> exact MVMs with kernel matrices arising from GPs with gradient observations, in contrast to the naïve <code>O(n²d²)</code> complexity.</li>
+<li><a href="#hessian-kernels">Hessian observations</a>: <code>O(n²d²)</code> exact MVMs with kernel matrices arising from GPs with Hessian observations in contrast to the naïve <code>O(n²d⁴)</code> complexity.</li>
+<li><a href="#toeplitz-structure">Toeplitz structure</a>: <code>O(n⋅log(n))</code> exact MVMs and <code>O(n²)</code> exact linear solves with isotropic kernel matrices on a uniform grid.</li>
+<li><a href="#kronecker-structure">Kronecker structure</a>: <code>O(nᵈ⁺¹)</code> exact MVMs and <code>O(nᵈ⁺²)</code> exact linear solves with separable product kernels matrices on a Cartesian grid in <code>d</code> dimensions.</li>
+<li><a href="#barnes-hut">Barnes-Hut algorithm</a>: <code>O(n⋅log(n))</code> approximate MVMs with isotropic kernel matrices.</li>
+<li><a href="#sparsification">Sparsification</a>: <code>O(nk⋅log(n))</code> sparsification of isotropic kernel matrices to specified tolerance with subsequent <code>O(k)</code> MVMs, where <code>k</code> is the number of non-zeros.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Basic Usage</h2>
+<p dir="auto">This example shows how to construct a kernel matrix using the <code>gramian</code> function and highlights the small memory footprint of the lazy representation and the matrix-vector multiplication with <code>mul!</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+using LinearAlgebra
+k = CovarianceFunctions.MaternP(2); # Matérn kernel with ν = 2.5
+d, n = 3, 16384; # generating data with large number of samples
+x = [randn(d) for _ in 1:n]; # data is vector of vectors
+
+@time K = gramian(k, x); # instantiating lazy Gramian matrix
+  0.000005 seconds (1 allocation: 48 bytes)
+size(K)
+  (16384, 16384)
+
+a = randn(n);
+b = zero(a);
+@time mul!(b, K, a); # multiplying with K allocates little memory
+    0.584813 seconds (51 allocations: 4.875 KiB)"><pre><span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> LinearAlgebra
+k <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">MaternP</span>(<span class="pl-c1">2</span>); <span class="pl-c"><span class="pl-c">#</span> Matérn kernel with ν = 2.5</span>
+d, n <span class="pl-k">=</span> <span class="pl-c1">3</span>, <span class="pl-c1">16384</span>; <span class="pl-c"><span class="pl-c">#</span> generating data with large number of samples</span>
+x <span class="pl-k">=</span> [<span class="pl-c1">randn</span>(d) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]; <span class="pl-c"><span class="pl-c">#</span> data is vector of vectors</span>
+
+<span class="pl-c1">@time</span> K <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(k, x); <span class="pl-c"><span class="pl-c">#</span> instantiating lazy Gramian matrix</span>
+  <span class="pl-c1">0.000005</span> seconds (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">48</span> bytes)
+<span class="pl-c1">size</span>(K)
+  (<span class="pl-c1">16384</span>, <span class="pl-c1">16384</span>)
+
+a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n);
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a);
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, K, a); <span class="pl-c"><span class="pl-c">#</span> multiplying with K allocates little memory</span>
+    <span class="pl-c1">0.584813</span> seconds (<span class="pl-c1">51</span> allocations<span class="pl-k">:</span> <span class="pl-c1">4.875</span> KiB)</pre></div>
+<p dir="auto">On the other hand, instantiating the matrix densely consumes 2GiB of memory:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time M = Matrix(K); # instantiating the matrix costs 2GiB
+    0.589848 seconds (53 allocations: 2.000 GiB, 4.13% gc time)"><pre><span class="pl-c1">@time</span> M <span class="pl-k">=</span> <span class="pl-c1">Matrix</span>(K); <span class="pl-c"><span class="pl-c">#</span> instantiating the matrix costs 2GiB</span>
+    <span class="pl-c1">0.589848</span> seconds (<span class="pl-c1">53</span> allocations<span class="pl-k">:</span> <span class="pl-c1">2.000</span> GiB, <span class="pl-c1">4.13</span><span class="pl-k">%</span> gc time)</pre></div>
+<h2 dir="auto"><a id="user-content-kernels" class="anchor" aria-hidden="true" href="#kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Kernels</h2>
+<p dir="auto">The package implements many popularly used covariance kernels.</p>
+<h3 dir="auto"><a id="user-content-stationary-kernels" class="anchor" aria-hidden="true" href="#stationary-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Stationary Kernels</h3>
+<p dir="auto">We give a list of stationary kernels
+whose implementations can be found in src/stationary.jl.</p>
+<ol dir="auto">
+<li><code>ExponentiatedQuadratic</code> or <code>EQ</code> (also known as RBF)</li>
+<li><code>RationalQuadratic</code> or <code>RQ</code></li>
+<li><code>Exponential</code> or <code>Exp</code></li>
+<li><code>GammaExponential</code> or <code>γExp</code></li>
+<li><code>Matern</code> for real valued parameters <code>ν</code></li>
+<li><code>MaternP</code> for <code>ν = p+1/2</code> where <code>p</code> is an integer</li>
+<li><code>CosineKernel</code> or <code>Cos</code></li>
+<li><code>SpectralMixture</code> or <code>SM</code></li>
+</ol>
+<h3 dir="auto"><a id="user-content-non-stationary-kernels" class="anchor" aria-hidden="true" href="#non-stationary-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Non-Stationary Kernels</h3>
+<p dir="auto">The  following non-stationary kernels can be found in src/mercer.jl.</p>
+<ol start="9" dir="auto">
+<li><code>Dot</code> is the covariance functions of a linear function</li>
+<li><code>Polynomial</code> or <code>Poly</code></li>
+<li><code>ExponentialDot</code></li>
+<li><code>Brownian</code> is the covariance of Brownian motion</li>
+<li><code>FiniteBasis</code> is the covariance corresponding to a finite set of basis functions</li>
+<li><code>NeuralNetwork</code> or <code>NN</code> implements McKay's neural network kernel</li>
+</ol>
+<h3 dir="auto"><a id="user-content-combining-kernels" class="anchor" aria-hidden="true" href="#combining-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Combining Kernels</h3>
+<p dir="auto">CovarianceFunctions.jl implements certain transformations and algebraic combinations of kernel functions.
+For example,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+smooth = CovarianceFunctions.RQ(2); # Rational quadratic kernel with α = 2.
+line = CovarianceFunctions.Dot(); # linear kernel
+kernel = 1/2 * smooth + line^2 # combination of smooth kernel and quadratic kernel"><pre><span class="pl-k">using</span> CovarianceFunctions
+smooth <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">RQ</span>(<span class="pl-c1">2</span>); <span class="pl-c"><span class="pl-c">#</span> Rational quadratic kernel with α = 2.</span>
+line <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">Dot</span>(); <span class="pl-c"><span class="pl-c">#</span> linear kernel</span>
+kernel <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span> <span class="pl-k">*</span> smooth <span class="pl-k">+</span> line<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> combination of smooth kernel and quadratic kernel</span></pre></div>
+<p dir="auto">assigns <code>kernel</code> a linear combination of the smooth Matérn kernel and a quadratic kernel. The resulting kernel can be evaluated like the base kernel classes:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="d = 3
+x, y = randn(d), randn(d)
+kernel(x, y) ≈ smooth(x, y) / 2 + line(x, y)^2
+  true"><pre>d <span class="pl-k">=</span> <span class="pl-c1">3</span>
+x, y <span class="pl-k">=</span> <span class="pl-c1">randn</span>(d), <span class="pl-c1">randn</span>(d)
+<span class="pl-c1">kernel</span>(x, y) <span class="pl-k">≈</span> <span class="pl-c1">smooth</span>(x, y) <span class="pl-k">/</span> <span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">line</span>(x, y)<span class="pl-k">^</span><span class="pl-c1">2</span>
+  <span class="pl-c1">true</span></pre></div>
+<h3 dir="auto"><a id="user-content-using-custom-kernels" class="anchor" aria-hidden="true" href="#using-custom-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Using Custom Kernels</h3>
+<p dir="auto">It is simple to use your own custom kernel, e.g.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="custom_rbf(x, y) = exp(-sum(abs2, x .- y)) # custom RBF implementation"><pre><span class="pl-en">custom_rbf</span>(x, y) <span class="pl-k">=</span> <span class="pl-c1">exp</span>(<span class="pl-k">-</span><span class="pl-c1">sum</span>(abs2, x <span class="pl-k">.-</span> y)) <span class="pl-c"><span class="pl-c">#</span> custom RBF implementation</span></pre></div>
+<p dir="auto">To take advantage of some specialized structure-aware algorithms, it is prudent to let CovarianceFunctions.jl know about the input type, in this case</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="CovarianceFunctions.input_trait(::typeof(custom_rbf)) = IsotropicInput()"><pre>CovarianceFunctions<span class="pl-k">.</span><span class="pl-en">input_trait</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(custom_rbf)) <span class="pl-k">=</span> <span class="pl-c1">IsotropicInput</span>()</pre></div>
+<p dir="auto">Other possible options include <code>DotProductInput</code> or <code>StationaryLinearFunctionalInput</code>.
+To enable efficient output type inference for custom kernels with parameters,
+extend <code>Base.eltype</code>.
+Since the custom kernel above does not have any parameters, we set the type to the bottom type <code>Union{}</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Base.eltype(k::typeof(custom_rbf)) = Union{}"><pre>Base<span class="pl-k">.</span><span class="pl-en">eltype</span>(k<span class="pl-k">::</span><span class="pl-c1">typeof</span>(custom_rbf)) <span class="pl-k">=</span> Union{}</pre></div>
+<p dir="auto">The type of the output of the kernel <code>k</code> with inputs <code>x</code> and <code>y</code> is then expected to be <code>promote_type(eltype.((k, x, y))...)</code>.</p>
+<h2 dir="auto"><a id="user-content-toeplitz-structure" class="anchor" aria-hidden="true" href="#toeplitz-structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Toeplitz Structure</h2>
+<p dir="auto">The kernel matrix corresponding to isotropic kernel on a regular grid in one dimension exhibits a special Toeplitz structure.
+CovarianceFunctions.jl <em>automatically</em> detects this structure,
+which can be used for <code>O(n log(n))</code> multiplies and <code>O(n²)</code> direct solves.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+using LinearAlgebra
+CovarianceFunctions.Exponential(); # exponential kernel
+n = 16384;
+x = range(-1, 1, n);
+
+@time G = gramian(k, x);
+  0.000572 seconds (3 allocations: 128.062 KiB)
+typeof(G) # the algorithm automatically recognized the Toeplitz structure
+  ToeplitzMatrices.SymmetricToeplitz{Float64}
+
+a = randn(n);
+b = zero(a);
+@time mul!(b, G, a); # matrix-vector multiplications are very with G are fast O(n log(n))
+  0.001068 seconds (57 allocations: 1.504 MiB)"><pre><span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> LinearAlgebra
+CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">Exponential</span>(); <span class="pl-c"><span class="pl-c">#</span> exponential kernel</span>
+n <span class="pl-k">=</span> <span class="pl-c1">16384</span>;
+x <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span>, n);
+
+<span class="pl-c1">@time</span> G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(k, x);
+  <span class="pl-c1">0.000572</span> seconds (<span class="pl-c1">3</span> allocations<span class="pl-k">:</span> <span class="pl-c1">128.062</span> KiB)
+<span class="pl-c1">typeof</span>(G) <span class="pl-c"><span class="pl-c">#</span> the algorithm automatically recognized the Toeplitz structure</span>
+  ToeplitzMatrices<span class="pl-k">.</span>SymmetricToeplitz{Float64}
+
+a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n);
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a);
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, G, a); <span class="pl-c"><span class="pl-c">#</span> matrix-vector multiplications are very with G are fast O(n log(n))</span>
+  <span class="pl-c1">0.001068</span> seconds (<span class="pl-c1">57</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.504</span> MiB)</pre></div>
+<p dir="auto">In contrast, instantiating the matrix is much slower and memory-expensive:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time Matrix(G);
+  0.393198 seconds (2 allocations: 2.000 GiB, 0.89% gc time)"><pre><span class="pl-c1">@time</span> <span class="pl-c1">Matrix</span>(G);
+  <span class="pl-c1">0.393198</span> seconds (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">2.000</span> GiB, <span class="pl-c1">0.89</span><span class="pl-k">%</span> gc time)</pre></div>
+<p dir="auto">While the fast multiplications can be used in conjunction with iterative solvers,
+CovarianceFunctions.jl also implements a <code>O(n²)</code> direct solver called <code>levinson</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions: levinson
+@time x_fast = levinson(G, b); # same as G \ b
+  0.172557 seconds (6 allocations: 384.141 KiB)"><pre><span class="pl-k">using</span> CovarianceFunctions<span class="pl-k">:</span> levinson
+<span class="pl-c1">@time</span> x_fast <span class="pl-k">=</span> <span class="pl-c1">levinson</span>(G, b); <span class="pl-c"><span class="pl-c">#</span> same as G \ b</span>
+  <span class="pl-c1">0.172557</span> seconds (<span class="pl-c1">6</span> allocations<span class="pl-k">:</span> <span class="pl-c1">384.141</span> KiB)</pre></div>
+<p dir="auto">whereas naïvely, this would take two orders of magnitude longer for this problem:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @time x_naive = Matrix(G) \ b;
+ 10.494046 seconds (8 allocations: 4.000 GiB, 1.34% gc time)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> x_naive <span class="pl-k">=</span> <span class="pl-c1">Matrix</span>(G) <span class="pl-k">\</span> b;
+ <span class="pl-c1">10.494046</span> seconds (<span class="pl-c1">8</span> allocations<span class="pl-k">:</span> <span class="pl-c1">4.000</span> GiB, <span class="pl-c1">1.34</span><span class="pl-k">%</span> gc time)</pre></div>
+<p dir="auto">Notably, the results are equal to machine precision:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x_naive ≈ x_fast
+  true"><pre>x_naive <span class="pl-k">≈</span> x_fast
+  <span class="pl-c1">true</span></pre></div>
+<h2 dir="auto"><a id="user-content-kronecker-structure" class="anchor" aria-hidden="true" href="#kronecker-structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Kronecker Structure</h2>
+<p dir="auto">Taking the Cartesian product of <code>d</code> vectors with <code>n</code> points each gives rise to a regular grid of <code>nᵈ</code> <code>d</code>-dimensional points.
+Kernel matrices constructed with such grids naïvely have a <code>O(n²ᵈ)</code>  MVM complexity and <code>O(n³ᵈ)</code> inversion complexity.
+However, separable (a.k.a. direct) product kernels,
+evaluated on such grids give rise to Kronecker product structure,
+which allows for much faster <code>O(nᵈ⁺¹)</code> multiplies and <code>O(nᵈ⁺²)</code> solves, an exponential improvement in <code>d</code>.
+To see how to exploit this structure, note that CovarianceFunctions.jl can lazily represent a Cartesian grid using <code>LazyGrid</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using LinearAlgebra
+using CovarianceFunctions
+using CovarianceFunctions: LazyGrid, SeparableProduct
+d, n = 3, 128;
+x = randn(n);
+@time gx = LazyGrid(x, d);
+  0.000025 seconds (9 allocations: 288 bytes)
+length(gx)
+  2097152"><pre><span class="pl-k">using</span> LinearAlgebra
+<span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> CovarianceFunctions<span class="pl-k">:</span> LazyGrid, SeparableProduct
+d, n <span class="pl-k">=</span> <span class="pl-c1">3</span>, <span class="pl-c1">128</span>;
+x <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n);
+<span class="pl-c1">@time</span> gx <span class="pl-k">=</span> <span class="pl-c1">LazyGrid</span>(x, d);
+  <span class="pl-c1">0.000025</span> seconds (<span class="pl-c1">9</span> allocations<span class="pl-k">:</span> <span class="pl-c1">288</span> bytes)
+<span class="pl-c1">length</span>(gx)
+  <span class="pl-c1">2097152</span></pre></div>
+<p dir="auto">Now, we'll construct a separable product kernel in <code>d</code> dimensions:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="k = CovarianceFunctions.Exp()
+p = SeparableProduct(fill(k, d)) # separable product kernel"><pre>k <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">Exp</span>()
+p <span class="pl-k">=</span> <span class="pl-c1">SeparableProduct</span>(<span class="pl-c1">fill</span>(k, d)) <span class="pl-c"><span class="pl-c">#</span> separable product kernel</span></pre></div>
+<p dir="auto">Subsequently calling <code>gramian</code> on <code>p</code> and the grid <code>gx</code> <strong>automatically</strong>
+represents the matrix as a lazy <code>KroneckerProduct</code> structure,
+which we implemented in <a href="https://github.com/SebastianAment/KroneckerProducts.jl">KroneckerProducts.jl</a>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time G = gramian(p, gx);
+  0.000023 seconds (11 allocations: 624 bytes)
+using KroneckerProducts
+G isa KroneckerProduct
+  true"><pre><span class="pl-c1">@time</span> G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(p, gx);
+  <span class="pl-c1">0.000023</span> seconds (<span class="pl-c1">11</span> allocations<span class="pl-k">:</span> <span class="pl-c1">624</span> bytes)
+<span class="pl-k">using</span> KroneckerProducts
+G <span class="pl-k">isa</span> KroneckerProduct
+  <span class="pl-c1">true</span></pre></div>
+<p dir="auto">This allows for very efficient multiplies, factorizations, and solves:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="a = randn(n^d);
+size(G)
+  (2097152, 2097152)
+@time F = cholesky(G);
+  0.003127 seconds (155 allocations: 397.344 KiB)
+@time F \ a;
+  0.062468 seconds (97 allocations: 96.005 MiB)"><pre>a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n<span class="pl-k">^</span>d);
+<span class="pl-c1">size</span>(G)
+  (<span class="pl-c1">2097152</span>, <span class="pl-c1">2097152</span>)
+<span class="pl-c1">@time</span> F <span class="pl-k">=</span> <span class="pl-c1">cholesky</span>(G);
+  <span class="pl-c1">0.003127</span> seconds (<span class="pl-c1">155</span> allocations<span class="pl-k">:</span> <span class="pl-c1">397.344</span> KiB)
+<span class="pl-c1">@time</span> F <span class="pl-k">\</span> a;
+  <span class="pl-c1">0.062468</span> seconds (<span class="pl-c1">97</span> allocations<span class="pl-k">:</span> <span class="pl-c1">96.005</span> MiB)</pre></div>
+<p dir="auto">That is, factorizing <code>G</code> and solving <code>F \ a</code> takes a fraction of a second, despite the linear system having more than <strong>2 million</strong> variables.</p>
+<p dir="auto">Notably, both the Kronecker structure and the constituent kernel matrices are
+lazily represented in the general case.
+If fast MVMs are required, it is best to instantiate the constituent matrices in memory while keeping the Kronecker product lazy:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using KroneckerProducts
+K = kronecker(Matrix, G) # this instantiates the constituent kernel matrices in memory for fast MVMs
+a = randn(n^d);
+b = zero(a);
+@time mul!(b, K, a);
+  0.022626 seconds (50 allocations: 2.016 KiB)"><pre><span class="pl-k">using</span> KroneckerProducts
+K <span class="pl-k">=</span> <span class="pl-c1">kronecker</span>(Matrix, G) <span class="pl-c"><span class="pl-c">#</span> this instantiates the constituent kernel matrices in memory for fast MVMs</span>
+a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n<span class="pl-k">^</span>d);
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a);
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, K, a);
+  <span class="pl-c1">0.022626</span> seconds (<span class="pl-c1">50</span> allocations<span class="pl-k">:</span> <span class="pl-c1">2.016</span> KiB)</pre></div>
+<p dir="auto">Further, note that Kronecker structure can be combined with the <a href="#toeplitz-structure">Toeplitz structure</a> above to yield
+quasi-linear MVMs with the resulting kernel matrix.
+This is the basis of the <a href="https://arxiv.org/pdf/1503.01057.pdf" rel="nofollow">SKI framework</a>.</p>
+<h2 dir="auto"><a id="user-content-gradient-kernels" class="anchor" aria-hidden="true" href="#gradient-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Gradient Kernels</h2>
+<p dir="auto">When conditioning Gaussian processes on gradient information,
+it is necessary to work with <code>d × d</code> <em>matrix-valued</em> gradient kernels,
+where <code>d</code> is the dimension of the input.
+<a href="https://proceedings.mlr.press/v139/de-roos21a/de-roos21a.pdf" rel="nofollow">Roos et al.</a> first noted that isotropic and dot product kernels give rise to gradient kernel matrices with a data-sparse structure and proposed a direct method with an <code>O(n²d + n⁶)</code> complexity for the low-data regime, where the number of observations <code>n</code> is small.</p>
+<p dir="auto">CovarianceFunctions.jl implements an automatic structure derivation engine for a large range of kernel functions, including <strong>complex composite kernels like MacKay's neural network kernel and the spectral mixture kernel</strong>, permitting an <strong>exact</strong> matrix-vector product in <code>O(n²d)</code> operations with gradient kernel matrices.
+It also contains a generic fallback with the regular <code>O(n²d²)</code> complexity for cases where no special structure is present or currently implemented.
+For example,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+using LinearAlgebra
+k = CovarianceFunctions.MaternP(2); # Matérn kernel with ν = 2.5
+g = CovarianceFunctions.GradientKernel(k);
+d, n = 1024, 1024; # generating high-d data with large number of samples
+x = [randn(d) for _ in 1:n]; # data is vector of vectors
+@time G = gramian(g, x); # instantiating lazy gradient kernel Gramian matrix
+  0.000013 seconds (1 allocation: 96 bytes)
+size(G) # G is n*d by n*d
+  (1048576, 1048576)"><pre><span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> LinearAlgebra
+k <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">MaternP</span>(<span class="pl-c1">2</span>); <span class="pl-c"><span class="pl-c">#</span> Matérn kernel with ν = 2.5</span>
+g <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">GradientKernel</span>(k);
+d, n <span class="pl-k">=</span> <span class="pl-c1">1024</span>, <span class="pl-c1">1024</span>; <span class="pl-c"><span class="pl-c">#</span> generating high-d data with large number of samples</span>
+x <span class="pl-k">=</span> [<span class="pl-c1">randn</span>(d) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]; <span class="pl-c"><span class="pl-c">#</span> data is vector of vectors</span>
+<span class="pl-c1">@time</span> G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(g, x); <span class="pl-c"><span class="pl-c">#</span> instantiating lazy gradient kernel Gramian matrix</span>
+  <span class="pl-c1">0.000013</span> seconds (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">96</span> bytes)
+<span class="pl-c1">size</span>(G) <span class="pl-c"><span class="pl-c">#</span> G is n*d by n*d</span>
+  (<span class="pl-c1">1048576</span>, <span class="pl-c1">1048576</span>)</pre></div>
+<p dir="auto">Despite the <strong>million by million matrix</strong>, MVMs are fast:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="a = randn(n*d);
+b = zero(a);
+@time mul!(b, G, a); # multiplying with G allocates little memory
+  0.394388 seconds (67 allocations: 86.516 KiB)"><pre>a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n<span class="pl-k">*</span>d);
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a);
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, G, a); <span class="pl-c"><span class="pl-c">#</span> multiplying with G allocates little memory</span>
+  <span class="pl-c1">0.394388</span> seconds (<span class="pl-c1">67</span> allocations<span class="pl-k">:</span> <span class="pl-c1">86.516</span> KiB)</pre></div>
+<p dir="auto">This would be impossible without CovarianceFunctions.jl's lazy and structured representation of the gradient kernel matrix.
+Note that <code>GradientKernel</code> only computes covariances of gradient observations,
+to get the <code>(d+1) × (d+1)</code> covariance kernel that includes value observations,
+use <code>ValueGradientKernel</code>.</p>
+<p dir="auto">For linear solves with gradient kernel matrices via <code>\</code> or <code>ldiv!</code>,
+the minimum residual method is used, which in this case only needs a few iterations to converge, since the Matérn kernel we used gives rise to an extremely well conditioned matrix in high dimensions:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time b = G \ a;
+  0.817458 seconds (127 allocations: 32.167 MiB)
+G*b ≈ a
+  true"><pre><span class="pl-c1">@time</span> b <span class="pl-k">=</span> G <span class="pl-k">\</span> a;
+  <span class="pl-c1">0.817458</span> seconds (<span class="pl-c1">127</span> allocations<span class="pl-k">:</span> <span class="pl-c1">32.167</span> MiB)
+G<span class="pl-k">*</span>b <span class="pl-k">≈</span> a
+  <span class="pl-c1">true</span></pre></div>
+<p dir="auto">To highlight the scalability of this MVM algorithm, we compare against the implementation in <a href="https://docs.gpytorch.ai/en/stable/kernels.html?highlight=kernels#rbfkernelgrad" rel="nofollow">GPyTorch</a> and the fast <em>approximate</em> MVM provided by <a href="https://github.com/ericlee0803/GP_Derivatives">D-SKIP</a>.</p>
+
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="images/gradient_kernel_mvm_comparison.png"><img src="images/gradient_kernel_mvm_comparison.png" width="600" style="max-width: 100%;"></a>
+  
+</p>
+
+<p dir="auto">The plot above shows MVM times with the exponentiated quadratic (RBF) gradient kernel with <code>n = 1024</code> as a function of the dimension <code>d</code>.
+Notably, GPyTorch's implementation scales with the naïve complexity <code>O(n²d²)</code>.
+D-SKIP's MVM scales linearly in <code>d</code>, but the required pre-processing scales quadratically in <code>d</code> and dominates the total runtime.
+Further, D-SKIP is restricted to seperable product kernels that give rise to low rank constituent kernel matrices.
+The accuracy plot below
+compares D-SKIP and CovarianceFunctions.jl's MVM against the naïve dense MVM.
+CovarianceFunctions.jl's MVM is mathematically exact and scales linearly with <code>d</code> into high dimensions.</p>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="images/gradient_kernel_mvm_accuracy.png"><img src="images/gradient_kernel_mvm_accuracy.png" width="600" style="max-width: 100%;"></a>
+</p>
+<p dir="auto">At this time, both GPyTorch and D-SKIP only support two gradient kernels each and the only kernel that is supported by both is the exponentiated quadratic (RBF) gradient kernel.
+In contrast, CovarianceFunctions.jl provides scalable <code>O(n²d)</code> MVMs
+that are accurate to machine precision
+for a large class of kernels including all isotropic and dot-product kernels,
+and <strong>extends to complex composite kernels like MacKay's neural network kernel and the spectral mixture kernel</strong>.
+This is achieved by computing a structured representation of the kernel matrix through a <strong>matrix-structure-aware automatic differentiation</strong>.
+The following exemplifies this with a combination of Matérn, quadratic, and neural network kernels using 1024 points in 1024 dimensions:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="matern = CovarianceFunctions.MaternP(2); # matern
+quad = CovarianceFunctions.Dot()^2; # second kernel component
+nn = CovarianceFunctions.NN(); # neural network
+kernel = matern + quad + nn;
+g = CovarianceFunctions.GradientKernel(kernel);
+@time G = gramian(g, x);
+  0.000313 seconds (175 allocations: 56.422 KiB)
+size(G) # G is n*d by n*d
+  (1048576, 1048576)
+@time mul!(b, G, a);
+    3.139411 seconds (8.39 M allocations: 424.829 MiB, 0.47% gc time)"><pre>matern <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">MaternP</span>(<span class="pl-c1">2</span>); <span class="pl-c"><span class="pl-c">#</span> matern</span>
+quad <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">Dot</span>()<span class="pl-k">^</span><span class="pl-c1">2</span>; <span class="pl-c"><span class="pl-c">#</span> second kernel component</span>
+nn <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">NN</span>(); <span class="pl-c"><span class="pl-c">#</span> neural network</span>
+kernel <span class="pl-k">=</span> matern <span class="pl-k">+</span> quad <span class="pl-k">+</span> nn;
+g <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">GradientKernel</span>(kernel);
+<span class="pl-c1">@time</span> G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(g, x);
+  <span class="pl-c1">0.000313</span> seconds (<span class="pl-c1">175</span> allocations<span class="pl-k">:</span> <span class="pl-c1">56.422</span> KiB)
+<span class="pl-c1">size</span>(G) <span class="pl-c"><span class="pl-c">#</span> G is n*d by n*d</span>
+  (<span class="pl-c1">1048576</span>, <span class="pl-c1">1048576</span>)
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, G, a);
+    <span class="pl-c1">3.139411</span> seconds (<span class="pl-c1">8.39</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">424.829</span> MiB, <span class="pl-c1">0.47</span><span class="pl-k">%</span> gc time)</pre></div>
+<p dir="auto">It is possible to hook a costum kernel into CovarianceFunctions.jl's automatic structure derivation engine, by specifying its input type
+using the <code>input_trait</code> function.
+Basic input traits amenable to specializations are <code>IsotropicInput</code>, <code>DotProductInput</code>, and  <code>StationaryLinearFunctionalInput</code>.
+Further transformations and combinations of kernels are also supported, as well as efficient <code>O(d²)</code> operations with certain Hessian kernels, in constrast to the naïve <code>O(d⁴)</code> complexity.
+The main files containing the implementation are src/gradient.jl, src/gradient_algebra.jl, and src/hessian.jl</p>
+<h2 dir="auto"><a id="user-content-hessian-kernels" class="anchor" aria-hidden="true" href="#hessian-kernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Hessian Kernels</h2>
+<p dir="auto">In addition to the special structure for gradient kernels,
+CovarianceFunctions.jl implements a similar structure for kernels arising from Hessian observations, reducing the complexity of multiplying with Hessian kernel matrices from <code>O(n²d⁴)</code> to <code>O(n²d²)</code>.
+The support for Hessian kernels is less comprehensive than for gradient kernels, but includes isotropic and dot product kernels.
+For example,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+using LinearAlgebra
+k = CovarianceFunctions.EQ(); # exponentiated quadratic (RBF) kernel
+h = CovarianceFunctions.HessianKernel(k);
+d, n = 16, 128; # keeping dimension moderate
+x = [randn(d) for _ in 1:n]; # data is vector of vectors
+@time G = gramian(h, x); # instantiating lazy gradient kernel Gramian matrix
+  0.000026 seconds (59 allocations: 54.172 KiB)
+size(G) # G is n*d² by n*d²
+  (32768, 32768)"><pre><span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> LinearAlgebra
+k <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">EQ</span>(); <span class="pl-c"><span class="pl-c">#</span> exponentiated quadratic (RBF) kernel</span>
+h <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">HessianKernel</span>(k);
+d, n <span class="pl-k">=</span> <span class="pl-c1">16</span>, <span class="pl-c1">128</span>; <span class="pl-c"><span class="pl-c">#</span> keeping dimension moderate</span>
+x <span class="pl-k">=</span> [<span class="pl-c1">randn</span>(d) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n]; <span class="pl-c"><span class="pl-c">#</span> data is vector of vectors</span>
+<span class="pl-c1">@time</span> G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(h, x); <span class="pl-c"><span class="pl-c">#</span> instantiating lazy gradient kernel Gramian matrix</span>
+  <span class="pl-c1">0.000026</span> seconds (<span class="pl-c1">59</span> allocations<span class="pl-k">:</span> <span class="pl-c1">54.172</span> KiB)
+<span class="pl-c1">size</span>(G) <span class="pl-c"><span class="pl-c">#</span> G is n*d² by n*d²</span>
+  (<span class="pl-c1">32768</span>, <span class="pl-c1">32768</span>)</pre></div>
+<p dir="auto">MVMs with the Hessian kernel matrix are fast:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="a = randn(n*d^2);
+b = zero(a);
+@time mul!(b, G, a); # multiplying with G is fast
+  0.076744 seconds (12.81 M allocations: 499.100 MiB, 34.14% gc time)"><pre>a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n<span class="pl-k">*</span>d<span class="pl-k">^</span><span class="pl-c1">2</span>);
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a);
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, G, a); <span class="pl-c"><span class="pl-c">#</span> multiplying with G is fast</span>
+  <span class="pl-c1">0.076744</span> seconds (<span class="pl-c1">12.81</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">499.100</span> MiB, <span class="pl-c1">34.14</span><span class="pl-k">%</span> gc time)</pre></div>
+<p dir="auto">This is in contrast with the naïve approach, since even instantiating the Hessian kernel matrix in memory takes orders of magnitude more time and memory:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time M = Matrix(G);
+  5.617745 seconds (1.18 M allocations: 64.722 GiB, 33.33% gc time)"><pre><span class="pl-c1">@time</span> M <span class="pl-k">=</span> <span class="pl-c1">Matrix</span>(G);
+  <span class="pl-c1">5.617745</span> seconds (<span class="pl-c1">1.18</span> M allocations<span class="pl-k">:</span> <span class="pl-c1">64.722</span> GiB, <span class="pl-c1">33.33</span><span class="pl-k">%</span> gc time)</pre></div>
+<p dir="auto">Notably, the multiplication with the Hessian kernel matrix scales linearly in <code>d²</code>, the amount of information gathered per Hessian observation.
+While the implementation scales well, the constants and memory allocations are at this point not as optimized as for the gradient kernel matrices.
+Feel free to reach out if you'd benefit from a further improved implementation of the Hessian kernel, and I'll fast-track it.</p>
+
+<h2 dir="auto"><a id="user-content-sparsification" class="anchor" aria-hidden="true" href="#sparsification"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Sparsification</h2>
+<p dir="auto">Depending on the data distribution, kernel matrices associated with exponentially-decaying kernels can be approximately sparse.
+This is particularly likely in higher dimensions, since the average distance of uniformaly distributed points in e.g. the unit hyper-cube grows with the dimension.
+CovarianceFunctions.jl contains a sparsification algorithm that extends SparseArrays.jl's <code>sparse</code> function,
+guaranteeing a user-defined element-wise accuracy.</p>
+<blockquote>
+<p dir="auto"><g-emoji class="g-emoji" alias="warning" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/26a0.png">⚠️</g-emoji> Sparsification does not guarnatee positive definiteness of the resulting matrices. Special care should be taken when working with this method. We thank <a href="https://www.cs.cornell.edu/~bindel/" rel="nofollow">David Bindel</a> for pointing this out.</p>
+</blockquote>
+<blockquote>
+<p dir="auto"><g-emoji class="g-emoji" alias="warning" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/26a0.png">⚠️</g-emoji> The bottleneck in the computation of the sparse <code>S</code> is NearestNeighbors.jl's <code>inrange</code> function. While in principle the nearest neighbors search based on ball trees is an <code>O(n⋅log(n))</code> operation, the complexity grows with the <em>intrinsic</em> dimension of the data. Consequently, the search is fast for data on a low-dimensional manifold, but a brute-force search could be more efficient for unstructured data in high dimensions. It is possible to further <a href="https://github.com/KristofferC/NearestNeighbors.jl/pull/131" data-hovercard-type="pull_request" data-hovercard-url="/KristofferC/NearestNeighbors.jl/pull/131/hovercard">accelerate the search through parallelization</a>.</p>
+</blockquote>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+using SparseArrays
+
+k = CovarianceFunctions.EQ()
+d, n = 32, 16384;
+X = randn(d, n);
+G = gramian(k, X);
+
+@time S = sparse(G, 1e-6); # sparsification with 1e-6 tolerance
+  7.208343 seconds (407.54 k allocations: 73.094 MiB)"><pre><span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> SparseArrays
+
+k <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">EQ</span>()
+d, n <span class="pl-k">=</span> <span class="pl-c1">32</span>, <span class="pl-c1">16384</span>;
+X <span class="pl-k">=</span> <span class="pl-c1">randn</span>(d, n);
+G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(k, X);
+
+<span class="pl-c1">@time</span> S <span class="pl-k">=</span> <span class="pl-c1">sparse</span>(G, <span class="pl-c1">1e-6</span>); <span class="pl-c"><span class="pl-c">#</span> sparsification with 1e-6 tolerance</span>
+  <span class="pl-c1">7.208343</span> seconds (<span class="pl-c1">407.54</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">73.094</span> MiB)</pre></div>
+<p dir="auto">Looking at the number of non-zeros in <code>S</code>, we see it is highly sparse:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="nnz(S) # number of non-zeros in S
+  594480
+nnz(S) / n^2 # over 99% of entries are sparse
+  0.0022146105766296387"><pre><span class="pl-c1">nnz</span>(S) <span class="pl-c"><span class="pl-c">#</span> number of non-zeros in S</span>
+  <span class="pl-c1">594480</span>
+<span class="pl-c1">nnz</span>(S) <span class="pl-k">/</span> n<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> over 99% of entries are sparse</span>
+  <span class="pl-c1">0.0022146105766296387</span></pre></div>
+<p dir="auto">Subsequent matrix-vector multiplications with <code>S</code> are very fast:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="a = randn(n)
+b = zero(a)
+@time mul!(b, S, a); # sparse multiply
+    0.000451 seconds"><pre>a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n)
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a)
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, S, a); <span class="pl-c"><span class="pl-c">#</span> sparse multiply</span>
+    <span class="pl-c1">0.000451</span> seconds</pre></div>
+<p dir="auto">while the lazy dense multiply takes three orders of magnitude longer:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time mul!(b, G, a); # lazy dense multiply
+  0.949835 seconds (61 allocations: 5.594 KiB)"><pre><span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, G, a); <span class="pl-c"><span class="pl-c">#</span> lazy dense multiply</span>
+  <span class="pl-c1">0.949835</span> seconds (<span class="pl-c1">61</span> allocations<span class="pl-k">:</span> <span class="pl-c1">5.594</span> KiB)</pre></div>
+<p dir="auto">Note that the sparsification in this case takes as much time as 7 lazy dense multiplications, and would therefore break even quickly if an iterative method is used.</p>
+<h2 dir="auto"><a id="user-content-barnes-hut" class="anchor" aria-hidden="true" href="#barnes-hut"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Barnes-Hut</h2>
+<p dir="auto">The Barnes-Hut algorithm has its origins in accelerating gravity simulutations, but a variant of it can be applied to kernel matrices arising from more general kernels,
+allowing for an approximate matrix-vector multiply in <code>O(n⋅log(n)⋅d)</code> operations.
+CovarianceFunctions.jl contains the <code>BarnesHutFactorization</code> structure whose constructor can be called on a <code>Gramian</code> matrix and applies the fast transform whenever <code>*</code> or <code>mul!</code> is called.</p>
+<blockquote>
+<p dir="auto"><g-emoji class="g-emoji" alias="warning" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/26a0.png">⚠️</g-emoji> Similar to the fast sparsification above, the Barnes-Hut algorithm relies on ball trees to summarize interactions between clusters of data points. While this is guaranteed to be fast for low-dimensional (<code>d≤3</code>) data, the complexity of the approach increases with the <em>intrinsic</em> dimension of the data.</p>
+</blockquote>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CovarianceFunctions
+using LinearAlgebra
+k = CovarianceFunctions.EQ();
+
+d, n = 2, 65536;
+X = randn(d, n);
+G = gramian(k, X);
+@time F = CovarianceFunctions.BarnesHutFactorization(G, θ = 1/2);
+ 0.076532 seconds (720.93 k allocations: 40.189 MiB, 8.65% gc time)"><pre><span class="pl-k">using</span> CovarianceFunctions
+<span class="pl-k">using</span> LinearAlgebra
+k <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">EQ</span>();
+
+d, n <span class="pl-k">=</span> <span class="pl-c1">2</span>, <span class="pl-c1">65536</span>;
+X <span class="pl-k">=</span> <span class="pl-c1">randn</span>(d, n);
+G <span class="pl-k">=</span> <span class="pl-c1">gramian</span>(k, X);
+<span class="pl-c1">@time</span> F <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">BarnesHutFactorization</span>(G, θ <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span>);
+ <span class="pl-c1">0.076532</span> seconds (<span class="pl-c1">720.93</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">40.189</span> MiB, <span class="pl-c1">8.65</span><span class="pl-k">%</span> gc time)</pre></div>
+<p dir="auto">Notably, constructing <code>F</code> computes a Ball tree structure over the data <code>X</code>, which allocates memory, but this is an <code>O(n⋅log(n)⋅d)</code> operation.
+The <code>θ ∈ [0, 1]</code> parameter trades off accuracy with speed.
+For <code>θ = 0</code>, multiplying with <code>F</code> is exact but <code>O(n²)</code>.
+Subsequent multiplications with <code>F</code> are fast:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="a = randn(n);
+b = zero(a);
+@time mul!(b, F, a);
+  0.083348 seconds (209.54 k allocations: 15.712 MiB)"><pre>a <span class="pl-k">=</span> <span class="pl-c1">randn</span>(n);
+b <span class="pl-k">=</span> <span class="pl-c1">zero</span>(a);
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, F, a);
+  <span class="pl-c1">0.083348</span> seconds (<span class="pl-c1">209.54</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">15.712</span> MiB)</pre></div>
+<p dir="auto">whereas for <code>n</code> of this order of magnitude, the lazy dense multiply takes much longer:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time mul!(b, G, a);
+  4.938038 seconds (64 allocations: 5.688 KiB)"><pre><span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, G, a);
+  <span class="pl-c1">4.938038</span> seconds (<span class="pl-c1">64</span> allocations<span class="pl-k">:</span> <span class="pl-c1">5.688</span> KiB)</pre></div>
+<p dir="auto">For <code>θ = 1/2</code>, we get around 2 digits of accuracy:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="norm(G*a-F*a) / norm(G*a)
+  0.011654351196539835"><pre><span class="pl-c1">norm</span>(G<span class="pl-k">*</span>a<span class="pl-k">-</span>F<span class="pl-k">*</span>a) <span class="pl-k">/</span> <span class="pl-c1">norm</span>(G<span class="pl-k">*</span>a)
+  <span class="pl-c1">0.011654351196539835</span></pre></div>
+<p dir="auto">By reducing <code>θ</code>, we can increase the accurary at the expense of runtime:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="F = CovarianceFunctions.BarnesHutFactorization(G, θ = 1/4); # setting θ = 1/4 instead of 1/2 as above
+@time mul!(b, F, a);
+  0.223038 seconds (209.67 k allocations: 15.716 MiB)
+norm(G*a-F*a)/norm(G*a)
+  0.004286540849728051"><pre>F <span class="pl-k">=</span> CovarianceFunctions<span class="pl-k">.</span><span class="pl-c1">BarnesHutFactorization</span>(G, θ <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">4</span>); <span class="pl-c"><span class="pl-c">#</span> setting θ = 1/4 instead of 1/2 as above</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">mul!</span>(b, F, a);
+  <span class="pl-c1">0.223038</span> seconds (<span class="pl-c1">209.67</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">15.716</span> MiB)
+<span class="pl-c1">norm</span>(G<span class="pl-k">*</span>a<span class="pl-k">-</span>F<span class="pl-k">*</span>a)<span class="pl-k">/</span><span class="pl-c1">norm</span>(G<span class="pl-k">*</span>a)
+  <span class="pl-c1">0.004286540849728051</span></pre></div>
+
+</article></div>

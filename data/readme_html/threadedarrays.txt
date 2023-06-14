@@ -1,0 +1,114 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-threadedarrays-a-proof-of-concept-implementation-for-easy-parallelism-injection" class="anchor" aria-hidden="true" href="#threadedarrays-a-proof-of-concept-implementation-for-easy-parallelism-injection"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ThreadedArrays: A proof-of-concept implementation for easy parallelism injection</h1>
+<p dir="auto"><strong>IMPORTANT</strong>: This approach is <a href="#limitations">broken</a>.  However, it may be useful for
+limited cases until a more principled approach like
+<a href="https://github.com/JuliaFolds/ParallelMagics.jl">ParallelMagics.jl</a> is available.</p>
+<p dir="auto">ThreadedArrays.jl provides a way to inject parallelism in the code that is already written
+and is happened to be parallelizable.  It uses the "vanilla" multiple dispatch mechanism to
+route certain <code>Base</code> APIs (e.g., <code>sum</code>) to use JuliaFolds-based implementation.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using ThreadedArrays  # exports ThreadedArray
+
+julia&gt; a = [1:2^20;];
+
+julia&gt; b = ThreadedArray(a);
+
+julia&gt; using 0.21667559252431068
+
+julia&gt; Threads.nthreads()
+4
+
+julia&gt; @btime sum(sin, a);
+  22.324 ms (1 allocation: 16 bytes)
+
+julia&gt; @btime sum(sin, b);
+  5.632 ms (25 allocations: 1.70 KiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ThreadedArrays  <span class="pl-c"><span class="pl-c">#</span> exports ThreadedArray</span>
+
+julia<span class="pl-k">&gt;</span> a <span class="pl-k">=</span> [<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">20</span>;];
+
+julia<span class="pl-k">&gt;</span> b <span class="pl-k">=</span> <span class="pl-c1">ThreadedArray</span>(a);
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> <span class="pl-c1">0.21667559252431068</span>
+
+julia<span class="pl-k">&gt;</span> Threads<span class="pl-k">.</span><span class="pl-c1">nthreads</span>()
+<span class="pl-c1">4</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(sin, a);
+  <span class="pl-c1">22.324</span> ms (<span class="pl-c1">1</span> allocation<span class="pl-k">:</span> <span class="pl-c1">16</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">sum</span>(sin, b);
+  <span class="pl-c1">5.632</span> ms (<span class="pl-c1">25</span> allocations<span class="pl-k">:</span> <span class="pl-c1">1.70</span> KiB)</pre></div>
+<h2 dir="auto"><a id="user-content-apis-and-usage" class="anchor" aria-hidden="true" href="#apis-and-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>APIs and usage</h2>
+<p dir="auto">Following Base APIs are supports. In addition to the preconditions required by the standard
+APIs, <strong>the user is responsible for verifying that the user-specified functions (denoted by
+<code>f</code> and <code>op</code> below) are safe to be invoked on multiple tasks without any synchronizations</strong>
+(e.g., they must be data-race-free).</p>
+<ul dir="auto">
+<li><code>map(f, xs::ThreadedArray)</code></li>
+<li><code>reduce(op, xs::ThreadedArray; init)</code></li>
+<li><code>mapreduce(f, op, xs::ThreadedArray; init)</code></li>
+<li><code>all([f], xs::ThreadedArray; init)</code></li>
+<li><code>any([f], xs::ThreadedArray; init)</code></li>
+<li><code>count([f], xs::ThreadedArray; init)</code></li>
+<li><code>maximum([f], xs::ThreadedArray; init)</code></li>
+<li><code>minimum([f], xs::ThreadedArray; init)</code></li>
+<li><code>extrema([f], xs::ThreadedArray; init)</code></li>
+<li><code>findall([f], xs::ThreadedArray; init)</code></li>
+<li><code>findfirst([f], xs::ThreadedArray; init)</code></li>
+<li><code>findlast([f], xs::ThreadedArray; init)</code></li>
+<li><code>maximum([f], xs::ThreadedArray; init)</code></li>
+<li><code>minimum([f], xs::ThreadedArray; init)</code></li>
+<li><code>findmax([f], xs::ThreadedArray; init)</code></li>
+<li><code>findmin([f], xs::ThreadedArray; init)</code></li>
+<li><code>argmax([f], xs::ThreadedArray; init)</code></li>
+<li><code>argmin([f], xs::ThreadedArray; init)</code></li>
+<li><code>prod([f], xs::ThreadedArray; init)</code></li>
+<li><code>sum([f], xs::ThreadedArray; init)</code></li>
+<li><code>unique([f], xs::ThreadedArray; init)</code></li>
+<li><code>issorted(xs::ThreadedArray)</code></li>
+<li><code>cumsum(xs::ThreadedArray)</code></li>
+<li><code>cumsum!(ys, xs::ThreadedArray)</code></li>
+<li><code>cumprod(xs::ThreadedArray)</code></li>
+<li><code>cumprod!(ys, xs::ThreadedArray)</code></li>
+<li><code>accumulate(op, xs::ThreadedArray; init)</code>: <code>(op, init)</code> must be a monoid</li>
+<li><code>accumulate!(op, ys, xs::ThreadedArray; init)</code>: <code>(op, init)</code> must be a monoid</li>
+<li><code>Set(xs::ThreadedArray)</code></li>
+<li><code>Dict(xs::ThreadedArray)</code></li>
+</ul>
+<h2 dir="auto"><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Limitations</h2>
+<h3 dir="auto"><a id="user-content-limitation-in-safety-guarantee-and-usability" class="anchor" aria-hidden="true" href="#limitation-in-safety-guarantee-and-usability"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Limitation in safety guarantee and usability</h3>
+<p dir="auto">ThreadedArrays.jl is safe to use provided that the user (i.e., the programmer writing the
+code that constructs <code>ThreadedArray</code>s) writes and reviews the code that invokes all APIs
+supported by ThreadedArrays.  Passing a <code>ThreadedArray</code> to a library code is fundamentally
+unsafe in general since the parallelizability is an implementation detail.</p>
+<p dir="auto">Interestingly, this also has an implication in the SemVer-based code compatibility
+reasoning.  If ThreadedArrays.jl is released (hypothetically), it has to consider that the
+pure <em>addition</em> of new implementation (dispatch) of is a <em>breaking</em> change.  This is because
+the users may be relying on non-parallel semantics of a Base API that is not parallelized in
+an old version of ThreadedArrays.jl.  If a new implementation is added, all users must go
+through their code base to check that the APIs with the new implementation can support
+parallelized execution.  This is counter-intuitive from the usual point-of-view of
+compatibility in which addition of new APIs is not considered a breaking change.</p>
+<h3 dir="auto"><a id="user-content-limitation-in-vanilla-method-dispatch" class="anchor" aria-hidden="true" href="#limitation-in-vanilla-method-dispatch"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Limitation in "vanilla" method dispatch</h3>
+<p dir="auto">ThreadedArrays.jl only supports very limited set of data-parallel processing.  For example,
+unfortunately, it cannot support a simple composition of data parallel processing such as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Given:
+xs::ThreadedArray{Int}
+
+sum(gcd(x, 42) for x in xs if isodd(x))"><pre><span class="pl-c"><span class="pl-c">#</span> Given:</span>
+xs<span class="pl-k">::</span><span class="pl-c1">ThreadedArray{Int}</span>
+
+<span class="pl-c1">sum</span>(<span class="pl-c1">gcd</span>(x, <span class="pl-c1">42</span>) <span class="pl-k">for</span> x <span class="pl-k">in</span> xs <span class="pl-k">if</span> <span class="pl-c1">isodd</span>(x))</pre></div>
+<p dir="auto">This is because <code>Base</code>'s dispatch pipeline is not designed to support.  Furthermore, it is
+semantically unclear what should happen when <code>ThreadedArray</code> is a part of a "composite" data
+structures such as <code>zip</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Given:
+a::AbstractArray
+b::ThreadedArray
+
+sum(((x, y),) -&gt; x * y, zip(a, b))
+mapreduce(*, +, a, b)  # equivalent"><pre><span class="pl-c"><span class="pl-c">#</span> Given:</span>
+a<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>
+b<span class="pl-k">::</span><span class="pl-c1">ThreadedArray</span>
+
+<span class="pl-c1">sum</span>(((x, y),) <span class="pl-k">-&gt;</span> x <span class="pl-k">*</span> y, <span class="pl-c1">zip</span>(a, b))
+<span class="pl-c1">mapreduce</span>(<span class="pl-k">*</span>, <span class="pl-k">+</span>, a, b)  <span class="pl-c"><span class="pl-c">#</span> equivalent</span></pre></div>
+</article></div>

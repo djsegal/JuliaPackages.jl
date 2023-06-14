@@ -1,0 +1,371 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-sortmark" class="anchor" aria-hidden="true" href="#sortmark"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>SortMark</h1>
+
+
+<p dir="auto"><a href="https://github.com/LilithHafner/SortMark.jl/actions"><img src="https://github.com/LilithHafner/SortMark.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/LilithHafner/SortMark.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/9add6476a11e01ebb3fbbf2d0c350111255022faee88a6f2d70c46da5368c094/68747470733a2f2f636f6465636f762e696f2f67682f4c696c6974684861666e65722f536f72744d61726b2e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/LilithHafner/SortMark.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">A package for efficiently benchmarking and testing sorting algorithms under a wide variety of conditions.</p>
+<p dir="auto">Example usage:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="]add https://github.com/LilithHafner/SortMark.jl
+using SortMark
+
+df = make_df(); #wow, what's goin on here? I whish this package were better documented.
+compute!(df); #this errors... what gives?
+#=
+6s, Progress:   7%|███▉                                                  |  ETA: 0:00:11
+Failed test set stored as SortMark.fail. Reproduce it's error with reproduce().
+ERROR: AssertionError: issorted(output, order = order)
+Stacktrace:
+ [1] log_error!(row::DataFrames.DataFrameRow{DataFrames.DataFrame, DataFrames.Index}, exception::AssertionError, alg::Base.Sort.QuickSortAlg, input::Vector{UInt128}, fail_fast::Bool)
+   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:238
+ [2] trial(row::DataFrames.DataFrameRow{DataFrames.DataFrame, DataFrames.Index}, algs::Vector{Base.Sort.Algorithm}, inputs::Vector{Vector{UInt128}}, fail_fast::Bool)
+   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:205
+ [3] compute!(row::DataFrames.DataFrameRow{DataFrames.DataFrame, DataFrames.Index}, fail_fast::Bool)
+   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:166
+ [4] macro expansion
+   @ ~/.julia/dev/SortMark/src/SortMark.jl:109 [inlined]
+ [5] macro expansion
+   @ ~/.julia/packages/ProgressMeter/Vf8un/src/ProgressMeter.jl:940 [inlined]
+ [6] compute!(df::DataFrames.DataFrame; verbose::Bool, fail_fast::Bool)
+   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:108
+ [7] compute!(df::DataFrames.DataFrame)
+   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:94
+ [8] top-level scope
+   @ none:1
+=#
+# And what's that fancily colored text above the error message?
+# hmm... &quot;Failed test set stored as SortMark.fail&quot;
+SortMark.fail
+#=
+DataFrameRow
+ Row │ ContainerType      Type    len    order                              source_key     ⋯
+     │ Type…              Type    Int64  Ordering…                          Symbol         ⋯
+─────┼──────────────────────────────────────────────────────────────────────────────────────
+ 765 │ Vector{T} where T  UInt64   3162  ReverseOrdering{ForwardOrdering}…  small_positive ⋯
+                                                                           8 columns omitted
+=#
+#So... I see we've got a problem for sorting arrays of 3162 small_positive unsigned 64-bit 
+#integers into reverse order, whatever that means... Seems highly unlikely. Here, look:
+sort(rand(UInt64(0):UInt64(10), 3162), rev=true)
+#=
+3162-element Vector{UInt64}:
+ 0x0000000000000004
+ 0x0000000000000002
+ 0x0000000000000005
+ 0x0000000000000007
+ 0x0000000000000005
+ 0x0000000000000003
+ 0x0000000000000003
+ 0x0000000000000007
+                  ⋮
+ 0x0000000000000006
+ 0x000000000000000a
+ 0x0000000000000001
+ 0x0000000000000000
+ 0x0000000000000006
+ 0x0000000000000007
+ 0x0000000000000005
+=#
+#wait a second, what the *** is happening??
+#turns out this specific corner case for sorting is broken in julia. See https://github.com/JuliaLang/julia/pull/42718.
+
+#coolbeans, wow. It runs tests. But I don't care about this edge case, let me start benchmarking!
+compute!(df, fail_fast=false);
+julia&gt; compute!(df, fail_fast=false);
+#=
+6s, Progress: 100%|█████████████████████████████████████████████████| Time: 0:00:08
+ERROR: Some tests did not pass: 237880 passed, 0 failed, 64 errored.
+Base.Sort.MergeSortAlg() and Base.Sort.QuickSortAlg() (unstable) passed 237880 tests
+spanning 1 container type, 15 element types, 11 lengths up to 100000, 2 orders, and 4
+distributions in 9s. 3s (37%) spent in benchmarks.
+SortMark.fail is an example of a failed set of tests. Reproduce it's error with reproduce().
+=#
+# Great! Errors. I love errors. Let's ignore them. Moving on...
+stat!(df); #what a generic name, what is going on here?
+df.pvalue
+#=
+1298-element Vector{Union{Missing, Float64}}:
+ 0.07382948536988579
+ 0.08300533865888364
+ 0.17255705413564795
+ 0.043603017750311335
+ ⋮
+ 0.1296444186512252
+ 0.2606328408111021
+ 0.13892181597945655
+ 0.21527141177932066
+ =#
+#we are comparing the runtime of two different soring algorithms:
+df.algs[1]
+#=
+2-element Vector{Base.Sort.Algorithm}:
+ Base.Sort.MergeSortAlg()
+ Base.Sort.QuickSortAlg()
+=#
+#and those are the p-values indicating wheather we have a statistically significant difference.
+#those pvalues are too high for my analysis. Let's get more data.
+df.seconds .*= 10; #This will also make it take longer, oh well; more time to oggle at the beautiful loading bar courtesy of ProgressMeter.jl
+compute!(df, fail_fast=false); # fun fact, the old data is still here. We just add more! If you want to clear the data, make a new df! (later there might be a better way)
+#=
+65s, Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████| Time: 0:01:08
+ERROR: Some tests did not pass: 2874132 passed, 0 failed, 780 errored.
+Base.Sort.MergeSortAlg() and Base.Sort.QuickSortAlg() (unstable) passed 2874132 tests spanning 1 container type, 15 element types, 11 lengths up to
+100000, 2 orders, and 4 distributions in 69s. 23s (33%) spent in benchmarks.
+SortMark.fail is an example of a failed set of tests. Reproduce it's error with reproduce().
+=#
+#Can we take a moment to look at the numbers that just printed, that's alot of tests running! and over quite a range of inputs. Only 33% of time spent benchmarking, that doesn't sound good. When I tried this with BenchmarkTools, though, t = @timed @benchmark sort(x) setup=(x=rand(10_000)); sum(t.value.times*1e-9)/t.time gives me a similar 37%.
+#Back to the data. We have to recompute stats
+stat!(df);
+df.pvalue
+#=
+1298-element Vector{Float64}:
+ 1.038512836886463e-6
+ 1.4407708601335978e-12
+ 0.00031705574988325153
+ 2.1261920179458133e-25
+ ⋮
+ 0.16674400469382414
+ 0.2926325656250292
+ 0.2092427712164047
+ 0.25919129227369314
+=#
+# Okay some of those p-values are quite low.
+mean(df.pvalue .&lt; .05)
+# 0.8828967642526965
+# and most of them are significant. What is the speed ratio?
+df.point_estimate
+#=
+1298-element Vector{Float64}:
+ 1.520647201551295
+ 1.4571719750761662
+ 1.3179061226433113
+ 1.436741386153265
+ ⋮
+ 1.012936243595496
+ 1.0125157172530284
+ 0.9624269936973555
+ 1.0199318692241786
+ =#
+ #looks like that ratio is either 1.5 or 1? who knows? and what's the certianty?
+ df.confint
+ #=
+ 1298-element Vector{Tuple{Float64, Float64}}:
+ (1.4132192824122347, 1.636241410206905)
+ (1.4028173986436836, 1.513632613197085)
+ (1.1469008134953327, 1.5144086809105701)
+ (1.400298646448291, 1.4741325473114575)
+ ⋮
+ (0.994382971723014, 1.0318356838024756)
+ (0.9889886111508599, 1.036602511015198)
+ (0.9052958042424497, 1.0231636044888415)
+ (0.9849999662469475, 1.0561025923916885)
+ =#
+ #Better. Is MergeSort ever faster?
+minimum(last.(df.confint))
+# 0.975616697789511 Apparently, but probably not by a huge amount. Let's investigate.
+df[minimum(last.(df.confint)) .== last.(df.confint), :]
+#=
+ 1×17 DataFrame
+ Row │ ContainerType      Type  len    order              source_key  source    algs                            ⋯
+     │ Type…              Type  Int64  Ordering…          Symbol      Function  Array…                          ⋯
+─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Vector{T} where T  Bool     10  ForwardOrdering()  simple      #1        Base.Sort.Algorithm[MergeSortAl ⋯
+                                                                                               11 columns omitted
+=#
+#Sorting 10 Bools... this is incredibly bizzare. Why would anyone do this? Why would we use comparison sorting?
+#What even is the p-value?
+findfirst(minimum(last.(df.confint)) .== last.(df.confint))
+#1229
+df.pvalues
+#0.009056184456237987
+#See, that's only .01, and we were p-hacking. We'll just repeat a more fucused study with fresh data:
+empty!(df.data[1229]);
+df.seconds[1229] = 1
+compute!(df[1229, :]);
+df.confint[1229]
+#(0.97468593850494, 0.9843292697105394)
+df.pvalue[1229]
+#1.971128265512963e-16
+#Hmm... something is afoot...
+#etc. etc."><pre>]add https<span class="pl-k">:</span><span class="pl-k">//</span>github<span class="pl-k">.</span>com<span class="pl-k">/</span>LilithHafner<span class="pl-k">/</span>SortMark<span class="pl-k">.</span>jl
+<span class="pl-k">using</span> SortMark
+
+df <span class="pl-k">=</span> <span class="pl-c1">make_df</span>(); <span class="pl-c"><span class="pl-c">#</span>wow, what's goin on here? I whish this package were better documented.</span>
+<span class="pl-c1">compute!</span>(df); <span class="pl-c"><span class="pl-c">#</span>this errors... what gives?</span>
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">6s, Progress:   7%|███▉                                                  |  ETA: 0:00:11</span>
+<span class="pl-c">Failed test set stored as SortMark.fail. Reproduce it's error with reproduce().</span>
+<span class="pl-c">ERROR: AssertionError: issorted(output, order = order)</span>
+<span class="pl-c">Stacktrace:</span>
+<span class="pl-c"> [1] log_error!(row::DataFrames.DataFrameRow{DataFrames.DataFrame, DataFrames.Index}, exception::AssertionError, alg::Base.Sort.QuickSortAlg, input::Vector{UInt128}, fail_fast::Bool)</span>
+<span class="pl-c">   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:238</span>
+<span class="pl-c"> [2] trial(row::DataFrames.DataFrameRow{DataFrames.DataFrame, DataFrames.Index}, algs::Vector{Base.Sort.Algorithm}, inputs::Vector{Vector{UInt128}}, fail_fast::Bool)</span>
+<span class="pl-c">   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:205</span>
+<span class="pl-c"> [3] compute!(row::DataFrames.DataFrameRow{DataFrames.DataFrame, DataFrames.Index}, fail_fast::Bool)</span>
+<span class="pl-c">   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:166</span>
+<span class="pl-c"> [4] macro expansion</span>
+<span class="pl-c">   @ ~/.julia/dev/SortMark/src/SortMark.jl:109 [inlined]</span>
+<span class="pl-c"> [5] macro expansion</span>
+<span class="pl-c">   @ ~/.julia/packages/ProgressMeter/Vf8un/src/ProgressMeter.jl:940 [inlined]</span>
+<span class="pl-c"> [6] compute!(df::DataFrames.DataFrame; verbose::Bool, fail_fast::Bool)</span>
+<span class="pl-c">   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:108</span>
+<span class="pl-c"> [7] compute!(df::DataFrames.DataFrame)</span>
+<span class="pl-c">   @ SortMark ~/.julia/dev/SortMark/src/SortMark.jl:94</span>
+<span class="pl-c"> [8] top-level scope</span>
+<span class="pl-c">   @ none:1</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span> And what's that fancily colored text above the error message?</span>
+<span class="pl-c"><span class="pl-c">#</span> hmm... "Failed test set stored as SortMark.fail"</span>
+SortMark<span class="pl-k">.</span>fail
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">DataFrameRow</span>
+<span class="pl-c"> Row │ ContainerType      Type    len    order                              source_key     ⋯</span>
+<span class="pl-c">     │ Type…              Type    Int64  Ordering…                          Symbol         ⋯</span>
+<span class="pl-c">─────┼──────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="pl-c"> 765 │ Vector{T} where T  UInt64   3162  ReverseOrdering{ForwardOrdering}…  small_positive ⋯</span>
+<span class="pl-c">                                                                           8 columns omitted</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span>So... I see we've got a problem for sorting arrays of 3162 small_positive unsigned 64-bit </span>
+<span class="pl-c"><span class="pl-c">#</span>integers into reverse order, whatever that means... Seems highly unlikely. Here, look:</span>
+<span class="pl-c1">sort</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">UInt64</span>(<span class="pl-c1">0</span>)<span class="pl-k">:</span><span class="pl-c1">UInt64</span>(<span class="pl-c1">10</span>), <span class="pl-c1">3162</span>), rev<span class="pl-k">=</span><span class="pl-c1">true</span>)
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">3162-element Vector{UInt64}:</span>
+<span class="pl-c"> 0x0000000000000004</span>
+<span class="pl-c"> 0x0000000000000002</span>
+<span class="pl-c"> 0x0000000000000005</span>
+<span class="pl-c"> 0x0000000000000007</span>
+<span class="pl-c"> 0x0000000000000005</span>
+<span class="pl-c"> 0x0000000000000003</span>
+<span class="pl-c"> 0x0000000000000003</span>
+<span class="pl-c"> 0x0000000000000007</span>
+<span class="pl-c">                  ⋮</span>
+<span class="pl-c"> 0x0000000000000006</span>
+<span class="pl-c"> 0x000000000000000a</span>
+<span class="pl-c"> 0x0000000000000001</span>
+<span class="pl-c"> 0x0000000000000000</span>
+<span class="pl-c"> 0x0000000000000006</span>
+<span class="pl-c"> 0x0000000000000007</span>
+<span class="pl-c"> 0x0000000000000005</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span>wait a second, what the *** is happening??</span>
+<span class="pl-c"><span class="pl-c">#</span>turns out this specific corner case for sorting is broken in julia. See https://github.com/JuliaLang/julia/pull/42718.</span>
+
+<span class="pl-c"><span class="pl-c">#</span>coolbeans, wow. It runs tests. But I don't care about this edge case, let me start benchmarking!</span>
+<span class="pl-c1">compute!</span>(df, fail_fast<span class="pl-k">=</span><span class="pl-c1">false</span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">compute!</span>(df, fail_fast<span class="pl-k">=</span><span class="pl-c1">false</span>);
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">6s, Progress: 100%|█████████████████████████████████████████████████| Time: 0:00:08</span>
+<span class="pl-c">ERROR: Some tests did not pass: 237880 passed, 0 failed, 64 errored.</span>
+<span class="pl-c">Base.Sort.MergeSortAlg() and Base.Sort.QuickSortAlg() (unstable) passed 237880 tests</span>
+<span class="pl-c">spanning 1 container type, 15 element types, 11 lengths up to 100000, 2 orders, and 4</span>
+<span class="pl-c">distributions in 9s. 3s (37%) spent in benchmarks.</span>
+<span class="pl-c">SortMark.fail is an example of a failed set of tests. Reproduce it's error with reproduce().</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span> Great! Errors. I love errors. Let's ignore them. Moving on...</span>
+<span class="pl-c1">stat!</span>(df); <span class="pl-c"><span class="pl-c">#</span>what a generic name, what is going on here?</span>
+df<span class="pl-k">.</span>pvalue
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">1298-element Vector{Union{Missing, Float64}}:</span>
+<span class="pl-c"> 0.07382948536988579</span>
+<span class="pl-c"> 0.08300533865888364</span>
+<span class="pl-c"> 0.17255705413564795</span>
+<span class="pl-c"> 0.043603017750311335</span>
+<span class="pl-c"> ⋮</span>
+<span class="pl-c"> 0.1296444186512252</span>
+<span class="pl-c"> 0.2606328408111021</span>
+<span class="pl-c"> 0.13892181597945655</span>
+<span class="pl-c"> 0.21527141177932066</span>
+<span class="pl-c"> <span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span>we are comparing the runtime of two different soring algorithms:</span>
+df<span class="pl-k">.</span>algs[<span class="pl-c1">1</span>]
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">2-element Vector{Base.Sort.Algorithm}:</span>
+<span class="pl-c"> Base.Sort.MergeSortAlg()</span>
+<span class="pl-c"> Base.Sort.QuickSortAlg()</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span>and those are the p-values indicating wheather we have a statistically significant difference.</span>
+<span class="pl-c"><span class="pl-c">#</span>those pvalues are too high for my analysis. Let's get more data.</span>
+df<span class="pl-k">.</span>seconds <span class="pl-k">.*=</span> <span class="pl-c1">10</span>; <span class="pl-c"><span class="pl-c">#</span>This will also make it take longer, oh well; more time to oggle at the beautiful loading bar courtesy of ProgressMeter.jl</span>
+<span class="pl-c1">compute!</span>(df, fail_fast<span class="pl-k">=</span><span class="pl-c1">false</span>); <span class="pl-c"><span class="pl-c">#</span> fun fact, the old data is still here. We just add more! If you want to clear the data, make a new df! (later there might be a better way)</span>
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">65s, Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████| Time: 0:01:08</span>
+<span class="pl-c">ERROR: Some tests did not pass: 2874132 passed, 0 failed, 780 errored.</span>
+<span class="pl-c">Base.Sort.MergeSortAlg() and Base.Sort.QuickSortAlg() (unstable) passed 2874132 tests spanning 1 container type, 15 element types, 11 lengths up to</span>
+<span class="pl-c">100000, 2 orders, and 4 distributions in 69s. 23s (33%) spent in benchmarks.</span>
+<span class="pl-c">SortMark.fail is an example of a failed set of tests. Reproduce it's error with reproduce().</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span>Can we take a moment to look at the numbers that just printed, that's alot of tests running! and over quite a range of inputs. Only 33% of time spent benchmarking, that doesn't sound good. When I tried this with BenchmarkTools, though, t = @timed @benchmark sort(x) setup=(x=rand(10_000)); sum(t.value.times*1e-9)/t.time gives me a similar 37%.</span>
+<span class="pl-c"><span class="pl-c">#</span>Back to the data. We have to recompute stats</span>
+<span class="pl-c1">stat!</span>(df);
+df<span class="pl-k">.</span>pvalue
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">1298-element Vector{Float64}:</span>
+<span class="pl-c"> 1.038512836886463e-6</span>
+<span class="pl-c"> 1.4407708601335978e-12</span>
+<span class="pl-c"> 0.00031705574988325153</span>
+<span class="pl-c"> 2.1261920179458133e-25</span>
+<span class="pl-c"> ⋮</span>
+<span class="pl-c"> 0.16674400469382414</span>
+<span class="pl-c"> 0.2926325656250292</span>
+<span class="pl-c"> 0.2092427712164047</span>
+<span class="pl-c"> 0.25919129227369314</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span> Okay some of those p-values are quite low.</span>
+<span class="pl-c1">mean</span>(df<span class="pl-k">.</span>pvalue <span class="pl-k">.&lt;</span> .<span class="pl-c1">05</span>)
+<span class="pl-c"><span class="pl-c">#</span> 0.8828967642526965</span>
+<span class="pl-c"><span class="pl-c">#</span> and most of them are significant. What is the speed ratio?</span>
+df<span class="pl-k">.</span>point_estimate
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c">1298-element Vector{Float64}:</span>
+<span class="pl-c"> 1.520647201551295</span>
+<span class="pl-c"> 1.4571719750761662</span>
+<span class="pl-c"> 1.3179061226433113</span>
+<span class="pl-c"> 1.436741386153265</span>
+<span class="pl-c"> ⋮</span>
+<span class="pl-c"> 1.012936243595496</span>
+<span class="pl-c"> 1.0125157172530284</span>
+<span class="pl-c"> 0.9624269936973555</span>
+<span class="pl-c"> 1.0199318692241786</span>
+<span class="pl-c"> <span class="pl-c">=#</span></span>
+ <span class="pl-c"><span class="pl-c">#</span>looks like that ratio is either 1.5 or 1? who knows? and what's the certianty?</span>
+ df<span class="pl-k">.</span>confint
+ <span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c"> 1298-element Vector{Tuple{Float64, Float64}}:</span>
+<span class="pl-c"> (1.4132192824122347, 1.636241410206905)</span>
+<span class="pl-c"> (1.4028173986436836, 1.513632613197085)</span>
+<span class="pl-c"> (1.1469008134953327, 1.5144086809105701)</span>
+<span class="pl-c"> (1.400298646448291, 1.4741325473114575)</span>
+<span class="pl-c"> ⋮</span>
+<span class="pl-c"> (0.994382971723014, 1.0318356838024756)</span>
+<span class="pl-c"> (0.9889886111508599, 1.036602511015198)</span>
+<span class="pl-c"> (0.9052958042424497, 1.0231636044888415)</span>
+<span class="pl-c"> (0.9849999662469475, 1.0561025923916885)</span>
+<span class="pl-c"> <span class="pl-c">=#</span></span>
+ <span class="pl-c"><span class="pl-c">#</span>Better. Is MergeSort ever faster?</span>
+<span class="pl-c1">minimum</span>(<span class="pl-c1">last</span>.(df<span class="pl-k">.</span>confint))
+<span class="pl-c"><span class="pl-c">#</span> 0.975616697789511 Apparently, but probably not by a huge amount. Let's investigate.</span>
+df[<span class="pl-c1">minimum</span>(<span class="pl-c1">last</span>.(df<span class="pl-k">.</span>confint)) <span class="pl-k">.==</span> <span class="pl-c1">last</span>.(df<span class="pl-k">.</span>confint), :]
+<span class="pl-c"><span class="pl-c">#=</span></span>
+<span class="pl-c"> 1×17 DataFrame</span>
+<span class="pl-c"> Row │ ContainerType      Type  len    order              source_key  source    algs                            ⋯</span>
+<span class="pl-c">     │ Type…              Type  Int64  Ordering…          Symbol      Function  Array…                          ⋯</span>
+<span class="pl-c">─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="pl-c">   1 │ Vector{T} where T  Bool     10  ForwardOrdering()  simple      #1        Base.Sort.Algorithm[MergeSortAl ⋯</span>
+<span class="pl-c">                                                                                               11 columns omitted</span>
+<span class="pl-c"><span class="pl-c">=#</span></span>
+<span class="pl-c"><span class="pl-c">#</span>Sorting 10 Bools... this is incredibly bizzare. Why would anyone do this? Why would we use comparison sorting?</span>
+<span class="pl-c"><span class="pl-c">#</span>What even is the p-value?</span>
+<span class="pl-c1">findfirst</span>(<span class="pl-c1">minimum</span>(<span class="pl-c1">last</span>.(df<span class="pl-k">.</span>confint)) <span class="pl-k">.==</span> <span class="pl-c1">last</span>.(df<span class="pl-k">.</span>confint))
+<span class="pl-c"><span class="pl-c">#</span>1229</span>
+df<span class="pl-k">.</span>pvalues
+<span class="pl-c"><span class="pl-c">#</span>0.009056184456237987</span>
+<span class="pl-c"><span class="pl-c">#</span>See, that's only .01, and we were p-hacking. We'll just repeat a more fucused study with fresh data:</span>
+<span class="pl-c1">empty!</span>(df<span class="pl-k">.</span>data[<span class="pl-c1">1229</span>]);
+df<span class="pl-k">.</span>seconds[<span class="pl-c1">1229</span>] <span class="pl-k">=</span> <span class="pl-c1">1</span>
+<span class="pl-c1">compute!</span>(df[<span class="pl-c1">1229</span>, :]);
+df<span class="pl-k">.</span>confint[<span class="pl-c1">1229</span>]
+<span class="pl-c"><span class="pl-c">#</span>(0.97468593850494, 0.9843292697105394)</span>
+df<span class="pl-k">.</span>pvalue[<span class="pl-c1">1229</span>]
+<span class="pl-c"><span class="pl-c">#</span>1.971128265512963e-16</span>
+<span class="pl-c"><span class="pl-c">#</span>Hmm... something is afoot...</span>
+<span class="pl-c"><span class="pl-c">#</span>etc. etc.</span></pre></div>
+</article></div>

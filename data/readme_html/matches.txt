@@ -1,0 +1,78 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-matchesjl" class="anchor" aria-hidden="true" href="#matchesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Matches.jl</h1>
+<p dir="auto">The most barebones machine learning "framework" that can compute (unbiased estimates of) gradients without backpropagation.
+Based on "Gradients without backpropagation" [1].</p>
+<p dir="auto"><strong>NOTE</strong>: I'm <em>not</em> one of the authors and have no affiliation with the paper. I just found it interesting and tried to see whether it works.</p>
+<p dir="auto">The interface mimicks PyTorch, but since this package is just a toy, it's not a torch, but a bunch of matches :P</p>
+<h2 dir="auto"><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Basic usage</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Matches
+
+# 1. Get data.
+n_observations, n_features = 100, 5
+X, Y = cumsum(randn(n_observations, n_features), dims=1), cumsum(randn(n_observations, 1), dims=1)
+
+# 2. Build model, PyTorch-like.
+model = Sequential(
+    Linear(n_features, 7), Activations.sigmoid,
+    Linear(7, 5), Activations.tanh,
+    Linear(5, 1)
+)
+
+# 3. Set up gradient descent optimizer.
+# It can compute the &quot;forward gradient&quot; from the paper.
+optim = Descent(params(model), 1e-4)
+
+# 4. Train.
+for epoch in 1:50_000
+    # Randomize the dual parts of model parameters
+    random_dual!(optim)
+    loss = Losses.mse(model(X), Y)
+    # Estimate the gradient and use it in gradient descent
+    step!(optim, loss)
+
+    if epoch % 1000 == 0
+        @show (epoch, real(loss))
+    end
+end
+
+# 5. Predict!
+Y_hat = real(model(X))"><pre><span class="pl-k">using</span> Matches
+
+<span class="pl-c"><span class="pl-c">#</span> 1. Get data.</span>
+n_observations, n_features <span class="pl-k">=</span> <span class="pl-c1">100</span>, <span class="pl-c1">5</span>
+X, Y <span class="pl-k">=</span> <span class="pl-c1">cumsum</span>(<span class="pl-c1">randn</span>(n_observations, n_features), dims<span class="pl-k">=</span><span class="pl-c1">1</span>), <span class="pl-c1">cumsum</span>(<span class="pl-c1">randn</span>(n_observations, <span class="pl-c1">1</span>), dims<span class="pl-k">=</span><span class="pl-c1">1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> 2. Build model, PyTorch-like.</span>
+model <span class="pl-k">=</span> <span class="pl-c1">Sequential</span>(
+    <span class="pl-c1">Linear</span>(n_features, <span class="pl-c1">7</span>), Activations<span class="pl-k">.</span>sigmoid,
+    <span class="pl-c1">Linear</span>(<span class="pl-c1">7</span>, <span class="pl-c1">5</span>), Activations<span class="pl-k">.</span>tanh,
+    <span class="pl-c1">Linear</span>(<span class="pl-c1">5</span>, <span class="pl-c1">1</span>)
+)
+
+<span class="pl-c"><span class="pl-c">#</span> 3. Set up gradient descent optimizer.</span>
+<span class="pl-c"><span class="pl-c">#</span> It can compute the "forward gradient" from the paper.</span>
+optim <span class="pl-k">=</span> <span class="pl-c1">Descent</span>(<span class="pl-c1">params</span>(model), <span class="pl-c1">1e-4</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> 4. Train.</span>
+<span class="pl-k">for</span> epoch <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">50_000</span>
+    <span class="pl-c"><span class="pl-c">#</span> Randomize the dual parts of model parameters</span>
+    <span class="pl-c1">random_dual!</span>(optim)
+    loss <span class="pl-k">=</span> Losses<span class="pl-k">.</span><span class="pl-c1">mse</span>(<span class="pl-c1">model</span>(X), Y)
+    <span class="pl-c"><span class="pl-c">#</span> Estimate the gradient and use it in gradient descent</span>
+    <span class="pl-c1">step!</span>(optim, loss)
+
+    <span class="pl-k">if</span> epoch <span class="pl-k">%</span> <span class="pl-c1">1000</span> <span class="pl-k">==</span> <span class="pl-c1">0</span>
+        <span class="pl-c1">@show</span> (epoch, <span class="pl-c1">real</span>(loss))
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> 5. Predict!</span>
+Y_hat <span class="pl-k">=</span> <span class="pl-c1">real</span>(<span class="pl-c1">model</span>(X))</pre></div>
+<p dir="auto">Also see <a href="./example.jl"><code>example.jl</code></a>. Basic usage:</p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="$ wget https://raw.githubusercontent.com/ForceBru/Matches.jl/master/example.jl
+$ julia example.jl"><pre>$ wget https://raw.githubusercontent.com/ForceBru/Matches.jl/master/example.jl
+$ julia example.jl</pre></div>
+<h2 dir="auto"><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>References</h2>
+<ol dir="auto">
+<li>Baydin, A. G., Pearlmutter, B. A., Syme, D., Wood, F., &amp; Torr, P. (2022). Gradients without Backpropagation (Version 1). arXiv. <a href="https://doi.org/10.48550/ARXIV.2202.08587" rel="nofollow">https://doi.org/10.48550/ARXIV.2202.08587</a></li>
+</ol>
+</article></div>

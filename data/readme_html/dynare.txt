@@ -1,224 +1,100 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p><a href="https://travis-ci.org/DynareTeam/Dynare.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/4f3e563ad09a0b42500f21bded699a1b7a42c1a5ed6f2e8f392326e843a3ede9/68747470733a2f2f7472617669732d63692e6f72672f44796e6172655465616d2f44796e6172652e6a6c2e7376673f6272616e63683d6d6173746572" alt="Build Status" data-canonical-src="https://travis-ci.org/DynareTeam/Dynare.jl.svg?branch=master" style="max-width:100%;"></a></p>
-<h2><a id="user-content-dynare-for-julia" class="anchor" aria-hidden="true" href="#dynare-for-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Dynare for Julia</h2>
-<p>This package aims at bringing to Julia some of the functionality provided by
-<a href="http://www.dynare.org" rel="nofollow">Dynare</a>, a platform for solving economic models and in
-particular DSGE models.</p>
-<p>Please note that this Julia package is very incomplete compared to the original
-Dynare for MATLAB/Octave, but hopefully it will become more featureful over
-time.</p>
-<p>For the moment the package is only able to compute a model’s steady state,
-first order decision rules and perfect foresight simulations.</p>
-<p>The package is tested against Julia 0.5.x.</p>
-<h2><a id="user-content-a-rational-expectations-example" class="anchor" aria-hidden="true" href="#a-rational-expectations-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>A rational expectations example</h2>
-<p>The following example is a translation of <code>example1.mod</code> that is shipped with
-Dynare. It computes the steady state and first order decision rules.</p>
-<p>Note that the syntax for the model block has been kept as close as possible to
-the original format.</p>
-<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Dynare
-
-# Create a model object
-m =
-@modfile begin
-    @var y c k a h b
-    @varexo e u
-    @parameters beta rho alpha delta theta psi tau
-    @model begin
-        c*theta*h^(1+psi) = (1-alpha)*y
-        k = beta*(((exp(b)*c)/(exp(b(+1))*c(+1)))*(exp(b(+1))*alpha*y(+1)+(1-delta)*k))
-        y = exp(a)*(k(-1)^alpha)*(h^(1-alpha))
-        k = exp(b)*(y-c)+(1-delta)*k(-1)
-        a = rho*a(-1)+tau*b(-1) + e
-        b = tau*a(-1)+rho*b(-1) + u
-    end
-end
-
-# Do some preliminary computations
-compute_model_info(m)
-
-# Define a calibration and some starting values for the nonlinear solver
-
-calib = Dict(
-         :alpha =&gt; 0.36,
-         :rho   =&gt; 0.95,
-         :tau   =&gt; 0.025,
-         :beta  =&gt; 0.99,
-         :delta =&gt; 0.025,
-         :psi   =&gt; 0.0,
-         :theta =&gt; 2.95
-        )
-
-initval = Dict(
-           :y =&gt; 1.08068253095672,
-           :c =&gt; 0.80359242014163,
-           :h =&gt; 0.29175631001732,
-           :k =&gt; 11.08360443260358,
-           :a =&gt; 0.0,
-           :b =&gt; 0.0
-           )
-
-# Compute and print the steady state for the given calibration
-
-s = steady_state(m, calib, initval)
-
-print_steady_state(m, s)
-
-# Compute and print eigenvalues and first order decision rules
-
-(gy, gu, eigs) = decision_rules(m, calib, s)
-
-println(&quot;Eigenvalues: &quot;, eigs)
-println()
-
-print_decision_rules(m, gy, gu)
-"><pre><span class="pl-k">using</span> Dynare
-
-<span class="pl-c"><span class="pl-c">#</span> Create a model object</span>
-m <span class="pl-k">=</span>
-<span class="pl-c1">@modfile</span> <span class="pl-k">begin</span>
-    <span class="pl-c1">@var</span> y c k a h b
-    <span class="pl-c1">@varexo</span> e u
-    <span class="pl-c1">@parameters</span> beta rho alpha delta theta psi tau
-    <span class="pl-c1">@model</span> <span class="pl-k">begin</span>
-        c<span class="pl-k">*</span>theta<span class="pl-k">*</span>h<span class="pl-k">^</span>(<span class="pl-c1">1</span><span class="pl-k">+</span>psi) <span class="pl-k">=</span> (<span class="pl-c1">1</span><span class="pl-k">-</span>alpha)<span class="pl-k">*</span>y
-        k <span class="pl-k">=</span> beta<span class="pl-k">*</span>(((<span class="pl-c1">exp</span>(b)<span class="pl-k">*</span>c)<span class="pl-k">/</span>(<span class="pl-c1">exp</span>(<span class="pl-c1">b</span>(<span class="pl-k">+</span><span class="pl-c1">1</span>))<span class="pl-k">*</span><span class="pl-c1">c</span>(<span class="pl-k">+</span><span class="pl-c1">1</span>)))<span class="pl-k">*</span>(<span class="pl-c1">exp</span>(<span class="pl-c1">b</span>(<span class="pl-k">+</span><span class="pl-c1">1</span>))<span class="pl-k">*</span>alpha<span class="pl-k">*</span><span class="pl-c1">y</span>(<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">+</span>(<span class="pl-c1">1</span><span class="pl-k">-</span>delta)<span class="pl-k">*</span>k))
-        y <span class="pl-k">=</span> <span class="pl-c1">exp</span>(a)<span class="pl-k">*</span>(<span class="pl-c1">k</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>alpha)<span class="pl-k">*</span>(h<span class="pl-k">^</span>(<span class="pl-c1">1</span><span class="pl-k">-</span>alpha))
-        k <span class="pl-k">=</span> <span class="pl-c1">exp</span>(b)<span class="pl-k">*</span>(y<span class="pl-k">-</span>c)<span class="pl-k">+</span>(<span class="pl-c1">1</span><span class="pl-k">-</span>delta)<span class="pl-k">*</span><span class="pl-c1">k</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)
-        a <span class="pl-k">=</span> rho<span class="pl-k">*</span><span class="pl-c1">a</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">+</span>tau<span class="pl-k">*</span><span class="pl-c1">b</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> e
-        b <span class="pl-k">=</span> tau<span class="pl-k">*</span><span class="pl-c1">a</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">+</span>rho<span class="pl-k">*</span><span class="pl-c1">b</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> u
-    <span class="pl-k">end</span>
-<span class="pl-k">end</span>
-
-<span class="pl-c"><span class="pl-c">#</span> Do some preliminary computations</span>
-<span class="pl-c1">compute_model_info</span>(m)
-
-<span class="pl-c"><span class="pl-c">#</span> Define a calibration and some starting values for the nonlinear solver</span>
-
-calib <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
-         <span class="pl-c1">:alpha</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.36</span>,
-         <span class="pl-c1">:rho</span>   <span class="pl-k">=&gt;</span> <span class="pl-c1">0.95</span>,
-         <span class="pl-c1">:tau</span>   <span class="pl-k">=&gt;</span> <span class="pl-c1">0.025</span>,
-         <span class="pl-c1">:beta</span>  <span class="pl-k">=&gt;</span> <span class="pl-c1">0.99</span>,
-         <span class="pl-c1">:delta</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.025</span>,
-         <span class="pl-c1">:psi</span>   <span class="pl-k">=&gt;</span> <span class="pl-c1">0.0</span>,
-         <span class="pl-c1">:theta</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">2.95</span>
-        )
-
-initval <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
-           <span class="pl-c1">:y</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1.08068253095672</span>,
-           <span class="pl-c1">:c</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.80359242014163</span>,
-           <span class="pl-c1">:h</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.29175631001732</span>,
-           <span class="pl-c1">:k</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">11.08360443260358</span>,
-           <span class="pl-c1">:a</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.0</span>,
-           <span class="pl-c1">:b</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.0</span>
-           )
-
-<span class="pl-c"><span class="pl-c">#</span> Compute and print the steady state for the given calibration</span>
-
-s <span class="pl-k">=</span> <span class="pl-c1">steady_state</span>(m, calib, initval)
-
-<span class="pl-c1">print_steady_state</span>(m, s)
-
-<span class="pl-c"><span class="pl-c">#</span> Compute and print eigenvalues and first order decision rules</span>
-
-(gy, gu, eigs) <span class="pl-k">=</span> <span class="pl-c1">decision_rules</span>(m, calib, s)
-
-<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Eigenvalues: <span class="pl-pds">"</span></span>, eigs)
-<span class="pl-c1">println</span>()
-
-<span class="pl-c1">print_decision_rules</span>(m, gy, gu)</pre></div>
-<h2><a id="user-content-a-perfect-foresight-example" class="anchor" aria-hidden="true" href="#a-perfect-foresight-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>A perfect foresight example</h2>
-<p>The following example is a translation of <code>ramst.mod</code> that is shipped with
-Dynare. It computes the steady state and a perfect foresight simulation.</p>
-<p>Note that we had to introduce an endogenous variable <code>x1</code> equal to the
-exogenous variable <code>x</code>, because leads on exogenous variables are not yet supported.</p>
-<div class="highlight highlight-source-julia position-relative" data-snippet-clipboard-copy-content="using Dynare
-
-m =
-@modfile begin
-    @var c k x1
-    @varexo x
-    @parameters alph gam delt bet aa
-    @model begin
-        c + k - aa*x*k(-1)^alph - (1-delt)*k(-1)
-        c^(-gam) - (1+bet)^(-1)*(aa*alph*x1(+1)*k^(alph-1) + 1 - delt)*c(+1)^(-gam)
-        x1 = x
-    end
-end
-
-compute_model_info(m)
-
-calib = Dict(
-         :alph =&gt; 0.5,
-         :gam =&gt; 0.5,
-         :delt =&gt; 0.02,
-         :bet =&gt; 0.05,
-         :aa =&gt; 0.5
-        )
-
-exoval = Dict( :x =&gt; 1.0 )
-
-initval = Dict{Symbol, Float64}()
-initval[:k] = ((calib[:delt]+calib[:bet])/(exoval[:x]*calib[:aa]*calib[:alph]))^(1/(calib[:alph]-1))
-initval[:c] = calib[:aa]*initval[:k]^calib[:alph]-calib[:delt]*initval[:k]
-initval[:x1] = exoval[:x]
-
-s = steady_state(m, calib, initval, exoval)
-
-# Compute a 200 periods perfect foresight simulation
-# Start and end at the steady state corresponding to x=1
-# There is a shock x=1.2 in t=1
-# The results will be in endopath (which includes initial and terminal
-#  condition, i.e. it goes from t=0 to t=201)
-
-T = 200
-endopath = repmat(s, 1, T+2)
-exopath = ones(m.n_exo, T)
-exopath[1, 1] = 1.2
-
-perfect_foresight_simul!(m, endopath, exopath, calib)
-"><pre><span class="pl-k">using</span> Dynare
-
-m <span class="pl-k">=</span>
-<span class="pl-c1">@modfile</span> <span class="pl-k">begin</span>
-    <span class="pl-c1">@var</span> c k x1
-    <span class="pl-c1">@varexo</span> x
-    <span class="pl-c1">@parameters</span> alph gam delt bet aa
-    <span class="pl-c1">@model</span> <span class="pl-k">begin</span>
-        c <span class="pl-k">+</span> k <span class="pl-k">-</span> aa<span class="pl-k">*</span>x<span class="pl-k">*</span><span class="pl-c1">k</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>alph <span class="pl-k">-</span> (<span class="pl-c1">1</span><span class="pl-k">-</span>delt)<span class="pl-k">*</span><span class="pl-c1">k</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)
-        c<span class="pl-k">^</span>(<span class="pl-k">-</span>gam) <span class="pl-k">-</span> (<span class="pl-c1">1</span><span class="pl-k">+</span>bet)<span class="pl-k">^</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>(aa<span class="pl-k">*</span>alph<span class="pl-k">*</span><span class="pl-c1">x1</span>(<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>k<span class="pl-k">^</span>(alph<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-k">-</span> delt)<span class="pl-k">*</span><span class="pl-c1">c</span>(<span class="pl-k">+</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>(<span class="pl-k">-</span>gam)
-        x1 <span class="pl-k">=</span> x
-    <span class="pl-k">end</span>
-<span class="pl-k">end</span>
-
-<span class="pl-c1">compute_model_info</span>(m)
-
-calib <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(
-         <span class="pl-c1">:alph</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.5</span>,
-         <span class="pl-c1">:gam</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.5</span>,
-         <span class="pl-c1">:delt</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.02</span>,
-         <span class="pl-c1">:bet</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.05</span>,
-         <span class="pl-c1">:aa</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0.5</span>
-        )
-
-exoval <span class="pl-k">=</span> <span class="pl-c1">Dict</span>( <span class="pl-c1">:x</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1.0</span> )
-
-initval <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{Symbol, Float64}</span>()
-initval[<span class="pl-c1">:k</span>] <span class="pl-k">=</span> ((calib[<span class="pl-c1">:delt</span>]<span class="pl-k">+</span>calib[<span class="pl-c1">:bet</span>])<span class="pl-k">/</span>(exoval[<span class="pl-c1">:x</span>]<span class="pl-k">*</span>calib[<span class="pl-c1">:aa</span>]<span class="pl-k">*</span>calib[<span class="pl-c1">:alph</span>]))<span class="pl-k">^</span>(<span class="pl-c1">1</span><span class="pl-k">/</span>(calib[<span class="pl-c1">:alph</span>]<span class="pl-k">-</span><span class="pl-c1">1</span>))
-initval[<span class="pl-c1">:c</span>] <span class="pl-k">=</span> calib[<span class="pl-c1">:aa</span>]<span class="pl-k">*</span>initval[<span class="pl-c1">:k</span>]<span class="pl-k">^</span>calib[<span class="pl-c1">:alph</span>]<span class="pl-k">-</span>calib[<span class="pl-c1">:delt</span>]<span class="pl-k">*</span>initval[<span class="pl-c1">:k</span>]
-initval[<span class="pl-c1">:x1</span>] <span class="pl-k">=</span> exoval[<span class="pl-c1">:x</span>]
-
-s <span class="pl-k">=</span> <span class="pl-c1">steady_state</span>(m, calib, initval, exoval)
-
-<span class="pl-c"><span class="pl-c">#</span> Compute a 200 periods perfect foresight simulation</span>
-<span class="pl-c"><span class="pl-c">#</span> Start and end at the steady state corresponding to x=1</span>
-<span class="pl-c"><span class="pl-c">#</span> There is a shock x=1.2 in t=1</span>
-<span class="pl-c"><span class="pl-c">#</span> The results will be in endopath (which includes initial and terminal</span>
-<span class="pl-c"><span class="pl-c">#</span>  condition, i.e. it goes from t=0 to t=201)</span>
-
-T <span class="pl-k">=</span> <span class="pl-c1">200</span>
-endopath <span class="pl-k">=</span> <span class="pl-c1">repmat</span>(s, <span class="pl-c1">1</span>, T<span class="pl-k">+</span><span class="pl-c1">2</span>)
-exopath <span class="pl-k">=</span> <span class="pl-c1">ones</span>(m<span class="pl-k">.</span>n_exo, T)
-exopath[<span class="pl-c1">1</span>, <span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">1.2</span>
-
-<span class="pl-c1">perfect_foresight_simul!</span>(m, endopath, exopath, calib)</pre></div>
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-work-in-progress" class="anchor" aria-hidden="true" href="#work-in-progress"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>WORK IN PROGRESS</h1>
+<h2 dir="auto"><a id="user-content-requirements" class="anchor" aria-hidden="true" href="#requirements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Requirements</h2>
+<p dir="auto">Julia 64bit &gt;= v1.6</p>
+<h2 dir="auto"><a id="user-content-warning" class="anchor" aria-hidden="true" href="#warning"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Warning</h2>
+<p dir="auto">The last version of this package, v0.6.0, isn't available yet for macOS
+or FreeBSD</p>
+<h2 dir="auto"><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation</h2>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Pkg
+pkg&quot;add Dynare&quot;"><pre class="notranslate"><code>using Pkg
+pkg"add Dynare"
+</code></pre></div>
+<h2 dir="auto"><a id="user-content-update" class="anchor" aria-hidden="true" href="#update"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Update</h2>
+<p dir="auto">If you already have a version of Dynare installed (not in development mode):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Pkg
+pkg&quot;update&quot;"><pre class="notranslate"><code>using Pkg
+pkg"update"
+</code></pre></div>
+<h2 dir="auto"><a id="user-content-running-dynare" class="anchor" aria-hidden="true" href="#running-dynare"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Running Dynare</h2>
+<p dir="auto">Example (to be run in the directory <code>Dynare.jl</code>):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Dynare
+context = @dynare &quot;./test/models/example1/example1.mod&quot;;"><pre class="notranslate"><code>using Dynare
+context = @dynare "./test/models/example1/example1.mod";
+</code></pre></div>
+<p dir="auto">The results are in the <code>context</code> structure.</p>
+<h2 dir="auto"><a id="user-content-supported-dynare-instructions" class="anchor" aria-hidden="true" href="#supported-dynare-instructions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Supported Dynare instructions</h2>
+<ol dir="auto">
+<li>calib_smoother</li>
+<li>check</li>
+<li>deterministic_trends</li>
+<li>endval</li>
+<li>histval</li>
+<li>initval</li>
+<li>perfect_foresight_setup (only some options)</li>
+<li>perfect_foresight_solver (only some options, includind lmmcp)</li>
+<li>planner_objective</li>
+<li>ramsey_model</li>
+<li>shocks</li>
+<li>steady (including numerical solution)</li>
+<li>stoch_simul (only order=1)</li>
+</ol>
+<h2 dir="auto"><a id="user-content-output" class="anchor" aria-hidden="true" href="#output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Output</h2>
+<ol dir="auto">
+<li>The <code>context</code> structure is saved in the directory
+<code>&lt;path to modfile&gt;/&lt;modfilenane&gt;/output/&lt;modfilename&gt;.jld2</code>. It can be loaded with
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using JLD2
+DD = load(&quot;&lt;path to modfile&gt;/&lt;modefilename&gt;/output/&lt;modefilename&gt;.jld2&quot;)``"><pre class="notranslate"><code>using JLD2
+DD = load("&lt;path to modfile&gt;/&lt;modefilename&gt;/output/&lt;modefilename&gt;.jld2")``
+</code></pre></div>
+</li>
+<li>The IRF graphs are saved in <code>&lt;path to modfile&gt;/&lt;modfilenane&gt;/graphs</code></li>
+</ol>
+<h2 dir="auto"><a id="user-content-project-web-site" class="anchor" aria-hidden="true" href="#project-web-site"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Project web site</h2>
+<ul dir="auto">
+<li><a href="https://www.dynare.org" rel="nofollow">https://www.dynare.org</a></li>
+</ul>
+<h2 dir="auto"><a id="user-content-path-licence" class="anchor" aria-hidden="true" href="#path-licence"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>PATH licence</h2>
+<p dir="auto">Dynare uses the PATH software by S. Dirkse, M.C. Ferris and T. Munson (<a href="https://pages.cs.wisc.edu/~ferris/path.html" rel="nofollow">https://pages.cs.wisc.edu/~ferris/path.html</a>),
+as provided by
+<a href="https://github.com/chkwon/PATHSolver.jl">PATHSolver.jl</a> to solve
+prefect foresight models with occasionally binding constraints.</p>
+<p dir="auto">In order to use it, you need to add the free licence available at
+<a href="https://pages.cs.wisc.edu/~ferris/path/LICENSE" rel="nofollow">https://pages.cs.wisc.edu/~ferris/path/LICENSE</a> in your file
+<code>~/.julia/config/startup.jl</code></p>
+<blockquote>
+<p dir="auto">ENV["PATH_LICENSE_STRING"] = "<em>licence number provided in the above
+link</em>"</p>
+</blockquote>
+<h3 dir="auto"><a id="user-content-under-windows" class="anchor" aria-hidden="true" href="#under-windows"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Under Windows</h3>
+<ol dir="auto">
+<li>Create a new folder in your <code>.julia</code> directory called <code>config</code></li>
+<li>In the <code>.julia\config</code> folder create a new text file: <code>Right click  → New → Text Document</code></li>
+<li>Inside the new text document, type:</li>
+</ol>
+<blockquote>
+<p dir="auto">ENV["PATH_LICENSE_STRING"] = "<em>licence number provided in the above
+link</em>"</p>
+</blockquote>
+<ol dir="auto">
+<li>In the text document, go <code>File → Save as</code></li>
+<li>In the dropdown <code>Save as type</code> option at the bottom of the pop-up window select <code>All files</code></li>
+<li>In the field <code>File name</code> write <code>startup.jl</code></li>
+<li>Press <code>Save</code></li>
+</ol>
+<h3 dir="auto"><a id="user-content-in-vscode" class="anchor" aria-hidden="true" href="#in-vscode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>In VScode</h3>
+<ol dir="auto">
+<li>Go to <code>File → Open Folder</code>, navigate through your folders and choose the one where you want to create the <code>startup.jl</code> file</li>
+<li>Go to <code>File → New Text File</code></li>
+<li>In the new text file, type</li>
+</ol>
+<blockquote>
+<p dir="auto">ENV["PATH_LICENSE_STRING"] = "<em>licence number provided in the above
+link</em>"</p>
+</blockquote>
+<ol dir="auto">
+<li>Go to <code>File → Save</code></li>
+<li>In the dropdown <code>Save as type</code> option at the bottom of the pop-up window select <code>All files</code></li>
+<li>In the field <code>File name</code> write <code>startup.jl</code>.</li>
+<li>Press <code>Save</code></li>
+</ol>
 </article></div>

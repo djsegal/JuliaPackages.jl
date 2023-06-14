@@ -1,0 +1,164 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-cxxinterfacejl" class="anchor" aria-hidden="true" href="#cxxinterfacejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CxxInterface.jl</h1>
+<p dir="auto"><a href="https://github.com/eschnett/CxxInterface.jl/actions?query=workflow%3A%22CI%22+branch%3Amain"><img src="https://github.com/eschnett/CxxInterface.jl/workflows/CI/badge.svg?branch=main" alt="Unit tests" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/eschnett/CxxInterface.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/65cb33c8cbdff92441bf3345acbecf5aa221ac83fce418b2a345346267e27f20/68747470733a2f2f636f6465636f762e696f2f67682f657363686e6574742f437878496e746572666163652e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e7376673f746f6b656e3d3845584b58504b564259" alt="codecov" data-canonical-src="https://codecov.io/gh/eschnett/CxxInterface.jl/branch/main/graph/badge.svg?token=8EXKXPKVBY" style="max-width: 100%;"></a></p>
+<p dir="auto">Alternative to <a href="https://github.com/JuliaInterop/Cxx.jl">Cxx.jl</a> and
+<a href="https://github.com/JuliaInterop/CxxWrap.jl">CxxWrap.jl</a>. Both are
+great libraries. Cxx.jl lets people write C++ code in Julia, whereas
+CxxWrap.jl lets people write Julia code in C++.</p>
+<p dir="auto">The design of CxxInterface.jl is simpler than either Cxx.jl or
+CxxWrap.jl: Wrapper functions are written in Julia, and they generate
+respective C++ wrapper functions via string manipulation that are
+called via
+<a href="https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/" rel="nofollow"><code>ccall</code></a>.
+String manipulation is somewhat tedious, but its large advantage is
+that it is a well-supported standard that works independent of C++
+compiler and Julia version. The current version of CxxInterface.jl
+should continue to work for later versions of Julia without undue
+maintenance overhead.</p>
+<p dir="auto">This package supports not only C++, but also C, Fortran, and Rust as
+external languages.</p>
+<h2 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h2>
+<p dir="auto">Let's assume that there is a C++ library <code>AddIntegers</code> that provides a
+function</p>
+<div class="highlight highlight-source-c++ notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="namespace AI {
+    int add_int(int x, int y);
+}"><pre><span class="pl-k">namespace</span> <span class="pl-en">AI</span> {
+    <span class="pl-k">int</span> <span class="pl-en">add_int</span>(<span class="pl-k">int</span> x, <span class="pl-k">int</span> y);
+}</pre></div>
+<p dir="auto">that we want to wrap in Julia. This would look as follows:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CxxInterface
+using AddIntegers_jll
+
+cxxprelude(&quot;AddIntegers.cxx&quot;, &quot;&quot;&quot;
+    #include &lt;add_integers.hxx&gt;
+    &quot;&quot;&quot;)
+
+eval(cxxfunction(FnName(:add_int, &quot;add_int&quot;, libAddIntegers),
+                 FnResult(Cint, &quot;int&quot;),
+                 [FnArg(:x, Cint, &quot;x&quot;, &quot;int&quot;),
+                  FnArg(:y, Cint, &quot;y&quot;, &quot;int&quot;)],
+                 &quot;return AI::add_int(x, y);&quot;))"><pre><span class="pl-k">using</span> CxxInterface
+<span class="pl-k">using</span> AddIntegers_jll
+
+<span class="pl-c1">cxxprelude</span>(<span class="pl-s"><span class="pl-pds">"</span>AddIntegers.cxx<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    #include &lt;add_integers.hxx&gt;</span>
+<span class="pl-s">    <span class="pl-pds">"""</span></span>)
+
+<span class="pl-c1">eval</span>(<span class="pl-c1">cxxfunction</span>(<span class="pl-c1">FnName</span>(<span class="pl-c1">:add_int</span>, <span class="pl-s"><span class="pl-pds">"</span>add_int<span class="pl-pds">"</span></span>, libAddIntegers),
+                 <span class="pl-c1">FnResult</span>(Cint, <span class="pl-s"><span class="pl-pds">"</span>int<span class="pl-pds">"</span></span>),
+                 [<span class="pl-c1">FnArg</span>(<span class="pl-c1">:x</span>, Cint, <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>int<span class="pl-pds">"</span></span>),
+                  <span class="pl-c1">FnArg</span>(<span class="pl-c1">:y</span>, Cint, <span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>int<span class="pl-pds">"</span></span>)],
+                 <span class="pl-s"><span class="pl-pds">"</span>return AI::add_int(x, y);<span class="pl-pds">"</span></span>))</pre></div>
+<p dir="auto">The prelude defines the name of the file that will hold the generated
+C++ code, as well as any C++ statements that are necessary at the
+beginning of that file.</p>
+<p dir="auto">Most arguments to <code>cxxfunction</code> come in pairs, defining what happens
+on the Julia side (using symbols and Julia types) as well as what
+happens on the C++ side (using strings). In detail:</p>
+<ul dir="auto">
+<li>The wrapper function has the name <code>add_int</code> both in Julia and C++</li>
+<li>The first function argument is called <code>x</code> in both Julia and C++, and
+has the type <code>Cint</code> in Julia and <code>int</code> in C++</li>
+<li>Similarly for the second function argument <code>y</code></li>
+<li>The C++ wrapper code is given as a string.</li>
+</ul>
+<p dir="auto">When this module is loaded, it will generate the Julia function</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function add_int(x::Cint, y::Cint)
+    return ccall((&quot;add_int&quot;, libAddIntegers), Cint, (Cint, Cint), x, y)
+end"><pre><span class="pl-k">function</span> <span class="pl-en">add_int</span>(x<span class="pl-k">::</span><span class="pl-c1">Cint</span>, y<span class="pl-k">::</span><span class="pl-c1">Cint</span>)
+    <span class="pl-k">return</span> <span class="pl-c1">ccall</span>((<span class="pl-s"><span class="pl-pds">"</span>add_int<span class="pl-pds">"</span></span>, libAddIntegers), Cint, (Cint, Cint), x, y)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">It will also generate the respective C++ code as a string:</p>
+<div class="highlight highlight-source-c++ notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="#include &lt;add_integers.hxx&gt;
+
+extern &quot;C&quot; int add_int(int x, int y) {
+    return AI::add_int(x, y);
+}"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>add_integers.hxx<span class="pl-pds">&gt;</span></span>
+
+<span class="pl-k">extern</span> <span class="pl-s"><span class="pl-pds">"</span>C<span class="pl-pds">"</span></span> <span class="pl-k">int</span> <span class="pl-en">add_int</span>(<span class="pl-k">int</span> x, <span class="pl-k">int</span> y) {
+    <span class="pl-k">return</span> <span class="pl-c1">AI::add_int</span>(x, y);
+}</pre></div>
+<p dir="auto">This C++ code can be written to a file and compiled with a C++
+compiler. Ideally, this will happen within a
+<a href="https://binarybuilder.org" rel="nofollow">BinaryBuilder</a> build script that then also
+compiles the generated code for multiple architecture into a <a href="https://docs.binarybuilder.org/stable/jll/" rel="nofollow">JLL
+package</a>. Presumably, that
+package would here be called <code>AddIntegers_jll</code>.</p>
+<h2 dir="auto"><a id="user-content-generating-c-code" class="anchor" aria-hidden="true" href="#generating-c-code"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Generating C++ Code</h2>
+<p dir="auto">To write the generated C++ code, use
+code:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using AddIntegers
+AddIntegers.write_cxx_code!()"><pre><span class="pl-k">using</span> AddIntegers
+AddIntegers<span class="pl-k">.</span><span class="pl-c1">write_cxx_code!</span>()</pre></div>
+<p dir="auto">For convenience, the generated C++ code also contains the generated
+Julia code as comments. This code is not used anywhere, but helps
+understand the generated code.</p>
+<p dir="auto">See the package <a href="https://github.com/eschnett/STL.jl">STL.jl</a>, where
+such a script is used in <code>deps/build.jl</code>.</p>
+<h2 dir="auto"><a id="user-content-modifying-input-and-output-types" class="anchor" aria-hidden="true" href="#modifying-input-and-output-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Modifying Input and Output types</h2>
+<p dir="auto">In many cases, either the input types of a wrapper function or the
+result should be processed on the Julia side before being passed to
+the C++ wrapper function. For example, the Julia <code>add_int</code> function
+above expects arguments of type <code>Cint</code>, and that might be inconvenient
+-- we might prefer it to accept arguments of type <code>Integer</code> that are
+automatically converted to <code>Cint</code>. Similarly, it might be convenient
+to convert the result type <code>Cint</code> to <code>Int</code>.</p>
+<p dir="auto">Such code can also be generated automatically:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="eval(cxxfunction(FnName(:add_int, &quot;AI_add_int&quot;, libAddIntegers),
+                 FnResult(Cint, &quot;int&quot;, Int, expr -&gt; :(convert(Int, $expr))),
+                 [FnArg(:x, Cint, &quot;x&quot;, &quot;int&quot;, Integer, identity),
+                  FnArg(:y, Cint, &quot;y&quot;, &quot;int&quot;, Integer, identity)],
+                 &quot;return add_int(x, y);&quot;))"><pre><span class="pl-c1">eval</span>(<span class="pl-c1">cxxfunction</span>(<span class="pl-c1">FnName</span>(<span class="pl-c1">:add_int</span>, <span class="pl-s"><span class="pl-pds">"</span>AI_add_int<span class="pl-pds">"</span></span>, libAddIntegers),
+                 <span class="pl-c1">FnResult</span>(Cint, <span class="pl-s"><span class="pl-pds">"</span>int<span class="pl-pds">"</span></span>, Int, expr <span class="pl-k">-&gt;</span> :(<span class="pl-c1">convert</span>(Int, <span class="pl-k">$</span>expr))),
+                 [<span class="pl-c1">FnArg</span>(<span class="pl-c1">:x</span>, Cint, <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>int<span class="pl-pds">"</span></span>, Integer, identity),
+                  <span class="pl-c1">FnArg</span>(<span class="pl-c1">:y</span>, Cint, <span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>int<span class="pl-pds">"</span></span>, Integer, identity)],
+                 <span class="pl-s"><span class="pl-pds">"</span>return add_int(x, y);<span class="pl-pds">"</span></span>))</pre></div>
+<p dir="auto">The two extra arguments to <code>FnResult</code> and <code>FnArg</code> describe the final
+output type and initial input type, respectively, as well as a
+conversion function. This conversion function acts on Julia
+expressions while the Julia code is generated; it is not a function
+that is applied at run time. The generated Julia function is then</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function add_int(x::Integer, y::Integer)
+    res = ccall((&quot;add_int&quot;, libAddIntegers), Cint, (Cint, Cint),
+                convert(Cint, x), convert(Cint, y))
+    return convert(Int, res)
+end"><pre><span class="pl-k">function</span> <span class="pl-en">add_int</span>(x<span class="pl-k">::</span><span class="pl-c1">Integer</span>, y<span class="pl-k">::</span><span class="pl-c1">Integer</span>)
+    res <span class="pl-k">=</span> <span class="pl-c1">ccall</span>((<span class="pl-s"><span class="pl-pds">"</span>add_int<span class="pl-pds">"</span></span>, libAddIntegers), Cint, (Cint, Cint),
+                <span class="pl-c1">convert</span>(Cint, x), <span class="pl-c1">convert</span>(Cint, y))
+    <span class="pl-k">return</span> <span class="pl-c1">convert</span>(Int, res)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The generated C++ code is unaffected.</p>
+<h2 dir="auto"><a id="user-content-generic-functions" class="anchor" aria-hidden="true" href="#generic-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Generic Functions</h2>
+<p dir="auto">It is not possible to generate C++ functions at run time. This means
+that all types need to be known at compile time; it is not possible to
+define a generic (parameterized) wrapper function. However, it is
+possible to generate a series of wrapper functions in a loop, as in:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="types = Set([Int8, Int16, Int32, Int64])
+for T in types
+    CT = cxxtype[T]    # Find C++ type for T
+    NT = cxxname(CT)   # Generate C++ identifier for CT
+    eval(cxxfunction(FnName(:add, &quot;add_$CT&quot;, libAddIntegers),
+                     FnResult(T, CT),
+                     [FnArg(:x, T, &quot;x&quot;, CT),
+                      FnArg(:y, T, &quot;y&quot;, CT)],
+                     &quot;return x + y;&quot;))
+end"><pre>types <span class="pl-k">=</span> <span class="pl-c1">Set</span>([Int8, Int16, Int32, Int64])
+<span class="pl-k">for</span> T <span class="pl-k">in</span> types
+    CT <span class="pl-k">=</span> cxxtype[T]    <span class="pl-c"><span class="pl-c">#</span> Find C++ type for T</span>
+    NT <span class="pl-k">=</span> <span class="pl-c1">cxxname</span>(CT)   <span class="pl-c"><span class="pl-c">#</span> Generate C++ identifier for CT</span>
+    <span class="pl-c1">eval</span>(<span class="pl-c1">cxxfunction</span>(<span class="pl-c1">FnName</span>(<span class="pl-c1">:add</span>, <span class="pl-s"><span class="pl-pds">"</span>add_<span class="pl-v">$CT</span><span class="pl-pds">"</span></span>, libAddIntegers),
+                     <span class="pl-c1">FnResult</span>(T, CT),
+                     [<span class="pl-c1">FnArg</span>(<span class="pl-c1">:x</span>, T, <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>, CT),
+                      <span class="pl-c1">FnArg</span>(<span class="pl-c1">:y</span>, T, <span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>, CT)],
+                     <span class="pl-s"><span class="pl-pds">"</span>return x + y;<span class="pl-pds">"</span></span>))
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">This generates a Julia function <code>add</code> with four methods, one for each
+integer type. Note that a single Julia function can have multiple
+methods (if the argument types differ), while the generated wrapper
+functions use C linkage and thus cannot use overloading. We thus use
+the type as prefix to the C++ wrapper function name.</p>
+<h2 dir="auto"><a id="user-content-real-world-examples" class="anchor" aria-hidden="true" href="#real-world-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Real-World Examples</h2>
+<p dir="auto">The package <a href="https://github.com/eschnett/STL.jl">STL.jl</a> wraps the C++
+STL types <code>std::map</code>, <code>std::shared_ptr</code>, and <code>std::vector</code> via
+CxxInterface.jl.</p>
+</article></div>

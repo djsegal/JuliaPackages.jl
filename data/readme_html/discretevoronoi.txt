@@ -1,0 +1,48 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-discretevoronoi" class="anchor" aria-hidden="true" href="#discretevoronoi"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>DiscreteVoronoi</h1>
+<p dir="auto">A package for computing discrete approximations of Voronoi diagrams. All Voronoi diagram calculating functions are in-place.</p>
+<p dir="auto">Currently, to use this package you need to declare your sites as a <code>Vector{SVector{2,Int}}</code> and your grid as a <code>Matrix{SVector{2,Int}}</code> and hence there is a strong dependency on <code>StaticArrays</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using DiscreteVoronoi
+using StaticArrays
+
+# Testing
+n = 50
+p = 10
+grid = zeros(SVector{2,Int}, n, n)
+sites = [SVector{2,Int}(rand(1:n, 2)) for _ in 1:p]
+redac_voronoi!(grid, sites)"><pre><span class="pl-k">using</span> DiscreteVoronoi
+<span class="pl-k">using</span> StaticArrays
+
+<span class="pl-c"><span class="pl-c">#</span> Testing</span>
+n <span class="pl-k">=</span> <span class="pl-c1">50</span>
+p <span class="pl-k">=</span> <span class="pl-c1">10</span>
+grid <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(SVector{<span class="pl-c1">2</span>,Int}, n, n)
+sites <span class="pl-k">=</span> [<span class="pl-c1">SVector</span><span class="pl-c1">{2,Int}</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span>n, <span class="pl-c1">2</span>)) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>p]
+<span class="pl-c1">redac_voronoi!</span>(grid, sites)</pre></div>
+<p dir="auto">There are currently three ways of computing discrete Voronoi diagrams exported, they are all completely allocation free and called in the same way:</p>
+<ul dir="auto">
+<li><code>*_voronoi!(grid::Matrix{SVector{2,Int}}, sites::Vector{SVector{2,Int}}</code> is the generic function call for all of the following functions,</li>
+<li><code>naive_voronoi!</code> simply compares all cells to all sites and chooses the closest</li>
+<li><code>jfa_voronoi!</code> uses the jump flooding algorithm, which is explained in more detail <a href="https://en.wikipedia.org/wiki/Jump_flooding_algorithm" rel="nofollow">here</a></li>
+<li><code>dac_voronoi!</code> employs a divide-and-conquer method first detailed <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7840081/" rel="nofollow">here</a>.</li>
+<li><code>redac_voronoi!</code> (reduce-divide-and-conquer) additionally runs a site elimination algorithm before each recursive step. This elimination algorithm aims to reduce the amount of unnecessary work performed by the algorithm in subsequent recursions by removing seeds that are far away from the corners.</li>
+</ul>
+<p dir="auto">Which algorithm you should use for the fastest execution time depends somewhat on the task at hand. The best thing to do is to try all above for your usecase and decide from benchmarks. As a rule of thumb, the larger the grid is the better the divide-and-conquer methods will be in comparison. Particularly if the number of sites scales with the size of the grid (<code>n^2</code>) faster than <code>log(n)</code> (natural log), then <code>redac_voronoi!</code> will be much faster than <code>dac_voronoi!</code>.</p>
+<p dir="auto">Additionally, the package exports some helper functions for analysing Voronoi diagrams and writing your own algorithms:</p>
+<ul dir="auto">
+<li><code>find_closest_site</code> and <code>find_closest_site!</code> finds the closest site to a specified cell in the Lp sense, the latter writing it directly to the grid if it hasn't already been calculated.</li>
+<li><code>get_corners</code> and <code>get_quadrants</code> take the top-left (TL) and bottom-right (BR) corners of a rectangle and return the TL and BR corners, and non-overlapping quadrants (calculated by integer division) respectively.</li>
+<li><code>label_voronoi_grid</code> takes a grid of <code>SVector{2, Int}</code> and labels each unique value with an integer in a new grid of the same size so it can be visualised.</li>
+<li><code>voronoi_equality</code> can be used to test equality of resulting Voronoi diagrams taking into account that some sites may be the same distance from certain cells and so there are multiple valid/correct diagrams that could be produced.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-work-in-progress" class="anchor" aria-hidden="true" href="#work-in-progress"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Work in progress:</h2>
+<ul dir="auto">
+<li>Implementing a hybrid version of <code>redac_voronoi!</code> and <code>dac_voronoi!</code> that switches to <code>naive_voronoi!</code> once a certain size is reached.</li>
+<li>Currently, I have not implemented multithreaded (or GPU in the case of JFA) versions of these algorithms on the main branch, but the legacy branch contains versions of the algorithms that do have this capability.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-contributions" class="anchor" aria-hidden="true" href="#contributions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Contributions:</h2>
+<ul dir="auto">
+<li><a href="github.com/jacobusmmsmit">@jacobusmmsmit</a> - Author and maintainer</li>
+<li><a href="github.com/goerch">@goerch</a> - Author</li>
+<li><a href="github.com/marcelroed">@marcelroed</a> - Algorithmic improvements <code>early_stop_sort!</code></li>
+</ul>
+</article></div>

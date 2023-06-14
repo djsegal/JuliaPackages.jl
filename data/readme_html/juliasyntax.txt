@@ -1,0 +1,1319 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-juliasyntax" class="anchor" aria-hidden="true" href="#juliasyntax"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>JuliaSyntax</h1>
+<p dir="auto"><a href="https://github.com/c42f/JuliaSyntax.jl/actions"><img src="https://github.com/c42f/JuliaSyntax.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width: 100%;"></a>
+<a href="http://codecov.io/github/JuliaLang/JuliaSyntax.jl?branch=main" rel="nofollow"><img src="https://camo.githubusercontent.com/9758ce7c039d60585f36711d2e0dbc343c3c17b3dd2c56dc4c97a2aee6ebb3e2/687474703a2f2f636f6465636f762e696f2f6769746875622f4a756c69614c616e672f4a756c696153796e7461782e6a6c2f636f7665726167652e7376673f6272616e63683d6d61696e" alt="codecov.io" data-canonical-src="http://codecov.io/github/JuliaLang/JuliaSyntax.jl/coverage.svg?branch=main" style="max-width: 100%;"></a></p>
+<p dir="auto">A Julia frontend, written in Julia.</p>
+<h2 dir="auto"><a id="user-content-goals" class="anchor" aria-hidden="true" href="#goals"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Goals</h2>
+<ul dir="auto">
+<li>Lossless parsing of Julia code with precise source mapping</li>
+<li>Production quality error recovery, reporting and unit testing</li>
+<li>Parser structure as similar as possible to Julia's flisp-based parser</li>
+<li>Speedy enough for interactive editing</li>
+<li>"Compilation as an API" to support all sorts of tooling</li>
+<li>Grow to encompass the rest of the compiler frontend: macro expansion,
+desugaring and other lowering steps.</li>
+<li>Once mature, replace Julia's flisp-based reference frontend in <code>Core</code></li>
+</ul>
+<h3 dir="auto"><a id="user-content-design-opinions" class="anchor" aria-hidden="true" href="#design-opinions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Design Opinions</h3>
+<ul dir="auto">
+<li>Parser implementation should be independent from tree data structures. So
+we have the <code>ParseStream</code> interface.</li>
+<li>Tree data structures should be <em>layered</em> to balance losslessness with
+abstraction and generality. So we have <code>SyntaxNode</code> (an AST) layered on top
+of <code>GreenNode</code> (a lossless parse tree). We might need other tree types later.</li>
+<li>Fancy parser generators still seem marginal for production compilers. We use
+a boring but flexible recursive descent parser.</li>
+</ul>
+<h3 dir="auto"><a id="user-content-status" class="anchor" aria-hidden="true" href="#status"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Status</h3>
+<p dir="auto">JuliaSyntax.jl is highly compatible with the Julia reference parser: It parses
+all of Base and the standard libraries correctly and most of the General
+registry. There's still a few known incompatibilities in the Base tests.</p>
+<p dir="auto">The tree data structures are usable but their APIs will evolve as we try out
+various use cases. Converting to <code>Expr</code> is always be possible and will be
+stable if that helps for your use case.</p>
+<p dir="auto">A talk from JuliaCon 2022 covered some aspects of this package.</p>
+<p dir="auto"><a href="https://youtu.be/CIiGng9Brrk" rel="nofollow"><img src="https://camo.githubusercontent.com/3bac2365802ce5e58c56b2ee475c9a84e20502ce893f5a639ea9fdb8f62fbe21/68747470733a2f2f696d672e796f75747562652e636f6d2f76692f434969476e67394272726b2f6d7164656661756c742e6a7067" alt="Youtube video thumbnail" data-canonical-src="https://img.youtube.com/vi/CIiGng9Brrk/mqdefault.jpg" style="max-width: 100%;"></a></p>
+<h1 dir="auto"><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Examples</h1>
+<p dir="auto">Here's what parsing of a small piece of code currently looks like in various
+forms. We'll use the <code>JuliaSyntax.parse</code> function to demonstrate, there's also
+<code>JuliaSyntax.parse!</code> offering more fine-grained control.</p>
+<p dir="auto">First, a source-ordered AST with <code>SyntaxNode</code> (<code>call-i</code> in the dump here means
+the <code>call</code> has the infix <code>-i</code> flag):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using JuliaSyntax
+
+julia&gt; parsestmt(SyntaxNode, &quot;(x + y)*z&quot;, filename=&quot;foo.jl&quot;)
+line:col│ tree                                   │ file_name
+   1:1  │[call-i]                                │foo.jl
+   1:1  │  [parens]
+   1:2  │    [call-i]
+   1:2  │      x
+   1:4  │      +
+   1:6  │      y
+   1:8  │  *
+   1:9  │  z"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> JuliaSyntax
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">parsestmt</span>(SyntaxNode, <span class="pl-s"><span class="pl-pds">"</span>(x + y)*z<span class="pl-pds">"</span></span>, filename<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>foo.jl<span class="pl-pds">"</span></span>)
+line<span class="pl-k">:</span>col│ tree                                   │ file_name
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>  │[call<span class="pl-k">-</span>i]                                │foo<span class="pl-k">.</span>jl
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>  │  [parens]
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>  │    [call<span class="pl-k">-</span>i]
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>  │      x
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">4</span>  │      <span class="pl-k">+</span>
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">6</span>  │      y
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">8</span>  │  <span class="pl-k">*</span>
+   <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">9</span>  │  z</pre></div>
+<p dir="auto">Internally this has a full representation of all syntax trivia (whitespace and
+comments) as can be seen with the more raw <a href="#raw-syntax-tree--green-tree">"green tree"</a>
+representation with <code>GreenNode</code>. Here ranges on the left are byte ranges, and
+<code>✔</code> flags nontrivia tokens. Note that the parentheses are trivia in the tree
+representation, despite being important for parsing.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; text = &quot;(x + y)*z&quot;
+       greentree = parsestmt(JuliaSyntax.GreenNode, text)
+     1:9      │[call]
+     1:7      │  [parens]
+     1:1      │    (
+     2:6      │    [call]
+     2:2      │      Identifier         ✔
+     3:3      │      Whitespace
+     4:4      │      +                  ✔
+     5:5      │      Whitespace
+     6:6      │      Identifier         ✔
+     7:7      │    )
+     8:8      │  *                      ✔
+     9:9      │  Identifier             ✔"><pre>julia<span class="pl-k">&gt;</span> text <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>(x + y)*z<span class="pl-pds">"</span></span>
+       greentree <span class="pl-k">=</span> <span class="pl-c1">parsestmt</span>(JuliaSyntax<span class="pl-k">.</span>GreenNode, text)
+     <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">9</span>      │[call]
+     <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>      │  [parens]
+     <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>      │    (
+     <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">6</span>      │    [call]
+     <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>      │      Identifier         ✔
+     <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">3</span>      │      Whitespace
+     <span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">4</span>      │      <span class="pl-k">+</span>                  ✔
+     <span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">5</span>      │      Whitespace
+     <span class="pl-c1">6</span><span class="pl-k">:</span><span class="pl-c1">6</span>      │      Identifier         ✔
+     <span class="pl-c1">7</span><span class="pl-k">:</span><span class="pl-c1">7</span>      │    )
+     <span class="pl-c1">8</span><span class="pl-k">:</span><span class="pl-c1">8</span>      │  <span class="pl-k">*</span>                      ✔
+     <span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">9</span>      │  Identifier             ✔</pre></div>
+<p dir="auto"><code>GreenNode</code> stores only byte ranges, but the token strings can be shown by
+supplying the source text string:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; show(stdout, MIME&quot;text/plain&quot;(), greentree, text)
+     1:9      │[call]
+     1:7      │  [parens]
+     1:1      │    (                        &quot;(&quot;
+     2:6      │    [call]
+     2:2      │      Identifier         ✔   &quot;x&quot;
+     3:3      │      Whitespace             &quot; &quot;
+     4:4      │      +                  ✔   &quot;+&quot;
+     5:5      │      Whitespace             &quot; &quot;
+     6:6      │      Identifier         ✔   &quot;y&quot;
+     7:7      │    )                        &quot;)&quot;
+     8:8      │  *                      ✔   &quot;*&quot;
+     9:9      │  Identifier             ✔   &quot;z&quot;"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">show</span>(<span class="pl-c1">stdout</span>, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">MIME</span>"</span>text/plain<span class="pl-pds">"</span></span>(), greentree, text)
+     <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">9</span>      │[call]
+     <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>      │  [parens]
+     <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>      │    (                        <span class="pl-s"><span class="pl-pds">"</span>(<span class="pl-pds">"</span></span>
+     <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">6</span>      │    [call]
+     <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>      │      Identifier         ✔   <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>
+     <span class="pl-c1">3</span><span class="pl-k">:</span><span class="pl-c1">3</span>      │      Whitespace             <span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>
+     <span class="pl-c1">4</span><span class="pl-k">:</span><span class="pl-c1">4</span>      │      <span class="pl-k">+</span>                  ✔   <span class="pl-s"><span class="pl-pds">"</span>+<span class="pl-pds">"</span></span>
+     <span class="pl-c1">5</span><span class="pl-k">:</span><span class="pl-c1">5</span>      │      Whitespace             <span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>
+     <span class="pl-c1">6</span><span class="pl-k">:</span><span class="pl-c1">6</span>      │      Identifier         ✔   <span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>
+     <span class="pl-c1">7</span><span class="pl-k">:</span><span class="pl-c1">7</span>      │    )                        <span class="pl-s"><span class="pl-pds">"</span>)<span class="pl-pds">"</span></span>
+     <span class="pl-c1">8</span><span class="pl-k">:</span><span class="pl-c1">8</span>      │  <span class="pl-k">*</span>                      ✔   <span class="pl-s"><span class="pl-pds">"</span>*<span class="pl-pds">"</span></span>
+     <span class="pl-c1">9</span><span class="pl-k">:</span><span class="pl-c1">9</span>      │  Identifier             ✔   <span class="pl-s"><span class="pl-pds">"</span>z<span class="pl-pds">"</span></span></pre></div>
+<p dir="auto">Julia <code>Expr</code> can also be produced:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; JuliaSyntax.parsestmt(Expr, &quot;(x + y)*z&quot;)
+:((x + y) * z)"><pre>julia<span class="pl-k">&gt;</span> JuliaSyntax<span class="pl-k">.</span><span class="pl-c1">parsestmt</span>(Expr, <span class="pl-s"><span class="pl-pds">"</span>(x + y)*z<span class="pl-pds">"</span></span>)
+:((x <span class="pl-k">+</span> y) <span class="pl-k">*</span> z)</pre></div>
+<h1 dir="auto"><a id="user-content-using-juliasyntax-as-the-default-parser" class="anchor" aria-hidden="true" href="#using-juliasyntax-as-the-default-parser"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Using JuliaSyntax as the default parser</h1>
+<p dir="auto">To use JuliaSyntax as the default Julia parser to <code>include()</code> files,
+parse code with <code>Meta.parse()</code>, etc, call</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; JuliaSyntax.enable_in_core!()"><pre class="notranslate"><code>julia&gt; JuliaSyntax.enable_in_core!()
+</code></pre></div>
+<p dir="auto">This causes some startup latency, so to reduce that you can create a custom
+system image by running the code in <code>./sysimage/compile.jl</code> as a Julia script
+(or directly using the shell, on unix). Then use <code>julia -J $resulting_sysimage</code>.</p>
+<p dir="auto">Using a custom sysimage has the advantage that package precompilation will also
+go through the JuliaSyntax parser.</p>
+<h3 dir="auto"><a id="user-content-vscode" class="anchor" aria-hidden="true" href="#vscode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>VSCode</h3>
+<p dir="auto">To use JuliaSyntax as the default parser for Julia within VSCode, add the
+following to your <code>startup.jl</code> file:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="atreplinit() do repl
+    @eval begin
+        import JuliaSyntax
+        JuliaSyntax.enable_in_core!(true)
+    end
+end"><pre><span class="pl-c1">atreplinit</span>() <span class="pl-k">do</span> repl
+    <span class="pl-c1">@eval</span> <span class="pl-k">begin</span>
+        <span class="pl-k">import</span> JuliaSyntax
+        JuliaSyntax<span class="pl-k">.</span><span class="pl-c1">enable_in_core!</span>(<span class="pl-c1">true</span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">To reduce startup latency you can combine with a custom system as described in
+the <a href="https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/#Creating-a-sysimage-for-the-active-environment" rel="nofollow">Julia VScode docs</a>,
+combined with the precompile execution file in <a href="sysimage/precompile_exec.jl">sysimage/precompile_exec.jl</a>.
+For additional detail see the discussion in <a href="https://github.com/JuliaLang/JuliaSyntax.jl/issues/128" data-hovercard-type="issue" data-hovercard-url="/JuliaLang/JuliaSyntax.jl/issues/128/hovercard">issue #128</a>.</p>
+<h1 dir="auto"><a id="user-content-parser-implementation" class="anchor" aria-hidden="true" href="#parser-implementation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Parser implementation</h1>
+<p dir="auto">Our goal is to losslessly represent the source text with a tree; this may be
+called a "lossless syntax tree". (This is sometimes called a "concrete syntax
+tree", but that term has also been used for the parse tree of the full formal
+grammar for a language including any grammar hacks required to solve
+ambiguities, etc. So we avoid this term.)</p>
+<p dir="auto"><code>JuliaSyntax</code> uses a mostly recursive descent parser which closely
+follows the high level structure of the flisp reference parser. This makes the
+code familiar and reduces porting bugs. It also gives a lot of flexibility for
+designing the diagnostics, tree data structures, compatibility with different
+Julia versions, etc. I didn't choose a parser generator as they still seem
+marginal for production compilers — for the parsing itself they don't seem
+<em>greatly</em> more expressive and they can be less flexible for the important
+"auxiliary" code which needs to be written in either case.</p>
+<h3 dir="auto"><a id="user-content-lexing" class="anchor" aria-hidden="true" href="#lexing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Lexing</h3>
+<p dir="auto">We use a version of <a href="https://github.com/JuliaLang/Tokenize.jl">Tokenize.jl</a>
+which has been modified to better match the needs of parsing:</p>
+<ul dir="auto">
+<li>Newline-containing whitespace is emitted as a separate kind</li>
+<li>Tokens inside string interpolations are emitted separately from the string</li>
+<li>Strings delimiters are separate tokens and the actual string always has the
+<code>String</code> kind</li>
+<li>Additional contextual keywords (<code>as</code>, <code>var</code>, <code>doc</code>) have been added and
+moved to a subcategory of keywords.</li>
+<li>Nonterminal kinds were added (though these should probably be factored out again)</li>
+<li>Various bugs fixed and additions for newer Julia versions</li>
+</ul>
+<p dir="auto">This copy of Tokenize lives in the <code>JuliaSyntax</code> source tree due to the volume
+of changes required but once the churn settles down it would be good to figure
+out how to un-fork the lexer in some way or other.</p>
+<h3 dir="auto"><a id="user-content-parsing-with-parsestream" class="anchor" aria-hidden="true" href="#parsing-with-parsestream"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Parsing with ParseStream</h3>
+<p dir="auto">The main parser innovation is the <code>ParseStream</code> interface which provides a
+stream-like I/O interface for writing the parser. The parser does not
+depend on or produce any concrete tree data structure as part of the parsing
+phase but the output spans can be post-processed into various tree data
+structures as required. This is like the design of rust-analyzer though with a
+simpler implementation.</p>
+<p dir="auto">Parsing proceeds by recursive descent;</p>
+<ul dir="auto">
+<li>The parser consumes a flat list of lexed tokens as <em>input</em> using <code>peek()</code> to
+examine tokens and <code>bump()</code> to consume them.</li>
+<li>The parser produces a flat list of text spans as <em>output</em> using <code>bump()</code> to
+transfer tokens to the output and <code>position()</code>/<code>emit()</code> for nonterminal ranges.</li>
+<li>Diagnostics are emitted as separate text spans</li>
+<li>Whitespace and comments are automatically <code>bump()</code>ed and don't need to be
+handled explicitly. The exception is syntactically relevant newlines in space
+sensitive mode.</li>
+<li>Parser modes are passed down the call tree using <code>ParseState</code>.</li>
+</ul>
+<p dir="auto">The output spans track the byte range, a syntax "kind" stored as an integer
+tag, and some flags. The kind tag makes the spans a <a href="https://blog.waleedkhan.name/union-vs-sum-types/" rel="nofollow">sum
+type</a> but where the type is
+tracked explicitly outside of Julia's type system.</p>
+<p dir="auto">For lossless parsing the output spans must cover the entire input text. Using
+<code>bump()</code>, <code>position()</code> and <code>emit()</code> in a natural way also ensures that:</p>
+<ul dir="auto">
+<li>Spans are cleanly nested with children contained entirely within their parents</li>
+<li>Siblings spans are emitted in source order</li>
+<li>Parent spans are emitted after all their children.</li>
+</ul>
+<p dir="auto">These properties make the output spans naturally isomorphic to a
+<a href="#raw-syntax-tree--green-tree">"green tree"</a>
+in the terminology of C#'s Roslyn compiler.</p>
+<h3 dir="auto"><a id="user-content-tree-construction" class="anchor" aria-hidden="true" href="#tree-construction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Tree construction</h3>
+<p dir="auto">The <code>build_tree</code> function performs a depth-first traversal of the <code>ParseStream</code>
+output spans allowing it to be assembled into a concrete tree data structure,
+for example using the <code>GreenNode</code> data type. We further build on top of this to
+define <code>build_tree</code> for the AST type <code>SyntaxNode</code> and for normal Julia <code>Expr</code>.</p>
+<h3 dir="auto"><a id="user-content-error-recovery" class="anchor" aria-hidden="true" href="#error-recovery"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Error recovery</h3>
+<p dir="auto">The goal of the parser is to produce well-formed hierarchical structure from
+the source text. For interactive tools we need this to work even when the
+source text contains errors; it's the job of the parser to include the recovery
+heuristics to make this work.</p>
+<p dir="auto">Concretely, the parser in <code>JuliaSyntax</code> should always produce a green tree
+which is <em>well formed</em> in the sense that <code>GreenNode</code>s of a given <code>Kind</code> have
+well-defined layout of children. This means the <code>GreenNode</code> to <code>SyntaxNode</code>
+transformation is deterministic and tools can assume they're working with a
+"mostly valid" AST.</p>
+<p dir="auto">What does "mostly valid" mean? We allow the tree to contain the following types
+of error nodes:</p>
+<ul dir="auto">
+<li>Missing tokens or nodes may be <strong>added</strong> as placeholders when they're needed
+to complete a piece of syntax. For example, we could parse <code>a + (b *</code> as
+<code>(call-i a + (call-i * b XXX))</code> where <code>XXX</code> is a placeholder error node.</li>
+<li>A sequence of unexpected tokens may be <strong>removed</strong> by collecting
+them as children of an error node and treating them as syntax trivia during
+AST construction. For example, <code>a + b end * c</code> could be parsed as the green
+tree <code>(call-i a + b (error-t end * c))</code>, and turned into the AST <code>(call + a b)</code>.</li>
+</ul>
+<p dir="auto">We want to encode both these cases in a way which is simplest for downstream
+tools to use. This is an open question, but for now we use <code>K"error"</code> as the
+kind, with the <code>TRIVIA_FLAG</code> set for unexpected syntax.</p>
+<h1 dir="auto"><a id="user-content-syntax-trees" class="anchor" aria-hidden="true" href="#syntax-trees"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Syntax trees</h1>
+<p dir="auto">Julia's <code>Expr</code> abstract syntax tree can't store precise source locations or
+deal with syntax trivia like whitespace or comments. So we need some new tree
+types in <code>JuliaSyntax</code>.</p>
+<p dir="auto">JuliaSyntax currently deals in three types of trees:</p>
+<ul dir="auto">
+<li><code>GreenNode</code> is a minimal <em>lossless syntax tree</em> where
+<ul dir="auto">
+<li>Nodes store a kind and length in bytes, but no text</li>
+<li>Syntax trivia are included in the list of children</li>
+<li>Children are strictly in source order</li>
+</ul>
+</li>
+<li><code>SyntaxNode</code> is an <em>abstract syntax tree</em> which has
+<ul dir="auto">
+<li>An absolute position and pointer to the source text</li>
+<li>Children strictly in source order</li>
+<li>Leaf nodes store values, not text</li>
+<li>Trivia are ignored, but there is a 1:1 mapping of non-trivia nodes to the
+associated <code>GreenTree</code> nodes.</li>
+</ul>
+</li>
+<li><code>Expr</code> is used as a conversion target for compatibility</li>
+</ul>
+<h2 dir="auto"><a id="user-content-julia-ast-structures" class="anchor" aria-hidden="true" href="#julia-ast-structures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Julia AST structures</h2>
+<p dir="auto">In this section we describe some features of Julia's AST structures.</p>
+<h3 dir="auto"><a id="user-content-concatenation-syntax" class="anchor" aria-hidden="true" href="#concatenation-syntax"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Concatenation syntax</h3>
+<p dir="auto">Concatenation syntax comes in two syntax forms:</p>
+<ul dir="auto">
+<li>The traditional <code>hcat</code>/<code>vcat</code>/<code>row</code> which deal with concatenation or matrix
+construction along dimensions one and two.</li>
+<li>The new <code>ncat</code>/<code>nrow</code> syntax which deals with concatenation or array
+construction along arbitrary dimensions.</li>
+</ul>
+<p dir="auto">We write <code>ncat-3</code> for concatenation along the third dimension. (The <code>3</code> is
+stored in the head flags for <code>SyntaxNode</code> trees, and in the first <code>arg</code> for
+<code>Expr</code> trees.) Semantically the new syntax can work like the old:</p>
+<ul dir="auto">
+<li><code>ncat-1</code> is the same as <code>vcat</code></li>
+<li><code>ncat-2</code> is the same as <code>hcat</code></li>
+<li><code>row</code> is the same as <code>nrow-2</code></li>
+</ul>
+<h4 dir="auto"><a id="user-content-vertical-concatenation-dimension-1" class="anchor" aria-hidden="true" href="#vertical-concatenation-dimension-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Vertical concatenation (dimension 1)</h4>
+<p dir="auto">Vertical concatenation along dimension 1 can be done with semicolons or newlines</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; print_tree(:([a
+                     b]))
+Expr(:vcat)
+├─ :a
+└─ :b
+
+julia&gt; print_tree(:([a ; b]))
+Expr(:vcat)
+├─ :a
+└─ :b"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a
+                     b]))
+<span class="pl-c1">Expr</span>(<span class="pl-c1">:vcat</span>)
+├─ <span class="pl-c1">:a</span>
+└─ <span class="pl-c1">:b</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a ; b]))
+<span class="pl-c1">Expr</span>(<span class="pl-c1">:vcat</span>)
+├─ <span class="pl-c1">:a</span>
+└─ <span class="pl-c1">:b</span></pre></div>
+<h4 dir="auto"><a id="user-content-horizontal-concatenation-dimension-2" class="anchor" aria-hidden="true" href="#horizontal-concatenation-dimension-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Horizontal concatenation (dimension 2)</h4>
+<p dir="auto">For horizontal concatenation along dimension 2, use spaces or double semicolons</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; print_tree(:([a b]))
+Expr(:hcat)
+├─ :a
+└─ :b
+
+julia&gt; print_tree(:([a ;; b]))
+Expr(:ncat)
+├─ 2
+├─ :a
+└─ :b"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a b]))
+<span class="pl-c1">Expr</span>(<span class="pl-c1">:hcat</span>)
+├─ <span class="pl-c1">:a</span>
+└─ <span class="pl-c1">:b</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a ;; b]))
+<span class="pl-c1">Expr</span>(<span class="pl-c1">:ncat</span>)
+├─ <span class="pl-c1">2</span>
+├─ <span class="pl-c1">:a</span>
+└─ <span class="pl-c1">:b</span></pre></div>
+<h4 dir="auto"><a id="user-content-mixed-concatenation" class="anchor" aria-hidden="true" href="#mixed-concatenation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Mixed concatenation</h4>
+<p dir="auto">Concatenation along dimensions 1 and 2 can be done with spaces and single
+semicolons or newlines, producing a mixture of <code>vcat</code> and <code>row</code> expressions:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; print_tree(:([a b
+                     c d]))
+# OR
+julia&gt; print_tree(:([a b ; c d]))
+Expr(:vcat)
+├─ Expr(:row)
+│  ├─ :a
+│  └─ :b
+└─ Expr(:row)
+   ├─ :c
+   └─ :d"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a b
+                     c d]))
+<span class="pl-c"><span class="pl-c">#</span> OR</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a b ; c d]))
+<span class="pl-c1">Expr</span>(<span class="pl-c1">:vcat</span>)
+├─ <span class="pl-c1">Expr</span>(<span class="pl-c1">:row</span>)
+│  ├─ <span class="pl-c1">:a</span>
+│  └─ <span class="pl-c1">:b</span>
+└─ <span class="pl-c1">Expr</span>(<span class="pl-c1">:row</span>)
+   ├─ <span class="pl-c1">:c</span>
+   └─ <span class="pl-c1">:d</span></pre></div>
+<p dir="auto">General n-dimensional concatenation results in nested <code>ncat</code> and <code>nrow</code>, for
+example</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; print_tree(:([a ; b ;; c ; d ;;; x]))
+Expr(:ncat)
+├─ 3
+├─ Expr(:nrow)
+│  ├─ 2
+│  ├─ Expr(:nrow)
+│  │  ├─ 1
+│  │  ├─ :a
+│  │  └─ :b
+│  └─ Expr(:nrow)
+│     ├─ 1
+│     ├─ :c
+│     └─ :d
+└─ :x"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_tree</span>(:([a ; b ;; c ; d ;;; x]))
+<span class="pl-c1">Expr</span>(<span class="pl-c1">:ncat</span>)
+├─ <span class="pl-c1">3</span>
+├─ <span class="pl-c1">Expr</span>(<span class="pl-c1">:nrow</span>)
+│  ├─ <span class="pl-c1">2</span>
+│  ├─ <span class="pl-c1">Expr</span>(<span class="pl-c1">:nrow</span>)
+│  │  ├─ <span class="pl-c1">1</span>
+│  │  ├─ <span class="pl-c1">:a</span>
+│  │  └─ <span class="pl-c1">:b</span>
+│  └─ <span class="pl-c1">Expr</span>(<span class="pl-c1">:nrow</span>)
+│     ├─ <span class="pl-c1">1</span>
+│     ├─ <span class="pl-c1">:c</span>
+│     └─ <span class="pl-c1">:d</span>
+└─ <span class="pl-c1">:x</span></pre></div>
+<h2 dir="auto"><a id="user-content-tree-differences-between-greennode-and-expr" class="anchor" aria-hidden="true" href="#tree-differences-between-greennode-and-expr"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Tree differences between GreenNode and Expr</h2>
+<p dir="auto">The tree structure of <code>GreenNode</code>/<code>SyntaxNode</code> is similar to Julia's <code>Expr</code>
+data structure but there are various differences:</p>
+<h3 dir="auto"><a id="user-content-source-ordered-children" class="anchor" aria-hidden="true" href="#source-ordered-children"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Source ordered children</h3>
+<p dir="auto">The children of our trees are strictly in source order. This has many
+consequences in places where <code>Expr</code> reorders child expressions.</p>
+<ul dir="auto">
+<li>Infix and postfix operator calls have the operator name in the <em>second</em> child position. <code>a + b</code> is parsed as <code>(call-i a + b)</code> - where the infix <code>-i</code> flag indicates infix child position - rather than <code>Expr(:call, :+, :a, :b)</code>.</li>
+<li>Generators are represented in source order as a single node rather than multiple nested flatten and generator expressions.</li>
+</ul>
+<h3 dir="auto"><a id="user-content-no-linenumbernodes" class="anchor" aria-hidden="true" href="#no-linenumbernodes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>No <code>LineNumberNode</code>s</h3>
+<p dir="auto">Our syntax nodes inherently stores source position, so there's no need for the
+<code>LineNumberNode</code>s used by <code>Expr</code>.</p>
+<h3 dir="auto"><a id="user-content-more-consistent--less-redundant-blocks" class="anchor" aria-hidden="true" href="#more-consistent--less-redundant-blocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>More consistent / less redundant <code>block</code>s</h3>
+<p dir="auto">Sometimes <code>Expr</code> needs redundant block constructs to store <code>LineNumberNode</code>s,
+but we don't need these. Also in cases which do use blocks we try to use them
+consistently.</p>
+<ul dir="auto">
+<li>No block is used on the right hand side of short form function syntax</li>
+<li>No block is used for the conditional in <code>elseif</code></li>
+<li>No block is used for the body of anonymous functions after the <code>-&gt;</code></li>
+<li><code>let</code> argument lists always use a block regardless of number or form of bindings</li>
+</ul>
+<h3 dir="auto"><a id="user-content-faithful-representation-of-the-source-text--avoid-premature-lowering" class="anchor" aria-hidden="true" href="#faithful-representation-of-the-source-text--avoid-premature-lowering"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Faithful representation of the source text / avoid premature lowering</h3>
+<p dir="auto">Some cases of "premature lowering" have been removed, preferring to represent
+the source text more closely.</p>
+<ul dir="auto">
+<li><code>K"macrocall"</code> - allow users to easily distinguish macrocalls with parentheses from those without them (#218)</li>
+<li>Grouping parentheses are represented with a node of kind <code>K"parens"</code> (#222)</li>
+<li>The right hand side of <code>x where {T}</code> retains the <code>K"braces"</code> node around the <code>T</code> to distinguish it from <code>x where T</code>.</li>
+<li>Ternary syntax is not immediately lowered to an <code>if</code> node: <code>a ? b : c</code> parses as <code>(? a b c)</code> rather than <code>Expr(:if, :a, :b, :c)</code> (#85)</li>
+<li><code>global const</code> and <code>const global</code> are not normalized by the parser. This is done in <code>Expr</code> conversion (#130)</li>
+<li>The AST for <code>do</code> is flatter and not lowered to a lambda by the parser: <code>f(x) do y ; body end</code> is parsed as <code>(do (call f x) (tuple y) (block body))</code> (#98)</li>
+<li><code>@.</code> is not lowered to <code>@__dot__</code> inside the parser (#146)</li>
+<li>Docstrings use the <code>K"doc"</code> kind, and are not lowered to <code>Core.@doc</code> until later (#217)</li>
+<li>Juxtaposition uses the <code>K"juxtapose"</code> kind rather than lowering immediately to <code>*</code> (#220)</li>
+<li><code>return</code> without a value has zero children, rather than lowering to <code>return nothing</code> (#220)</li>
+</ul>
+<h3 dir="auto"><a id="user-content-containers-for-string-like-constructs" class="anchor" aria-hidden="true" href="#containers-for-string-like-constructs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Containers for string-like constructs</h3>
+<p dir="auto">String-like constructs always come within a container node, not as a single
+token. These are useful for tooling which works with the tokens of the source
+text. Also separating the delimiters from the text they delimit removes a whole
+class of tokenization errors and lets the parser deal with them.</p>
+<ul dir="auto">
+<li>string always use <code>K"string"</code> to wrap strings, even when they only contain a single string chunk (#94)</li>
+<li>char literals are wrapped in the <code>K"char"</code> kind, containing the character literal string along with their delimiters (#121)</li>
+<li>backticks use the <code>K"cmdstring"</code> kind</li>
+<li><code>var""</code> syntax uses <code>K"var"</code> as the head (#127)</li>
+<li>The parser splits triple quoted strings into string chunks interspersed with whitespace trivia</li>
+</ul>
+<h3 dir="auto"><a id="user-content-improvements-for-ast-inconsistencies" class="anchor" aria-hidden="true" href="#improvements-for-ast-inconsistencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Improvements for AST inconsistencies</h3>
+<ul dir="auto">
+<li>Dotted call syntax like <code>f.(a,b)</code> and <code>a .+ b</code> has been made consistent with the <code>K"dotcall"</code> head (#90)</li>
+<li>Standalone dotted operators are always parsed as <code>(. op)</code>. For example <code>.*(x,y)</code> is parsed as <code>(call (. *) x y)</code> (#240)</li>
+<li>The <code>K"="</code> kind is used for keyword syntax rather than <code>kw</code>, to avoid various inconsistencies and ambiguities (#103)</li>
+<li>Unadorned postfix adjoint is parsed as <code>call</code> rather than as a syntactic operator for consistency with suffixed versions like <code>x'ᵀ</code> (#124)</li>
+</ul>
+<h3 dir="auto"><a id="user-content-improvements-to-awkward-ast-forms" class="anchor" aria-hidden="true" href="#improvements-to-awkward-ast-forms"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Improvements to awkward AST forms</h3>
+<ul dir="auto">
+<li>Frakentuples with multiple parameter blocks like <code>(a=1, b=2; c=3; d=4)</code> are flattened into the parent tuple instead of using nested <code>K"parameters"</code> nodes (#133)</li>
+<li>Using <code>try catch else finally end</code> is parsed with <code>K"catch"</code> <code>K"else"</code> and <code>K"finally"</code> children to avoid the awkwardness of the optional child nodes in the <code>Expr</code> representation (#234)</li>
+<li>The dotted import path syntax as in <code>import A.b.c</code> is parsed with a <code>K"importpath"</code> kind rather than <code>K"."</code>, because a bare <code>A.b.c</code> has a very different nested/quoted expression representation (#244)</li>
+<li>We use flags rather than child nodes to represent the difference between <code>struct</code> and <code>mutable struct</code>, <code>module</code> and <code>baremodule</code> (#220)</li>
+<li>Multiple iterations within the header of a <code>for</code>, as in <code>for a=as, b=bs body end</code> are represented with a <code>cartesian_iterator</code> head rather than a <code>block</code>, as these lists of iterators are neither semantically nor syntactically a sequence of statements. Unlike other uses of <code>block</code> (see also generators).</li>
+</ul>
+<h2 dir="auto"><a id="user-content-more-detail-on-tree-differences" class="anchor" aria-hidden="true" href="#more-detail-on-tree-differences"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>More detail on tree differences</h2>
+<h3 dir="auto"><a id="user-content-generators" class="anchor" aria-hidden="true" href="#generators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Generators</h3>
+<p dir="auto">Flattened generators are uniquely problematic because the Julia AST doesn't
+respect a key rule we normally expect: that the children of an AST node are a
+<em>contiguous</em> range in the source text. For example, the <code>for</code>s in
+<code>[xy for x in xs for y in ys]</code> are parsed in the normal order of a for loop to
+mean</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="for x in xs
+for y in ys
+  push!(xy, collection)"><pre class="notranslate"><code>for x in xs
+for y in ys
+  push!(xy, collection)
+</code></pre></div>
+<p dir="auto">so the <code>xy</code> prefix is in the <em>body</em> of the innermost for loop. Following this,
+the standard Julia AST is like so:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(flatten
+  (generator
+    (generator
+      xy
+      (= y ys))
+    (= x xs)))"><pre class="notranslate"><code>(flatten
+  (generator
+    (generator
+      xy
+      (= y ys))
+    (= x xs)))
+</code></pre></div>
+<p dir="auto">however, note that if this tree were flattened, the order would be
+<code>(xy) (y in ys) (x in xs)</code> and the <code>x</code> and <code>y</code> iterations are <em>opposite</em> of the
+source order.</p>
+<p dir="auto">However, our green tree is strictly source-ordered, so we must deviate from the
+Julia AST. We deal with this by grouping cartesian products of iterators
+(separated by commas) within <code>cartesian_iterator</code> blocks as in <code>for</code> loops, and
+use the presence of multiple iterator blocks rather than the <code>flatten</code> head to
+distinguish flattened iterators. The nested flattens and generators of <code>Expr</code>
+forms are reconstructed later. In this form the tree structure resembles the
+source much more closely. For example, <code>(xy for x in xs for y in ys)</code> is parsed as</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(generator
+  xy
+  (= x xs)
+  (= y ys))"><pre class="notranslate"><code>(generator
+  xy
+  (= x xs)
+  (= y ys))
+</code></pre></div>
+<p dir="auto">And the cartesian iteration <code>(xy for x in xs, y in ys)</code> is parsed as</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(generator
+  xy
+  (cartesian_iterator
+    (= x xs)
+    (= y ys)))"><pre class="notranslate"><code>(generator
+  xy
+  (cartesian_iterator
+    (= x xs)
+    (= y ys)))
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-whitespace-trivia-inside-strings" class="anchor" aria-hidden="true" href="#whitespace-trivia-inside-strings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Whitespace trivia inside strings</h3>
+<p dir="auto">For triple quoted strings, the indentation isn't part of the string data so
+should also be excluded from the string content within the green tree. That is,
+it should be treated as separate whitespace trivia tokens. With this separation
+things like formatting should be much easier. The same reasoning goes for
+escaping newlines and following whitespace with backslashes in normal strings.</p>
+<p dir="auto">Detecting string trivia during parsing means that string content is split over
+several tokens. Here we wrap these in the K"string" kind (as is already used
+for interpolations). The individual chunks can then be reassembled during Expr
+construction. (A possible alternative might be to reuse the K"String" and
+K"CmdString" kinds for groups of string chunks (without interpolation).)</p>
+<p dir="auto">Take as an example the following Julia fragment.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x = &quot;&quot;&quot;
+    $a
+    b&quot;&quot;&quot;"><pre>x <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    <span class="pl-v">$a</span></span>
+<span class="pl-s">    b<span class="pl-pds">"""</span></span></pre></div>
+<p dir="auto">Here this is parsed as <code>(= x (string-s a "\n" "b"))</code> (the <code>-s</code> flag in
+<code>string-s</code> means "triple quoted string")</p>
+<p dir="auto">Looking at the green tree, we see the indentation before the <code>$a</code> and <code>b</code> are
+marked as trivia:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; text = &quot;x = \&quot;\&quot;\&quot;\n    \$a\n    b\&quot;\&quot;\&quot;&quot;
+       show(stdout, MIME&quot;text/plain&quot;(), parseall(GreenNode, text, rule=:statement), text)
+     1:23     │[=]
+     1:1      │  Identifier             ✔   &quot;x&quot;
+     2:2      │  Whitespace                 &quot; &quot;
+     3:3      │  =                          &quot;=&quot;
+     4:4      │  Whitespace                 &quot; &quot;
+     5:23     │  [string]
+     5:7      │    &quot;&quot;&quot;                      &quot;\&quot;\&quot;\&quot;&quot;
+     8:8      │    String                   &quot;\n&quot;
+     9:12     │    Whitespace               &quot;    &quot;
+    13:13     │    $                        &quot;\$&quot;
+    14:14     │    Identifier           ✔   &quot;a&quot;
+    15:15     │    String               ✔   &quot;\n&quot;
+    16:19     │    Whitespace               &quot;    &quot;
+    20:20     │    String               ✔   &quot;b&quot;
+    21:23     │    &quot;&quot;&quot;                      &quot;\&quot;\&quot;\&quot;&quot;"><pre class="notranslate"><code>julia&gt; text = "x = \"\"\"\n    \$a\n    b\"\"\""
+       show(stdout, MIME"text/plain"(), parseall(GreenNode, text, rule=:statement), text)
+     1:23     │[=]
+     1:1      │  Identifier             ✔   "x"
+     2:2      │  Whitespace                 " "
+     3:3      │  =                          "="
+     4:4      │  Whitespace                 " "
+     5:23     │  [string]
+     5:7      │    """                      "\"\"\""
+     8:8      │    String                   "\n"
+     9:12     │    Whitespace               "    "
+    13:13     │    $                        "\$"
+    14:14     │    Identifier           ✔   "a"
+    15:15     │    String               ✔   "\n"
+    16:19     │    Whitespace               "    "
+    20:20     │    String               ✔   "b"
+    21:23     │    """                      "\"\"\""
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-string-nodes-always-wrapped-in-kstring-or-kcmdstring" class="anchor" aria-hidden="true" href="#string-nodes-always-wrapped-in-kstring-or-kcmdstring"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>String nodes always wrapped in <code>K"string"</code> or <code>K"cmdstring"</code></h3>
+<p dir="auto">All strings are surrounded by a node of kind <code>K"string"</code>, even non-interpolated
+literals, so <code>"x"</code> parses as <code>(string "x")</code>. This makes string handling simpler
+and more systematic because interpolations and triple strings with embedded
+trivia don't need to be treated differently. It also gives a container in which
+to attach the delimiting quotes.</p>
+<p dir="auto">The same goes for command strings which are always wrapped in <code>K"cmdstring"</code>
+regardless of whether they have multiple pieces (due to triple-quoted
+dedenting) or otherwise.</p>
+<h3 dir="auto"><a id="user-content-no-desugaring-of-the-closure-in-do-blocks" class="anchor" aria-hidden="true" href="#no-desugaring-of-the-closure-in-do-blocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>No desugaring of the closure in do blocks</h3>
+<p dir="auto">The reference parser represents <code>do</code> syntax with a closure for the second
+argument. That is,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="f(x) do y
+    body
+end"><pre><span class="pl-c1">f</span>(x) <span class="pl-k">do</span> y
+    body
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">becomes <code>(do (call f x) (-&gt; (tuple y) (block body)))</code> in the reference parser.</p>
+<p dir="auto">However, the nested closure with <code>-&gt;</code> head is implied here rather than present
+in the surface syntax, which suggests this is a premature desugaring step.
+Instead we emit the flatter structure <code>(do (call f x) (tuple y) (block body))</code>.</p>
+<h2 dir="auto"><a id="user-content-more-about-syntax-kinds" class="anchor" aria-hidden="true" href="#more-about-syntax-kinds"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>More about syntax kinds</h2>
+<p dir="auto">We generally track the type of syntax nodes with a syntax "kind", stored
+explicitly in each node an integer tag. This effectively makes the node type a
+<a href="https://blog.waleedkhan.name/union-vs-sum-types/" rel="nofollow">sum type</a> in the type system
+sense, but with the type tracked explicitly outside of Julia's type system.</p>
+<p dir="auto">Managing the type explicitly brings a few benefits:</p>
+<ul dir="auto">
+<li>Code and data structures for manipulating syntax nodes is always concretely
+typed from the point of view of the compiler.</li>
+<li>We control the data layout and can pack the kind into very few bits along
+with other flags bits, as desired.</li>
+<li>Predicates such as <code>is_operator</code> can be extremely efficient, given that we
+know the meaning of the kind's bits.</li>
+<li>The kind can be applied to several different tree data structures, or
+manipulated by itself.</li>
+<li>Pattern matching code is efficient when the full set of kinds is closed and
+known during compilation.</li>
+</ul>
+<p dir="auto">There's arguably a few downsides:</p>
+<ul dir="auto">
+<li>Normal Julia dispatch can't express dispatch over syntax kind. Luckily,
+a pattern matching macro can provide a very elegant way of expressing such
+algorithms over a non-extensible set of kinds, so this is not a big problem.</li>
+<li>Different node kinds could come with different data fields, but a syntax
+tree must have generic fields to cater for all kinds. (Consider as an analogy
+the normal Julia AST <code>QuoteNode</code> with a single field vs <code>Expr</code> with generic
+<code>head</code> and <code>args</code> fields.) This could be a disadvantage for code which
+processes one specific kind but for generic code processing many kinds
+having a generic but <em>concrete</em> data layout should be faster.</li>
+</ul>
+<h1 dir="auto"><a id="user-content-differences-from-the-flisp-parser" class="anchor" aria-hidden="true" href="#differences-from-the-flisp-parser"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Differences from the flisp parser</h1>
+<p dir="auto"><em>See also the <a href="#comparisons-to-other-packages">§ Comparisons to other packages</a> section.</em></p>
+<p dir="auto">Practically the flisp parser is not quite a classic <a href="https://en.wikipedia.org/wiki/Recursive_descent_parser" rel="nofollow">recursive descent
+parser</a>, because it
+often looks back and modifies the output tree it has already produced. We've
+tried to eliminate this pattern in favor of lookahead where possible because</p>
+<ul dir="auto">
+<li>It works poorly when the parser is emitting a stream of node spans with
+strict source ordering constraints.</li>
+<li>It's confusing to reason about this kind of code</li>
+</ul>
+<p dir="auto">However, on occasion it seems to solve genuine ambiguities where Julia code
+can't be parsed top-down with finite lookahead. Eg for the <code>kw</code> vs <code>=</code>
+ambiguity within parentheses. In these cases we put up with using the
+functions <code>look_behind</code> and <code>reset_node!()</code>.</p>
+<h2 dir="auto"><a id="user-content-code-structure" class="anchor" aria-hidden="true" href="#code-structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Code structure</h2>
+<p dir="auto">Large structural changes were generally avoided while porting. In particular,
+nearly all function names for parsing productions are the same with <code>-</code>
+replaced by <code>_</code> and predicates prefixed by <code>is_</code>.</p>
+<p dir="auto">Some notable differences:</p>
+<ul dir="auto">
+<li><code>parse-arglist</code> and a parts of <code>parse-paren-</code> have been combined into a
+general function <code>parse_brackets</code>. This function deals with all the odd
+corner cases of how the AST is emitted when mixing <code>,</code> and <code>;</code> within
+parentheses. In particular regard to:
+<ul dir="auto">
+<li>Determining whether <code>;</code> are block syntax separators or keyword parameters</li>
+<li>Determining whether to emit <code>parameter</code> sections based on context</li>
+<li>Emitting key-value pairs either as <code>kw</code> or <code>=</code> depending on context</li>
+</ul>
+</li>
+<li>The way that <code>parse-resword</code> is entered has been rearranged to avoid parsing
+reserved words with <code>parse-atom</code> inside <code>parse-unary-prefix</code>. Instead, we
+detect reserved words and enter <code>parse_resword</code> earlier.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-flisp-parser-bugs" class="anchor" aria-hidden="true" href="#flisp-parser-bugs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Flisp parser bugs</h2>
+<p dir="auto">Here's some behaviors which seem to be bugs. (Some of these we replicate in the
+name of compatibility, perhaps with a warning.)</p>
+<ul dir="auto">
+<li>Macro module paths allow calls which gives weird stateful semantics!
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="b() = rand() &gt; 0.5 ? Base : Core
+b().@info &quot;hi&quot;"><pre class="notranslate"><code>b() = rand() &gt; 0.5 ? Base : Core
+b().@info "hi"
+</code></pre></div>
+</li>
+<li>Misplaced <code>@</code> in macro module paths like <code>A.@B.x</code> is parsed as odd
+broken-looking AST like <code>(macrocall (. A (quote (. B @x))))</code>.  It should
+probably be rejected.</li>
+<li>Operator prefix call syntax doesn't work in the cases like <code>+(a;b,c)</code> where
+keyword parameters are separated by commas. A tuple is produced instead.</li>
+<li><code>const</code> and <code>global</code> allow chained assignment, but the right hand side is not
+constant. <code>a</code> const here but not <code>b</code>.
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="const a = b = 1"><pre class="notranslate"><code>const a = b = 1
+</code></pre></div>
+</li>
+<li>Parsing the <code>ncat</code> array concatenation syntax within braces gives
+strange AST: <code>{a ;; b}</code> parses to <code>(bracescat 2 a b)</code> which is the same as
+<code>{2 ; a ; b}</code>, but should probably be <code>(bracescat (nrow 2 a b))</code> in analogy
+to how <code>{a b}</code> produces <code>(bracescat (row a b))</code>.</li>
+<li><code>export a, \n $b</code> is rejected, but <code>export a, \n b</code> parses fine.</li>
+<li>In try-catch-finally, the <code>finally</code> clause is allowed before the <code>catch</code>, but
+always executes afterward. (Presumably was this a mistake? It seems pretty awful!)</li>
+<li>When parsing <code>"[x \n\n ]"</code> the flisp parser gets confused, but <code>"[x \n ]"</code> is
+correctly parsed as <code>Expr(:vect)</code> (maybe fixed in 1.7?)</li>
+<li><code>f(x for x in in xs)</code> is accepted, and parsed very strangely.</li>
+<li>Octal escape sequences saturate rather than being reported as errors. Eg,
+<code>"\777"</code> results in <code>"\xff"</code>.  This is inconsistent with
+<code>Base.parse(::Type{Int}, ...)</code></li>
+<li>Leading dots in import paths with operator-named modules are parsed into
+dotted operators rather than a relative path. Ie, we have <code>import .⋆</code> parsing
+to <code>(import (. .⋆))</code> whereas it should be <code>(import (. . ⋆))</code> for consistency
+with the parsing of <code>import .A</code>.</li>
+<li>Looking back on the output disregards grouping parentheses which can lead to
+odd results in some cases. For example, <code>f(((((x=1)))))</code> parses as a keyword
+call to function <code>f</code> with the keyword <code>x=1</code>, but arguably it should be an
+assignment.</li>
+<li>Hexfloat literals can have a trailing <code>f</code> for example, <code>0x1p1f</code>
+but this doesn't do anything. In the <code>flisp</code> C code such cases are treated as
+Float32 literals and this was intentional <a class="issue-link js-issue-link" data-error-text="Failed to load title" data-id="13600226" data-permission-text="Title is private" data-url="https://github.com/JuliaLang/julia/issues/2925" data-hovercard-type="pull_request" data-hovercard-url="/JuliaLang/julia/pull/2925/hovercard" href="https://github.com/JuliaLang/julia/pull/2925">JuliaLang/julia#2925</a>
+but this has never been officially supported in Julia. It seems this bug
+arises from <code>(set! pred char-hex?)</code> in <code>parse-number</code> accepting hex exponent
+digits, all of which are detected as invalid except for a trailing <code>f</code> when
+processed by <code>isnumtok_base</code>.</li>
+<li><code>begin</code> and <code>end</code> are not parsed as keywords when indexing. Typed comprehensions
+initially look the same, but can be distinguished from indexing once we handle
+a <code>for</code> token; it is safe to treat <code>begin</code> and <code>end</code> as keywords afterwards. The
+reference parser <em>only</em> handles this well when there's a newline before <code>for</code>:
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Any[foo(i)
+    for i in x if begin
+        true
+    end
+]"><pre>Any[<span class="pl-c1">foo</span>(i)
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> x <span class="pl-k">if</span> <span class="pl-c1">begin</span>
+        <span class="pl-c1">true</span>
+    <span class="pl-c1">end</span>
+]</pre></div>
+works, while
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Any[foo(i) for i in x if begin
+        true
+    end
+]"><pre>Any[<span class="pl-c1">foo</span>(i) <span class="pl-k">for</span> i <span class="pl-k">in</span> x <span class="pl-k">if</span> <span class="pl-c1">begin</span>
+        <span class="pl-c1">true</span>
+    <span class="pl-c1">end</span>
+]</pre></div>
+does not. JuliaSyntax handles both cases.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-parsing--ast-oddities-and-warts" class="anchor" aria-hidden="true" href="#parsing--ast-oddities-and-warts"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Parsing / AST oddities and warts</h2>
+<h3 dir="auto"><a id="user-content-questionable-allowed-forms" class="anchor" aria-hidden="true" href="#questionable-allowed-forms"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Questionable allowed forms</h3>
+<p dir="auto">There's various allowed syntaxes which are fairly easily detected in the
+parser, but which will be rejected later during lowering. To allow building
+DSLs this is fine and good but some such allowed syntaxes don't seem very
+useful, even for DSLs:</p>
+<ul dir="auto">
+<li><code>macro (x) end</code> is allowed but there are no anonymous macros.</li>
+<li><code>abstract type A &lt; B end</code> and other subtype comparisons are allowed, but
+only <code>A &lt;: B</code> makes sense.</li>
+<li><code>x where {S T}</code> produces <code>(where x (bracescat (row S T)))</code>. This seems pretty weird!</li>
+<li><code>[x for outer x in xs]</code> parses, but <code>outer</code> makes no real sense in this
+context (and using this form is a lowering error)</li>
+</ul>
+<h3 dir="auto"><a id="user-content-kw-and--inconsistencies" class="anchor" aria-hidden="true" href="#kw-and--inconsistencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>kw</code> and <code>=</code> inconsistencies</h3>
+<p dir="auto">There's many apparent inconsistencies between how <code>kw</code> and <code>=</code> are used when
+parsing <code>key=val</code> pairs inside parentheses.</p>
+<ul dir="auto">
+<li>Inconsistent parsing of tuple keyword args inside vs outside of dot calls
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="(a=1,)           # (tuple (= a 1))
+f.(a=1)          # (tuple (kw a 1))"><pre>(a<span class="pl-k">=</span><span class="pl-c1">1</span>,)           <span class="pl-c"><span class="pl-c">#</span> (tuple (= a 1))</span>
+<span class="pl-c1">f</span>.(a<span class="pl-k">=</span><span class="pl-c1">1</span>)          <span class="pl-c"><span class="pl-c">#</span> (tuple (kw a 1))</span></pre></div>
+</li>
+<li>Mixtures of <code>,</code> and <code>;</code> in calls give nested parameter AST which parses
+strangely, and is kind-of-horrible to use.
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# (tuple (parameters (parameters e f) c d) a b)
+(a,b; c,d; e,f)"><pre><span class="pl-c"><span class="pl-c">#</span> (tuple (parameters (parameters e f) c d) a b)</span>
+(a,b; c,d; e,f)</pre></div>
+</li>
+<li>Long-form anonymous functions have argument lists which are parsed
+as tuples (or blocks!) rather than argument lists and this mess appears to be
+papered over as part of lowering. For example, in <code>function (a;b) end</code> the
+<code>(a;b)</code> is parsed as a block! This leads to more inconsistency in the use of
+<code>kw</code> for keywords.</li>
+</ul>
+<h3 dir="auto"><a id="user-content-other-oddities" class="anchor" aria-hidden="true" href="#other-oddities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Other oddities</h3>
+<ul dir="auto">
+<li>
+<p dir="auto">Operators with suffices don't seem to always be parsed consistently as the
+same operator without a suffix. Unclear whether this is by design or mistake.
+For example, <code>[x +y] ==&gt; (hcat x (+ y))</code>, but <code>[x +₁y] ==&gt; (hcat (call +₁ x y))</code></p>
+</li>
+<li>
+<p dir="auto"><code>global const x=1</code> is normalized by the parser into <code>(const (global (= x 1)))</code>.
+I suppose this is somewhat useful for AST consumers, but reversing the source
+order is pretty weird and inconvenient when moving to a lossless parser.</p>
+</li>
+<li>
+<p dir="auto"><code>let</code> bindings might be stored in a block, or they might not be, depending on
+special cases:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="# Special cases not in a block
+let x=1 ; end   ==&gt;  (let (= x 1) (block))
+let x::1 ; end  ==&gt;  (let (:: x 1) (block))
+let x ; end     ==&gt;  (let x (block))
+
+# In a block
+let x=1,y=2 ; end  ==&gt;  (let (block (= x 1) (= y 2) (block)))
+let x+=1 ; end     ==&gt;  (let (block (+= x 1)) (block))"><pre class="notranslate"><code># Special cases not in a block
+let x=1 ; end   ==&gt;  (let (= x 1) (block))
+let x::1 ; end  ==&gt;  (let (:: x 1) (block))
+let x ; end     ==&gt;  (let x (block))
+
+# In a block
+let x=1,y=2 ; end  ==&gt;  (let (block (= x 1) (= y 2) (block)))
+let x+=1 ; end     ==&gt;  (let (block (+= x 1)) (block))
+</code></pre></div>
+</li>
+<li>
+<p dir="auto">The <code>elseif</code> condition is always in a block but not the <code>if</code> condition.
+Presumably because of the need to add a line number node in the flisp parser
+<code>if a xx elseif b yy end   ==&gt;  (if a (block xx) (elseif (block b) (block yy)))</code></p>
+</li>
+<li>
+<p dir="auto">Spaces are allowed between import dots — <code>import . .A</code> is allowed, and
+parsed the same as <code>import ..A</code></p>
+</li>
+<li>
+<p dir="auto"><code>import A..</code> produces <code>(import (. A .))</code> which is arguably nonsensical, as <code>.</code>
+can't be a normal identifier.</p>
+</li>
+<li>
+<p dir="auto">The raw string escaping rules are <em>super</em> confusing for backslashes near
+the end of the string: <code>raw"\\\\ "</code> contains four backslashes, whereas
+<code>raw"\\\\"</code> contains only two. However this was an intentional feature to
+allow all strings to be represented and it's unclear whether the situation
+can be improved.</p>
+</li>
+<li>
+<p dir="auto">In braces after macrocall, <code>@S{a b}</code> is invalid but both <code>@S{a,b}</code> and
+<code>@S {a b}</code> parse. Conversely, <code>@S[a b]</code> parses.</p>
+</li>
+<li>
+<p dir="auto">Macro names and invocations are post-processed from the output of
+<code>parse-atom</code> / <code>parse-call</code>, which leads to some surprising and questionable
+constructs which "work":</p>
+<ul dir="auto">
+<li>Absurdities like <code>@(((((a))))) x ==&gt; (macrocall @a x)</code></li>
+<li>Infix macros!? <code>@(x + y)  ==&gt;  (macrocall @+ x y)</code> (ok, kinda cute and has
+some weird logic to it... but what?)</li>
+<li>Similarly additional parentheses are allowed <code>@(f(x)) ==&gt; (macrocall @f x)</code></li>
+</ul>
+</li>
+<li>
+<p dir="auto">Allowing <code>@</code> first in macro module paths (eg <code>@A.B.x</code> instead of <code>A.B.@x</code>)
+seems like unnecessary variation in syntax. It makes parsing valid macro
+module paths more complex and leads to oddities like <code>@$.x y ==&gt; (macrocall ($ (quote x)) y</code> where the <code>$</code> is first parsed as a macro name, but turns out
+to be the module name after the <code>.</code> is parsed. But <code>$</code> can never be a valid
+module name in normal Julia code so this makes no sense.</p>
+</li>
+<li>
+<p dir="auto">Triple quoted <code>var"""##"""</code> identifiers are allowed. But it's not clear these
+are required or desired given that they come with the complex triple-quoted
+string deindentation rules.</p>
+</li>
+<li>
+<p dir="auto">Deindentation of triple quoted strings with mismatched whitespace is weird
+when there's nothing but whitespace. For example, we have
+<code>"\"\"\"\n  \n \n  \"\"\"" ==&gt; "\n \n"</code> so the middle line of whitespace
+here isn't dedented but the other two longer lines are?? Here it seems more
+consistent that either (a) the middle line should be deindented completely,
+or (b) all lines should be dedented only one character, as that's the
+matching prefix.</p>
+</li>
+<li>
+<p dir="auto">Parsing of anonymous function arguments is somewhat inconsistent.
+<code>function (xs...) \n body end</code> parses the argument list as <code>(... xs)</code>, whereas
+<code>function (x) \n body end</code> parses the argument list as <code>(tuple x)</code>.</p>
+</li>
+<li>
+<p dir="auto">The difference between multidimensional vs flattened iterators is subtle, and
+perhaps too syntactically permissive.  For example,</p>
+<ul dir="auto">
+<li><code>[(x,y) for x * in 1:10, y in 1:10]</code> is a multidimensional iterator</li>
+<li><code>[(x,y) for x * in 1:10 for y in 1:10]</code> is a flattened iterator</li>
+<li><code>[(x,y) for x in 1:10, y in 1:10 if y &lt; x]</code> is a flattened iterator</li>
+</ul>
+<p dir="auto">It's this last case which seems problematic (why not <em>require</em> the second
+form as a more explicit way to indicate flattening?). It's not even pretty
+printed correctly:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; :([(x,y) for x in 1:10, y in 1:10 if y &lt; x])
+:([(x, y) for $(Expr(:filter, :(y &lt; x), :(x = 1:10), :(y = 1:10)))])"><pre class="notranslate"><code>julia&gt; :([(x,y) for x in 1:10, y in 1:10 if y &lt; x])
+:([(x, y) for $(Expr(:filter, :(y &lt; x), :(x = 1:10), :(y = 1:10)))])
+</code></pre></div>
+</li>
+<li>
+<p dir="auto">The character <code>'</code> may be written without escaping as <code>'''</code> rather than
+requiring the form <code>'\''</code>.</p>
+</li>
+</ul>
+<h1 dir="auto"><a id="user-content-comparisons-to-other-packages" class="anchor" aria-hidden="true" href="#comparisons-to-other-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Comparisons to other packages</h1>
+<h3 dir="auto"><a id="user-content-official-julia-compiler" class="anchor" aria-hidden="true" href="#official-julia-compiler"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Official Julia compiler</h3>
+<p dir="auto"><em>See also the <a href="#differences-from-the-flisp-parser">§ Differences from the flisp parser</a> section.</em></p>
+<p dir="auto">The official Julia compiler frontend lives in the Julia source tree. It's
+mostly contained in just a few files:</p>
+<ul dir="auto">
+<li>The parser in <a href="https://github.com/JuliaLang/julia/blob/9c4b75d7f63d01d12b67aaf7ce8bb4a078825b52/src/julia-parser.scm">src/julia-parser.scm</a></li>
+<li>Macro expansion in <a href="https://github.com/JuliaLang/julia/blob/9c4b75d7f63d01d12b67aaf7ce8bb4a078825b52/src/ast.c">src/ast.c</a> and <a href="https://github.com/JuliaLang/julia/blob/9c4b75d7f63d01d12b67aaf7ce8bb4a078825b52/src/macroexpand.scm">src/macroexpand.scm</a></li>
+<li>Syntax lowering in <a href="https://github.com/JuliaLang/julia/blob/9c4b75d7f63d01d12b67aaf7ce8bb4a078825b52/src/julia-syntax.scm">src/julia-syntax.scm</a></li>
+<li>The flisp runtime and C extensions for Julia in <a href="https://github.com/JuliaLang/julia/tree/master/src/flisp">src/flisp</a></li>
+<li>Supporting utility functions in a few other <code>.scm</code> and <code>.c</code> files.</li>
+</ul>
+<p dir="auto">There's two issues with the official reference frontend which suggest a rewrite.</p>
+<p dir="auto">First, there's no support for precise source locations and the existing data
+structures (bare flisp lists) can't easily be extended to add these. Fixing
+this would require changes to nearly all of the code.</p>
+<p dir="auto">Second, it's written in flisp: an aestheically pleasing, minimal but obscure
+implementation of Scheme. Learning Scheme is actually a good way to appreciate
+some of Julia's design inspiration, but it's quite a barrier for developers of
+Julia language tooling. (Flisp has no user-level documentation but non-schemers
+can refer to the <a href="https://docs.racket-lang.org" rel="nofollow">Racket documentation</a> which is
+quite compatible for basic things.) In addition to the social factors, having
+the embedded flisp interpreter and runtime with its own separate data
+structures and FFI is complex and inefficient.</p>
+<h3 dir="auto"><a id="user-content-juliaparserjl" class="anchor" aria-hidden="true" href="#juliaparserjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>JuliaParser.jl</h3>
+<p dir="auto"><a href="https://github.com/JuliaLang/JuliaParser.jl">JuliaParser.jl</a>
+was a direct port of Julia's flisp reference parser, but was abandoned around
+Julia 0.5 or so. Furthermore, it doesn't support lossless parsing, and adding
+that feature would amount to a full rewrite. Given its divergence with the flisp
+reference parser since Julia-0.5, it seemed better just to start anew from the
+reference parser instead.</p>
+<h3 dir="auto"><a id="user-content-tokenizejl" class="anchor" aria-hidden="true" href="#tokenizejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Tokenize.jl</h3>
+<p dir="auto"><a href="https://github.com/JuliaLang/Tokenize.jl">Tokenize.jl</a>
+is a fast lexer for Julia code. The code from Tokenize has been
+imported and used in JuliaSyntax, with some major modifications as discussed in
+the <a href="#lexing">lexer implementation</a> section.</p>
+<h3 dir="auto"><a id="user-content-cstparserjl" class="anchor" aria-hidden="true" href="#cstparserjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CSTParser.jl</h3>
+<p dir="auto"><a href="https://github.com/julia-vscode/CSTParser.jl">CSTParser.jl</a>
+is a (<a href="https://github.com/domluna/JuliaFormatter.jl/issues/52#issuecomment-529945126" data-hovercard-type="issue" data-hovercard-url="/domluna/JuliaFormatter.jl/issues/52/hovercard">mostly?</a>)
+lossless parser with goals quite similar to JuliaParser. It is used extensively
+in the VSCode / LanguageServer / JuliaFormatter ecosystem. CSTParser is very
+useful, but I do find the implementation hard to understand, and I wanted to try
+a fresh approach with a focus on:</p>
+<ul dir="auto">
+<li>"Production readiness": Good docs, tests, diagnostics and maximum similarity
+with the flisp parser, with the goal of getting the new parser into <code>Core</code>.</li>
+<li>Learning from the latest ideas about composable parsing and data structures
+from outside Julia. In particular the implementation of <code>rust-analyzer</code> is
+very clean, well documented, and was a great source of inspiration.</li>
+<li>Composability of tree data structures — I feel like the trees should be
+layered somehow with a really lightweight <a href="#raw-syntax-tree--green-tree">green tree</a>
+at the most basic level, similar to Roslyn or rust-analyzer. In comparison,
+CSTParser uses a more heavyweight non-layered data structure. Alternatively or
+additionally, have a common tree API with many concrete task-specific
+implementations.</li>
+</ul>
+<p dir="auto">A big benefit of the JuliaSyntax parser is that it separates the parser code
+from the tree data structures entirely, which should give a lot of flexibility
+in experimenting with various tree representations.</p>
+<p dir="auto">I also want JuliaSyntax to tackle macro expansion and other lowering steps, and
+provide APIs for this which can be used by both the core language and the
+editor tooling.</p>
+<h3 dir="auto"><a id="user-content-tree-sitter-julia" class="anchor" aria-hidden="true" href="#tree-sitter-julia"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>tree-sitter-julia</h3>
+<p dir="auto">Using a modern production-ready parser generator like <code>tree-sitter</code> is an
+interesting option and some progress has already been made in
+<a href="https://github.com/tree-sitter/tree-sitter-julia">tree-sitter-julia</a>.
+But I feel like the grammars for parser generators are only marginally more
+expressive than writing the parser by hand, after accounting for the effort
+spent on the weird edge cases of a real language and writing the parser's tests
+and "supporting code".</p>
+<p dir="auto">On the other hand, a hand-written parser is completely flexible and can be
+mutually understood with the reference implementation, so I chose that approach
+for JuliaSyntax.</p>
+<h1 dir="auto"><a id="user-content-resources" class="anchor" aria-hidden="true" href="#resources"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Resources</h1>
+<h2 dir="auto"><a id="user-content-julia-issues" class="anchor" aria-hidden="true" href="#julia-issues"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Julia issues</h2>
+<p dir="auto">Here's a few links to relevant Julia issues.</p>
+<h4 dir="auto"><a id="user-content-macro-expansion" class="anchor" aria-hidden="true" href="#macro-expansion"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Macro expansion</h4>
+<ul dir="auto">
+<li>Automatic hygiene for macros <a class="issue-link js-issue-link" data-error-text="Failed to load title" data-id="34010736" data-permission-text="Title is private" data-url="https://github.com/JuliaLang/julia/issues/6910" data-hovercard-type="pull_request" data-hovercard-url="/JuliaLang/julia/pull/6910/hovercard" href="https://github.com/JuliaLang/julia/pull/6910">JuliaLang/julia#6910</a> —
+would be interesting to implement this in a new frontend.</li>
+</ul>
+<h4 dir="auto"><a id="user-content-lowering" class="anchor" aria-hidden="true" href="#lowering"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Lowering</h4>
+<ul dir="auto">
+<li>A partial implementation of lowering in Julia <a class="issue-link js-issue-link" data-error-text="Failed to load title" data-id="450680763" data-permission-text="Title is private" data-url="https://github.com/JuliaLang/julia/issues/32201" data-hovercard-type="pull_request" data-hovercard-url="/JuliaLang/julia/pull/32201/hovercard" href="https://github.com/JuliaLang/julia/pull/32201">JuliaLang/julia#32201</a> —
+some of this should be ported. (Last commit at <a href="https://github.com/JuliaLang/julia/tree/df61138fcf97d03dcbbba10e962571af9700db56/">https://github.com/JuliaLang/julia/tree/df61138fcf97d03dcbbba10e962571af9700db56/</a> )</li>
+<li>The closure capture problem <a class="issue-link js-issue-link" data-error-text="Failed to load title" data-id="137062918" data-permission-text="Title is private" data-url="https://github.com/JuliaLang/julia/issues/15276" data-hovercard-type="issue" data-hovercard-url="/JuliaLang/julia/issues/15276/hovercard" href="https://github.com/JuliaLang/julia/issues/15276">JuliaLang/julia#15276</a> —
+would be interesting to see whether we can tackle some of the harder cases in
+a new implementation.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-c-roslyn" class="anchor" aria-hidden="true" href="#c-roslyn"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>C# Roslyn</h2>
+<p dir="auto"><a href="https://ericlippert.com/2012/06/08/red-green-trees/" rel="nofollow">Persistence, façades and Roslyn’s red-green trees</a></p>
+<ul dir="auto">
+<li><a href="https://github.com/KirillOsenkov/Bliki/wiki/Roslyn-Immutable-Trees">Roslyn optimization overview</a></li>
+<li><a href="https://johtela.github.io/LiterateCS/LiterateCS/BlockBuilder.html" rel="nofollow">Literate C# Usage Example</a></li>
+</ul>
+<h2 dir="auto"><a id="user-content-rust-analyzer" class="anchor" aria-hidden="true" href="#rust-analyzer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Rust-analyzer</h2>
+<p dir="auto"><code>rust-analyzer</code> seems to be very close to what I'm building here, and has come
+to the same conclusions on green tree layout with explicit trivia nodes.  Their
+document on internals
+<a href="https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/syntax.md">here</a>
+is great. Points of note:</p>
+<ul dir="auto">
+<li>They have <em>three</em> trees!
+<ol dir="auto">
+<li>Green trees exactly like mine (pretty much all the same design
+decisions, including trivia storage). Though note that the team are still
+<a href="https://github.com/rust-analyzer/rust-analyzer/issues/6584" data-hovercard-type="issue" data-hovercard-url="/rust-lang/rust-analyzer/issues/6584/hovercard">toying with</a>
+the idea of using the Roslyn model of trivia.</li>
+<li>Untyped red syntax trees somewhat like mine, but much more minimal. For
+example, these don't attempt to reorder children.</li>
+<li>A typed AST layer with a type for each expression head. The AST searches
+for children by dynamically traversing the child list each time, rather
+than having a single canonical ordering or remembering the placement of
+children which the parser knew.</li>
+</ol>
+</li>
+<li>"Parser does not see whitespace nodes. Instead, they are attached to the
+tree in the TreeSink layer." This may be relevant to us - it's a pain to
+attach whitespace to otherwise significant tokens, and inefficient to
+allocate and pass around a dynamic list of whitespace trivia.</li>
+<li>"In practice, incremental reparsing doesn't actually matter much for IDE
+use-cases, parsing from scratch seems to be fast enough." (I wonder why
+they've implemented incremental parsing then?)</li>
+<li>There's various comments about macros... Rust macro expansion seems quite
+different from Julia (it appears it may be interleaved with parsing??)</li>
+</ul>
+<p dir="auto">In general I think it's unclear whether we want typed ASTs in Julia and we
+particularly need to deal with the fact that <code>Expr</code> is the existing public
+interface. Could we have <code>Expr2</code> wrap <code>SyntaxNode</code>?</p>
+<ul dir="auto">
+<li>A related very useful set of blog posts which discuss using the rust syntax
+tree library (rowan) for representing of a non-rust toy language is here
+<a href="https://dev.to/cad97/lossless-syntax-trees-280c" rel="nofollow">https://dev.to/cad97/lossless-syntax-trees-280c</a></li>
+</ul>
+<p dir="auto">Not all the design decisions in <code>rust-analyzer</code> are finalized but the
+<a href="https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md">architecture document</a>
+is a fantastic source of design inspiration.</p>
+<p dir="auto">Highlights:</p>
+<ul dir="auto">
+<li>"The parser is independent of the particular tree structure and particular
+representation of the tokens. It transforms one flat stream of events into
+another flat stream of events."  This seems great, let's adopt it!</li>
+<li>TODO</li>
+</ul>
+<h2 dir="auto"><a id="user-content-rslint" class="anchor" aria-hidden="true" href="#rslint"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>RSLint</h2>
+<p dir="auto"><a href="https://rslint.org/dev" rel="nofollow">RSLint</a> is a linter for javascript, built in Rust. It
+uses the same parsing infrastructure and green tree libraries <code>rust-analyzer</code>.
+There's an excellent and friendly high level overview of how all this works in
+the rslint <a href="https://rslint.org/dev/parsing.html" rel="nofollow">parsing devdocs</a>.</p>
+<p dir="auto">Points of note:</p>
+<ul dir="auto">
+<li>
+<p dir="auto">Backtracking and restarting the parser on error is actually quite simple in
+the architecture we (mostly) share with <code>rust-analyzer</code>:</p>
+<blockquote>
+<p dir="auto">... events allow us to cheaply backtrack the parser by simply draining
+the events and resetting the token source cursor back to some place.</p>
+</blockquote>
+</li>
+<li>
+<p dir="auto">The section on <a href="https://rslint.org/dev/parsing.html#error-recovery" rel="nofollow">error
+recovery</a> is interesting;
+they talk about various error recovery strategies.</p>
+</li>
+</ul>
+<h2 dir="auto"><a id="user-content-diagnostics" class="anchor" aria-hidden="true" href="#diagnostics"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Diagnostics</h2>
+<p dir="auto">The paper <a href="https://wg21.tartanllama.xyz/P2429%20-%20Concepts%20Error%20Messages%20for%20Humans.pdf" rel="nofollow">P2429 - Concepts Error Messages for
+Humans</a>
+is C++ centric, but has a nice review of quality error reporting in various
+compilers including Elm, ReasonML, Flow, D and Rust.</p>
+<p dir="auto">Some Rust-specific resources:</p>
+<ul dir="auto">
+<li><a href="https://doc.rust-lang.org/stable/nightly-rustc/rustc_errors/struct.Diagnostic.html" rel="nofollow">rustc_errors::Diagnostic</a></li>
+<li>The source of the Rust compiler's diagnostics system:
+<ul dir="auto">
+<li>The <a href="https://github.com/rust-lang/rust/blob/0b6f079e4987ded15c13a15b734e7cfb8176839f/compiler/rustc_builtin_macros/src/format.rs"><code>println!</code> macro</a>
+shows how these can be emitted from macros</li>
+<li>The parser's <a href="https://github.com/rust-lang/rust/blob/0b6f079e4987ded15c13a15b734e7cfb8176839f/compiler/rustc_parse/src/parser/diagnostics.rs">diagnostics.rs</a></li>
+</ul>
+</li>
+</ul>
+<h2 dir="auto"><a id="user-content-general-resources-about-parsing" class="anchor" aria-hidden="true" href="#general-resources-about-parsing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>General resources about parsing</h2>
+<ul dir="auto">
+<li>
+<p dir="auto"><a href="https://matklad.github.io/2018/06/06/modern-parser-generator.html" rel="nofollow">Modern parser generator</a>
+has a lot of practical notes on writing parsers. Highlights:</p>
+<ul dir="auto">
+<li>Encourages writing tests for handwritten parsers as inline comments</li>
+<li>Mentions Pratt parsers for simple operator precedence parsing. Good articles:
+<ul dir="auto">
+<li><a href="https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html" rel="nofollow">From Aleksey Kladov (matklad - the main rust-analyzer author, etc)</a></li>
+<li><a href="http://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/" rel="nofollow">From Bob Nystrom (munificent - one of the Dart devs, etc</a></li>
+</ul>
+</li>
+<li>Some discussion of error recovery</li>
+</ul>
+</li>
+<li>
+<p dir="auto">Some notes about stateful lexers for parsing shell-like string interpolations:
+<a href="http://www.oilshell.org/blog/2017/12/17.html" rel="nofollow">http://www.oilshell.org/blog/2017/12/17.html</a></p>
+</li>
+</ul>
+<h1 dir="auto"><a id="user-content-design-notes" class="anchor" aria-hidden="true" href="#design-notes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Design notes</h1>
+<p dir="auto">The following are some fairly disorganized design notes covering a mixture of
+things which have already been done and musings about further work.</p>
+<h2 dir="auto"><a id="user-content-prototyping-approach" class="anchor" aria-hidden="true" href="#prototyping-approach"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Prototyping approach</h2>
+<p dir="auto">The tree datastructure design here is tricky:</p>
+<ol dir="auto">
+<li>The symbolic part of compilation (the compiler frontend) incrementally
+abstracts and transforms the source text, but errors along the way should
+refer back to the source.</li>
+</ol>
+<ul dir="auto">
+<li>The tree must be a lossless representation of the source text</li>
+<li>Some aspects of the source text (comments, most whitespace) are irrelevant
+to parsing.</li>
+<li>More aspects of the source text are irrelevant after we have an abstract
+syntax tree of the surface syntax. Some good examples here are the
+parentheses in <code>2*(x + y)</code> and the explicit vs implicit multiplication
+symbol in <code>2*x</code> vs <code>2x</code>.</li>
+</ul>
+<ol start="2" dir="auto">
+<li>There's various type of <em>analyses</em></li>
+</ol>
+<ul dir="auto">
+<li>There's many useful ways to augment a syntax tree depending on use case.</li>
+<li>Analysis algorithms should be able to act on any tree type, ignoring
+but carrying augmentations which they don't know about.</li>
+</ul>
+<p dir="auto">Having so many use cases suggests it might be best to have several different
+tree types with a common interface rather than one main abstract syntax tree
+type. But it seems useful to figure this out by prototyping several important
+work flows:</p>
+<ul dir="auto">
+<li>Syntax transformations
+<ul dir="auto">
+<li>Choose some macros to implement. This is a basic test of mixing source
+trees from different files while preserving precise source locations.
+(Done in &lt;test/syntax_interpolation.jl&gt;.)</li>
+</ul>
+</li>
+<li>Formatting
+<ul dir="auto">
+<li>Re-indent a file. This tests the handling of syntax trivia.</li>
+</ul>
+</li>
+<li>Refactoring
+<ul dir="auto">
+<li>A pass to rename local variables. This tests how information from further
+down the compilation pipeline can be attached to the syntax tree and used
+to modify the source code.</li>
+</ul>
+</li>
+<li>Precise error reporting in lowering
+<ul dir="auto">
+<li>Syntax desugaring <code>[a, b] = (c, d)</code> should report "invalid assignment
+location <code>[a, b]</code>". But at a precise source location.</li>
+<li>Try something several layers deeper inside lowering? For example "macro
+definition not allowed inside a local scope"</li>
+</ul>
+</li>
+<li>Incremental reparsing
+<ul dir="auto">
+<li>Reparse a source file, given a byte range replacement</li>
+</ul>
+</li>
+</ul>
+<h2 dir="auto"><a id="user-content-tree-design" class="anchor" aria-hidden="true" href="#tree-design"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Tree design</h2>
+<h3 dir="auto"><a id="user-content-raw-syntax-tree--green-tree" class="anchor" aria-hidden="true" href="#raw-syntax-tree--green-tree"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Raw syntax tree / Green tree</h3>
+<p dir="auto">Raw syntax tree (or <a href="https://ericlippert.com/2012/06/08/red-green-trees/" rel="nofollow">"Green tree"</a>
+in the terminology from Roslyn)</p>
+<p dir="auto">We want GreenNode to be</p>
+<ul dir="auto">
+<li><em>structurally minimal</em> — For efficiency and generality</li>
+<li><em>immutable</em>            — For efficiency (&amp; thread safety)</li>
+<li><em>complete</em>             — To preserve parser knowledge</li>
+<li><em>token agnostic</em>       — To allow use with any source language</li>
+</ul>
+<p dir="auto">The simplest idea possible is to have:</p>
+<ul dir="auto">
+<li>Leaf nodes are a single token</li>
+<li>Children are in source order</li>
+</ul>
+<p dir="auto">Call represents a challenge for the AST vs Green tree in terms of node
+placement / iteration for infix operators vs normal prefix function calls.</p>
+<ul dir="auto">
+<li>The normal problem of <code>a + 1</code> vs <code>+(a, 1)</code></li>
+<li>Or worse, <code>a + 1 + 2</code> vs <code>+(a, 1, 2)</code></li>
+</ul>
+<p dir="auto">Clearly in the AST's <em>interface</em> we need to abstract over this placement. For
+example with something like the normal Julia AST's iteration order.</p>
+<h3 dir="auto"><a id="user-content-abstract-syntax-tree" class="anchor" aria-hidden="true" href="#abstract-syntax-tree"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Abstract syntax tree</h3>
+<p dir="auto">By pointing to green tree nodes, AST nodes become traceable back to the original
+source.</p>
+<p dir="auto">Unlike most languages, designing a new AST is tricky because the existing
+<code>Expr</code> is a very public API used in every macro expansion. User-defined
+macro expansions interpose between the source text and lowering, and using
+<code>Expr</code> looses source information in many ways.</p>
+<p dir="auto">There seems to be a few ways forward:</p>
+<ul dir="auto">
+<li>Maybe we can give <code>Expr</code> some new semi-hidden fields to point back to the
+green tree nodes that the <code>Expr</code> or its <code>args</code> list came from?</li>
+<li>We can use the existing <code>Expr</code> during macro expansion and try to recover
+source information after macro expansion using heuristics. Likely the
+presence of correct hygiene can help with this.</li>
+<li>Introducing a new AST would be possible if it were opt-in for some
+hypothetical "new-style macros" only. Fixing hygiene should go along with
+this. Design challenge: How do we make manipulating expressions reasonable
+when literals need to carry source location?</li>
+</ul>
+<p dir="auto">One option which may help bridge between locationless ASTs and something new
+may be to have wrappers for the small number of literal types we need to cover.
+For example:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="SourceSymbol &lt;: AbstractSymbol
+SourceInt    &lt;: Integer
+SourceString &lt;: AbstractString"><pre>SourceSymbol <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractSymbol</span>
+SourceInt    <span class="pl-k">&lt;:</span> <span class="pl-c1">Integer</span>
+SourceString <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractString</span></pre></div>
+<p dir="auto">Having source location attached to symbols would potentially solve most of the
+hygiene problem. There's still the problem of macro helper functions which use
+symbol literals; we can't very well be changing the meaning of <code>:x</code>! Perhaps
+the trick there is to try capturing the current module at the location of the
+interpolation syntax. Eg, if you do <code>:(y + $x)</code>, lowering expands this to
+<code>Core._expr(:call, :+, :y, x)</code>, but it could expand it to something like
+<code>Core._expr(:call, :+, :y, _add_source_symbol(_module_we_are_lowering_into, x))</code>?</p>
+<h2 dir="auto"><a id="user-content-parsing" class="anchor" aria-hidden="true" href="#parsing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Parsing</h2>
+<h3 dir="auto"><a id="user-content-error-recovery-1" class="anchor" aria-hidden="true" href="#error-recovery-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Error recovery</h3>
+<p dir="auto">Some disorganized musings about error recovery</p>
+<p dir="auto">Different types of errors seem to occur...</p>
+<ul dir="auto">
+<li>Disallowed syntax (such as lack of spaces in conditional expressions)
+where we can reasonably just continue parsing and emit the node with an error
+flag which is otherwise fully formed. In some cases like parsing infix
+expressions with a missing tail, emitting a zero width error token can lead
+to a fully formed parse tree without the productions up the stack needing to
+participate in recovery.</li>
+<li>A token which is disallowed in current context. Eg, <code>=</code> in parse_atom, or a
+closing token inside an infix expression. Here we can emit a <code>K"error"</code>, but
+we can't descend further into the parse tree; we must pop several recursive
+frames off. Seems tricky!</li>
+</ul>
+<p dir="auto">A typical structure is as follows:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function parse_foo(ps)
+    mark = position(ps)
+    parse_bar(ps)  # What if this fails?
+    if peek(ps) == K&quot;some-token&quot;
+        bump(ps)
+        parse_baz(ps)  # What if this fails?
+        emit(ps, mark, K&quot;foo&quot;)
+    end
+end"><pre><span class="pl-k">function</span> <span class="pl-en">parse_foo</span>(ps)
+    mark <span class="pl-k">=</span> <span class="pl-c1">position</span>(ps)
+    <span class="pl-c1">parse_bar</span>(ps)  <span class="pl-c"><span class="pl-c">#</span> What if this fails?</span>
+    <span class="pl-k">if</span> <span class="pl-c1">peek</span>(ps) <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">K</span>"</span>some-token<span class="pl-pds">"</span></span>
+        <span class="pl-c1">bump</span>(ps)
+        <span class="pl-c1">parse_baz</span>(ps)  <span class="pl-c"><span class="pl-c">#</span> What if this fails?</span>
+        <span class="pl-c1">emit</span>(ps, mark, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">K</span>"</span>foo<span class="pl-pds">"</span></span>)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Emitting plain error tokens are good in unfinished infix expressions:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="begin
+    a = x +
+end"><pre><span class="pl-k">begin</span>
+    a <span class="pl-k">=</span> x <span class="pl-k">+</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The "missing end" problem is tricky, as the intermediate syntax is valid; the
+problem is often only obvious until we get to EOF.</p>
+<p dir="auto">Missing end</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function f()
+    begin
+        a = 10
+end
+
+# &lt;-- Indentation would be wrong if g() was an inner function of f.
+function g()
+end"><pre><span class="pl-k">function</span> <span class="pl-en">f</span>()
+    <span class="pl-k">begin</span>
+        a <span class="pl-k">=</span> <span class="pl-c1">10</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> &lt;-- Indentation would be wrong if g() was an inner function of f.</span>
+<span class="pl-k">function</span> <span class="pl-en">g</span>()
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">It seems like ideal error recovery would need to backtrack in this case. For
+example:</p>
+<ul dir="auto">
+<li>Pop back to the frame which was parsing <code>f()</code></li>
+<li>Backtrack through the parse events until we find a function with indentation
+mismatched to the nesting of the parent.</li>
+<li>Reset ParseStream to a parsing checkpoint before <code>g()</code> was called</li>
+<li>Emit error and exit the function parsing <code>f()</code></li>
+<li>Restart parsing</li>
+<li>Somehow make sure all of this can't result in infinite recursion <g-emoji class="g-emoji" alias="sweat_smile" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f605.png">😅</g-emoji></li>
+</ul>
+<p dir="auto">Missing commas or closing brackets in nested structures also present the
+existing parser with a problem.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="f(a,
+  g(b,
+    c    # -- missing comma?
+    d),
+  e)"><pre><span class="pl-c1">f</span>(a,
+  <span class="pl-c1">g</span>(b,
+    c    <span class="pl-c"><span class="pl-c">#</span> -- missing comma?</span>
+    d),
+  e)</pre></div>
+<p dir="auto">Again the local indentation might tell a story</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="f(a,
+  g(b,
+    c    # -- missing closing `)` ?
+  d)"><pre><span class="pl-c1">f</span>(a,
+  <span class="pl-c1">g</span>(b,
+    c    <span class="pl-c"><span class="pl-c">#</span> -- missing closing `)` ?</span>
+  d)</pre></div>
+<p dir="auto">But not always!</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="f(a,
+  g(b,
+    c    # -- missing closing `,` ?
+  d))"><pre><span class="pl-c1">f</span>(a,
+  <span class="pl-c1">g</span>(b,
+    c    <span class="pl-c"><span class="pl-c">#</span> -- missing closing `,` ?</span>
+  d))</pre></div>
+<p dir="auto">Another particularly difficult problem for diagnostics in the current system is
+broken parentheses or double quotes in string interpolations, especially when
+nested.</p>
+<h1 dir="auto"><a id="user-content-fun-research-questions" class="anchor" aria-hidden="true" href="#fun-research-questions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Fun research questions</h1>
+<h3 dir="auto"><a id="user-content-parser-recovery" class="anchor" aria-hidden="true" href="#parser-recovery"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Parser Recovery</h3>
+<p dir="auto">Can we learn fast and reasonably accurate recovery heuristics for when the
+parser encounters broken syntax, rather than hand-coding these? How would we
+set the parser up so that training works and injecting the model is
+nonintrusive? If the model is embedded in and works together with the parser,
+can it be made compact enough that training is fast and the model itself is
+tiny?</p>
+<h3 dir="auto"><a id="user-content-formatting" class="anchor" aria-hidden="true" href="#formatting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Formatting</h3>
+<p dir="auto">Given source and syntax tree, can we regress/learn a generative model of
+indentation from the syntax tree?  Source formatting involves a big pile of
+heuristics to get something which "looks nice"... and ML systems have become
+very good at heuristics. Also, we've got huge piles of training data — just
+choose some high quality, tastefully hand-formatted libraries.</p>
+<h1 dir="auto"><a id="user-content-getting-involved" class="anchor" aria-hidden="true" href="#getting-involved"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Getting involved</h1>
+<p dir="auto">For people who want to help improve Julia's error messages by contributing to
+JuliaSyntax, I'd suggest looking through the issue list at
+<a href="https://github.com/JuliaLang/JuliaSyntax.jl/issues">https://github.com/JuliaLang/JuliaSyntax.jl/issues</a> and choosing a small issue
+or two to work on to familiarize yourself with the code. Anything marked with
+the labels <code>intro issue</code> or <code>bug</code> might be a good place to start.</p>
+<p dir="auto">Also watching the 2022 JuliaCon talk and reading this document is probably good
+for an overview.</p>
+<p dir="auto">As of March 2023, we've got really good positional tracking within the source,
+but JuliaSyntax really needs a better system for parser recovery before the
+errors are really nice. This requires some research. For example, you could
+read up on how rust-analyzer does recovery, or rslint - both these are
+event-based recursive decent parsers with similar structure to JuliaSyntax
+(though in Rust). I also want to investigate whether we can do data-driven
+parser recovery using an ML technique. But again, this is a research project.</p>
+</article></div>

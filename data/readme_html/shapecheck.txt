@@ -1,0 +1,82 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://github.com/MasonProtter/ShapeCheck.jl/actions/workflows/CI.yml"><img src="https://github.com/MasonProtter/ShapeCheck.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a></p>
+<h1 dir="auto"><a id="user-content-shapecheckjl" class="anchor" aria-hidden="true" href="#shapecheckjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ShapeCheck.jl</h1>
+<p dir="auto">This provides a nice(?) syntax for <strong>runtime</strong> shape checking of function outputs given their inputs. This should work for any type <code>T</code> which has methods for <code>size(::T, n)</code>. The shapes being checked here in this package can <em>not</em> be dispatched on. Inspired by <a href="https://github.com/google/jaxtyping">https://github.com/google/jaxtyping</a></p>
+<p dir="auto">Consider this shapechecked implementation of a <code>remove_last</code> function:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ShapeCheck
+
+const AV = AbstractVector 
+@shapechecked function remove_last(x :: AV[n]) :: AV[n-1]
+    x[1:end-1]
+end"><pre><span class="pl-k">using</span> ShapeCheck
+
+<span class="pl-k">const</span> AV <span class="pl-k">=</span> AbstractVector 
+<span class="pl-c1">@shapechecked</span> <span class="pl-k">function</span> <span class="pl-en">remove_last</span>(x <span class="pl-k">::</span> <span class="pl-c1">AV</span>[n]) <span class="pl-k">::</span> <span class="pl-c1">AV</span>[n<span class="pl-k">-</span><span class="pl-c1">1</span>]
+    x[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>]
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The use of square brackets in the type signature of the above function are essentially assertions about the shapes
+of the dimensions of the inputs and outputs. It says that <code>x</code> must be an <code>AbstractVector</code>, and that if
+<code>n = size(x, 1)</code>, then the output of the function must have <code>size(result, 1) == n - 1</code>.</p>
+<p dir="auto">This way, the hidden logic error in our function gets caught:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using OffsetArrays
+
+julia&gt; let v = OffsetVector([:a, :b, :c, :d, :e], -2:2)
+           remove_last(v)
+       end
+ERROR: DimensionMismatch(&quot;Dimension 1 of result does not match n - 1 = 4, got 1.&quot;)
+Stacktrace:
+ [1] remove_last(x::OffsetVector{Symbol, Vector{Symbol}})
+   @ Main [...]/ShapeCheck/src/ShapeCheck.jl:37
+ [2] top-level scope
+   @ REPL[15]:2"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> OffsetArrays
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">let</span> v <span class="pl-k">=</span> <span class="pl-c1">OffsetVector</span>([<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>, <span class="pl-c1">:c</span>, <span class="pl-c1">:d</span>, <span class="pl-c1">:e</span>], <span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>)
+           <span class="pl-c1">remove_last</span>(v)
+       <span class="pl-k">end</span>
+ERROR<span class="pl-k">:</span> <span class="pl-c1">DimensionMismatch</span>(<span class="pl-s"><span class="pl-pds">"</span>Dimension 1 of result does not match n - 1 = 4, got 1.<span class="pl-pds">"</span></span>)
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] <span class="pl-c1">remove_last</span>(x<span class="pl-k">::</span><span class="pl-c1">OffsetVector{Symbol, Vector{Symbol}}</span>)
+   @ Main [<span class="pl-k">...</span>]<span class="pl-k">/</span>ShapeCheck<span class="pl-k">/</span>src<span class="pl-k">/</span>ShapeCheck<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">37</span>
+ [<span class="pl-c1">2</span>] top<span class="pl-k">-</span>level scope
+   @ REPL[<span class="pl-c1">15</span>]<span class="pl-k">:</span><span class="pl-c1">2</span></pre></div>
+<p dir="auto">Without the shapecheck, this function would have silently returned just <code>[:d]</code>. Instead, what we should have written is</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@shapechecked function remove_last(x :: AV[n]) :: AV[n-1]
+    x[begin:end-1]
+end"><pre><span class="pl-c1">@shapechecked</span> <span class="pl-k">function</span> <span class="pl-en">remove_last</span>(x <span class="pl-k">::</span> <span class="pl-c1">AV</span>[n]) <span class="pl-k">::</span> <span class="pl-c1">AV</span>[n<span class="pl-k">-</span><span class="pl-c1">1</span>]
+    x[<span class="pl-c1">begin</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>]
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">if we want to be able to handle general <code>AbstractVector</code>s correctly.</p>
+<p dir="auto">ShapeCheck.jl performs these checks at runtime, so they are not truly zero cost (unless your shapes are constant propagated).</p>
+<h3 dir="auto"><a id="user-content-syntax-examples" class="anchor" aria-hidden="true" href="#syntax-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Syntax Examples</h3>
+<p dir="auto">Suppose you only care about the 2nd dimension of an array, you can always just 'name' a dim <code>_</code> and it'll be thrown out.
+If you don't care about a inner dim, just use <code>_</code> to ignore it:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="const AA = AbstractArray
+
+@shapechecked function vertical_slice(x::AA[_, n], i) :: AA[n]
+    x[:, i]
+end"><pre><span class="pl-k">const</span> AA <span class="pl-k">=</span> AbstractArray
+
+<span class="pl-c1">@shapechecked</span> <span class="pl-k">function</span> <span class="pl-en">vertical_slice</span>(x<span class="pl-k">::</span><span class="pl-c1">AA</span>[_, n], i) <span class="pl-k">::</span> <span class="pl-c1">AA</span>[n]
+    x[:, i]
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Dimensions to the <em>right</em> of the last one listed are ignored by default.</p>
+<p dir="auto">You can demand that multiple dimensions of arguments match</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@shapechecked function my_vcat(x::AA[a, b], y::AA[c, b]) :: AA[a + c, b]
+    vcat(x, y)
+end"><pre><span class="pl-c1">@shapechecked</span> <span class="pl-k">function</span> <span class="pl-en">my_vcat</span>(x<span class="pl-k">::</span><span class="pl-c1">AA</span>[a, b], y<span class="pl-k">::</span><span class="pl-c1">AA</span>[c, b]) <span class="pl-k">::</span> <span class="pl-c1">AA</span>[a <span class="pl-k">+</span> c, b]
+    <span class="pl-c1">vcat</span>(x, y)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">and you can even demand that they are some function of another argument</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@shapechecked function foo(x::Vector[a], y::Vector[min(a, 3)]) :: Number
+    s = 0.0
+    for i ∈ 1:min(a, 3)
+        s += x[i] * y[i]
+    end
+    s
+end"><pre><span class="pl-c1">@shapechecked</span> <span class="pl-k">function</span> <span class="pl-en">foo</span>(x<span class="pl-k">::</span><span class="pl-c1">Vector</span>[a], y<span class="pl-k">::</span><span class="pl-c1">Vector</span>[<span class="pl-c1">min</span>(a, <span class="pl-c1">3</span>)]) <span class="pl-k">::</span> <span class="pl-c1">Number</span>
+    s <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    <span class="pl-k">for</span> i <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">min</span>(a, <span class="pl-c1">3</span>)
+        s <span class="pl-k">+=</span> x[i] <span class="pl-k">*</span> y[i]
+    <span class="pl-k">end</span>
+    s
+<span class="pl-k">end</span></pre></div>
+</article></div>

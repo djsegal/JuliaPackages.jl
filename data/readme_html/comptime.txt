@@ -1,0 +1,139 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-comptime" class="anchor" aria-hidden="true" href="#comptime"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CompTime</h1>
+
+<p dir="auto"><a href="https://github.com/olynch/CompTime.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/olynch/CompTime.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">The goal of this library is to allow for a simplified style of writing
+<code>@generated</code> functions, inspired by zig comptime features.</p>
+<h1 dir="auto"><a id="user-content-get-started" class="anchor" aria-hidden="true" href="#get-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Get Started</h1>
+<p dir="auto">(minimal example)</p>
+<h1 dir="auto"><a id="user-content-theory" class="anchor" aria-hidden="true" href="#theory"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Theory</h1>
+<p dir="auto">The core feature of CompTime is the ability to write functions that optionally have some of their code pre-run at compile time.</p>
+<p dir="auto">The central tenet of CompTime is that this <em>does not</em> allow you to write anything that you would not otherwise be able to write, from a semantics perspective. However, having a function partially evaluated at compile time may enable functions that would normally not be type checkable to be type checked, so from a type-checking standpoint this is a win, and of course having a function partially evaluated at compile time enables all sorts of other speedups.</p>
+<p dir="auto">Every function declared with <code>@ct_enable</code> can be used in three modes.
+2. Compile-time mode. This compiles the function specially for the compile-time arguments to the function, and then runs the function. Under the hood, this uses <code>@generated</code> functions, and passes in all of the compile-time parameters as types, so this compilation is cached just like a normal <code>@generated</code> function, as long as all of the compile-time parameters can be resolved using constant-propagation.</p>
+<ol dir="auto">
+<li>Run-time mode. This does no compile-time computation, and just runs the function as if all of the macros from CompTime.jl were not there.</li>
+<li>Syntax mode. This outputs the syntax that <em>would</em> be compiled for arguments of a certain type. This is very useful for debugging.</li>
+</ol>
+<p dir="auto">The arguments available at compile time are precisely the type arguments in the <code>where</code> clause.</p>
+<p dir="auto">Here's an example. Suppose we have a type of static vectors, here written for simplicity as a wrapper around the type of normal vectors.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct SVector{T,n}
+  v::Vector{T}
+  function SVector(v::Vector{T}) where {T}
+    new{T,length(v)}(v)
+  end
+  function SVector{T,n}(v::Vector{T}) where {T,n}
+    assert(n == length(v))
+    new{T,n}(v)
+  end
+  function SVector{T,n}() where {T,n}
+    new{T,n}(Vector{T}(undef,n))
+  end
+end"><pre><span class="pl-k">struct</span> SVector{T,n}
+  v<span class="pl-k">::</span><span class="pl-c1">Vector{T}</span>
+  <span class="pl-k">function</span> <span class="pl-en">SVector</span>(v<span class="pl-k">::</span><span class="pl-c1">Vector{T}</span>) <span class="pl-k">where</span> {T}
+    <span class="pl-c1">new</span><span class="pl-c1">{T,length(v)}</span>(v)
+  <span class="pl-k">end</span>
+  <span class="pl-k">function</span> <span class="pl-en">SVector</span><span class="pl-c1">{T,n}</span>(v<span class="pl-k">::</span><span class="pl-c1">Vector{T}</span>) <span class="pl-k">where</span> {T,n}
+    <span class="pl-c1">assert</span>(n <span class="pl-k">==</span> <span class="pl-c1">length</span>(v))
+    <span class="pl-c1">new</span><span class="pl-c1">{T,n}</span>(v)
+  <span class="pl-k">end</span>
+  <span class="pl-k">function</span> <span class="pl-en">SVector</span><span class="pl-c1">{T,n}</span>() <span class="pl-k">where</span> {T,n}
+    <span class="pl-c1">new</span><span class="pl-c1">{T,n}</span>(<span class="pl-c1">Vector</span><span class="pl-c1">{T}</span>(undef,n))
+  <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Then we can write the following function to unroll a for-loop to add two static vectors.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@ct_enable function add(v1::SVector{T,n}, v2::SVector{T,n}) where {T,n}
+  vout = SVector{(@ct T), (@ct n)}()
+  @ct_ctrl for i in 1:n
+    vout[@ct i] = v1[@ct i] + v2[@ct i]
+  end
+  vout
+end"><pre><span class="pl-c1">@ct_enable</span> <span class="pl-k">function</span> <span class="pl-en">add</span>(v1<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>, v2<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>) <span class="pl-k">where</span> {T,n}
+  vout <span class="pl-k">=</span> <span class="pl-c1">SVector</span><span class="pl-c1">{(@ct T), (@ct n)}</span>()
+  <span class="pl-c1">@ct_ctrl</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n
+    vout[<span class="pl-c1">@ct</span> i] <span class="pl-k">=</span> v1[<span class="pl-c1">@ct</span> i] <span class="pl-k">+</span> v2[<span class="pl-c1">@ct</span> i]
+  <span class="pl-k">end</span>
+  vout
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">This should be roughly equivalent to the following code</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function add(v1::SVector{T,n}, v2::SVector{T,n}) where {T,n}
+  comptime(add, v1, v2)
+end
+
+function generate_code(::typeof(add), ::Type{SVector{T,n}}, ::Type{SVector{T,n}}) where {T,n}
+  Expr(:block,
+    :(vout = SVector{$T}(Vector{$T}(undef, $n))),
+    begin
+      code = Expr(:block)
+      for i in 1:n
+        push!(code.args, :(vout[$i] = v1[$i] + v2[$i]))
+      end
+      code
+    end,
+    :(vout)
+  )
+end
+
+function comptime(::typeof(add), v1::SVector{T,n}, v2::SVector{T,n}) where {T,n}
+  if @generated
+      generate_code(add, SVector{T,n}, SVector{T,n})
+  else
+      runtime(add, v1, v2)
+  end
+end
+
+function runtime(::typeof(add), v1::SVector{T,n}, v2::SVector{T,n}) where {T,n}
+  vout = SVector{T,n}()
+  for i in 1:n
+    vout[i] = v1[i] + v2[i]
+  end
+  vout
+end"><pre><span class="pl-k">function</span> <span class="pl-en">add</span>(v1<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>, v2<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>) <span class="pl-k">where</span> {T,n}
+  <span class="pl-c1">comptime</span>(add, v1, v2)
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">generate_code</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(add), <span class="pl-k">::</span><span class="pl-c1">Type{SVector{T,n}}</span>, <span class="pl-k">::</span><span class="pl-c1">Type{SVector{T,n}}</span>) <span class="pl-k">where</span> {T,n}
+  <span class="pl-c1">Expr</span>(<span class="pl-c1">:block</span>,
+    :(vout <span class="pl-k">=</span> <span class="pl-c1">SVector</span><span class="pl-c1">{$T}</span>(<span class="pl-c1">Vector</span><span class="pl-c1">{$T}</span>(undef, <span class="pl-k">$</span>n))),
+    <span class="pl-k">begin</span>
+      code <span class="pl-k">=</span> <span class="pl-c1">Expr</span>(<span class="pl-c1">:block</span>)
+      <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n
+        <span class="pl-c1">push!</span>(code<span class="pl-k">.</span>args, :(vout[<span class="pl-k">$</span>i] <span class="pl-k">=</span> v1[<span class="pl-k">$</span>i] <span class="pl-k">+</span> v2[<span class="pl-k">$</span>i]))
+      <span class="pl-k">end</span>
+      code
+    <span class="pl-k">end</span>,
+    :(vout)
+  )
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">comptime</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(add), v1<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>, v2<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>) <span class="pl-k">where</span> {T,n}
+  <span class="pl-k">if</span> <span class="pl-c1">@generated</span>
+      <span class="pl-c1">generate_code</span>(add, SVector{T,n}, SVector{T,n})
+  <span class="pl-k">else</span>
+      <span class="pl-c1">runtime</span>(add, v1, v2)
+  <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">runtime</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(add), v1<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>, v2<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>) <span class="pl-k">where</span> {T,n}
+  vout <span class="pl-k">=</span> <span class="pl-c1">SVector</span><span class="pl-c1">{T,n}</span>()
+  <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n
+    vout[i] <span class="pl-k">=</span> v1[i] <span class="pl-k">+</span> v2[i]
+  <span class="pl-k">end</span>
+  vout
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Note that the above is an <a href="https://docs.julialang.org/en/v1/manual/metaprogramming/#Optionally-generated-functions" rel="nofollow"><strong>optionally</strong> generated function</a>, so the compiler is allowed to choose to use the runtime version in dynamic circumstances. If you do not wish to allow the compiler to make this choice, then instead write</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@ct_enable optional=false function add(v1::SVector{T,n}, v2::SVector{T,n}) where {T,n}
+  vout = SVector{(@ct T), (@ct n)}()
+  @ct_ctrl for i in 1:n
+    vout[@ct i] = v1[@ct i] + v2[@ct i]
+  end
+  vout
+end"><pre><span class="pl-c1">@ct_enable</span> optional<span class="pl-k">=</span><span class="pl-c1">false</span> <span class="pl-k">function</span> <span class="pl-en">add</span>(v1<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>, v2<span class="pl-k">::</span><span class="pl-c1">SVector{T,n}</span>) <span class="pl-k">where</span> {T,n}
+  vout <span class="pl-k">=</span> <span class="pl-c1">SVector</span><span class="pl-c1">{(@ct T), (@ct n)}</span>()
+  <span class="pl-c1">@ct_ctrl</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n
+    vout[<span class="pl-c1">@ct</span> i] <span class="pl-k">=</span> v1[<span class="pl-c1">@ct</span> i] <span class="pl-k">+</span> v2[<span class="pl-c1">@ct</span> i]
+  <span class="pl-k">end</span>
+  vout
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">which will create a non-optional generated function.</p>
+</article></div>

@@ -1,0 +1,196 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-usingmergejl" class="anchor" aria-hidden="true" href="#usingmergejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>UsingMerge.jl</h1>
+<p dir="auto">This  package exports  a single  macro <code>@usingmerge</code>  which differs from
+<code>using</code> in that it "merges" the exported definitions automatically.</p>
+<p dir="auto">The wish for this started in
+<a href="https://discourse.julialang.org/t/function-name-conflict-adl-function-merging/10335/7" rel="nofollow">this thread</a>.
+At  the time I was very new to Julia  and did not think I could do anything
+myself about the problem. Two years later, knowing better Julia, I realized
+I could do something. Here it is.</p>
+<p dir="auto">I introduce the problem with an example.</p>
+<p dir="auto">In  my <code>Gapjm</code>  package (a  port of  some GAP  libraries to Julia) I have a
+function  <code>invariants</code> which computes the invariants of a finite reflection
+group.  However when  I use  <code>BenchmarkTools</code> to  debug for  performance my
+package, I have the following problem:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; G= # some group...
+
+julia&gt; invariants(G)
+WARNING: both Gapjm and BenchmarkTools export &quot;invariants&quot;; uses of it in module Main must be qualified
+ERROR: UndefVarError: invariants not defined
+Stacktrace:
+ [1] top-level scope at REPL[4]:1
+ [2] eval(::Module, ::Any) at ./boot.jl:331
+ [3] eval_user_input(::Any, ::REPL.REPLBackend) at /buildworker/worker/package_linux64/build/usr/share/julia/stdlib/v1.4/REPL/src/REPL.jl:86
+ [4] run_backend(::REPL.REPLBackend) at /home/jmichel/.julia/packages/Revise/kqqw8/src/Revise.jl:1163
+ [5] top-level scope at none:0"><pre class="notranslate"><code>julia&gt; G= # some group...
+
+julia&gt; invariants(G)
+WARNING: both Gapjm and BenchmarkTools export "invariants"; uses of it in module Main must be qualified
+ERROR: UndefVarError: invariants not defined
+Stacktrace:
+ [1] top-level scope at REPL[4]:1
+ [2] eval(::Module, ::Any) at ./boot.jl:331
+ [3] eval_user_input(::Any, ::REPL.REPLBackend) at /buildworker/worker/package_linux64/build/usr/share/julia/stdlib/v1.4/REPL/src/REPL.jl:86
+ [4] run_backend(::REPL.REPLBackend) at /home/jmichel/.julia/packages/Revise/kqqw8/src/Revise.jl:1163
+ [5] top-level scope at none:0
+</code></pre></div>
+<p dir="auto">This  is  annoying!  I  do  not  want  to  have to qualify every call to my
+function  <code>invariants</code> just  because I  am timing  my code!  What can I do?
+Well, first I could just import the methods I am using in <code>BenchmarkTools</code>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using BenchmarkTools: @btime"><pre class="notranslate"><code>julia&gt; using BenchmarkTools: @btime
+</code></pre></div>
+<p dir="auto">Actually,  every exported name  from <code>BenchmarkTools</code>, except <code>invariants</code>,
+does not conflict with my code:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; names(BenchmarkTools)
+30-element Array{Symbol,1}:
+ Symbol(&quot;@ballocated&quot;)
+ Symbol(&quot;@belapsed&quot;)
+ Symbol(&quot;@benchmark&quot;)
+ Symbol(&quot;@benchmarkable&quot;)
+ Symbol(&quot;@btime&quot;)
+ Symbol(&quot;@tagged&quot;)
+ :BenchmarkGroup
+ :BenchmarkTools
+ :addgroup!
+ :allocs
+ :gctime
+ :improvements
+ :invariants
+ :isimprovement
+ :isinvariant
+ :isregression
+ :judge
+ :leaves
+ :loadparams!
+ :mean
+ :median
+ :memory
+ :params
+ :ratio
+ :regressions
+ :rmskew
+ :rmskew!
+ :trim
+ :tune!
+ :warmup"><pre class="notranslate"><code>julia&gt; names(BenchmarkTools)
+30-element Array{Symbol,1}:
+ Symbol("@ballocated")
+ Symbol("@belapsed")
+ Symbol("@benchmark")
+ Symbol("@benchmarkable")
+ Symbol("@btime")
+ Symbol("@tagged")
+ :BenchmarkGroup
+ :BenchmarkTools
+ :addgroup!
+ :allocs
+ :gctime
+ :improvements
+ :invariants
+ :isimprovement
+ :isinvariant
+ :isregression
+ :judge
+ :leaves
+ :loadparams!
+ :mean
+ :median
+ :memory
+ :params
+ :ratio
+ :regressions
+ :rmskew
+ :rmskew!
+ :trim
+ :tune!
+ :warmup
+</code></pre></div>
+<p dir="auto">so I can do:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using BenchmarkTools: @ballocated, @belapsed, @benchmark, @benchmarkable, @btime, @tagged, BenchmarkGroup, BenchmarkTools, addgroup!, allocs, gctime, improvements, isimprovement, isinvariant, isregression, judge, leaves, loadparams!, mean, median, memory, params, ratio, regressions, rmskew, rmskew!, trim, tune!,
+ warmup"><pre class="notranslate"><code>julia&gt; using BenchmarkTools: @ballocated, @belapsed, @benchmark, @benchmarkable, @btime, @tagged, BenchmarkGroup, BenchmarkTools, addgroup!, allocs, gctime, improvements, isimprovement, isinvariant, isregression, judge, leaves, loadparams!, mean, median, memory, params, ratio, regressions, rmskew, rmskew!, trim, tune!,
+ warmup
+</code></pre></div>
+<p dir="auto">Still no conflict. Can I go further and do something even for <code>invariants</code>?
+Well, I have one method for <code>invariants</code> in my package:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="invariants(a::Group, args...)"><pre class="notranslate"><code>invariants(a::Group, args...)
+</code></pre></div>
+<p dir="auto">while <code>BenchmarkTools</code> has four:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="invariants(group::BenchmarkGroup)
+invariants(x)
+invariants(f, group::BenchmarkGroup)
+invariants(f, x)"><pre class="notranslate"><code>invariants(group::BenchmarkGroup)
+invariants(x)
+invariants(f, group::BenchmarkGroup)
+invariants(f, x)
+</code></pre></div>
+<p dir="auto">Even though some of these last methods apply to <code>Any</code>, they do not conflict
+with  my method  (since at  least one  of the  arguments of  my method, the
+first,  is qualified with my type <code>Group</code>), so  I can use them also by just
+defining:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="invariants(group::BenchmarkGroup) = BenchmarkTools.invariants(group)
+invariants(x) = BenchmarkTools.invariants(x)
+invariants(f, group::BenchmarkGroup) = BenchmarkTools.invariants(f, group)
+invariants(f, x) = BenchmarkTools.invariants(f, x)"><pre class="notranslate"><code>invariants(group::BenchmarkGroup) = BenchmarkTools.invariants(group)
+invariants(x) = BenchmarkTools.invariants(x)
+invariants(f, group::BenchmarkGroup) = BenchmarkTools.invariants(f, group)
+invariants(f, x) = BenchmarkTools.invariants(f, x)
+</code></pre></div>
+<p dir="auto">The  last thing to do is  make the docstring of <code>BenchmarkTools.invariants</code>
+accessible to the help of <code>invariants</code>. It happens it has no docstring, but
+if it had one I must do (this <em>adds</em> to the doc of <code>invariants</code>):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="@doc (@doc BenchmarkTools.invariants) invariants"><pre class="notranslate"><code>@doc (@doc BenchmarkTools.invariants) invariants
+</code></pre></div>
+<p dir="auto">I  call  the  end  result  of  the  above  process  <code>merging</code>  the  package
+<code>BenchmarkTools</code>  with  my  current  package.  What  I  announce  here is a
+macro  <code>@usingmerge</code>  which  does  all  the  above automatically. If you do</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using UsingMerge
+julia&gt; @usingmerge BenchmarkTools"><pre class="notranslate"><code>julia&gt; using UsingMerge
+julia&gt; @usingmerge BenchmarkTools
+</code></pre></div>
+<p dir="auto">The  function determines conflicting method names in the package and merges
+them as above, and does <code>using</code> of the non-conflicting names.</p>
+<p dir="auto">Just like for <code>using</code> you can <code>usingmerge</code> only some of the names of the
+package</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; @usingmerge BenchmarkTools: invariants, ratio"><pre class="notranslate"><code>julia&gt; @usingmerge BenchmarkTools: invariants, ratio
+</code></pre></div>
+<p dir="auto">The macro <code>@usingmerge</code> has two optional arguments</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; @usingmerge reexport BenchmarkTools"><pre class="notranslate"><code>julia&gt; @usingmerge reexport BenchmarkTools
+</code></pre></div>
+<p dir="auto">will   reexport  all  non-conflicting  names  (a  conflicting  name  is  by
+definition  already present in your environment and will be exported if you
+did export it).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; @usingmerge verbose=true BenchmarkTools"><pre class="notranslate"><code>julia&gt; @usingmerge verbose=true BenchmarkTools
+</code></pre></div>
+<p dir="auto">will  print all conflicts resolved, and <code>verbose=2</code> will print all executed
+commands.</p>
+<p dir="auto">You will find some more information in the docstring of <code>@usingmerge</code>.</p>
+<p dir="auto">Since  I wrote this function,  I found that I  got the hoped for modularity
+benefits in my code. For example, I have in my <code>Gapjm.jl</code> package modules</p>
+<ul dir="auto">
+<li><code>Perms</code>      Permutations</li>
+<li><code>Cycs</code>       Cyclotomic numbers (sums of complex roots of unity)</li>
+<li><code>Pols</code>       Univariate Laurent polynomials</li>
+<li><code>Mvps.jl</code>    Multivariate Puiseux polynomials</li>
+<li><code>Posets.jl</code>  Posets</li>
+<li><code>FFields.jl</code> Finite fields</li>
+</ul>
+<p dir="auto">that I designed as independent, stand-alone packages which each can be used
+without importing anything else from my package. To use them together I can
+now  just <code>using_merge</code> each  of them instead  of writing (unpleasant) glue
+code.</p>
+<p dir="auto">I  do not advocate always  replacing the semantics of  <code>using</code> with that of
+<code>@usingmerge</code>,  but  I  feel  that  <code>@usingmerge</code>  is a nice tool for using
+packages  together without having to write glue code (and without having to
+modify  any of the used packages). The meaning of "pirating a type" becomes
+a   little  bit  wider  in  this  context,  as  you  saw  with  the  method
+<code>invariants(y)</code>  in <code>BenchmarkTools</code>: it is, I would say, polite, if any of
+your  methods which has  a possibly conflicting  name uses at  least one of
+your own types in its signature.</p>
+<p dir="auto">The  program only merges methods  of functions. If a  conflicting name is a
+<code>macro</code>,  a <code>struct</code> or  a type, a  message is printed  and the name is not
+merged.</p>
+<p dir="auto">Any  kind of feedback will be welcome. My implementation is perhaps not the
+best,  as I kind  of parse the  printed output of  <code>methods</code>. Accessing the
+internal structure of the returned object would be better but I do not know
+what's  officially accessible  in there.  If you  have any  comments on the
+code, functionality or documentation please contact me.</p>
+</article></div>

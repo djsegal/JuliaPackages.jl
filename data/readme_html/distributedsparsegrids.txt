@@ -1,0 +1,353 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a target="_blank" rel="noopener noreferrer nofollow" href="https://user-images.githubusercontent.com/100423479/195380227-83249438-626a-4769-ad4c-6d3c27ccd3ab.png"><img align="right" src="https://user-images.githubusercontent.com/100423479/195380227-83249438-626a-4769-ad4c-6d3c27ccd3ab.png" width="200" height="200" style="max-width: 100%;"></a></p>
+<h1 dir="auto"><a id="user-content-distributedsparsegridsjl" class="anchor" aria-hidden="true" href="#distributedsparsegridsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>DistributedSparseGrids.jl</h1>
+<p dir="auto"><a href="https://baxmittens.github.io/DistributedSparseGrids.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/baxmittens/DistributedSparseGrids.jl/actions/workflows/CI.yml"><img src="https://github.com/baxmittens/DistributedSparseGrids.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://doi.org/10.21105/joss.05003" rel="nofollow"><img src="https://camo.githubusercontent.com/1802d6de801f2e8c15b2e2672f67f3c90711445f2a647f9155823455711ba84a/68747470733a2f2f6a6f73732e7468656f6a2e6f72672f7061706572732f31302e32313130352f6a6f73732e30353030332f7374617475732e737667" alt="DOI" data-canonical-src="https://joss.theoj.org/papers/10.21105/joss.05003/status.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">A Julia library implementing an Adaptive Sparse Grid collocation method for integrating memory-heavy objects generated on distributed workers.</p>
+<p dir="auto">For an alternative implementation, see <a href="https://github.com/jacobadenbaum/AdaptiveSparseGrids.jl">AdaptiveSparseGrids.jl</a>.</p>
+<h2 dir="auto"><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Introduction</h2>
+<p dir="auto">Efficient methods for the numerical integration (or interpolation) of one-dimensional functions can be directly applied to the multidimensional case via <a href="https://math.stackexchange.com/questions/813831/what-is-a-tensor-product-chebyshev-grid" rel="nofollow">tensor-product constructions</a>. However, the higher the number of dimensions, the less efficient this approach is. A problem which is also known as the <a href="https://en.wikipedia.org/wiki/Curse_of_dimensionality" rel="nofollow">curse of dimensionality</a>.</p>
+<p dir="auto">Any integral</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$$
+\int_{a_1}^{b_1}\cdot\cdot\cdot\int_{a_n}^{b_n} f(x_1,...,x_n) \mathrm{d}x_1\cdot\cdot\cdot\mathrm{d}x_n
+$$</math-renderer></p>
+<p dir="auto">can be mapped onto the hypercube <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$[-1,1]^n$</math-renderer> by means of coordinate transformation. Therefore, the problem of integrating multidimensional functions can be studied on the hypercube without loss of generality.</p>
+<p dir="auto">To mitigate the curse of dimensionality that occurs in the integration or interpolation of multidimensional functions on the hypercube, sparse grids use Smolyak's quadrature rule. This is particularly useful if the evaluation of the underlying function is costly. In this library, an Adaptive Sparse Grid Collocation method with a local hierarchical Lagrangian basis, first proposed by <a href="https://www.sciencedirect.com/science/article/pii/S002199910900028X" rel="nofollow">Ma and Zabaras (2010)</a>, is implemented. For more information about the construction of Sparse Grids, see e.g. <a href="https://arxiv.org/abs/1509.01462" rel="nofollow">Gates and Bittens (2015)</a>.</p>
+<h2 dir="auto">
+<a id="user-content-citing-this-package" class="anchor" aria-hidden="true" href="#citing-this-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Citing this package</h2>
+<p dir="auto">There exists a <a href="https://joss.theoj.org/papers/10.21105/joss.05003" rel="nofollow">JOSS paper</a> about this package. You can cite it if you are using this software for academic purposes.</p>
+<h2 dir="auto">
+<a id="user-content-install" class="anchor" aria-hidden="true" href="#install"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Install</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Pkg
+Pkg.add(&quot;DistributedSparseGrids&quot;)"><pre><span class="pl-k">import</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>DistributedSparseGrids<span class="pl-pds">"</span></span>)</pre></div>
+<h2 dir="auto">
+<a id="user-content-implemented-features" class="anchor" aria-hidden="true" href="#implemented-features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Implemented features</h2>
+<ul dir="auto">
+<li>Nested one-dimensional Clenshaw-Curtis rule</li>
+<li>Smolyak's sparse grid construction</li>
+<li>local hierarchical Lagrangian basis</li>
+<li>different pointsets (open, closed, halfopen)</li>
+<li>adaptive refinement</li>
+<li>distributed function evaluation with <code>Distributed.remotecall_fetch</code>
+</li>
+<li>multi-threaded calculation of basis coefficients with <code>Threads.@threads</code>
+</li>
+<li>usage of arbitrary input, collocation point, and return types</li>
+<li>integration</li>
+<li>experimental: integration over <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$X_{\sim (i)}$</math-renderer> (the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$X_{\sim (i)}$</math-renderer>  notation indicates the set of all variables except <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$X_{i}$</math-renderer>).</li>
+</ul>
+<h2 dir="auto">
+<a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage</h2>
+<h3 dir="auto">
+<a id="user-content-general-remarks" class="anchor" aria-hidden="true" href="#general-remarks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>General remarks</h3>
+<ul dir="auto">
+<li>The quality of the error prediction depends on the number of collocation points. Therefore, for only a few collocation points, adaptive refinement may fail. Therefore it is recommended to generate some initial levels before using adaptive refinement (see examples).</li>
+<li>The interpolation is based on a local Lagrangian basis. Functions with discontinuities cannot be approximated.</li>
+<li>Sparse grid interpolation and integration will work best with a number of dimension between 1 and 6.</li>
+<li>The domain of the sparse grid is always <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$[-1,1]^n$</math-renderer>. The user is responsible to map the input onto this domain.</li>
+</ul>
+<h3 dir="auto">
+<a id="user-content-point-sets" class="anchor" aria-hidden="true" href="#point-sets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Point sets</h3>
+<p dir="auto">When using sparse grids, one can choose whether the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="a7258bc2a36291eaf3ce5d35f55bcc9f">$2d$</math-renderer> second-level collocation points should lay on the boundary of the domain or in the middle between the origin and the boundary. (There are other choices as well.) This results in two different sparse grids, the former with almost all points on the boundary and on the coordinate axes, the latter with all points in the interior of the domain. Since one can choose for both one-dimensional children of the root point individually, there exist a multitude of different point sets for Sparse Grids.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using DistributedSparseGrids
+using StaticArrays 
+
+function sparse_grid(N::Int,pointprops,nlevel=6,RT=Float64,CT=Float64)
+	# define collocation point
+	CPType = CollocationPoint{N,CT}
+	# define hierarchical collocation point
+	HCPType = HierarchicalCollocationPoint{N,CPType,RT}
+	# init grid
+	asg = init(AHSG{N,HCPType},pointprops)
+	#set of all collocation points
+	cpts = Set{HierarchicalCollocationPoint{N,CPType,RT}}(collect(asg))
+	# fully refine grid nlevel-1 times
+	for i = 1:nlevel-1
+		union!(cpts,generate_next_level!(asg))
+	end
+	return asg
+end
+
+# define point properties 
+#	1-&gt;closed point set
+# 	2-&gt;open point set
+#	3-&gt;left-open point set
+#	4-&gt;right-open point set
+
+asg01 = sparse_grid(1, @SVector [1]) 
+asg02 = sparse_grid(1, @SVector [2]) 
+asg03 = sparse_grid(1, @SVector [3]) 
+
+asg04 = sparse_grid(2, @SVector [1,1]) 
+asg05 = sparse_grid(2, @SVector [2,2]) 
+asg06 = sparse_grid(2, @SVector [1,2]) 
+asg07 = sparse_grid(2, @SVector [2,1]) 
+asg08 = sparse_grid(2, @SVector [3,3]) 
+asg09 = sparse_grid(2, @SVector [4,4]) 
+asg10 = sparse_grid(2, @SVector [3,1]) 
+asg11 = sparse_grid(2, @SVector [2,3]) 
+asg12 = sparse_grid(2, @SVector [4,2]) "><pre><span class="pl-k">using</span> DistributedSparseGrids
+<span class="pl-k">using</span> StaticArrays 
+
+<span class="pl-k">function</span> <span class="pl-en">sparse_grid</span>(N<span class="pl-k">::</span><span class="pl-c1">Int</span>,pointprops,nlevel<span class="pl-k">=</span><span class="pl-c1">6</span>,RT<span class="pl-k">=</span>Float64,CT<span class="pl-k">=</span>Float64)
+	<span class="pl-c"><span class="pl-c">#</span> define collocation point</span>
+	CPType <span class="pl-k">=</span> CollocationPoint{N,CT}
+	<span class="pl-c"><span class="pl-c">#</span> define hierarchical collocation point</span>
+	HCPType <span class="pl-k">=</span> HierarchicalCollocationPoint{N,CPType,RT}
+	<span class="pl-c"><span class="pl-c">#</span> init grid</span>
+	asg <span class="pl-k">=</span> <span class="pl-c1">init</span>(AHSG{N,HCPType},pointprops)
+	<span class="pl-c"><span class="pl-c">#</span>set of all collocation points</span>
+	cpts <span class="pl-k">=</span> <span class="pl-c1">Set</span><span class="pl-c1">{HierarchicalCollocationPoint{N,CPType,RT}}</span>(<span class="pl-c1">collect</span>(asg))
+	<span class="pl-c"><span class="pl-c">#</span> fully refine grid nlevel-1 times</span>
+	<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nlevel<span class="pl-k">-</span><span class="pl-c1">1</span>
+		<span class="pl-c1">union!</span>(cpts,<span class="pl-c1">generate_next_level!</span>(asg))
+	<span class="pl-k">end</span>
+	<span class="pl-k">return</span> asg
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> define point properties </span>
+<span class="pl-c"><span class="pl-c">#</span>	1-&gt;closed point set</span>
+<span class="pl-c"><span class="pl-c">#</span> 	2-&gt;open point set</span>
+<span class="pl-c"><span class="pl-c">#</span>	3-&gt;left-open point set</span>
+<span class="pl-c"><span class="pl-c">#</span>	4-&gt;right-open point set</span>
+
+asg01 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">1</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>]) 
+asg02 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">1</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">2</span>]) 
+asg03 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">1</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">3</span>]) 
+
+asg04 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>,<span class="pl-c1">1</span>]) 
+asg05 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">2</span>,<span class="pl-c1">2</span>]) 
+asg06 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>]) 
+asg07 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">2</span>,<span class="pl-c1">1</span>]) 
+asg08 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">3</span>,<span class="pl-c1">3</span>]) 
+asg09 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">4</span>,<span class="pl-c1">4</span>]) 
+asg10 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">3</span>,<span class="pl-c1">1</span>]) 
+asg11 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">2</span>,<span class="pl-c1">3</span>]) 
+asg12 <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">4</span>,<span class="pl-c1">2</span>]) </pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer nofollow" href="https://user-images.githubusercontent.com/100423479/193822819-90fe2b3f-674d-4914-889b-5be91089b2c0.png"><img src="https://user-images.githubusercontent.com/100423479/193822819-90fe2b3f-674d-4914-889b-5be91089b2c0.png" width="600" height="200" style="max-width: 100%;"></a></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer nofollow" href="https://user-images.githubusercontent.com/100423479/193283422-6901ef1c-e474-4a64-a143-7988c3e9be00.png"><img src="https://user-images.githubusercontent.com/100423479/193283422-6901ef1c-e474-4a64-a143-7988c3e9be00.png" width="600" height="600" style="max-width: 100%;"></a></p>
+<h3 dir="auto">
+<a id="user-content-integration-and-interpolation" class="anchor" aria-hidden="true" href="#integration-and-interpolation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Integration and Interpolation</h3>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="asg = sparse_grid(4, @SVector [1,1,1,1]) 
+
+#define function: input are the coordinates x::SVector{N,CT} and an unique id ID::String (e.g. &quot;1_1_1_1&quot;)
+fun1(x::SVector{N,CT},ID::String) = sum(x.^2)
+
+# initialize weights
+@time init_weights!(asg, fun1)
+
+# integration
+integrate(asg)
+
+# interpolation
+x = rand(4)*2.0 .- 1.0
+val = interpolate(asg,x)	"><pre>asg <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">4</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">1</span>]) 
+
+<span class="pl-c"><span class="pl-c">#</span>define function: input are the coordinates x::SVector{N,CT} and an unique id ID::String (e.g. "1_1_1_1")</span>
+<span class="pl-en">fun1</span>(x<span class="pl-k">::</span><span class="pl-c1">SVector{N,CT}</span>,ID<span class="pl-k">::</span><span class="pl-c1">String</span>) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(x<span class="pl-k">.^</span><span class="pl-c1">2</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> initialize weights</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">init_weights!</span>(asg, fun1)
+
+<span class="pl-c"><span class="pl-c">#</span> integration</span>
+<span class="pl-c1">integrate</span>(asg)
+
+<span class="pl-c"><span class="pl-c">#</span> interpolation</span>
+x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">4</span>)<span class="pl-k">*</span><span class="pl-c1">2.0</span> <span class="pl-k">.-</span> <span class="pl-c1">1.0</span>
+val <span class="pl-k">=</span> <span class="pl-c1">interpolate</span>(asg,x)	</pre></div>
+<h3 dir="auto">
+<a id="user-content-distributed-function-evaluation" class="anchor" aria-hidden="true" href="#distributed-function-evaluation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Distributed function evaluation</h3>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="asg = sparse_grid(4, @SVector [1,1,1,1]) 
+
+# add worker and register function to all workers
+using Distributed
+addprocs(2)
+ar_worker = workers()
+@everywhere begin
+    using StaticArrays
+    fun2(x::SVector{4,Float64},ID::String) = 1.0
+end
+
+# Evaluate the function on 2 workers
+distributed_init_weights!(asg, fun2, ar_worker)"><pre>asg <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">4</span>, <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">1</span>]) 
+
+<span class="pl-c"><span class="pl-c">#</span> add worker and register function to all workers</span>
+<span class="pl-k">using</span> Distributed
+<span class="pl-c1">addprocs</span>(<span class="pl-c1">2</span>)
+ar_worker <span class="pl-k">=</span> <span class="pl-c1">workers</span>()
+<span class="pl-c1">@everywhere</span> <span class="pl-k">begin</span>
+    <span class="pl-k">using</span> StaticArrays
+    <span class="pl-en">fun2</span>(x<span class="pl-k">::</span><span class="pl-c1">SVector{4,Float64}</span>,ID<span class="pl-k">::</span><span class="pl-c1">String</span>) <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Evaluate the function on 2 workers</span>
+<span class="pl-c1">distributed_init_weights!</span>(asg, fun2, ar_worker)</pre></div>
+<h3 dir="auto">
+<a id="user-content-using-custom-return-types" class="anchor" aria-hidden="true" href="#using-custom-return-types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Using custom return types</h3>
+<p dir="auto">For custom return type <code>T</code> to work, following functions have to be implemented</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Base: +,-,*,/,^,zero,zeros,one,ones,copy,deepcopy
+
++(a::T, b::T) 
++(a::T, b::Float64) 
+*(a::T, b::Float64) 
+-(a::T, b::Matrix{Float64})
+-(a::T, b::Float64) 
+zero(a::T) 
+zeros(a::T) 
+one(a::T) 
+one(a::T) 
+copy(a::T)
+deepcopy(a::T)"><pre><span class="pl-k">import</span> Base<span class="pl-k">:</span> <span class="pl-k">+</span>,<span class="pl-k">-</span>,<span class="pl-k">*</span>,<span class="pl-k">/</span>,<span class="pl-k">^</span>,zero,zeros,one,ones,copy,deepcopy
+
+<span class="pl-k">+</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+<span class="pl-k">+</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>) 
+<span class="pl-k">*</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>) 
+<span class="pl-k">-</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>)
+<span class="pl-k">-</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>) 
+<span class="pl-c1">zero</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+<span class="pl-c1">zeros</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+<span class="pl-c1">one</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+<span class="pl-c1">one</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+<span class="pl-c1">copy</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>)
+<span class="pl-c1">deepcopy</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>)</pre></div>
+<p dir="auto">This is already the case for many data types. Below  <code>RT=Matrix{Float64}</code> is used.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# sparse grid with 5 dimensions and levels
+pointprops = @SVector [1,2,3,4,1]
+asg = sparse_grid(5, pointprops, 6, Matrix{Float64}) 
+
+# define function: input are the coordinates x::SVector{N,CT} and an unique id ID::String (e.g. &quot;1_1_1_1_1_1_1_1_1_1&quot;
+# for the root poin in five dimensions)
+fun3(x::SVector{N,CT},ID::String) = ones(100,100).*x[1]
+
+# initialize weights
+@time init_weights!(asg, fun3)"><pre><span class="pl-c"><span class="pl-c">#</span> sparse grid with 5 dimensions and levels</span>
+pointprops <span class="pl-k">=</span> <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>,<span class="pl-c1">1</span>]
+asg <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">5</span>, pointprops, <span class="pl-c1">6</span>, Matrix{Float64}) 
+
+<span class="pl-c"><span class="pl-c">#</span> define function: input are the coordinates x::SVector{N,CT} and an unique id ID::String (e.g. "1_1_1_1_1_1_1_1_1_1"</span>
+<span class="pl-c"><span class="pl-c">#</span> for the root poin in five dimensions)</span>
+<span class="pl-en">fun3</span>(x<span class="pl-k">::</span><span class="pl-c1">SVector{N,CT}</span>,ID<span class="pl-k">::</span><span class="pl-c1">String</span>) <span class="pl-k">=</span> <span class="pl-c1">ones</span>(<span class="pl-c1">100</span>,<span class="pl-c1">100</span>)<span class="pl-k">.*</span>x[<span class="pl-c1">1</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> initialize weights</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">init_weights!</span>(asg, fun3)</pre></div>
+<h3 dir="auto">
+<a id="user-content-in-place-operations" class="anchor" aria-hidden="true" href="#in-place-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>In-place operations</h3>
+<p dir="auto">There are many mathematical operations executed which allocate memory while evaluting the hierarchical interpolator. Many of these allocations can be avoided by additionally implementing the <code>inplace operations</code> interface for data type <code>T</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import LinearAlgebra, AltInplaceOpsInterface 
+
+LinearAlgebra.mul!(a::T, b::Float64) 
+LinearAlgebra.mul!(a:T, b::T, c::Float64)
+AltInplaceOpsInterface.add!(a::T, b::T) 
+AltInplaceOpsInterface.add!(a::T, b::Float64) 
+AltInplaceOpsInterface.minus!(a::T, b::Float64) 
+AltInplaceOpsInterface.minus!(a::T, b::T) 
+AltInplaceOpsInterface.pow!(a::T, b::Float64)"><pre><span class="pl-k">import</span> LinearAlgebra, AltInplaceOpsInterface 
+
+LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">mul!</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>) 
+LinearAlgebra<span class="pl-k">.</span><span class="pl-c1">mul!</span>(a<span class="pl-k">:</span>T, b<span class="pl-k">::</span><span class="pl-c1">T</span>, c<span class="pl-k">::</span><span class="pl-c1">Float64</span>)
+AltInplaceOpsInterface<span class="pl-k">.</span><span class="pl-c1">add!</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+AltInplaceOpsInterface<span class="pl-k">.</span><span class="pl-c1">add!</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>) 
+AltInplaceOpsInterface<span class="pl-k">.</span><span class="pl-c1">minus!</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>) 
+AltInplaceOpsInterface<span class="pl-k">.</span><span class="pl-c1">minus!</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">T</span>) 
+AltInplaceOpsInterface<span class="pl-k">.</span><span class="pl-c1">pow!</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span>)</pre></div>
+<p dir="auto">For Matrix{Float64} this interface is already implemented.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# initialize weights
+@time init_weights_inplace_ops!(asg, fun3)"><pre><span class="pl-c"><span class="pl-c">#</span> initialize weights</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">init_weights_inplace_ops!</span>(asg, fun3)</pre></div>
+<h3 dir="auto">
+<a id="user-content-distributed-function-evaluation-and-in-place-operations" class="anchor" aria-hidden="true" href="#distributed-function-evaluation-and-in-place-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Distributed function evaluation and in-place operations</h3>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# initialize weights
+@time distributed_init_weights_inplace_ops!(asg, fun3, ar_worker)"><pre><span class="pl-c"><span class="pl-c">#</span> initialize weights</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">distributed_init_weights_inplace_ops!</span>(asg, fun3, ar_worker)</pre></div>
+<h3 dir="auto">
+<a id="user-content-adaptive-refinement" class="anchor" aria-hidden="true" href="#adaptive-refinement"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Adaptive Refinement</h3>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Sparse Grid with 4 initial levels
+pp = @SVector [1,1]
+asg = sparse_grid(2, pp, 4)
+
+# Function with curved singularity
+fun1(x::SVector{2,Float64},ID::String) =  (1.0-exp(-1.0*(abs(2.0 - (x[1]-1.0)^2.0 - (x[2]-1.0)^2.0) +0.01)))/(abs(2-(x[1]-1.0)^2.0-(x[2]-1.0)^2.0)+0.01)
+
+init_weights!(asg, fun1)
+
+# adaptive refine
+for i = 1:20
+# call generate_next_level! with tol=1e-5 and maxlevels=20
+cpts = generate_next_level!(asg, 1e-5, 20)
+init_weights!(asg, collect(cpts), fun1)
+end
+
+# plot
+import PlotlyJS
+surfplot = PlotlyJS.surface(asg, 100)
+gridplot = PlotlyJS.scatter3d(asg)
+PlotlyJS.plot([surfplot, gridplot])"><pre><span class="pl-c"><span class="pl-c">#</span> Sparse Grid with 4 initial levels</span>
+pp <span class="pl-k">=</span> <span class="pl-c1">@SVector</span> [<span class="pl-c1">1</span>,<span class="pl-c1">1</span>]
+asg <span class="pl-k">=</span> <span class="pl-c1">sparse_grid</span>(<span class="pl-c1">2</span>, pp, <span class="pl-c1">4</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Function with curved singularity</span>
+<span class="pl-en">fun1</span>(x<span class="pl-k">::</span><span class="pl-c1">SVector{2,Float64}</span>,ID<span class="pl-k">::</span><span class="pl-c1">String</span>) <span class="pl-k">=</span>  (<span class="pl-c1">1.0</span><span class="pl-k">-</span><span class="pl-c1">exp</span>(<span class="pl-k">-</span><span class="pl-c1">1.0</span><span class="pl-k">*</span>(<span class="pl-c1">abs</span>(<span class="pl-c1">2.0</span> <span class="pl-k">-</span> (x[<span class="pl-c1">1</span>]<span class="pl-k">-</span><span class="pl-c1">1.0</span>)<span class="pl-k">^</span><span class="pl-c1">2.0</span> <span class="pl-k">-</span> (x[<span class="pl-c1">2</span>]<span class="pl-k">-</span><span class="pl-c1">1.0</span>)<span class="pl-k">^</span><span class="pl-c1">2.0</span>) <span class="pl-k">+</span><span class="pl-c1">0.01</span>)))<span class="pl-k">/</span>(<span class="pl-c1">abs</span>(<span class="pl-c1">2</span><span class="pl-k">-</span>(x[<span class="pl-c1">1</span>]<span class="pl-k">-</span><span class="pl-c1">1.0</span>)<span class="pl-k">^</span><span class="pl-c1">2.0</span><span class="pl-k">-</span>(x[<span class="pl-c1">2</span>]<span class="pl-k">-</span><span class="pl-c1">1.0</span>)<span class="pl-k">^</span><span class="pl-c1">2.0</span>)<span class="pl-k">+</span><span class="pl-c1">0.01</span>)
+
+<span class="pl-c1">init_weights!</span>(asg, fun1)
+
+<span class="pl-c"><span class="pl-c">#</span> adaptive refine</span>
+<span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">20</span>
+<span class="pl-c"><span class="pl-c">#</span> call generate_next_level! with tol=1e-5 and maxlevels=20</span>
+cpts <span class="pl-k">=</span> <span class="pl-c1">generate_next_level!</span>(asg, <span class="pl-c1">1e-5</span>, <span class="pl-c1">20</span>)
+<span class="pl-c1">init_weights!</span>(asg, <span class="pl-c1">collect</span>(cpts), fun1)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> plot</span>
+<span class="pl-k">import</span> PlotlyJS
+surfplot <span class="pl-k">=</span> PlotlyJS<span class="pl-k">.</span><span class="pl-c1">surface</span>(asg, <span class="pl-c1">100</span>)
+gridplot <span class="pl-k">=</span> PlotlyJS<span class="pl-k">.</span><span class="pl-c1">scatter3d</span>(asg)
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">plot</span>([surfplot, gridplot])</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer nofollow" href="https://user-images.githubusercontent.com/100423479/193813765-0b7ce7b2-639a-48d3-831d-7bd5639c9fd3.PNG"><img src="https://user-images.githubusercontent.com/100423479/193813765-0b7ce7b2-639a-48d3-831d-7bd5639c9fd3.PNG" width="400" height="400" style="max-width: 100%;"></a></p>
+<h3 dir="auto">
+<a id="user-content-plotting" class="anchor" aria-hidden="true" href="#plotting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Plotting</h3>
+<h4 dir="auto">
+<a id="user-content-1d" class="anchor" aria-hidden="true" href="#1d"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>1d</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# grid plots
+PlotlyJS.scatter(sg::AbstractHierarchicalSparseGrid{1,HCP}, lvl_offset::Bool=false; kwargs...) 
+UnicodePlots.scatterplot(sg::AbstractHierarchicalSparseGrid{1,HCP}, lvl_offset::Bool=false)
+
+# response function plots
+UnicodePlots.lineplot(asg::AbstractHierarchicalSparseGrid{1,HCP}, npts = 1000, stoplevel::Int=numlevels(asg))
+PlotlyJS.surface(asg::SG, npts = 1000, stoplevel::Int=numlevels(asg); kwargs...)"><pre><span class="pl-c"><span class="pl-c">#</span> grid plots</span>
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">scatter</span>(sg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{1,HCP}</span>, lvl_offset<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>; kwargs<span class="pl-k">...</span>) 
+UnicodePlots<span class="pl-k">.</span><span class="pl-c1">scatterplot</span>(sg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{1,HCP}</span>, lvl_offset<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> response function plots</span>
+UnicodePlots<span class="pl-k">.</span><span class="pl-c1">lineplot</span>(asg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{1,HCP}</span>, npts <span class="pl-k">=</span> <span class="pl-c1">1000</span>, stoplevel<span class="pl-k">::</span><span class="pl-c1">Int</span><span class="pl-k">=</span><span class="pl-c1">numlevels</span>(asg))
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">surface</span>(asg<span class="pl-k">::</span><span class="pl-c1">SG</span>, npts <span class="pl-k">=</span> <span class="pl-c1">1000</span>, stoplevel<span class="pl-k">::</span><span class="pl-c1">Int</span><span class="pl-k">=</span><span class="pl-c1">numlevels</span>(asg); kwargs<span class="pl-k">...</span>)</pre></div>
+<h4 dir="auto">
+<a id="user-content-2d" class="anchor" aria-hidden="true" href="#2d"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>2d</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# grid plots
+PlotlyJS.scatter(sg::AbstractHierarchicalSparseGrid{2,HCP}, lvl_offset::Float64=0.0, color_order::Bool=false) 
+UnicodePlots.scatterplot(sg::AbstractHierarchicalSparseGrid{2,HCP})
+PlotlyJS.scatter3d(sg::AbstractHierarchicalSparseGrid{2,HCP}, color_order::Bool=false, maxp::Int=1)
+
+# response function plot
+PlotlyJS.surface(asg::AbstractHierarchicalSparseGrid{2,HCP}, npts = 20; kwargs...)"><pre><span class="pl-c"><span class="pl-c">#</span> grid plots</span>
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">scatter</span>(sg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{2,HCP}</span>, lvl_offset<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">0.0</span>, color_order<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>) 
+UnicodePlots<span class="pl-k">.</span><span class="pl-c1">scatterplot</span>(sg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{2,HCP}</span>)
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">scatter3d</span>(sg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{2,HCP}</span>, color_order<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>, maxp<span class="pl-k">::</span><span class="pl-c1">Int</span><span class="pl-k">=</span><span class="pl-c1">1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> response function plot</span>
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">surface</span>(asg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{2,HCP}</span>, npts <span class="pl-k">=</span> <span class="pl-c1">20</span>; kwargs<span class="pl-k">...</span>)</pre></div>
+<h4 dir="auto">
+<a id="user-content-3d" class="anchor" aria-hidden="true" href="#3d"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>3d</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# grid plot
+PlotlyJS.scatter3d(sg::AbstractHierarchicalSparseGrid{3,HCP}, color_order::Bool=false, maxp::Int=1)"><pre><span class="pl-c"><span class="pl-c">#</span> grid plot</span>
+PlotlyJS<span class="pl-k">.</span><span class="pl-c1">scatter3d</span>(sg<span class="pl-k">::</span><span class="pl-c1">AbstractHierarchicalSparseGrid{3,HCP}</span>, color_order<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>, maxp<span class="pl-k">::</span><span class="pl-c1">Int</span><span class="pl-k">=</span><span class="pl-c1">1</span>)</pre></div>
+<h2 dir="auto">
+<a id="user-content-next-steps" class="anchor" aria-hidden="true" href="#next-steps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Next steps</h2>
+<ul dir="auto">
+<li>nonlinear basis functions</li>
+<li>wavelet basis</li>
+</ul>
+<h2 dir="auto">
+<a id="user-content-contributions-report-bugs-and-support" class="anchor" aria-hidden="true" href="#contributions-report-bugs-and-support"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Contributions, report bugs and support</h2>
+<p dir="auto">Contributions to or questions about this project are welcome. Feel free to create a issue or a pull request on <a href="https://github.com/baxmittens/DistributedSparseGrids.jl">GitHub</a>.</p>
+</article></div>

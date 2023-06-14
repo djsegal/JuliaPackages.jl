@@ -1,0 +1,172 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-calippsojl-a-linear-programming-algorithm-for-jamming-hard-spheres" class="anchor" aria-hidden="true" href="#calippsojl-a-linear-programming-algorithm-for-jamming-hard-spheres"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CALiPPSO.jl: A Linear Programming Algorithm for Jamming Hard Spheres</h1>
+<p dir="auto"><a href="https://github.com/rdhr/CALiPPSO.jl/actions/workflows/CI.yml"><img src="https://github.com/rdhr/CALiPPSO.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/rdhr/CALiPPSO.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/7326200dabbed9e975b9a0c0fe296c3953119e2f7fd0df0bda2846664d7f91da/68747470733a2f2f636f6465636f762e696f2f67682f726468722f43414c695050534f2e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e7376673f746f6b656e3d4a514c52304631455356" alt="codecov" data-canonical-src="https://codecov.io/gh/rdhr/CALiPPSO.jl/branch/master/graph/badge.svg?token=JQLR0F1ESV" style="max-width: 100%;"></a></p>
+<p dir="auto"><a href="https://rdhr.github.io/CALiPPSO.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a></p>
+<hr>
+<p dir="auto"><strong>Important!!</strong> Breaking changes introduced in <code>v0.2.0</code> when changing the default optimizer or passing it arguments. See the <a href="#Changing-the-solver">corresponding section</a> below.</p>
+<p dir="auto">This might cause the following error message if the main function is interrupted.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="ERROR: The provided `optimizer_constructor` returned a non-empty optimizer."><pre class="notranslate"><code>ERROR: The provided `optimizer_constructor` returned a non-empty optimizer.
+</code></pre></div>
+<p dir="auto">In <a href="#Changes-with-previous-versions">this section</a> we give the instructions for solving it.</p>
+<hr>
+<p dir="auto">This package is a pure <a href="https://julialang.org/" rel="nofollow">Julia</a> implementation of the CALiPPSO algorithm for generating jammed packings of hard spheres. The algorithm itself was introduced in <a href="https://arxiv.org/abs/2203.05654" rel="nofollow">this article</a> by <em>Artiaco, Díaz, Parisi, and Ricci-Tersenghi</em>. As explained there, <em>CALiPPSO</em> consists of a <em><strong>C</strong>hain of <strong>A</strong>pproximate <strong>Li</strong>near <strong>P</strong>rogramming for <strong>P</strong>acking <strong>S</strong>pherical <strong>O</strong>bjects</em>. It works in arbitrary dimensions, and for both <em>mono</em>disperse and <em>poly</em>disperse configurations, as shown below:</p>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/aaa537f76033a7e5d2bff97aa4b1adad21417780d2dcb8de5b7619bcc315865b/68747470733a2f2f7777772e64726f70626f782e636f6d2f732f75343731386674776f7a316639397a2f33645243502e6a70673f7261773d31"><img src="https://camo.githubusercontent.com/aaa537f76033a7e5d2bff97aa4b1adad21417780d2dcb8de5b7619bcc315865b/68747470733a2f2f7777772e64726f70626f782e636f6d2f732f75343731386674776f7a316639397a2f33645243502e6a70673f7261773d31" alt="Monodisperse 3d" width="48%" data-canonical-src="https://www.dropbox.com/s/u4718ftwoz1f99z/3dRCP.jpg?raw=1" style="max-width: 100%;"></a>
+  <a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/08ba4f5c6f7bd6dcae0c6247de2825f6b6dc6eefe8d10a55de71ac77aec5066d/68747470733a2f2f7777772e64726f70626f782e636f6d2f732f3173327437736f326e7969683530322f69736f7374617469632d32642d706f6c7964697370657273652e706e673f7261773d31"><img src="https://camo.githubusercontent.com/08ba4f5c6f7bd6dcae0c6247de2825f6b6dc6eefe8d10a55de71ac77aec5066d/68747470733a2f2f7777772e64726f70626f782e636f6d2f732f3173327437736f326e7969683530322f69736f7374617469632d32642d706f6c7964697370657273652e706e673f7261773d31" alt="Polydisperse 2d" width="46%" data-canonical-src="https://www.dropbox.com/s/1s2t7so2nyih502/isostatic-2d-polydisperse.png?raw=1" style="max-width: 100%;"></a>
+</p><p dir="auto"> (Left: Monodisperse packing of 16k particles; coloured according to their number of contacts. Right: Polydisperse packing of 1024 disks, with radii from a log-normal distribution, and network of contacts drawn.</p>
+<p dir="auto"></p>
+<p dir="auto">This package is licensed under the MIT license, so please feel free to use/modify/improve this code as better suits you. We only ask you to cite our work if you find it useful.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="@article{CALiPPSO,
+  title = {Hard-Sphere Jamming through the Lens of Linear Optimization},
+  author = {Artiaco, Claudia and D{\'i}az Hern{\'a}ndez Rojas, Rafael and Parisi, Giorgio and {Ricci-Tersenghi}, Federico},
+  year = {2022},
+  month = nov,
+  journal = {Physical Review E},
+  volume = {106},
+  number = {5},
+  pages = {055310},
+  publisher = {{American Physical Society}},
+  doi = {10.1103/PhysRevE.106.055310},
+  url = {https://link.aps.org/doi/10.1103/PhysRevE.106.055310}
+}"><pre class="notranslate"><code>@article{CALiPPSO,
+  title = {Hard-Sphere Jamming through the Lens of Linear Optimization},
+  author = {Artiaco, Claudia and D{\'i}az Hern{\'a}ndez Rojas, Rafael and Parisi, Giorgio and {Ricci-Tersenghi}, Federico},
+  year = {2022},
+  month = nov,
+  journal = {Physical Review E},
+  volume = {106},
+  number = {5},
+  pages = {055310},
+  publisher = {{American Physical Society}},
+  doi = {10.1103/PhysRevE.106.055310},
+  url = {https://link.aps.org/doi/10.1103/PhysRevE.106.055310}
+}
+</code></pre></div>
+<h2 dir="auto"><a id="user-content-documentation" class="anchor" aria-hidden="true" href="#documentation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Documentation</h2>
+<p dir="auto">You can read the full documentation of our code <a href="https://rdhr.github.io/CALiPPSO.jl/dev/index.html" rel="nofollow">here</a>.</p>
+<h2 dir="auto"><a id="user-content-basic-usage" class="anchor" aria-hidden="true" href="#basic-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Basic usage</h2>
+<h3 dir="auto"><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation</h3>
+<p dir="auto">From a Julia REPL, Jupyter notebook, etc.  simply do</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="]add CALiPPSO"><pre>]add CALiPPSO</pre></div>
+<p dir="auto">Or, if you prefer to import the Package manager (<code>Pkg</code>), do:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Pkg
+Pkg.add(&quot;CALiPPSO&quot;)"><pre><span class="pl-k">import</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>CALiPPSO<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">This will also automatically install the required dependencies; the main ones are <a href="https://jump.dev/JuMP.jl/stable/" rel="nofollow">JuMP.jl</a>, <a href="https://github.com/JuliaArrays/StaticArrays.jl">StaticArrays.jl</a> and <a href="https://github.com/jump-dev/GLPK.jl">GLPK.jl</a>. The latter is needed because <a href="https://www.gnu.org/software/glpk/" rel="nofollow"><code>GLPK</code></a> is the default solver of CALiPPSO. In any case, once CALiPPSO is added, you can simply import it into your current working space (<em>i.e.</em> the REPL, a Jupyter notebook, script, etc) as any other package, namely <code>using CALiPPSO</code>.</p>
+<p dir="auto">Below we show a minimal working example (MWE) and show how to <a href="#Changing-the-solver">change the solver</a> used by CALiPPSO. See also the scripts in the <code>Examples</code> folder of this repo for more usage examples.</p>
+<h3 dir="auto"><a id="user-content-minimal-example" class="anchor" aria-hidden="true" href="#minimal-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Minimal example</h3>
+<p dir="auto">We tried to make this package as easy to use as possible and, indeed, it consists of <em>a single</em> main function: <code>produce_jammed_configuration!(Xs0, r0, L=1.0)</code>. We also provide a function to generate a low density random initial condition so that you can use CALiPPSO right away. However, as we explain in <a href="https://arxiv.org/abs/2203.05654" rel="nofollow">our paper</a> and in <a href="https://rdhr.github.io/CALiPPSO.jl/dev/theory.html#The-initial-conditions" rel="nofollow">the relevant part of the documentation</a>, our algorithm works best if the initial condition is already close to its jamming point. Thus, our code is not guaranteed to work with any such low density configurations.
+However, for small systems, even a low density configuration should be suitable for initializing CALiPPSO. So, for instance, to jammed a d=3 system of 512 hard-spheres of the same size, here is a MWE</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CALiPPSO  
+precompile_main_function() #optional, but highly recommended. This will produce a colorful output that you can safely ignore
+using Random
+Random.seed!(123) # optional, but just for reproducibility sake of this MWE
+# Choosing the seed of the Julia's RNG determines the random IC produces below with `generate_random_configuration`
+
+const d, N, φ0, L = 3, 512, 0.3, 1.0
+r0, Xs0 = generate_random_configuration(d, N, φ0, L) # if L is not passed, it's assumed that the systems is in a box of size 1
+
+packing, info, Γ_vs_t, Smax_vs_t, isostatic_vs_t = produce_jammed_configuration!(Xs0, r0; 
+            ℓ0=0.2*L, max_iters=500)"><pre><span class="pl-k">using</span> CALiPPSO  
+<span class="pl-c1">precompile_main_function</span>() <span class="pl-c"><span class="pl-c">#</span>optional, but highly recommended. This will produce a colorful output that you can safely ignore</span>
+<span class="pl-k">using</span> Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">123</span>) <span class="pl-c"><span class="pl-c">#</span> optional, but just for reproducibility sake of this MWE</span>
+<span class="pl-c"><span class="pl-c">#</span> Choosing the seed of the Julia's RNG determines the random IC produces below with `generate_random_configuration`</span>
+
+<span class="pl-k">const</span> d, N, φ0, L <span class="pl-k">=</span> <span class="pl-c1">3</span>, <span class="pl-c1">512</span>, <span class="pl-c1">0.3</span>, <span class="pl-c1">1.0</span>
+r0, Xs0 <span class="pl-k">=</span> <span class="pl-c1">generate_random_configuration</span>(d, N, φ0, L) <span class="pl-c"><span class="pl-c">#</span> if L is not passed, it's assumed that the systems is in a box of size 1</span>
+
+packing, info, Γ_vs_t, Smax_vs_t, isostatic_vs_t <span class="pl-k">=</span> <span class="pl-c1">produce_jammed_configuration!</span>(Xs0, r0; 
+            ℓ0<span class="pl-k">=</span><span class="pl-c1">0.2</span><span class="pl-k">*</span>L, max_iters<span class="pl-k">=</span><span class="pl-c1">500</span>)</pre></div>
+<p dir="auto">Therefore, the main arguments of <code>produce_jammed_configuration!</code> are the particles' initial position <code>Xs0</code> and their initial radius, <code>r0</code>. For polydisperse systems <code>r0</code> should be instead an array specifying the size of each particle. So far, our implementation of <code>produce_jammed_configuration!</code> assumes the system is contained in a <em>periodic</em> (hyper-) cube of size <code>L</code>.
+The value of <code>L</code> is inferred in the following way</p>
+<ol dir="auto">
+<li>If <code>Xs0</code> is a <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="87a94227b091a93cd818b8d01ecb9420">$d\times N$</math-renderer> matrix specifying the position of each particle (<em>i.e.</em> each of the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="87a94227b091a93cd818b8d01ecb9420">$N$</math-renderer> columns is the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="87a94227b091a93cd818b8d01ecb9420">$d$</math-renderer>-dimensional position vector of a particle). Then <code>L</code> should be passed as a third argument to <code>produce_jammed_configuration!</code>.
+<ul dir="auto">
+<li>If left unspecified, but <code>Xs0</code> is of type <code>Matrix{Float64}</code>, then it is assumed <code>L=1.0</code>.</li>
+</ul>
+</li>
+<li>If <code>Xs0</code> is of type <code>Vector{SVector{d, PeriodicNumber{Float64}}}</code>, the elements of <code>Xs0</code> are of <a href="https://rdhr.github.io/CALiPPSO.jl/dev/types.html#The-PeriodicNumber-type" rel="nofollow"><code>PeriodicNumber</code> type</a>, and hen <code>L</code> is automatically inferred from them.
+<ul dir="auto">
+<li>For instance, this is the case when <code>Xs0</code> is generated by calling <code>generate_random_configuration</code> as in the example above.</li>
+</ul>
+</li>
+</ol>
+<p dir="auto">The usage of the keyword arguments (<code>ℓ0</code>, <code>max_iters</code>, etc.) is explained in the <a href="https://rdhr.github.io/CALiPPSO.jl/dev/changing_default.html#kwargs-control" rel="nofollow">dedicated section of the documentation</a>, and in the docstring of the main function. Thus, simply try</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="?produce_jammed_configuration!"><pre>?produce_jammed_configuration!</pre></div>
+<h3 dir="auto">
+<a id="user-content-output" class="anchor" aria-hidden="true" href="#output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Output</h3>
+<p dir="auto">The output of <code>produce_jammed_configuration!</code> is the following:</p>
+<ol dir="auto">
+<li>A jammed packing (provided convergence was attained) stored as a <code>MonoPacking</code> <code>struct</code> (or <code>PolyPacking</code> for systems with polydispersity). This object contains an array of all the particles, and for each of them, the list of contact vectors, magnitudes of contact forces, and list of neighbours.</li>
+<li>Information about the termination status of CALiPPSO, the time and amount of memory allocated during the full process, list of times of each LP optimization, etc. (see the docstring of <code>convergence_info</code> for a complete list).</li>
+<li>The list of values of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="87a94227b091a93cd818b8d01ecb9420">$\sqrt{\Gamma^\star}$</math-renderer> obtained after each optimization.</li>
+<li>The list of values of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="87a94227b091a93cd818b8d01ecb9420">$\max_{i,\mu} \ {s_{i,\mu}^\star }_{i=1,\dots,N}^{\mu=1,\dots,d}$</math-renderer> obtained after each optimization.</li>
+<li>An analogous list that specifies (with boolean variables) if isostaticity holds at the corresponding iteration.</li>
+</ol>
+<h3 dir="auto">
+<a id="user-content-changing-the-solver" class="anchor" aria-hidden="true" href="#changing-the-solver"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Changing the solver</h3>
+<p dir="auto">We used the fantastic <a href="https://jump.dev/JuMP.jl/stable/" rel="nofollow">JuMP.jl</a> package for model creation within our algorithm. Thus, you should be able to use any of the available solvers (that are suited for Linear Optimization). Our implementation already includes working code for the following solvers: <a href="https://github.com/jump-dev/Gurobi.jl">Gurobi.jl</a>, <a href="https://github.com/jump-dev/HiGHS.jl">HiGHS.jl</a>, <a href="https://github.com/jump-dev/GLPK.jl">GLPK.jl</a>.
+We also tested it using <a href="https://github.com/MOSEK/Mosek.jl">Mosek.jl</a>, <a href="https://github.com/jump-dev/Clp.jl">Clp.jl</a>, <a href="https://github.com/chriscoey/Hypatia.jl">Hypatia.jl</a>, and <a href="https://github.com/oxfordcontrol/COSMO.jl">COSMO.jl</a>. But we were not able to obtain good configurations due to lack of precision. So if you know how to help <a href="mailto:rafael.diazhernandezrojas@uniroma1.it">please let us know</a>!</p>
+<p dir="auto">We strongly advice using <a href="https://github.com/jump-dev/Gurobi.jl">Gurobi.jl</a> (a Julia wrapper of the <a href="https://www.gurobi.com/" rel="nofollow">Gurobi Solver</a>) because it's the solver we tested the most when developing our package.</p>
+<p dir="auto">Thus, choosing a different solver (<em>e.g.</em> Gurobi), the MWE from above will look like</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CALiPPSO 
+using Random
+Random.seed!(123) # optional, but just for reproducibility sake of this MWE
+# Choosing the seed of the Julia's RNG determines the random IC produces below with `generate_random_configuration`
+
+using Gurobi
+const grb_env = Gurobi.Env()
+const grb_opt = Gurobi.Optimizer(grb_env)
+const grb_attributes = Dict(&quot;OutputFlag&quot; =&gt; 0, &quot;FeasibilityTol&quot; =&gt; 1e-9, &quot;OptimalityTol&quot; =&gt; 1e-9, &quot;Method&quot; =&gt; 3, &quot;Threads&quot; =&gt; CALiPPSO.max_threads)
+
+precompile_main_function(grb_opt, grb_attributes) #optional, but highly recommended. This will produce a colorful output that you can safely ignore
+
+const d, N, φ0, L = 3, 512, 0.3, 1.0
+r0, Xs0 = generate_random_configuration(d, N, φ0, L) # if L is not passed, it's assumed that the systems is in a box of size 1
+
+packing, info, Γ_vs_t, Smax_vs_t, isostatic_vs_t = produce_jammed_configuration!(Xs0, r0; 
+        ℓ0=0.2*L, max_iters=500, optimizer=grb_opt, solver_attributes=grb_attributes)"><pre><span class="pl-k">using</span> CALiPPSO 
+<span class="pl-k">using</span> Random
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">123</span>) <span class="pl-c"><span class="pl-c">#</span> optional, but just for reproducibility sake of this MWE</span>
+<span class="pl-c"><span class="pl-c">#</span> Choosing the seed of the Julia's RNG determines the random IC produces below with `generate_random_configuration`</span>
+
+<span class="pl-k">using</span> Gurobi
+<span class="pl-k">const</span> grb_env <span class="pl-k">=</span> Gurobi<span class="pl-k">.</span><span class="pl-c1">Env</span>()
+<span class="pl-k">const</span> grb_opt <span class="pl-k">=</span> Gurobi<span class="pl-k">.</span><span class="pl-c1">Optimizer</span>(grb_env)
+<span class="pl-k">const</span> grb_attributes <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(<span class="pl-s"><span class="pl-pds">"</span>OutputFlag<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-c1">0</span>, <span class="pl-s"><span class="pl-pds">"</span>FeasibilityTol<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1e-9</span>, <span class="pl-s"><span class="pl-pds">"</span>OptimalityTol<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-c1">1e-9</span>, <span class="pl-s"><span class="pl-pds">"</span>Method<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-c1">3</span>, <span class="pl-s"><span class="pl-pds">"</span>Threads<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> CALiPPSO<span class="pl-k">.</span>max_threads)
+
+<span class="pl-c1">precompile_main_function</span>(grb_opt, grb_attributes) <span class="pl-c"><span class="pl-c">#</span>optional, but highly recommended. This will produce a colorful output that you can safely ignore</span>
+
+<span class="pl-k">const</span> d, N, φ0, L <span class="pl-k">=</span> <span class="pl-c1">3</span>, <span class="pl-c1">512</span>, <span class="pl-c1">0.3</span>, <span class="pl-c1">1.0</span>
+r0, Xs0 <span class="pl-k">=</span> <span class="pl-c1">generate_random_configuration</span>(d, N, φ0, L) <span class="pl-c"><span class="pl-c">#</span> if L is not passed, it's assumed that the systems is in a box of size 1</span>
+
+packing, info, Γ_vs_t, Smax_vs_t, isostatic_vs_t <span class="pl-k">=</span> <span class="pl-c1">produce_jammed_configuration!</span>(Xs0, r0; 
+        ℓ0<span class="pl-k">=</span><span class="pl-c1">0.2</span><span class="pl-k">*</span>L, max_iters<span class="pl-k">=</span><span class="pl-c1">500</span>, optimizer<span class="pl-k">=</span>grb_opt, solver_attributes<span class="pl-k">=</span>grb_attributes)</pre></div>
+<p dir="auto">Note that different solvers usually require different choices of attributes to tune their accuracy and performance. Refer to the <a href="https://rdhr.github.io/CALiPPSO.jl/dev/changing_default.html#changing_the_solver" rel="nofollow">documentation</a> for more options and advanced usage.</p>
+<h4 dir="auto">
+<a id="user-content-changes-with-previous-versions" class="anchor" aria-hidden="true" href="#changes-with-previous-versions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Changes with previous versions</h4>
+<p dir="auto">Note that in versions <code>v0.1.x</code> this was <em>not</em> the way to choose which optimizer to use for solving the LP instances. From <code>v0.2.0</code> onwards the user can declare the <em>optimizer</em> (i.e. <code>grb_opt</code> above), with all the needed arguments (i.e. <code>grb_env</code> above) and pass them as a single argument to <code>produce_jammed_configuration!</code>. This led to a cleaner implementation, since it is truly solver agnostic.</p>
+<p dir="auto">However, it also introduced a <em>potential</em> problem. Every time <code>optimize!</code> is called, the optimizer is associated to a given instance of a (LP) model. If, for any reason, <code>produce_jammed_configuration!</code> is interrupted or its main loop exits it is very likely that if this function is called again (or any time a model is created with the same <em>optimizer</em>) an error like this will occur:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="ERROR: The provided `optimizer_constructor` returned a non-empty optimizer."><pre>ERROR<span class="pl-k">:</span> The provided <span class="pl-s"><span class="pl-pds">`</span>optimizer_constructor<span class="pl-pds">`</span></span> returned a non<span class="pl-k">-</span>empty optimizer.</pre></div>
+<p dir="auto">This is caused by the way an optimizer gets linked to a model, once <code>optmize!</code> is called in JuMP. In any case, to solve it, simply do</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="CALiPPSO.empty!(&lt;your chosen solver&gt;)"><pre class="notranslate"><code>CALiPPSO.empty!(&lt;your chosen solver&gt;)
+</code></pre></div>
+<p dir="auto">So for instance, <code>CALiPPSO.empty!(grb_opt)</code> in the example above. Or, if you are using the default optimizer, do <code>CALiPPSO.empty!(CALiPPSO.default_optimizer)</code>.</p>
+<h3 dir="auto">
+<a id="user-content-other-examples" class="anchor" aria-hidden="true" href="#other-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Other examples</h3>
+<p dir="auto">You can find other examples of how CALiPPSO is used in dimensions d=3,4,5, and other features in the <a href="https://rdhr.github.io/CALiPPSO.jl/dev/tests.html" rel="nofollow">Examples section</a> of the documentation. We refer to the <code>Examples</code> folder of this repo for the scripts of some other usage cases.</p>
+<h3 dir="auto">
+<a id="user-content-advanced-usage" class="anchor" aria-hidden="true" href="#advanced-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Advanced usage</h3>
+<p dir="auto">For other features, advanced usage, and more details of how <code>produce_jammed_configuration!</code> works please refer to the <a href="https://rdhr.github.io/CALiPPSO.jl/dev/mainfunction.html" rel="nofollow">documentation</a>.</p>
+<h2 dir="auto">
+<a id="user-content-todos" class="anchor" aria-hidden="true" href="#todos"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ToDo's</h2>
+<ol dir="auto">
+<li>Add documentation of functions for polydisperse packings (although they are very similar to their monodisperse counterpart).</li>
+<li>Implement functions for closed boundary conditions.</li>
+<li>Register CALiPPSO in Julia's packages registry. <g-emoji class="g-emoji" alias="heavy_check_mark" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/2714.png">✔️</g-emoji></li>
+</ol>
+<h2 dir="auto">
+<a id="user-content-acknowledgements" class="anchor" aria-hidden="true" href="#acknowledgements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Acknowledgements</h2>
+<p dir="auto">This work was supported by the Simons Collaboration on Cracking the Glass Problem, Grant No. 454949 (G.P.); and by the European Research Council (ERC) under the European Union’s Horizon 2020 Grant No. 101001902 (C.A.) and No. 694925 (G.P.).</p>
+</article></div>

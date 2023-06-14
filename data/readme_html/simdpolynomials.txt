@@ -1,0 +1,197 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-simdpolynomials" class="anchor" aria-hidden="true" href="#simdpolynomials"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>SIMDPolynomials</h1>
+<p dir="auto"><a href="https://YingboMa.github.io/SIMDPolynomials.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://YingboMa.github.io/SIMDPolynomials.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/YingboMa/SIMDPolynomials.jl/actions/workflows/CI.yml?query=branch%3Amaster"><img src="https://github.com/YingboMa/SIMDPolynomials.jl/actions/workflows/CI.yml/badge.svg?branch=master" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/YingboMa/SIMDPolynomials.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c00bbeffea56fa7efc8641edb4da81b0959c204413bb2160c59970d3a96dc9aa/68747470733a2f2f636f6465636f762e696f2f67682f59696e67626f4d612f53494d44506f6c796e6f6d69616c732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/YingboMa/SIMDPolynomials.jl/branch/master/graph/badge.svg" style="max-width: 100%;"></a></p>
+<hr>
+<p dir="auto">SIMDPolynomials.jl uses bit-packed monomials so that most of the operations on
+multivariate monomials can be done in a few CPU instructions. Currently, it is
+only optimized for relatively small polynomials. Contributions, especially
+optimizations for large polynomials, are welcome!</p>
+<p dir="auto">Examples:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using SIMDPolynomials, BenchmarkTools
+
+julia&gt; x, y, z, t = [PackedMonomial{4,7}(i) for i in 0:3]; # PackedMonomial with maximum of 4 variables and 7 bits of exponents.
+
+julia&gt; p = x * y + 3 * (z * t)
+x₀x₁ + 3x₂x₃
+
+julia&gt; q = (p + 1) * p
+x₀²x₁² + 6x₀x₁x₂x₃ + 9x₂²x₃² + x₀x₁ + 3x₂x₃
+
+julia&gt; @btime gcd($p, $q)
+  4.019 μs (94 allocations: 8.06 KiB)
+x₀x₁ + 3x₂x₃
+
+julia&gt; begin
+           c1 = 10*(x * z + x)
+           c2 = 2*(x^2 + z)
+           c3 = 2*(2 - z  )
+           c4 = 20*(x * z^2)
+           e1 = 0
+           e2 = 5
+           e3 = 7
+           e4 = 10
+           p = c1 * y^e1 + c2 * y^e2 + c3 * y^e3 + c4 * y^e4
+           q = prod(i-&gt;p + i, 0:3)
+       end;
+
+julia&gt; @btime for i in 0:3
+           gcd($p + i, $q)
+       end
+  350.086 μs (1159 allocations: 588.06 KiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SIMDPolynomials, BenchmarkTools
+
+julia<span class="pl-k">&gt;</span> x, y, z, t <span class="pl-k">=</span> [<span class="pl-c1">PackedMonomial</span><span class="pl-c1">{4,7}</span>(i) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span>]; <span class="pl-c"><span class="pl-c">#</span> PackedMonomial with maximum of 4 variables and 7 bits of exponents.</span>
+
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">=</span> x <span class="pl-k">*</span> y <span class="pl-k">+</span> <span class="pl-c1">3</span> <span class="pl-k">*</span> (z <span class="pl-k">*</span> t)
+x₀x₁ <span class="pl-k">+</span> <span class="pl-c1">3</span>x₂x₃
+
+julia<span class="pl-k">&gt;</span> q <span class="pl-k">=</span> (p <span class="pl-k">+</span> <span class="pl-c1">1</span>) <span class="pl-k">*</span> p
+x₀²x₁² <span class="pl-k">+</span> <span class="pl-c1">6</span>x₀x₁x₂x₃ <span class="pl-k">+</span> <span class="pl-c1">9</span>x₂²x₃² <span class="pl-k">+</span> x₀x₁ <span class="pl-k">+</span> <span class="pl-c1">3</span>x₂x₃
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">gcd</span>(<span class="pl-k">$</span>p, <span class="pl-k">$</span>q)
+  <span class="pl-c1">4.019</span> μs (<span class="pl-c1">94</span> allocations<span class="pl-k">:</span> <span class="pl-c1">8.06</span> KiB)
+x₀x₁ <span class="pl-k">+</span> <span class="pl-c1">3</span>x₂x₃
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">begin</span>
+           c1 <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">*</span>(x <span class="pl-k">*</span> z <span class="pl-k">+</span> x)
+           c2 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> z)
+           c3 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(<span class="pl-c1">2</span> <span class="pl-k">-</span> z  )
+           c4 <span class="pl-k">=</span> <span class="pl-c1">20</span><span class="pl-k">*</span>(x <span class="pl-k">*</span> z<span class="pl-k">^</span><span class="pl-c1">2</span>)
+           e1 <span class="pl-k">=</span> <span class="pl-c1">0</span>
+           e2 <span class="pl-k">=</span> <span class="pl-c1">5</span>
+           e3 <span class="pl-k">=</span> <span class="pl-c1">7</span>
+           e4 <span class="pl-k">=</span> <span class="pl-c1">10</span>
+           p <span class="pl-k">=</span> c1 <span class="pl-k">*</span> y<span class="pl-k">^</span>e1 <span class="pl-k">+</span> c2 <span class="pl-k">*</span> y<span class="pl-k">^</span>e2 <span class="pl-k">+</span> c3 <span class="pl-k">*</span> y<span class="pl-k">^</span>e3 <span class="pl-k">+</span> c4 <span class="pl-k">*</span> y<span class="pl-k">^</span>e4
+           q <span class="pl-k">=</span> <span class="pl-c1">prod</span>(i<span class="pl-k">-&gt;</span>p <span class="pl-k">+</span> i, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+       <span class="pl-k">end</span>;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span>
+           <span class="pl-c1">gcd</span>(<span class="pl-k">$</span>p <span class="pl-k">+</span> i, <span class="pl-k">$</span>q)
+       <span class="pl-k">end</span>
+  <span class="pl-c1">350.086</span> μs (<span class="pl-c1">1159</span> allocations<span class="pl-k">:</span> <span class="pl-c1">588.06</span> KiB)</pre></div>
+<p dir="auto">The same micro-benchmark using AbstractAlgebra:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using AbstractAlgebra, BenchmarkTools
+
+julia&gt; R, (x, y, z, t) = PolynomialRing(AbstractAlgebra.Integers{Int}(), [:x, :y, :z, :t], ordering=:deglex);
+
+julia&gt; p = x * y + 3 * (z * t)
+x*y + 3*z*t
+
+julia&gt; q = (p + 1) * p
+x^2*y^2 + 6*x*y*z*t + 9*z^2*t^2 + x*y + 3*z*t
+
+julia&gt; @btime gcd($p, $q) # SIMDPolynomials.jl is 30x faster
+  119.795 μs (1320 allocations: 89.17 KiB)
+x*y + 3*z*t
+
+julia&gt; begin
+           c1 = 10*(x * z + x)
+           c2 = 2*(x^2 + z)
+           c3 = 2*(2 - z  )
+           c4 = 20*(x * z^2)
+           e1 = 0
+           e2 = 5
+           e3 = 7
+           e4 = 10
+           p = c1 * y^e1 + c2 * y^e2 + c3 * y^e3 + c4 * y^e4
+           q = prod(i-&gt;p + i, 0:3)
+       end;
+
+julia&gt; @btime for i in 0:3 # SIMDPolynomials.jl is 14x faster
+           gcd($p + i, $q)
+       end
+  4.934 ms (32235 allocations: 3.43 MiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> AbstractAlgebra, BenchmarkTools
+
+julia<span class="pl-k">&gt;</span> R, (x, y, z, t) <span class="pl-k">=</span> <span class="pl-c1">PolynomialRing</span>(AbstractAlgebra<span class="pl-k">.</span><span class="pl-c1">Integers</span><span class="pl-c1">{Int}</span>(), [<span class="pl-c1">:x</span>, <span class="pl-c1">:y</span>, <span class="pl-c1">:z</span>, <span class="pl-c1">:t</span>], ordering<span class="pl-k">=</span><span class="pl-c1">:deglex</span>);
+
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">=</span> x <span class="pl-k">*</span> y <span class="pl-k">+</span> <span class="pl-c1">3</span> <span class="pl-k">*</span> (z <span class="pl-k">*</span> t)
+x<span class="pl-k">*</span>y <span class="pl-k">+</span> <span class="pl-c1">3</span><span class="pl-k">*</span>z<span class="pl-k">*</span>t
+
+julia<span class="pl-k">&gt;</span> q <span class="pl-k">=</span> (p <span class="pl-k">+</span> <span class="pl-c1">1</span>) <span class="pl-k">*</span> p
+x<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">*</span>y<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">6</span><span class="pl-k">*</span>x<span class="pl-k">*</span>y<span class="pl-k">*</span>z<span class="pl-k">*</span>t <span class="pl-k">+</span> <span class="pl-c1">9</span><span class="pl-k">*</span>z<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">*</span>t<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> x<span class="pl-k">*</span>y <span class="pl-k">+</span> <span class="pl-c1">3</span><span class="pl-k">*</span>z<span class="pl-k">*</span>t
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">gcd</span>(<span class="pl-k">$</span>p, <span class="pl-k">$</span>q) <span class="pl-c"><span class="pl-c">#</span> SIMDPolynomials.jl is 30x faster</span>
+  <span class="pl-c1">119.795</span> μs (<span class="pl-c1">1320</span> allocations<span class="pl-k">:</span> <span class="pl-c1">89.17</span> KiB)
+x<span class="pl-k">*</span>y <span class="pl-k">+</span> <span class="pl-c1">3</span><span class="pl-k">*</span>z<span class="pl-k">*</span>t
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">begin</span>
+           c1 <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">*</span>(x <span class="pl-k">*</span> z <span class="pl-k">+</span> x)
+           c2 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> z)
+           c3 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(<span class="pl-c1">2</span> <span class="pl-k">-</span> z  )
+           c4 <span class="pl-k">=</span> <span class="pl-c1">20</span><span class="pl-k">*</span>(x <span class="pl-k">*</span> z<span class="pl-k">^</span><span class="pl-c1">2</span>)
+           e1 <span class="pl-k">=</span> <span class="pl-c1">0</span>
+           e2 <span class="pl-k">=</span> <span class="pl-c1">5</span>
+           e3 <span class="pl-k">=</span> <span class="pl-c1">7</span>
+           e4 <span class="pl-k">=</span> <span class="pl-c1">10</span>
+           p <span class="pl-k">=</span> c1 <span class="pl-k">*</span> y<span class="pl-k">^</span>e1 <span class="pl-k">+</span> c2 <span class="pl-k">*</span> y<span class="pl-k">^</span>e2 <span class="pl-k">+</span> c3 <span class="pl-k">*</span> y<span class="pl-k">^</span>e3 <span class="pl-k">+</span> c4 <span class="pl-k">*</span> y<span class="pl-k">^</span>e4
+           q <span class="pl-k">=</span> <span class="pl-c1">prod</span>(i<span class="pl-k">-&gt;</span>p <span class="pl-k">+</span> i, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+       <span class="pl-k">end</span>;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span> <span class="pl-c"><span class="pl-c">#</span> SIMDPolynomials.jl is 14x faster</span>
+           <span class="pl-c1">gcd</span>(<span class="pl-k">$</span>p <span class="pl-k">+</span> i, <span class="pl-k">$</span>q)
+       <span class="pl-k">end</span>
+  <span class="pl-c1">4.934</span> ms (<span class="pl-c1">32235</span> allocations<span class="pl-k">:</span> <span class="pl-c1">3.43</span> MiB)</pre></div>
+<p dir="auto">The same micro-benchmark using DynamicPolynomials:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using DynamicPolynomials, BenchmarkTools
+
+julia&gt; @polyvar x y z t;
+
+julia&gt; p = x * y + 3 * (z * t)
+xy + 3zt
+
+julia&gt; q = (p + 1) * p
+x²y² + 6xyzt + 9z²t² + xy + 3zt
+
+julia&gt; @btime gcd($p, $q)  # SIMDPolynomials.jl is 65x faster
+  264.561 μs (4962 allocations: 298.19 KiB)
+xy + 3zt
+
+julia&gt; begin
+           c1 = 10*(x * z + x)
+           c2 = 2*(x^2 + z)
+           c3 = 2*(2 - z  )
+           c4 = 20*(x * z^2)
+           e1 = 0
+           e2 = 5
+           e3 = 7
+           e4 = 10
+           p = c1 * y^e1 + c2 * y^e2 + c3 * y^e3 + c4 * y^e4
+           q = prod(i-&gt;p + i, 0:3)
+       end;
+
+julia&gt; @btime for i in 0:3 # SIMDPolynomials.jl is 82x faster
+           gcd($p + i, $q)
+       end
+  28.943 ms (529642 allocations: 31.20 MiB)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> DynamicPolynomials, BenchmarkTools
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@polyvar</span> x y z t;
+
+julia<span class="pl-k">&gt;</span> p <span class="pl-k">=</span> x <span class="pl-k">*</span> y <span class="pl-k">+</span> <span class="pl-c1">3</span> <span class="pl-k">*</span> (z <span class="pl-k">*</span> t)
+xy <span class="pl-k">+</span> <span class="pl-c1">3</span>zt
+
+julia<span class="pl-k">&gt;</span> q <span class="pl-k">=</span> (p <span class="pl-k">+</span> <span class="pl-c1">1</span>) <span class="pl-k">*</span> p
+x²y² <span class="pl-k">+</span> <span class="pl-c1">6</span>xyzt <span class="pl-k">+</span> <span class="pl-c1">9</span>z²t² <span class="pl-k">+</span> xy <span class="pl-k">+</span> <span class="pl-c1">3</span>zt
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">gcd</span>(<span class="pl-k">$</span>p, <span class="pl-k">$</span>q)  <span class="pl-c"><span class="pl-c">#</span> SIMDPolynomials.jl is 65x faster</span>
+  <span class="pl-c1">264.561</span> μs (<span class="pl-c1">4962</span> allocations<span class="pl-k">:</span> <span class="pl-c1">298.19</span> KiB)
+xy <span class="pl-k">+</span> <span class="pl-c1">3</span>zt
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">begin</span>
+           c1 <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">*</span>(x <span class="pl-k">*</span> z <span class="pl-k">+</span> x)
+           c2 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(x<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> z)
+           c3 <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(<span class="pl-c1">2</span> <span class="pl-k">-</span> z  )
+           c4 <span class="pl-k">=</span> <span class="pl-c1">20</span><span class="pl-k">*</span>(x <span class="pl-k">*</span> z<span class="pl-k">^</span><span class="pl-c1">2</span>)
+           e1 <span class="pl-k">=</span> <span class="pl-c1">0</span>
+           e2 <span class="pl-k">=</span> <span class="pl-c1">5</span>
+           e3 <span class="pl-k">=</span> <span class="pl-c1">7</span>
+           e4 <span class="pl-k">=</span> <span class="pl-c1">10</span>
+           p <span class="pl-k">=</span> c1 <span class="pl-k">*</span> y<span class="pl-k">^</span>e1 <span class="pl-k">+</span> c2 <span class="pl-k">*</span> y<span class="pl-k">^</span>e2 <span class="pl-k">+</span> c3 <span class="pl-k">*</span> y<span class="pl-k">^</span>e3 <span class="pl-k">+</span> c4 <span class="pl-k">*</span> y<span class="pl-k">^</span>e4
+           q <span class="pl-k">=</span> <span class="pl-c1">prod</span>(i<span class="pl-k">-&gt;</span>p <span class="pl-k">+</span> i, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span>)
+       <span class="pl-k">end</span>;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">3</span> <span class="pl-c"><span class="pl-c">#</span> SIMDPolynomials.jl is 82x faster</span>
+           <span class="pl-c1">gcd</span>(<span class="pl-k">$</span>p <span class="pl-k">+</span> i, <span class="pl-k">$</span>q)
+       <span class="pl-k">end</span>
+  <span class="pl-c1">28.943</span> ms (<span class="pl-c1">529642</span> allocations<span class="pl-k">:</span> <span class="pl-c1">31.20</span> MiB)</pre></div>
+</article></div>

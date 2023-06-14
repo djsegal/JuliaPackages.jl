@@ -1,0 +1,734 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text">
+<p dir="auto"><a href="https://github.com/enweg/BayesFlux.jl/actions/workflows/tests.yml"><img src="https://github.com/enweg/BayesFlux.jl/actions/workflows/tests.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://enweg.github.io/BayesFlux.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://enweg.github.io/BayesFlux.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BayesFlux, Flux
+using Random, Distributions
+using StatsPlots
+
+Random.seed!(6150533)"><pre><span class="pl-k">using</span> BayesFlux, Flux
+<span class="pl-k">using</span> Random, Distributions
+<span class="pl-k">using</span> StatsPlots
+
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">6150533</span>)</pre></div>
+<h2 dir="auto"><a id="user-content-bayesflux-bayesian-extension-for-flux" class="anchor" aria-hidden="true" href="#bayesflux-bayesian-extension-for-flux"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BayesFlux (Bayesian extension for Flux)</h2>
+<p dir="auto">BayesFlux is meant to be an extension to Flux.jl, a machine learning
+library written entirely in Julia. BayesFlux will and is not meant to be the
+fastest production ready library, but rather is meant to make research and
+experimentation easy.</p>
+<p dir="auto">BayesFlux is part of my Master Thesis in Economic and Financial Research -
+specialisation Econometrics and will therefore likelily still go through some
+revisions in the coming months.</p>
+<h2 dir="auto"><a id="user-content-structure" class="anchor" aria-hidden="true" href="#structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Structure</h2>
+<p dir="auto">Every Bayesian model can in general be broken down into the probablistic
+model, which gives the likelihood function and the prior on all parameters of
+the probabilistic model. BayesFlux somewhat follows this and splits every Bayesian
+Network into the following parts:</p>
+<ol dir="auto">
+<li><strong>Network</strong>: Every BNN must have some general network structure. This is
+defined using Flux and currently supports Dense, RNN, and LSTM layers. More
+on this later</li>
+<li><strong>Network Constructor</strong>: Since BayesFlux works with vectors of parameters, we
+need to be able to go from a vector to the network and back. This works by
+using the NetworkConstructor.</li>
+<li><strong>Likelihood</strong>: The likelihood function. In traditional estimation of NNs,
+this would correspond to the negative loss function. BayesFlux has a twist on
+this though and nomenclature might change because of this twist: The
+likelihood also contains all additional parameters and priors. For example,
+for a Gaussian likelihood, the likelihood object also defines the standard
+deviation and the prior for the standard deviation. This desing choice was
+made to keep the likelihood and everything belonging to it separate from
+the network; Again, due to the potential confusion, the nomenclature might
+change in later revisions.</li>
+<li><strong>Prior on network parameters</strong>: A prior on all network parameters.
+Currently the RNN layers do not define priors on the initial state and thus
+the initial state is also not sampled. Priors can have hyper-priors.</li>
+<li><strong>Initialiser</strong>: Unless some special initialisation values are given, BayesFlux
+will draw initial values as defined by the initialiser. An initialiser
+initialises all network and likelihood parameters to reasonable values.</li>
+</ol>
+<p dir="auto">All of the above are then used to create a BNN which can then be estimated
+using the MAP, can be sampled from using any of the MCMC methods implemented,
+or can be estimated using Variational Inference.</p>
+<p dir="auto">The examples and the sections below hopefully clarify everything. If any
+questions remain, please open an issue.</p>
+<h2 dir="auto"><a id="user-content-linear-regression-using-bayesflux" class="anchor" aria-hidden="true" href="#linear-regression-using-bayesflux"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Linear Regression using BayesFlux</h2>
+<p dir="auto">Although not meant for Simple Linear Regression, BayesFlux can be used for it, and
+we will do so in this section. This will hopefully demonstrate the basics.
+Later sections will show better examples.</p>
+<p dir="auto">Let's say we have the idea that the data can be modelled via a linear model of
+the form
+<math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="d7c2ae457ce47c5cb267d1230bd08704">$$y_i = x_i'\beta + e_i$$</math-renderer>
+with <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="d7c2ae457ce47c5cb267d1230bd08704">$e_i \sim N(0, 1)$</math-renderer></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="k = 5
+n = 500
+x = randn(Float32, k, n);
+β = randn(Float32, k);
+y = x'*β + randn(Float32, n);"><pre>k <span class="pl-k">=</span> <span class="pl-c1">5</span>
+n <span class="pl-k">=</span> <span class="pl-c1">500</span>
+x <span class="pl-k">=</span> <span class="pl-c1">randn</span>(Float32, k, n);
+β <span class="pl-k">=</span> <span class="pl-c1">randn</span>(Float32, k);
+y <span class="pl-k">=</span> x<span class="pl-k">'</span><span class="pl-k">*</span>β <span class="pl-k">+</span> <span class="pl-c1">randn</span>(Float32, n);</pre></div>
+<p dir="auto">This is a standard linear model and we would likely be better off using STAN
+or Turing for this, but due to the availability of a Dense layer with linear
+activation function, we can also implent it in BayesFlux.</p>
+<p dir="auto">The first step is to define the network. As mentioned above, the network
+consists of a single Dense layer with a linear activation function (the
+default activation in Flux and hence not explicitly shown).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="net = Chain(Dense(k, 1))  # k inputs and one output"><pre>net <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(<span class="pl-c1">Dense</span>(k, <span class="pl-c1">1</span>))  <span class="pl-c"><span class="pl-c">#</span> k inputs and one output</span></pre></div>
+<p dir="auto">Since BayesFlux works with vectors, we need to be able to transform a vector to
+the above network and back. We thus need a NetworkConstructor, which we obtain
+as a the return value of a <code>destruct</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="nc = destruct(net)"><pre>nc <span class="pl-k">=</span> <span class="pl-c1">destruct</span>(net)</pre></div>
+<p dir="auto">We can check whether everything work by just creating a random vector of the
+right dimension and calling the NetworkConstructor using this vector.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="θ = randn(Float32, nc.num_params_network)
+nc(θ)"><pre>θ <span class="pl-k">=</span> <span class="pl-c1">randn</span>(Float32, nc<span class="pl-k">.</span>num_params_network)
+<span class="pl-c1">nc</span>(θ)</pre></div>
+<p dir="auto">We indeed obtain a network of the right size and structure.
+Next, we will define a prior for all parameters of the network. Since weight
+decay is a popular regularisation method in standard ML estimation, we will be
+using a Gaussian prior, which is the Bayesian weight decay:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="prior = GaussianPrior(nc, 0.5f0)  # the last value is the standard deviation"><pre>prior <span class="pl-k">=</span> <span class="pl-c1">GaussianPrior</span>(nc, <span class="pl-c1">0.5f0</span>)  <span class="pl-c"><span class="pl-c">#</span> the last value is the standard deviation</span></pre></div>
+<p dir="auto">We also need a likelihood and a prior on all parameters the likelihood
+introduces to the model. We will go for a Gaussian likelihood, which
+introduces the standard deviation of the model. BayesFlux currently implements
+Gaussian and Student-t likelihoods for Feedforward and Seq-to-one cases but
+more can easily be implemented. See <strong>TODO HAR link</strong> for an example.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="like = FeedforwardNormal(nc, Gamma(2.0, 0.5))  # Second argument is prior for standard deviation."><pre>like <span class="pl-k">=</span> <span class="pl-c1">FeedforwardNormal</span>(nc, <span class="pl-c1">Gamma</span>(<span class="pl-c1">2.0</span>, <span class="pl-c1">0.5</span>))  <span class="pl-c"><span class="pl-c">#</span> Second argument is prior for standard deviation.</span></pre></div>
+<p dir="auto">Lastly, when no explicit initial value is given, BayesFlux will draw it from an
+initialiser. Currently only one type of initialiser is implemented in BayesFlux,
+but this can easily be extended by the user itself.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="init = InitialiseAllSame(Normal(0.0f0, 0.5f0), like, prior)  # First argument is dist we draw parameters from."><pre>init <span class="pl-k">=</span> <span class="pl-c1">InitialiseAllSame</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">0.0f0</span>, <span class="pl-c1">0.5f0</span>), like, prior)  <span class="pl-c"><span class="pl-c">#</span> First argument is dist we draw parameters from.</span></pre></div>
+<p dir="auto">Given all the above, we can now define the BNN:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="bnn = BNN(x, y, like, prior, init)"><pre>bnn <span class="pl-k">=</span> <span class="pl-c1">BNN</span>(x, y, like, prior, init)</pre></div>
+<h3 dir="auto">
+<a id="user-content-map-estimate" class="anchor" aria-hidden="true" href="#map-estimate"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MAP estimate.</h3>
+<p dir="auto">It is always a good idea to first find the MAP estimate. This can serve two
+purposes:</p>
+<ol dir="auto">
+<li>It is faster than fully estimating the model using MCMC or VI and can thus
+serve as a quick check; If the MAP estimate results in bad point
+predictions, so will likely the full estimation results.</li>
+<li>It can serve as a starting value for the MCMC samplers.</li>
+</ol>
+<p dir="auto">To find a MAP estimate, we must first specify how we want to find it: We need
+to define an optimiser. BayesFlux currently only implements optimisers derived
+from Flux itself, but this can be extended by the user.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="opt = FluxModeFinder(bnn, Flux.ADAM())  # We will use ADAM
+θmap = find_mode(bnn, 10, 500, opt)  # batchsize 10 with 500 epochs"><pre>opt <span class="pl-k">=</span> <span class="pl-c1">FluxModeFinder</span>(bnn, Flux<span class="pl-k">.</span><span class="pl-c1">ADAM</span>())  <span class="pl-c"><span class="pl-c">#</span> We will use ADAM</span>
+θmap <span class="pl-k">=</span> <span class="pl-c1">find_mode</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">500</span>, opt)  <span class="pl-c"><span class="pl-c">#</span> batchsize 10 with 500 epochs</span></pre></div>
+<p dir="auto">We can already use the MAP estimate to make some predictions and calculate the
+RMSE.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="nethat = nc(θmap)
+yhat = vec(nethat(x))
+sqrt(mean(abs2, y .- yhat))"><pre>nethat <span class="pl-k">=</span> <span class="pl-c1">nc</span>(θmap)
+yhat <span class="pl-k">=</span> <span class="pl-c1">vec</span>(<span class="pl-c1">nethat</span>(x))
+<span class="pl-c1">sqrt</span>(<span class="pl-c1">mean</span>(abs2, y <span class="pl-k">.-</span> yhat))</pre></div>
+<h3 dir="auto">
+<a id="user-content-mcmc---sgld" class="anchor" aria-hidden="true" href="#mcmc---sgld"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MCMC - SGLD</h3>
+<p dir="auto">If the MAP estimate does not show any problems, it can be used as the starting
+point for SGLD or any of the other MCMC methods (see later section).</p>
+<p dir="auto">Simulations have shown that using a relatively large initial stepsize with a
+slow decaying stepsize schedule often results in the best mixing. <em>Note: We
+would usually use samplers such as NUTS for linear regressions, which are much
+more efficient than SGLD</em></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sampler = SGLD(Float32; stepsize_a = 10f-0, stepsize_b = 0.0f0, stepsize_γ = 0.55f0)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]"><pre>sampler <span class="pl-k">=</span> <span class="pl-c1">SGLD</span>(Float32; stepsize_a <span class="pl-k">=</span> <span class="pl-c1">10f-0</span>, stepsize_b <span class="pl-k">=</span> <span class="pl-c1">0.0f0</span>, stepsize_γ <span class="pl-k">=</span> <span class="pl-c1">0.55f0</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]</pre></div>
+<p dir="auto">We can obtain summary statistics and trace and density plots of network
+parameters and likelihood parameters by transforming the BayesFlux chain into a
+MCMCChain.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using MCMCChains
+chain = Chains(ch')
+plot(chain)"><pre><span class="pl-k">using</span> MCMCChains
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)
+<span class="pl-c1">plot</span>(chain)</pre></div>
+<p dir="auto">In more complicated networks, it is usually a hopeless goal to obtain good
+mixing in parameter space and thus we rather focus on the output space of the
+network. <em>Mixing in parameter space is hopeless due to the very complicated
+topology of the posterior; see ...</em>
+We will use a little helper function to get the output values of the network:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function naive_prediction(bnn, draws::Array{T, 2}; x = bnn.x, y = bnn.y) where {T}
+    yhats = Array{T, 2}(undef, length(y), size(draws, 2))
+    Threads.@threads for i=1:size(draws, 2)
+        net = bnn.like.nc(draws[:, i])
+        yh = vec(net(x))
+        yhats[:,i] = yh
+    end
+    return yhats
+end
+
+yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre><span class="pl-k">function</span> <span class="pl-en">naive_prediction</span>(bnn, draws<span class="pl-k">::</span><span class="pl-c1">Array{T, 2}</span>; x <span class="pl-k">=</span> bnn<span class="pl-k">.</span>x, y <span class="pl-k">=</span> bnn<span class="pl-k">.</span>y) <span class="pl-k">where</span> {T}
+    yhats <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{T, 2}</span>(undef, <span class="pl-c1">length</span>(y), <span class="pl-c1">size</span>(draws, <span class="pl-c1">2</span>))
+    Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(draws, <span class="pl-c1">2</span>)
+        net <span class="pl-k">=</span> bnn<span class="pl-k">.</span>like<span class="pl-k">.</span><span class="pl-c1">nc</span>(draws[:, i])
+        yh <span class="pl-k">=</span> <span class="pl-c1">vec</span>(<span class="pl-c1">net</span>(x))
+        yhats[:,i] <span class="pl-k">=</span> yh
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> yhats
+<span class="pl-k">end</span>
+
+yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<p dir="auto">Similarly, we can obtain posterior predictive values and evaluate quantiles
+obtained using these to how many percent of the actual data fall below the
+quantiles. What we would like is that 5% of the data fall below the 5%
+quantile of the posterior predictive draws.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function get_observed_quantiles(y, posterior_yhat, target_q = 0.05:0.05:0.95)
+    qs = [quantile(yr, target_q) for yr in eachrow(posterior_yhat)]
+    qs = reduce(hcat, qs)
+    observed_q = mean(reshape(y, 1, :) .&lt; qs; dims = 2)
+    return observed_q
+end
+
+posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre><span class="pl-k">function</span> <span class="pl-en">get_observed_quantiles</span>(y, posterior_yhat, target_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>)
+    qs <span class="pl-k">=</span> [<span class="pl-c1">quantile</span>(yr, target_q) <span class="pl-k">for</span> yr <span class="pl-k">in</span> <span class="pl-c1">eachrow</span>(posterior_yhat)]
+    qs <span class="pl-k">=</span> <span class="pl-c1">reduce</span>(hcat, qs)
+    observed_q <span class="pl-k">=</span> <span class="pl-c1">mean</span>(<span class="pl-c1">reshape</span>(y, <span class="pl-c1">1</span>, :) <span class="pl-k">.&lt;</span> qs; dims <span class="pl-k">=</span> <span class="pl-c1">2</span>)
+    <span class="pl-k">return</span> observed_q
+<span class="pl-k">end</span>
+
+posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h3 dir="auto">
+<a id="user-content-mcmc---sgnhts" class="anchor" aria-hidden="true" href="#mcmc---sgnhts"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MCMC - SGNHTS</h3>
+<p dir="auto">Just like SGLD, SGNHTS also does not apply a Metropolis-Hastings correction
+step. Contrary to SGLD though, SGNHTS implementes a Thermostat, whose task it
+is to keep the temperature in the dynamic system close to one, and thus the
+sampling more accurate. Although the thermostats goal is often not achieved,
+samples obtained using SGNHTS often outperform those obtained using SGLD.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sampler = SGNHTS(1f-2, 2f0; xi = 2f0^2, μ = 50f0)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')"><pre>sampler <span class="pl-k">=</span> <span class="pl-c1">SGNHTS</span>(<span class="pl-c1">1f-2</span>, <span class="pl-c1">2f0</span>; xi <span class="pl-k">=</span> <span class="pl-c1">2f0</span><span class="pl-k">^</span><span class="pl-c1">2</span>, μ <span class="pl-k">=</span> <span class="pl-c1">50f0</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h3 dir="auto">
+<a id="user-content-mcmc---ggmc" class="anchor" aria-hidden="true" href="#mcmc---ggmc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MCMC - GGMC</h3>
+<p dir="auto">As pointed out above, neither SGLD nor SGNHTS apply a Metropolis-Hastings
+acceptance step and are thus difficult to monitor. Indeed, draws from SGLD or
+SGNHTS should perhaps rather be considered as giving and ensemble of models
+rather than draws from the posterior, since without any MH step, it is unclear
+whether the chain actually will converge to the posterior.</p>
+<p dir="auto">BayesFlux also implements three methods that do apply a MH step and are thus
+easier to monitor. These are GGMC, AdaptiveMH, and HMC. Both GGMC and HMC do
+allow for taking stochastic gradients. GGMC also allows to use delayed
+acceptance in which the MH step is only applied after a couple of steps,
+rather than after each step (see ... for details).</p>
+<p dir="auto">Because both GGMC and HMC use a MH step, they provide a measure of the mean
+acceptance rate, which can be used to tune the stepsize using Dual Averaging
+(see .../STAN for details). Similarly, both also make use of mass matrices,
+which can also be tuned.</p>
+<p dir="auto">BayesFlux implements both stepsize adapters and mass adapters but to this point
+does not implement a smart way of combining them (this will come in the
+future). In my experience, naively combining them often only helps in more
+complex models and thus we will only use a stepsize adapter here.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sadapter = DualAveragingStepSize(1f-9; target_accept = 0.55f0, adapt_steps = 10000)
+sampler = GGMC(Float32; β = 0.1f0, l = 1f-9, sadapter = sadapter)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')"><pre>sadapter <span class="pl-k">=</span> <span class="pl-c1">DualAveragingStepSize</span>(<span class="pl-c1">1f-9</span>; target_accept <span class="pl-k">=</span> <span class="pl-c1">0.55f0</span>, adapt_steps <span class="pl-k">=</span> <span class="pl-c1">10000</span>)
+sampler <span class="pl-k">=</span> <span class="pl-c1">GGMC</span>(Float32; β <span class="pl-k">=</span> <span class="pl-c1">0.1f0</span>, l <span class="pl-k">=</span> <span class="pl-c1">1f-9</span>, sadapter <span class="pl-k">=</span> sadapter)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">The above uses a MH correction after each step. This can be costly in big-data
+environments or when the evaluation of the likelihood is costly. If either of
+the above applies, delayed acceptance can speed up the process.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sadapter = DualAveragingStepSize(1f-9; target_accept = 0.25f0, adapt_steps = 10000)
+sampler = GGMC(Float32; β = 0.1f0, l = 1f-9, sadapter = sadapter, steps = 3)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')"><pre>sadapter <span class="pl-k">=</span> <span class="pl-c1">DualAveragingStepSize</span>(<span class="pl-c1">1f-9</span>; target_accept <span class="pl-k">=</span> <span class="pl-c1">0.25f0</span>, adapt_steps <span class="pl-k">=</span> <span class="pl-c1">10000</span>)
+sampler <span class="pl-k">=</span> <span class="pl-c1">GGMC</span>(Float32; β <span class="pl-k">=</span> <span class="pl-c1">0.1f0</span>, l <span class="pl-k">=</span> <span class="pl-c1">1f-9</span>, sadapter <span class="pl-k">=</span> sadapter, steps <span class="pl-k">=</span> <span class="pl-c1">3</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h3 dir="auto">
+<a id="user-content-mcmc---hmc" class="anchor" aria-hidden="true" href="#mcmc---hmc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MCMC - HMC</h3>
+<p dir="auto">Since HMC showed some mixing problems for some variables during the testing of
+this README, we decided to use a mass matrix adaptation. This turned out to
+work better even in this simple case.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sadapter = DualAveragingStepSize(1f-9; target_accept = 0.55f0, adapt_steps = 10000)
+madapter = DiagCovMassAdapter(5000, 1000)
+sampler = HMC(1f-9, 5; sadapter = sadapter)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')"><pre>sadapter <span class="pl-k">=</span> <span class="pl-c1">DualAveragingStepSize</span>(<span class="pl-c1">1f-9</span>; target_accept <span class="pl-k">=</span> <span class="pl-c1">0.55f0</span>, adapt_steps <span class="pl-k">=</span> <span class="pl-c1">10000</span>)
+madapter <span class="pl-k">=</span> <span class="pl-c1">DiagCovMassAdapter</span>(<span class="pl-c1">5000</span>, <span class="pl-c1">1000</span>)
+sampler <span class="pl-k">=</span> <span class="pl-c1">HMC</span>(<span class="pl-c1">1f-9</span>, <span class="pl-c1">5</span>; sadapter <span class="pl-k">=</span> sadapter)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h3 dir="auto">
+<a id="user-content-mcmc---adaptive-metropolis-hastings" class="anchor" aria-hidden="true" href="#mcmc---adaptive-metropolis-hastings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MCMC - Adaptive Metropolis-Hastings</h3>
+<p dir="auto">As a derivative free alternative, BayesFlux also implements Adaptive MH as
+introduced in (...). This is currently quite a costly method for complex
+models since it needs to evaluate the MH ratio at each step. Plans exist to
+parallelise the calculation of the likelihood which should speed up Adaptive
+MH.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sampler = AdaptiveMH(diagm(ones(Float32, bnn.num_total_params)), 1000, 0.5f0, 1f-4)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')"><pre>sampler <span class="pl-k">=</span> <span class="pl-c1">AdaptiveMH</span>(<span class="pl-c1">diagm</span>(<span class="pl-c1">ones</span>(Float32, bnn<span class="pl-k">.</span>num_total_params)), <span class="pl-c1">1000</span>, <span class="pl-c1">0.5f0</span>, <span class="pl-c1">1f-4</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h3 dir="auto">
+<a id="user-content-variation-inference" class="anchor" aria-hidden="true" href="#variation-inference"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Variation Inference</h3>
+<p dir="auto">In some cases MCMC method either do not work well or even the methods above
+take too long. For these cases BayesFlux currently implements Bayes-By-Backprop
+(...); One shortcoming of the current implementation is that the variational
+family is constrained to a diagonal multivariate gaussian and thus any
+correlations between network parameters are set to zero. This can cause
+problems in some situations and plans exist to allow for more felxible
+covariance specifications.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="q, params, losses = bbb(bnn, 10, 2_000; mc_samples = 1, opt = Flux.ADAM(), n_samples_convergence = 10)
+ch = rand(q, 20_000)
+posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>q, params, losses <span class="pl-k">=</span> <span class="pl-c1">bbb</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">2_000</span>; mc_samples <span class="pl-k">=</span> <span class="pl-c1">1</span>, opt <span class="pl-k">=</span> Flux<span class="pl-k">.</span><span class="pl-c1">ADAM</span>(), n_samples_convergence <span class="pl-k">=</span> <span class="pl-c1">10</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">rand</span>(q, <span class="pl-c1">20_000</span>)
+posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h2 dir="auto">
+<a id="user-content-more-complicated-fnn" class="anchor" aria-hidden="true" href="#more-complicated-fnn"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>More complicated FNN</h2>
+<p dir="auto">What changes if I want to implement BNNs using more complicated Feedforward
+structures than above? Nothing! Well, almost nothing. The only thing that
+truly changes is the network you specify. All the rest could in theory stay
+the same. As the network becomes more complicated, it might be worth it to
+specify better priors or likelihoods though. Say, for example, we use the same
+data as above (in reality we would not know that it is coming from a linear
+model although it is always good practice to try simple models first), but
+instead of using the above network structure corresponding to a linear model,
+use the following:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="net = Chain(Dense(k, k, relu), Dense(k, k, relu), Dense(k, 1))"><pre>net <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(<span class="pl-c1">Dense</span>(k, k, relu), <span class="pl-c1">Dense</span>(k, k, relu), <span class="pl-c1">Dense</span>(k, <span class="pl-c1">1</span>))</pre></div>
+<p dir="auto">We can then still use the same prior, likelihood, and initialiser. But we do
+need to change the NetworkConstructor.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="nc = destruct(net)
+like = FeedforwardNormal(nc, Gamma(2.0, 0.5))
+prior = GaussianPrior(nc, 0.5f0)
+init = InitialiseAllSame(Normal(0.0f0, 0.5f0), like, prior)
+bnn = BNN(x, y, like, prior, init)"><pre>nc <span class="pl-k">=</span> <span class="pl-c1">destruct</span>(net)
+like <span class="pl-k">=</span> <span class="pl-c1">FeedforwardNormal</span>(nc, <span class="pl-c1">Gamma</span>(<span class="pl-c1">2.0</span>, <span class="pl-c1">0.5</span>))
+prior <span class="pl-k">=</span> <span class="pl-c1">GaussianPrior</span>(nc, <span class="pl-c1">0.5f0</span>)
+init <span class="pl-k">=</span> <span class="pl-c1">InitialiseAllSame</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">0.0f0</span>, <span class="pl-c1">0.5f0</span>), like, prior)
+bnn <span class="pl-k">=</span> <span class="pl-c1">BNN</span>(x, y, like, prior, init)</pre></div>
+<p dir="auto">The rest is the same as above. We can, for example, first find the MAP:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="opt = FluxModeFinder(bnn, Flux.ADAM())  # We will use ADAM
+θmap = find_mode(bnn, 10, 500, opt)  # batchsize 10 with 500 epochs"><pre>opt <span class="pl-k">=</span> <span class="pl-c1">FluxModeFinder</span>(bnn, Flux<span class="pl-k">.</span><span class="pl-c1">ADAM</span>())  <span class="pl-c"><span class="pl-c">#</span> We will use ADAM</span>
+θmap <span class="pl-k">=</span> <span class="pl-c1">find_mode</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">500</span>, opt)  <span class="pl-c"><span class="pl-c">#</span> batchsize 10 with 500 epochs</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="nethat = nc(θmap)
+yhat = vec(nethat(x))
+sqrt(mean(abs2, y .- yhat))"><pre>nethat <span class="pl-k">=</span> <span class="pl-c1">nc</span>(θmap)
+yhat <span class="pl-k">=</span> <span class="pl-c1">vec</span>(<span class="pl-c1">nethat</span>(x))
+<span class="pl-c1">sqrt</span>(<span class="pl-c1">mean</span>(abs2, y <span class="pl-k">.-</span> yhat))</pre></div>
+<p dir="auto">Or we can use any of the MCMC or VI method - SGNHTS is just one option:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sampler = SGNHTS(1f-2, 1f0; xi = 1f0^2, μ = 10f0)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')"><pre>sampler <span class="pl-k">=</span> <span class="pl-c1">SGNHTS</span>(<span class="pl-c1">1f-2</span>, <span class="pl-c1">1f0</span>; xi <span class="pl-k">=</span> <span class="pl-c1">1f0</span><span class="pl-k">^</span><span class="pl-c1">2</span>, μ <span class="pl-k">=</span> <span class="pl-c1">10f0</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h2 dir="auto">
+<a id="user-content-recurrent-structures" class="anchor" aria-hidden="true" href="#recurrent-structures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Recurrent Structures</h2>
+<p dir="auto">Next to Dense layers, BayesFlux also implements RNN and LSTM layers. These two do
+require some additional care though, since the layout of the data must be
+adjusted. In general, the last dimension of <code>x</code> and <code>y</code> is always the
+dimension along which BayesFlux batches. Thus, if we are in a seq-to-one setting</p>
+<ul dir="auto">
+<li>seq-to-seq is not implemented itself but users can implement custom
+likelihoods to for a seq-to-seq setting - then the sequences must be along
+the last dimension (here the third). To demonstrate this, let us simulate
+sime AR1 data</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Random.seed!(6150533)
+gamma = 0.8
+N = 500
+burnin = 1000
+y = zeros(N + burnin + 1)
+for t=2:(N+burnin+1)
+    y[t] = gamma*y[t-1] + randn()
+end
+y = Float32.(y[end-N+1:end])"><pre>Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">6150533</span>)
+gamma <span class="pl-k">=</span> <span class="pl-c1">0.8</span>
+N <span class="pl-k">=</span> <span class="pl-c1">500</span>
+burnin <span class="pl-k">=</span> <span class="pl-c1">1000</span>
+y <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(N <span class="pl-k">+</span> burnin <span class="pl-k">+</span> <span class="pl-c1">1</span>)
+<span class="pl-k">for</span> t<span class="pl-k">=</span><span class="pl-c1">2</span><span class="pl-k">:</span>(N<span class="pl-k">+</span>burnin<span class="pl-k">+</span><span class="pl-c1">1</span>)
+    y[t] <span class="pl-k">=</span> gamma<span class="pl-k">*</span>y[t<span class="pl-k">-</span><span class="pl-c1">1</span>] <span class="pl-k">+</span> <span class="pl-c1">randn</span>()
+<span class="pl-k">end</span>
+y <span class="pl-k">=</span> <span class="pl-c1">Float32</span>.(y[<span class="pl-c1">end</span><span class="pl-k">-</span>N<span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>])</pre></div>
+<p dir="auto">Just like in the FNN case, we need a network structure and its constructor, a
+prior on the network parameters, a likelihood with a prior on the additional
+parameters introduced by the likelihood, and an initialiser</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="net = Chain(RNN(1, 1), Dense(1, 1))  # last layer is linear output layer
+nc = destruct(net)
+like = SeqToOneNormal(nc, Gamma(2.0, 0.5))
+prior = GaussianPrior(nc, 0.5f0)
+init = InitialiseAllSame(Normal(0.0f0, 0.5f0), like, prior)"><pre>net <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(<span class="pl-c1">RNN</span>(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>), <span class="pl-c1">Dense</span>(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>))  <span class="pl-c"><span class="pl-c">#</span> last layer is linear output layer</span>
+nc <span class="pl-k">=</span> <span class="pl-c1">destruct</span>(net)
+like <span class="pl-k">=</span> <span class="pl-c1">SeqToOneNormal</span>(nc, <span class="pl-c1">Gamma</span>(<span class="pl-c1">2.0</span>, <span class="pl-c1">0.5</span>))
+prior <span class="pl-k">=</span> <span class="pl-c1">GaussianPrior</span>(nc, <span class="pl-c1">0.5f0</span>)
+init <span class="pl-k">=</span> <span class="pl-c1">InitialiseAllSame</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">0.0f0</span>, <span class="pl-c1">0.5f0</span>), like, prior)</pre></div>
+<p dir="auto">We are given a single sequence (time series). To exploit batching and to not
+always have to feed through the whole sequence, we will split the single
+sequence into overlapping subsequences of length 5 and store these in a
+tensor. Note that we add 1 to the subsequence length, because the last
+observation of each subsequence will be our training observation to predict
+using the fist five items in the subsequence.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x = make_rnn_tensor(reshape(y, :, 1), 5 + 1)
+y = vec(x[end, :, :])
+x = x[1:end-1, :, :]"><pre>x <span class="pl-k">=</span> <span class="pl-c1">make_rnn_tensor</span>(<span class="pl-c1">reshape</span>(y, :, <span class="pl-c1">1</span>), <span class="pl-c1">5</span> <span class="pl-k">+</span> <span class="pl-c1">1</span>)
+y <span class="pl-k">=</span> <span class="pl-c1">vec</span>(x[<span class="pl-c1">end</span>, :, :])
+x <span class="pl-k">=</span> x[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>, :, :]</pre></div>
+<p dir="auto">We are now ready to create the BNN and find the MAP estimate. The MAP will be
+used to check whether the overall network structure makes sense (does provide
+at least good point estimates).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="bnn = BNN(x, y, like, prior, init)
+opt = FluxModeFinder(bnn, Flux.RMSProp())
+θmap = find_mode(bnn, 10, 1000, opt)"><pre>bnn <span class="pl-k">=</span> <span class="pl-c1">BNN</span>(x, y, like, prior, init)
+opt <span class="pl-k">=</span> <span class="pl-c1">FluxModeFinder</span>(bnn, Flux<span class="pl-k">.</span><span class="pl-c1">RMSProp</span>())
+θmap <span class="pl-k">=</span> <span class="pl-c1">find_mode</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">1000</span>, opt)</pre></div>
+<p dir="auto">When checking the performance we need to make sure to feed the sequences
+through the network observation by observation:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="nethat = nc(θmap)
+yhat = vec([nethat(xx) for xx in eachslice(x; dims =1 )][end])
+sqrt(mean(abs2, y .- yhat))"><pre>nethat <span class="pl-k">=</span> <span class="pl-c1">nc</span>(θmap)
+yhat <span class="pl-k">=</span> <span class="pl-c1">vec</span>([<span class="pl-c1">nethat</span>(xx) <span class="pl-k">for</span> xx <span class="pl-k">in</span> <span class="pl-c1">eachslice</span>(x; dims <span class="pl-k">=</span><span class="pl-c1">1</span> )][<span class="pl-c1">end</span>])
+<span class="pl-c1">sqrt</span>(<span class="pl-c1">mean</span>(abs2, y <span class="pl-k">.-</span> yhat))</pre></div>
+<p dir="auto">The rest works just like before with some minor adjustments to the helper
+functions.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sampler = SGNHTS(1f-2, 1f0; xi = 1f0^2, μ = 10f0)
+ch = mcmc(bnn, 10, 50_000, sampler)
+ch = ch[:, end-20_000+1:end]
+chain = Chains(ch')
+
+function naive_prediction_recurrent(bnn, draws::Array{T, 2}; x = bnn.x, y = bnn.y) where {T}
+    yhats = Array{T, 2}(undef, length(y), size(draws, 2))
+    Threads.@threads for i=1:size(draws, 2)
+        net = bnn.like.nc(draws[:, i])
+        yh = vec([net(xx) for xx in eachslice(x; dims = 1)][end])
+        yhats[:,i] = yh
+    end
+    return yhats
+end"><pre>sampler <span class="pl-k">=</span> <span class="pl-c1">SGNHTS</span>(<span class="pl-c1">1f-2</span>, <span class="pl-c1">1f0</span>; xi <span class="pl-k">=</span> <span class="pl-c1">1f0</span><span class="pl-k">^</span><span class="pl-c1">2</span>, μ <span class="pl-k">=</span> <span class="pl-c1">10f0</span>)
+ch <span class="pl-k">=</span> <span class="pl-c1">mcmc</span>(bnn, <span class="pl-c1">10</span>, <span class="pl-c1">50_000</span>, sampler)
+ch <span class="pl-k">=</span> ch[:, <span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">20_000</span><span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+chain <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(ch<span class="pl-k">'</span>)
+
+<span class="pl-k">function</span> <span class="pl-en">naive_prediction_recurrent</span>(bnn, draws<span class="pl-k">::</span><span class="pl-c1">Array{T, 2}</span>; x <span class="pl-k">=</span> bnn<span class="pl-k">.</span>x, y <span class="pl-k">=</span> bnn<span class="pl-k">.</span>y) <span class="pl-k">where</span> {T}
+    yhats <span class="pl-k">=</span> <span class="pl-c1">Array</span><span class="pl-c1">{T, 2}</span>(undef, <span class="pl-c1">length</span>(y), <span class="pl-c1">size</span>(draws, <span class="pl-c1">2</span>))
+    Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">size</span>(draws, <span class="pl-c1">2</span>)
+        net <span class="pl-k">=</span> bnn<span class="pl-k">.</span>like<span class="pl-k">.</span><span class="pl-c1">nc</span>(draws[:, i])
+        yh <span class="pl-k">=</span> <span class="pl-c1">vec</span>([<span class="pl-c1">net</span>(xx) <span class="pl-k">for</span> xx <span class="pl-k">in</span> <span class="pl-c1">eachslice</span>(x; dims <span class="pl-k">=</span> <span class="pl-c1">1</span>)][<span class="pl-c1">end</span>])
+        yhats[:,i] <span class="pl-k">=</span> yh
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> yhats
+<span class="pl-k">end</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="yhats = naive_prediction_recurrent(bnn, ch)
+chain_yhat = Chains(yhats')
+maximum(summarystats(chain_yhat)[:, :rhat])"><pre>yhats <span class="pl-k">=</span> <span class="pl-c1">naive_prediction_recurrent</span>(bnn, ch)
+chain_yhat <span class="pl-k">=</span> <span class="pl-c1">Chains</span>(yhats<span class="pl-k">'</span>)
+<span class="pl-c1">maximum</span>(<span class="pl-c1">summarystats</span>(chain_yhat)[:, <span class="pl-c1">:rhat</span>])</pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="posterior_yhat = sample_posterior_predict(bnn, ch)
+t_q = 0.05:0.05:0.95
+o_q = get_observed_quantiles(y, posterior_yhat, t_q)
+plot(t_q, o_q, label = &quot;Posterior Predictive&quot;, legend=:topleft,
+    xlab = &quot;Target Quantile&quot;, ylab = &quot;Observed Quantile&quot;)
+plot!(x-&gt;x, t_q, label = &quot;Target&quot;)"><pre>posterior_yhat <span class="pl-k">=</span> <span class="pl-c1">sample_posterior_predict</span>(bnn, ch)
+t_q <span class="pl-k">=</span> <span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.05</span><span class="pl-k">:</span><span class="pl-c1">0.95</span>
+o_q <span class="pl-k">=</span> <span class="pl-c1">get_observed_quantiles</span>(y, posterior_yhat, t_q)
+<span class="pl-c1">plot</span>(t_q, o_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Posterior Predictive<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>,
+    xlab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target Quantile<span class="pl-pds">"</span></span>, ylab <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Observed Quantile<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(x<span class="pl-k">-&gt;</span>x, t_q, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Target<span class="pl-pds">"</span></span>)</pre></div>
+<h1 dir="auto">
+<a id="user-content-customising-bayesflux" class="anchor" aria-hidden="true" href="#customising-bayesflux"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Customising BayesFlux</h1>
+<p dir="auto">BayesFlux is coded in such a way that the user can easily extend many of the
+funcitonalities. The following are the easiest to extend and we will cover
+them below:</p>
+<ul dir="auto">
+<li>Initialisers</li>
+<li>Layers</li>
+<li>Priors</li>
+<li>Likelihoods</li>
+</ul>
+<h2 dir="auto">
+<a id="user-content-customising-initialisers" class="anchor" aria-hidden="true" href="#customising-initialisers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Customising Initialisers</h2>
+<p dir="auto">Every Initialiser must be implemented as a callable type extending the
+abstract type <code>BNNInitialiser</code>. As aready mentioned, it must be callable,
+with the only (optional) argument being a random number generator. It must
+return a tupe of vectors: <code>(θnet, θhyper, θlike)</code> where any of the latter two
+vectors is allowed to be of length zero. *For more information read the
+documentation of <code>BNNInitialiser</code></p>
+<p dir="auto"><strong>Example</strong>: See the code for <code>InitialiseAllSame</code></p>
+<h2 dir="auto">
+<a id="user-content-customising-layers" class="anchor" aria-hidden="true" href="#customising-layers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Customising Layers</h2>
+<p dir="auto">BayesFlux relies on the layers currently implemented in <code>Flux</code>. Thus, the first step
+in implementing a new layer for BayesFlux is to implement a new layer for <code>Flux</code>.
+Once that is done, one must also implement a destruct method. For example, for
+the Dense layer this has the following form</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function destruct(cell::Flux.Dense)
+    @unpack weight, bias, σ = cell
+    θ = vcat(vec(weight), vec(bias))
+    function re(θ::AbstractVector)
+        s = 1
+        pweight = length(weight)
+        new_weight = reshape(θ[s:s+pweight-1], size(weight))
+        s += pweight
+        pbias = length(bias)
+        new_bias = reshape(θ[s:s+pbias-1], size(bias))
+        return Flux.Dense(new_weight, new_bias, σ)
+    end
+    return θ, re
+end"><pre><span class="pl-k">function</span> <span class="pl-en">destruct</span>(cell<span class="pl-k">::</span><span class="pl-c1">Flux.Dense</span>)
+    <span class="pl-c1">@unpack</span> weight, bias, σ <span class="pl-k">=</span> cell
+    θ <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(<span class="pl-c1">vec</span>(weight), <span class="pl-c1">vec</span>(bias))
+    <span class="pl-k">function</span> <span class="pl-en">re</span>(θ<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>)
+        s <span class="pl-k">=</span> <span class="pl-c1">1</span>
+        pweight <span class="pl-k">=</span> <span class="pl-c1">length</span>(weight)
+        new_weight <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(θ[s<span class="pl-k">:</span>s<span class="pl-k">+</span>pweight<span class="pl-k">-</span><span class="pl-c1">1</span>], <span class="pl-c1">size</span>(weight))
+        s <span class="pl-k">+=</span> pweight
+        pbias <span class="pl-k">=</span> <span class="pl-c1">length</span>(bias)
+        new_bias <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(θ[s<span class="pl-k">:</span>s<span class="pl-k">+</span>pbias<span class="pl-k">-</span><span class="pl-c1">1</span>], <span class="pl-c1">size</span>(bias))
+        <span class="pl-k">return</span> Flux<span class="pl-k">.</span><span class="pl-c1">Dense</span>(new_weight, new_bias, σ)
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> θ, re
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The destruct method takes as input a cell with the type of the cell being the
+newly implemented layer. It must return a vector containing all network
+parameter that should be trained/inferred and a function that given a vector
+of the right length can restruct the layer. <strong>Note: Flux also implements a
+general destructure and restructure method. In my experience, this often
+caused problems in AD and thus until this is more stable, BayesFlux will stick
+with this manual setup</strong>.</p>
+<p dir="auto">Care must be taken when cells are recurrent. The actual layer is then not an
+<code>RNNCell</code>, but rather the full recurrent version: <code>Flux.Recur{RNNCell}</code>. Thus,
+the destruct methos for <code>RNN</code> cells takes the following form:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function destruct(cell::Flux.Recur{R}) where {R&lt;:Flux.RNNCell}
+    @unpack σ, Wi, Wh, b, state0 = cell.cell
+    # θ = vcat(vec(Wi), vec(Wh), vec(b), vec(state0))
+    θ = vcat(vec(Wi), vec(Wh), vec(b))
+    function re(θ::Vector{T}) where {T}
+        s = 1
+        pWi = length(Wi)
+        new_Wi = reshape(θ[s:s+pWi-1], size(Wi))
+        s += pWi
+        pWh = length(Wh)
+        new_Wh = reshape(θ[s:s+pWh-1], size(Wh))
+        s += pWh
+        pb = length(b)
+        new_b = reshape(θ[s:s+pb-1], size(b))
+        s += pb
+        # pstate0 = length(state0)
+        # new_state0 = reshape(θ[s:s+pstate0-1], size(state0))
+        new_state0 = zeros(T, size(state0))
+        return Flux.Recur(Flux.RNNCell(σ, new_Wi, new_Wh, new_b, new_state0))
+    end
+    return θ, re
+end"><pre><span class="pl-k">function</span> <span class="pl-en">destruct</span>(cell<span class="pl-k">::</span><span class="pl-c1">Flux.Recur{R}</span>) <span class="pl-k">where</span> {R<span class="pl-k">&lt;:</span><span class="pl-c1">Flux.RNNCell</span>}
+    <span class="pl-c1">@unpack</span> σ, Wi, Wh, b, state0 <span class="pl-k">=</span> cell<span class="pl-k">.</span>cell
+    <span class="pl-c"><span class="pl-c">#</span> θ = vcat(vec(Wi), vec(Wh), vec(b), vec(state0))</span>
+    θ <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(<span class="pl-c1">vec</span>(Wi), <span class="pl-c1">vec</span>(Wh), <span class="pl-c1">vec</span>(b))
+    <span class="pl-k">function</span> <span class="pl-en">re</span>(θ<span class="pl-k">::</span><span class="pl-c1">Vector{T}</span>) <span class="pl-k">where</span> {T}
+        s <span class="pl-k">=</span> <span class="pl-c1">1</span>
+        pWi <span class="pl-k">=</span> <span class="pl-c1">length</span>(Wi)
+        new_Wi <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(θ[s<span class="pl-k">:</span>s<span class="pl-k">+</span>pWi<span class="pl-k">-</span><span class="pl-c1">1</span>], <span class="pl-c1">size</span>(Wi))
+        s <span class="pl-k">+=</span> pWi
+        pWh <span class="pl-k">=</span> <span class="pl-c1">length</span>(Wh)
+        new_Wh <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(θ[s<span class="pl-k">:</span>s<span class="pl-k">+</span>pWh<span class="pl-k">-</span><span class="pl-c1">1</span>], <span class="pl-c1">size</span>(Wh))
+        s <span class="pl-k">+=</span> pWh
+        pb <span class="pl-k">=</span> <span class="pl-c1">length</span>(b)
+        new_b <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(θ[s<span class="pl-k">:</span>s<span class="pl-k">+</span>pb<span class="pl-k">-</span><span class="pl-c1">1</span>], <span class="pl-c1">size</span>(b))
+        s <span class="pl-k">+=</span> pb
+        <span class="pl-c"><span class="pl-c">#</span> pstate0 = length(state0)</span>
+        <span class="pl-c"><span class="pl-c">#</span> new_state0 = reshape(θ[s:s+pstate0-1], size(state0))</span>
+        new_state0 <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(T, <span class="pl-c1">size</span>(state0))
+        <span class="pl-k">return</span> Flux<span class="pl-k">.</span><span class="pl-c1">Recur</span>(Flux<span class="pl-k">.</span><span class="pl-c1">RNNCell</span>(σ, new_Wi, new_Wh, new_b, new_state0))
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> θ, re
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">As can be seen from the commented out lines, we are currently not inferring
+the initial state. While this would be great and could theoretically be done
+in a Bayesian setting, it also often seems to cause bad mixing and other
+difficulties in the inferential process.</p>
+<h2 dir="auto">
+<a id="user-content-customising-priors" class="anchor" aria-hidden="true" href="#customising-priors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Customising Priors</h2>
+<p dir="auto">BayesFlux implements priors as subtypes of the abstract type <code>NetworkPrior</code>.
+Generally what happens when one calles <code>loglikeprior</code> is that BayesFlux splits the
+vector into <code>θnet, θhyper, θlike</code> and calls the prior with <code>θnet</code> and
+<code>θhyper</code>. The number of hyper-parameters is given in the prior type. As such,
+BayesFlux in theory allows for simple to highly complex multi-level priors. The
+hope is that this provides enough flexibility to encourage researchers to try
+out different priors. <em>For more documentation, please see the docs for
+<code>NetworkPrior</code> and for an example of a mixture scale prior check out the code
+for <code>MixtureScalePrior</code></em>.</p>
+<blockquote>
+<p dir="auto"><g-emoji class="g-emoji" alias="bangbang" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/203c.png">‼️</g-emoji> Note that the prior defined here is only for the network. All
+additional priors for parameters needed by the likelihood are handled in the
+likelihood. This might at first sound odd, but nicely splits network
+specific things from likelihood specific things and thus should make BayesFlux
+more flexible.</p>
+</blockquote>
+<h2 dir="auto">
+<a id="user-content-customising-likelihoods" class="anchor" aria-hidden="true" href="#customising-likelihoods"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Customising Likelihoods</h2>
+<p dir="auto">Likelihoods are implemented as types extending the abstract type
+<code>BNNLikelihood</code> and thus can be extended by implementing a new subtype.
+Traditionally likelihood truly only refer to the likelihood. We decided to go
+a somewhat unconventional way and decided to design BayesFlux in a way that
+likelihood types also include the prior for all parameters they introduce.
+This was done so that the network specification with priors and all is
+separate from the likelihood specification. As such, these two parts can be
+freely changed without changing any of the other?</p>
+<p dir="auto"><strong>Example</strong>: Say we would like to implement a simple Gaussian likelihood for a
+Feedforward structure (this is already implemented). Unless we predifine the
+standard deviation of the
+Gaussian, we will also estimate it, and thus we need a prior for it. While in
+the traditional setting this would be covered in the prior type, here it is
+covered in the likelihood type. Thus, the version as implemented in BayesFlux
+takes upon construction also a prior distribution that shall be used for the
+standard deviation. This prior does not have to have as its domain the real
+line. It can also be constrained, such as a Gamma distribution, as long as the
+code of the likelihood type makes sure to appropriately transform the
+distribution to the real line. In the already implemented version this is done
+using <code>Bijectors.jl</code>.</p>
+<p dir="auto">The documentation for <code>BNNLikelihood</code> gives details about what exactly need to
+be implemented.</p>
+<hr>
+<p dir="auto"><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p>
+</article></div>

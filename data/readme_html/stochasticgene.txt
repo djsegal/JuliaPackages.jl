@@ -1,0 +1,314 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-stochasticgenejl" class="anchor" aria-hidden="true" href="#stochasticgenejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>StochasticGene.jl</h1>
+<p dir="auto">Julia package to simulate and fit stochastic models of gene transcription to experimental data. The data can range from distributions of mRNA counts per cell (either through single molecule FISH (smFISH) or single cell RNA sequence (scRNA) data) to dwell time distributions of single pre-RNA molecules in the act of transcription imaged in live cells. The models are continuous Markov systems with an arbitrary number of G (gene) states, R (pre-RNA) steps with stochastic transitions between the states, and S splice sites (usually same as R). The gene always occupies one of the G states and there are reversible transitions between G states that you specify.  One of the G states is an active state where transcription can be initiated and the first R step becomes occupied. An irreversible forward transition can then occur to the next R step if that step is unoccupied simulating elongation. An mRNA molecule is ejected from the final (termination) R step where it then decays stochastically. The model can account for multiple alleles of the gene in the same cell and coupling between alleles. Each R step is considered visible when occupied; the first R step represents the time the inserted reporter is first observable. In the original model in Rodriguez et al. Cell (2018), the reporter was in the exon and thus was carried out to the last step and ejected. In Wan et al. Cell (2021), the reporter is inserted into an intron and thus can be spliced out before the polymerase reaches the final R step. Models are allowed to have no R steps (i.e. classic telegraph models but with arbitrary numbers of G states) where an mRNA molecule can be stochastically produced when the gene occupies the active G state.  When fitting the model to single cell RNA (scRNA) sequence data, the predicted mRNA counts are further subjected to a stochastic process to account for the reduction in the number of mRNA captured and measured (i.e. technical noise).</p>
+<p dir="auto">The package has functions to specify the models, prepare the data, compute the predicted dwell time distributions from live cell imaging measurements and intracellular mRNA distributions (either smFISH or scRNA), apply a Metropolis-Hastings markov chain monte carlo (MCMC) algorithm to fit the parameters of the models to the data and compute posterior distributions, and simulate the models.</p>
+<p dir="auto">StochasticGene can run on small data sets on a laptop or large data sets on a multiprocessor machine such as NIH Biowulf. There are functions that generate swarm files to be submitted and process and analyze the results.</p>
+<h3 dir="auto"><a id="user-content-using-stochasticgene" class="anchor" aria-hidden="true" href="#using-stochasticgene"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Using StochasticGene</h3>
+<h3 dir="auto"><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation</h3>
+<p dir="auto">StochasticGene is a registered Julia package.  To install on Biowulf, log on and at the prompt type:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="[username@biowulf ~]$ sinteractive --mem=64G"><pre class="notranslate"><code>[username@biowulf ~]$ sinteractive --mem=64G
+</code></pre></div>
+<p dir="auto">This generates an interactive session</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="[username@biowulf ~]$ module load julialang"><pre class="notranslate"><code>[username@biowulf ~]$ module load julialang
+</code></pre></div>
+<p dir="auto">Loads Julia for use</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="[username@biowulf ~]$ julia - t 1"><pre class="notranslate"><code>[username@biowulf ~]$ julia - t 1
+</code></pre></div>
+<p dir="auto">Starts Julia (with a single thread):</p>
+<p dir="auto">To install StochasticGene run the following in the Julia REPL:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ] add StochasticGene"><pre class="notranslate"><code>julia&gt; ] add StochasticGene
+</code></pre></div>
+<p dir="auto">You can check if all tests pass by running</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ] test StochasticGene"><pre class="notranslate"><code>julia&gt; ] test StochasticGene
+</code></pre></div>
+<p dir="auto">(don't worry if it doesn't work as I sometimes forget to update it to match changes in code)</p>
+<p dir="auto">Command "]" brings you into the Julia Package environment, "Ctrl C" gets out</p>
+<p dir="auto">StochasticGene will be updated periodically, to update on Julia type</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ] update StochasticGene"><pre class="notranslate"><code>julia&gt; ] update StochasticGene
+</code></pre></div>
+<p dir="auto">StochasticGene requires a specific directory structure where data are stored and results are saved.  At the top is the <code>root</code> folder (e.g. "scRNA" or "RNAfits") with subfolders <code>data</code> and <code>results</code>. Inside <code>data</code> are two more folders  <code>alleles</code> and <code>halflives</code>,  containing allele numbers and half lives, respectively.  The command <code>rna_setup</code> will create the folder structure. New allele numbers and halflives for new cells can be added directly to the folders.  The files should be csv format and have the form <code>[cell name]_alleles.csv</code> or <code>[cell name]_halflife.csv</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using StochasticGene
+
+julia&gt; rna_setup(&quot;scRNA&quot;)"><pre class="notranslate"><code>julia&gt; using StochasticGene
+
+julia&gt; rna_setup("scRNA")
+</code></pre></div>
+<p dir="auto">or any other name you choose for the root directory.</p>
+<h3 dir="auto"><a id="user-content-example-use-on-biowulf-to-fit-scrna-data" class="anchor" aria-hidden="true" href="#example-use-on-biowulf-to-fit-scrna-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example Use on Biowulf to fit scRNA data:</h3>
+<h3 dir="auto"><a id="user-content-contact-me-if-you-have-any-questions-or-need-instructions-on-fitting-other-types-of-data-like-live-cell-recordings-of-on-and-off-dwell-times" class="anchor" aria-hidden="true" href="#contact-me-if-you-have-any-questions-or-need-instructions-on-fitting-other-types-of-data-like-live-cell-recordings-of-on-and-off-dwell-times"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Contact me if you have any questions or need instructions on fitting other types of data like live cell recordings of ON and OFF dwell times</h3>
+<p dir="auto">Fit the scRNA histogram in all the genes in folder called "data/HCT_testdata" (which should exist if you ran <code>setup</code>) on NIH Biowulf by running a swarmfile.</p>
+<p dir="auto">First move into the root directory you created and launch julia:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="[username@biowulf ~]$ cd scRNA
+
+[username@biowulf ~]$ julia - t 1
+"><pre class="notranslate"><code>[username@biowulf ~]$ cd scRNA
+
+[username@biowulf ~]$ julia - t 1
+
+</code></pre></div>
+<p dir="auto">Create swarm files using the command in the JULIA repl:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using StochasticGene
+
+julia&gt; makeswarm([&quot;CENPL&quot;,&quot;MYC&quot;],cell=&quot;HCT116&quot;,maxtime = 600.,nchains = 8,datatype = &quot;scRNA&quot;,G=2,transitions = ([1,2],[2,1]),conds = &quot;MOCK&quot;,resultfolder =&quot;HCT_scRNA&quot;,datafolder = &quot;HCT116_testdata/&quot;,root = &quot;.&quot;)"><pre class="notranslate"><code>julia&gt; using StochasticGene
+
+julia&gt; makeswarm(["CENPL","MYC"],cell="HCT116",maxtime = 600.,nchains = 8,datatype = "scRNA",G=2,transitions = ([1,2],[2,1]),conds = "MOCK",resultfolder ="HCT_scRNA",datafolder = "HCT116_testdata/",root = ".")
+</code></pre></div>
+<p dir="auto">The genes are listed as a vector of strings. You only need to type <code>using StochasticGene</code> once per session.
+This will create two files.  The first will end in <code>.swarm</code> and the second will end in <code>.jl</code></p>
+<p dir="auto">To fit all the genes in the data folder use:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using StochasticGene
+
+julia&gt; makeswarm(cell=&quot;HCT116&quot;,maxtime = 600.,nchains = 8,datatype = &quot;scRNA&quot;,G=2,transitions = ([1,2],[2,1]), conds = &quot;MOCK&quot;,resultfolder =&quot;HCT_scRNA&quot;,datafolder = &quot;HCT116_testdata/&quot;,nsets=1,root = &quot;.&quot;)"><pre class="notranslate"><code>julia&gt; using StochasticGene
+
+julia&gt; makeswarm(cell="HCT116",maxtime = 600.,nchains = 8,datatype = "scRNA",G=2,transitions = ([1,2],[2,1]), conds = "MOCK",resultfolder ="HCT_scRNA",datafolder = "HCT116_testdata/",nsets=1,root = ".")
+</code></pre></div>
+<p dir="auto">(for G = 3, use transitions = ([1,2],[2,1],[2,3],[3,2]), for 3 state Kinetic Proofreading model use transitions = ([1,2],[2,1],[2,3],[3,1]))</p>
+<p dir="auto">To exit julia type:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; exit()"><pre class="notranslate"><code>julia&gt; exit()
+</code></pre></div>
+<p dir="auto">To run the swarm file, type at the command line:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="[username@biowulf ~]$ swarm -f fit_HCT116-scRNA-ss_MOCK_2.swarm --time 12:00:00 -t 8  -g 24 --merge-output --module julialang"><pre class="notranslate"><code>[username@biowulf ~]$ swarm -f fit_HCT116-scRNA-ss_MOCK_2.swarm --time 12:00:00 -t 8  -g 24 --merge-output --module julialang
+</code></pre></div>
+<p dir="auto">(choose a time longer than maxtime (remember to convert seconds to hours))</p>
+<p dir="auto">This will submit a job into the Biowulf queue.  To check the status of your job type:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="[username@biowulf ~]$ sjobs"><pre class="notranslate"><code>[username@biowulf ~]$ sjobs
+</code></pre></div>
+<p dir="auto">When the job finishes, Biowulf will create new swarm files in your folder. The fit results will be saved in the folder <code>results/HCT_scRNA</code>.  There will be three result files for each gene and model.  The file names will have the form</p>
+<p dir="auto"><code>[filetype]_[label]_[condition]_[gene name]_[modeltype written as consecutive numbers GRS]_[number of alleles].txt</code></p>
+<p dir="auto"><code>_</code> (underscore) is a reserved character and should not be used in any of the file field such as <code>[label]</code>.</p>
+<p dir="auto">filetypes are:</p>
+<p dir="auto"><code>rates</code>, 4 lines: maximum likelihood rates, mean rates, median rates</p>
+<p dir="auto"><code>measures</code>, information about the quality of the fits</p>
+<p dir="auto"><code>param-stats</code>, detailed statistics of the parameter posteriors (the MCMC samples are not saved)</p>
+<p dir="auto"><code>burst</code>, statistics on burst frequency, 7 lines: mean, sd, median, mad, quantiles at: .025,.5,.97.5</p>
+<p dir="auto"><code>optimized</code>, 3 lines: LBFGS optimized rates, negative log likelihood, convergence</p>
+<p dir="auto">In our example the files <code>rates_HCT116-scRNA-ss_MOCK_CENPL_2_2.txt</code>,<code>measures_HCT116-scRNA-ss_MOCK_CENPL_2_2.txt</code>,<code>param-stats_HCT116-scRNA-ss_MOCK_CENPL_2_2.txt</code>, <code>burst_HCT116-scRNA-ss_MOCK_CENPL_2_2.txt</code>, <code>optimized_HCT116-scRNA-ss_MOCK_CENPL_2_2.txt</code> will be produced</p>
+<p dir="auto">The output convention is that underscore <code>_</code> is used to separate the 4 fields of a result file and thus should not be used in any of the fields.</p>
+<p dir="auto">A data frame of the results can be constructed in Julia using the write_dataframes(resultfolder,datafolder) function, e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using StochasticGene
+
+julia&gt; write_dataframes_only(&quot;results/HCT_scRNAtest&quot;,&quot;data/HCT116_testdata&quot;)"><pre class="notranslate"><code>julia&gt; using StochasticGene
+
+julia&gt; write_dataframes_only("results/HCT_scRNAtest","data/HCT116_testdata")
+</code></pre></div>
+<p dir="auto">The result will be a set of csv files collating the result files of all the genes along with a "Winners" file that lists which model performed best for a given measure (default is AIC but can be changed with a named argument, see API below) and a Summary file condensing the information of the other files.</p>
+<p dir="auto">The Summary file can be supplemented with more information via the write_augmented(summaryfile,resultfolder) function, e.g.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; write_augmented(&quot;results/HCT_scRNAtest/Summary_HCT116-scRNA-ss_MOCK_2.csv&quot;,&quot;results/HCT_scRNAtest&quot;)
+
+"><pre class="notranslate"><code>julia&gt; write_augmented("results/HCT_scRNAtest/Summary_HCT116-scRNA-ss_MOCK_2.csv","results/HCT_scRNAtest")
+
+
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-example-use-on-unix" class="anchor" aria-hidden="true" href="#example-use-on-unix"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example Use on Unix</h3>
+<p dir="auto">If not running on Biowulf, the same swarm files can be used, although they will not be run in parallel.</p>
+<p dir="auto">In Bash, type:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Bash&gt; chmod 744 fit_scRNA-ss-MOCK_2.swarm
+
+Bash&gt; bash fit_scRNA-ss-MOCK_2.swarm &amp;
+"><pre class="notranslate"><code>Bash&gt; chmod 744 fit_scRNA-ss-MOCK_2.swarm
+
+Bash&gt; bash fit_scRNA-ss-MOCK_2.swarm &amp;
+
+</code></pre></div>
+<p dir="auto">This will execute each gene in the swarm file sequentially. To run several genes in parallel, you can break the run up into multiple swarm files and execute each swarm file separately.  You can also trade off time with the number of chains, so if you have a large processor machine run each gene on many processors, e.g. 64, for a short amount of time, e.g. 15 min.</p>
+<h3 dir="auto"><a id="user-content-simulations" class="anchor" aria-hidden="true" href="#simulations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Simulations</h3>
+<p dir="auto">Simulate any GRSM model using function simulator, which will produce steady state mRNA histograms and ON and OFF live cell histograms if desired.  API below.</p>
+<h3 dir="auto"><a id="user-content-units" class="anchor" aria-hidden="true" href="#units"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Units</h3>
+<p dir="auto">The code assumes the rates have units of inverse minutes and the half lives in the <code>halflives</code> file are in hours. When comparing to stationary mRNA distributions, either FISH or scRNA, the rate units are relative. Scaling all the rates by a constant will not affect the results. In these cases, it is often convenient to scale all the rates by the mRNA decay time, which is the last entry of the rate array. The rate units matter when considering or evaluating histograms of gene ON and OFF times. The code assumes that these dwell time histogram have units of minutes (i.e. the reciprocal of the rate units). Thus, if you wish to treat the units of the rates as inverse seconds (by scaling each rate by a factor of 60 for example) then the code will assume the live cell histograms (either in data or generated by the simulators) will also have units of seconds.  The <code>range</code> vector may need to be adjusted to accomodate the new units.</p>
+<h3 dir="auto"><a id="user-content-api" class="anchor" aria-hidden="true" href="#api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>API:</h3>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content=" makeswarm(;G::Int=2,R::Int=0,S::Int=0,transitions=([1,2],[2,1]),cell=&quot;HCT116&quot;,swarmfile::String=&quot;fit&quot;,label=&quot;label&quot;,inlabel=&quot;label&quot;,timestamp=&quot;&quot;,nsets=1,datafolder::String=&quot;HCT116_testdata&quot;,datatype=&quot;scRNA&quot;,thresholdlow::Float64=0.,thresholdhigh::Float64=1e8,conds::String=&quot;MOCK&quot;,resultfolder::String= &quot;fit_result&quot;,infolder=resultfolder,batchsize=1000,maxtime = 60.,nchains::Int=2,nthreads::Int=1,transient::Bool=false,fittedparam=collect(1:2*G-1),fixedeffects=(),juliafile::String=&quot;fitscript&quot;,root=&quot;.&quot;,samplesteps::Int=40000,warmupsteps=20000,annealsteps=0,temp=1.,tempanneal=100.,cv = 0.02,priorcv= 10.,decayrate=-1.,burst=true,nalleles=2,optimize=true,type=&quot;&quot;,rtype=&quot;median&quot;)
+
+    function makeswarm(genes::Vector;G::Int=2,R::Int=0,S::Int=0,transitions=([1,2],[2,1]),cell=&quot;HCT116&quot;,swarmfile::String=&quot;fit&quot;,label=&quot;label&quot;,inlabel=&quot;label&quot;,timestamp=&quot;&quot;,nsets=1,datafolder::String=&quot;HCT116_testdata&quot;,datatype=&quot;scRNA&quot;,conds::String=&quot;MOCK&quot;,resultfolder::String=&quot;fit_result&quot;,infolder=resultfolder,batchsize=1000,maxtime=60.,nchains::Int=2,nthreads::Int=1,transient::Bool=false,fittedparam=collect(1:2*G-1),fixedeffects=(),juliafile::String=&quot;fitscript&quot;,root=&quot;.&quot;,samplesteps::Int=40000,warmupsteps=20000,annealsteps=0,temp=1.,tempanneal=100.,cv=0.02,priorcv=10.,decayrate=-1.,burst=true,nalleles=2,optimize=true,type=&quot;&quot;,rtype=&quot;median&quot;)
+
+    Arguments
+    - `G`: number of gene states
+    - `R`: number of pre-RNA steps (set to 0 for classic telegraph models)
+    - `S`: number of splice sites (set to 0 for classic telegraph models and R for GRS models)
+    - `transitions`: tuple of vectors that specify state transitions for G states, e.g. ([1,2],[2,1]) for classic 2 state telegraph model and ([1,2],[2,1],[2,3],[3,1]) for 3 state kinetic proof reading model
+    - `cell': cell type for halflives and allele numbers
+    - `swarmfile`: name of swarmfile to be executed by swarm
+    - `label`: label of output files produced
+    - `inlabel`: label of files used for initial conditions
+    - `timestamp`: label for time of sample (e.g. T120)
+    - `nsets`: number of histograms to be fit (e.g. one for wild type and one for perturbation)
+    - `datafolder`: folder holding histograms, if two folders use `-` (hyphen) to separate, e.g.  &quot;data\folder1-data\folder2&quot;
+    - `datatype`: String that desecribes data file type, e.g. &quot;scRNA&quot;, &quot;fish&quot;, &quot;genetrap&quot;
+    - `thresholdlow`: lower threshold for halflife for genes to be fit
+    - `threhsoldhigh`: upper threshold
+    - `conds`: string describing data treatment condition, e.g. &quot;WT&quot;, &quot;DMSO&quot;, use `-` for two conditions, e.g. &quot;WT-AUXIN&quot;
+    - `resultfolder`: folder for results
+    - `infolder`: folder for initial parameters
+    - `batchsize`: number of jobs per swarmfile, default = 1000
+    - `maxtime`: maximum wall time for run, default = 2 hrs
+    - `nchains`: number of MCMC chains = number of processors called by Julia, default = 2
+    - 'nthreads`: number of Julia threads per processesor, default = 1
+    - `transient::Bool`: true means fit a time dependent transient model (T0, T30, T120)
+    - `fittedparam`: vector of rate indices to be fit, e.g. [1,2,3,5,6,7]
+    - `fixedeffects`: tuple of vectors of rates that are fixed between control and treatment where first index is fit and others are fixed to first, e.g. ([3,8],) means  index 8 is fixed to index 3
+         (each vector in tuple is a fixed rate set)
+    - `juliafile`: name of file to be called by julia in swarmfile
+    - `fitscript`: name of fit file called by swarm file
+    - `root`: name of root directory for project, e.g. &quot;scRNA\&quot;
+    - `samplesteps`: number of MCMC sampling steps
+    - `warmupsteps`: number of MCMC warmup steps to find proposal distribution covariance
+    - `annealsteps`: number of annealing steps (during annealing temperature is dropped from tempanneal to temp)
+    Arguments below usually do not need to be set
+    - `temp`: MCMC temperature
+    - `tempanneal`: annealing temperature
+    - `cv`: coefficient of variation (mean/std) of proposal distribution, if cv &lt;= 0. then cv from previous run will be used
+    - 'priorcv`: coefficient of variation for the rate prior distributions, default is 10.
+    - `decayrate`: decay rate of mRNA, if set to -1, value in decayrate file will be used
+    - `burst`: if true then compute burst frequency
+    - `nalleles`: number of alleles, it will be overridden by allele file if it exists
+    - `optimize`: use optimizer to compute maximum likelihood value
+    - `type`: switch used for GRS models, choices include &quot;&quot;, &quot;offeject&quot;
+    - `rtype`: which rate to use for initial condition, choices are &quot;ml&quot;, &quot;mean&quot;, &quot;median&quot;, or &quot;last&quot;
+    - `writesamples`: write out MH samples if true, default is false
+
+
+    returns swarmfile that calls a julia file that is executed on biowulf"><pre class="notranslate"><code> makeswarm(;G::Int=2,R::Int=0,S::Int=0,transitions=([1,2],[2,1]),cell="HCT116",swarmfile::String="fit",label="label",inlabel="label",timestamp="",nsets=1,datafolder::String="HCT116_testdata",datatype="scRNA",thresholdlow::Float64=0.,thresholdhigh::Float64=1e8,conds::String="MOCK",resultfolder::String= "fit_result",infolder=resultfolder,batchsize=1000,maxtime = 60.,nchains::Int=2,nthreads::Int=1,transient::Bool=false,fittedparam=collect(1:2*G-1),fixedeffects=(),juliafile::String="fitscript",root=".",samplesteps::Int=40000,warmupsteps=20000,annealsteps=0,temp=1.,tempanneal=100.,cv = 0.02,priorcv= 10.,decayrate=-1.,burst=true,nalleles=2,optimize=true,type="",rtype="median")
+
+    function makeswarm(genes::Vector;G::Int=2,R::Int=0,S::Int=0,transitions=([1,2],[2,1]),cell="HCT116",swarmfile::String="fit",label="label",inlabel="label",timestamp="",nsets=1,datafolder::String="HCT116_testdata",datatype="scRNA",conds::String="MOCK",resultfolder::String="fit_result",infolder=resultfolder,batchsize=1000,maxtime=60.,nchains::Int=2,nthreads::Int=1,transient::Bool=false,fittedparam=collect(1:2*G-1),fixedeffects=(),juliafile::String="fitscript",root=".",samplesteps::Int=40000,warmupsteps=20000,annealsteps=0,temp=1.,tempanneal=100.,cv=0.02,priorcv=10.,decayrate=-1.,burst=true,nalleles=2,optimize=true,type="",rtype="median")
+
+    Arguments
+    - `G`: number of gene states
+    - `R`: number of pre-RNA steps (set to 0 for classic telegraph models)
+    - `S`: number of splice sites (set to 0 for classic telegraph models and R for GRS models)
+    - `transitions`: tuple of vectors that specify state transitions for G states, e.g. ([1,2],[2,1]) for classic 2 state telegraph model and ([1,2],[2,1],[2,3],[3,1]) for 3 state kinetic proof reading model
+    - `cell': cell type for halflives and allele numbers
+    - `swarmfile`: name of swarmfile to be executed by swarm
+    - `label`: label of output files produced
+    - `inlabel`: label of files used for initial conditions
+    - `timestamp`: label for time of sample (e.g. T120)
+    - `nsets`: number of histograms to be fit (e.g. one for wild type and one for perturbation)
+    - `datafolder`: folder holding histograms, if two folders use `-` (hyphen) to separate, e.g.  "data\folder1-data\folder2"
+    - `datatype`: String that desecribes data file type, e.g. "scRNA", "fish", "genetrap"
+    - `thresholdlow`: lower threshold for halflife for genes to be fit
+    - `threhsoldhigh`: upper threshold
+    - `conds`: string describing data treatment condition, e.g. "WT", "DMSO", use `-` for two conditions, e.g. "WT-AUXIN"
+    - `resultfolder`: folder for results
+    - `infolder`: folder for initial parameters
+    - `batchsize`: number of jobs per swarmfile, default = 1000
+    - `maxtime`: maximum wall time for run, default = 2 hrs
+    - `nchains`: number of MCMC chains = number of processors called by Julia, default = 2
+    - 'nthreads`: number of Julia threads per processesor, default = 1
+    - `transient::Bool`: true means fit a time dependent transient model (T0, T30, T120)
+    - `fittedparam`: vector of rate indices to be fit, e.g. [1,2,3,5,6,7]
+    - `fixedeffects`: tuple of vectors of rates that are fixed between control and treatment where first index is fit and others are fixed to first, e.g. ([3,8],) means  index 8 is fixed to index 3
+         (each vector in tuple is a fixed rate set)
+    - `juliafile`: name of file to be called by julia in swarmfile
+    - `fitscript`: name of fit file called by swarm file
+    - `root`: name of root directory for project, e.g. "scRNA\"
+    - `samplesteps`: number of MCMC sampling steps
+    - `warmupsteps`: number of MCMC warmup steps to find proposal distribution covariance
+    - `annealsteps`: number of annealing steps (during annealing temperature is dropped from tempanneal to temp)
+    Arguments below usually do not need to be set
+    - `temp`: MCMC temperature
+    - `tempanneal`: annealing temperature
+    - `cv`: coefficient of variation (mean/std) of proposal distribution, if cv &lt;= 0. then cv from previous run will be used
+    - 'priorcv`: coefficient of variation for the rate prior distributions, default is 10.
+    - `decayrate`: decay rate of mRNA, if set to -1, value in decayrate file will be used
+    - `burst`: if true then compute burst frequency
+    - `nalleles`: number of alleles, it will be overridden by allele file if it exists
+    - `optimize`: use optimizer to compute maximum likelihood value
+    - `type`: switch used for GRS models, choices include "", "offeject"
+    - `rtype`: which rate to use for initial condition, choices are "ml", "mean", "median", or "last"
+    - `writesamples`: write out MH samples if true, default is false
+
+
+    returns swarmfile that calls a julia file that is executed on biowulf
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="  write_dataframes(resultfolder::String,datafolder::String;measure::Symbol=:AIC,assemble::Bool=true)
+
+  collates run results into a csv file
+
+Arguments
+- `resultfolder`: name of folder with result files
+- `datafolder`: name of folder where data is stored
+- `measure`: measure used to assess winner
+- `assemble`: if true then assemble results into summary files"><pre class="notranslate"><code>  write_dataframes(resultfolder::String,datafolder::String;measure::Symbol=:AIC,assemble::Bool=true)
+
+  collates run results into a csv file
+
+Arguments
+- `resultfolder`: name of folder with result files
+- `datafolder`: name of folder where data is stored
+- `measure`: measure used to assess winner
+- `assemble`: if true then assemble results into summary files
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="write_winners(resultfolder,measure)
+
+Write best performing model for measure (e.g. AIC, WAIC, Deviance)
+"><pre class="notranslate"><code>write_winners(resultfolder,measure)
+
+Write best performing model for measure (e.g. AIC, WAIC, Deviance)
+
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="write_augmented(summaryfile::String,resultfolder::String)
+
+Augment summary file with burst size (for G &gt; 1), model predicted moments, and fit measures
+
+"><pre class="notranslate"><code>write_augmented(summaryfile::String,resultfolder::String)
+
+Augment summary file with burst size (for G &gt; 1), model predicted moments, and fit measures
+
+
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="simulator(r::Vector{Float64},transitions,G::Int,R::Int,S::Int,nhist::Int,nalleles::Int;range::Vector{Float64}=Float64[],total::Int=10000000,tol::Float64=1e-6,count=false,verbose=false)
+
+Simulate any GRSM model. Returns steady state mRNA histogram and if range not a null vector will return ON and OFF time histograms.
+
+Arguments
+	- `r`: vector of rates
+	- `transitions`: tuple of vectors that specify state transitions for G states, e.g. ([1,2],[2,1]) for classic 2 state telegraph model and ([1,2],[2,1],[2,3],[3,1]) for 3 state kinetic proof reading model
+	- `G`: number of gene states
+  - `R`: number of pre-RNA steps (set to 0 for classic telegraph models)
+  - `S`: number of splice sites (set to 0 for classic telegraph models and R for GRS models)
+	- `nhist::Int`: Size of mRNA histogram
+	- `nalleles`: Number of alleles
+
+Named arguments
+	- `range::Vector{Float64}=Float64[]`: vector of time bins for ON and OFF histograms
+	- `total::Int=10000000`: maximum number of simulation steps
+	- `tol::Float64=1e-6`: convergence error tolerance for mRNA histogram
+	- `verbose::Bool=false`: flag for printing state information
+"><pre class="notranslate"><code>simulator(r::Vector{Float64},transitions,G::Int,R::Int,S::Int,nhist::Int,nalleles::Int;range::Vector{Float64}=Float64[],total::Int=10000000,tol::Float64=1e-6,count=false,verbose=false)
+
+Simulate any GRSM model. Returns steady state mRNA histogram and if range not a null vector will return ON and OFF time histograms.
+
+Arguments
+	- `r`: vector of rates
+	- `transitions`: tuple of vectors that specify state transitions for G states, e.g. ([1,2],[2,1]) for classic 2 state telegraph model and ([1,2],[2,1],[2,3],[3,1]) for 3 state kinetic proof reading model
+	- `G`: number of gene states
+  - `R`: number of pre-RNA steps (set to 0 for classic telegraph models)
+  - `S`: number of splice sites (set to 0 for classic telegraph models and R for GRS models)
+	- `nhist::Int`: Size of mRNA histogram
+	- `nalleles`: Number of alleles
+
+Named arguments
+	- `range::Vector{Float64}=Float64[]`: vector of time bins for ON and OFF histograms
+	- `total::Int=10000000`: maximum number of simulation steps
+	- `tol::Float64=1e-6`: convergence error tolerance for mRNA histogram
+	- `verbose::Bool=false`: flag for printing state information
+
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="new_FISH(newroot::String,oldroot::String,rep::String)
+
+Create new folder for FISH data with only one replicate
+
+Arguments
+  - `newroot`: new data folder e.g. HCT_T120_FISH_rep1
+  - `oldroot`: old data folder e.g. HCT_T120_FISH
+  - `rep`: name of replicate folder e.g. rep1
+"><pre class="notranslate"><code>new_FISH(newroot::String,oldroot::String,rep::String)
+
+Create new folder for FISH data with only one replicate
+
+Arguments
+  - `newroot`: new data folder e.g. HCT_T120_FISH_rep1
+  - `oldroot`: old data folder e.g. HCT_T120_FISH
+  - `rep`: name of replicate folder e.g. rep1
+
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h3>
+<p dir="auto">new_FISH("data/HCT_T120_8genes_FISH_rep1","data/HCT_T120_8genes_FISH","rep1")</p>
+</article></div>

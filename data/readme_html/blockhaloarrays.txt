@@ -1,0 +1,164 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-blockhaloarrays" class="anchor" aria-hidden="true" href="#blockhaloarrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BlockHaloArrays</h1>
+<p dir="auto">The <code>BlockHaloArray</code> type is an array-like type (does not extend <code>AbstractArray</code>) that is designed for shared-memory multi-threaded workloads. Typical shared-memory parallelization is done via multi-threaded loops (with <code>@threads</code>, <code>@tturbo</code>, etc.), i.e.:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Threads.@threads for j in jlo:jhi
+    for i in ilo:ihi
+        A[i,j] = ...
+    end
+end"><pre>Threads<span class="pl-k">.</span><span class="pl-c1">@threads</span> <span class="pl-k">for</span> j <span class="pl-k">in</span> jlo<span class="pl-k">:</span>jhi
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> ilo<span class="pl-k">:</span>ihi
+        A[i,j] <span class="pl-k">=</span> <span class="pl-k">...</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">However, this type of parallelization tends not to scale well, especially for memory-bandwidth limited workloads. This is especially true for stencil operations, where functions access memory at addresses such as <code>A[i,j], A[i+1,j], A[i-1,j+1]</code>. The aim of the <code>BlockHaloArray</code> type do mini-domain decomposition into separate thread-specific chunks, or blocks, of memory for each thread to operate on without data race conditions or memory bandwidth contention. Because the context is shared memory however, certain operations are more efficient compared to the typical MPI domain decomposition method.Each thread will be able to operate on it's own block of memory and maintain NUMA-aware locality and communication is done via copies, rather than MPI library calls. Future releases will include an MPI-aware <code>BlockHaloArray</code> that will facilitate the MPI+Threads hybrid parallelization.</p>
+<p dir="auto">An example of a blocked-style stencil operation looks like the following. Note that it can still take advantage of the single-threaded <code>@turbo</code> macro to vectorize the nested-loop.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function stencil!(A::BlockHaloArray, blockid)
+    ilo, ihi, jlo, jhi = A.loop_limits[blockid]
+    data = @views A.blocks[blockid]
+    @turbo for j in jlo:jhi
+        for i in ilo:ihi
+            data[i, j] = i * j + 0.25(data[i-2, j] + data[i-1, j] + data[i+2, j] + data[i+1, j] +
+                                      data[i, j] +
+                                      data[i, j-2] + data[i, j-1] + data[i, j+2] + data[i, j+1])
+        end
+    end
+end"><pre><span class="pl-k">function</span> <span class="pl-en">stencil!</span>(A<span class="pl-k">::</span><span class="pl-c1">BlockHaloArray</span>, blockid)
+    ilo, ihi, jlo, jhi <span class="pl-k">=</span> A<span class="pl-k">.</span>loop_limits[blockid]
+    data <span class="pl-k">=</span> <span class="pl-c1">@views</span> A<span class="pl-k">.</span>blocks[blockid]
+    <span class="pl-c1">@turbo</span> <span class="pl-k">for</span> j <span class="pl-k">in</span> jlo<span class="pl-k">:</span>jhi
+        <span class="pl-k">for</span> i <span class="pl-k">in</span> ilo<span class="pl-k">:</span>ihi
+            data[i, j] <span class="pl-k">=</span> i <span class="pl-k">*</span> j <span class="pl-k">+</span> <span class="pl-c1">0.25</span>(data[i<span class="pl-k">-</span><span class="pl-c1">2</span>, j] <span class="pl-k">+</span> data[i<span class="pl-k">-</span><span class="pl-c1">1</span>, j] <span class="pl-k">+</span> data[i<span class="pl-k">+</span><span class="pl-c1">2</span>, j] <span class="pl-k">+</span> data[i<span class="pl-k">+</span><span class="pl-c1">1</span>, j] <span class="pl-k">+</span>
+                                      data[i, j] <span class="pl-k">+</span>
+                                      data[i, j<span class="pl-k">-</span><span class="pl-c1">2</span>] <span class="pl-k">+</span> data[i, j<span class="pl-k">-</span><span class="pl-c1">1</span>] <span class="pl-k">+</span> data[i, j<span class="pl-k">+</span><span class="pl-c1">2</span>] <span class="pl-k">+</span> data[i, j<span class="pl-k">+</span><span class="pl-c1">1</span>])
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Then the <code>stencil!()</code> function is split among threads via:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@sync for block_id in 1:nthreads()
+    @tspawnat block_id stencil!(A, block_id)
+end"><pre><span class="pl-c1">@sync</span> <span class="pl-k">for</span> block_id <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">nthreads</span>()
+    <span class="pl-c1">@tspawnat</span> block_id <span class="pl-c1">stencil!</span>(A, block_id)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto"><code>BlockHaloArray</code> types should be used in a task-based parallel workload, which has better scaling than multi-threaded loops. The only synchronization required is during the exchange of halo data.</p>
+<p dir="auto">Benchmark results are coming soon...</p>
+<h2 dir="auto"><a id="user-content-exports" class="anchor" aria-hidden="true" href="#exports"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Exports</h2>
+<h3 dir="auto"><a id="user-content-types" class="anchor" aria-hidden="true" href="#types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Types</h3>
+<ul dir="auto">
+<li><code>BlockHaloArray</code>: A blocked array-like type (does not extent <code>AbstractArray</code>) to be used in a shared-memory type system. This partitions an <code>Array</code> into N blocks that are to be operated on by threads.</li>
+</ul>
+<h4 dir="auto"><a id="user-content-constructors" class="anchor" aria-hidden="true" href="#constructors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Constructors</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="BlockHaloArray(dims::NTuple{N,Int}, halodims::NTuple{N2,Int}, nhalo::Integer, nblocks=nthreads(); T=Float64, use_numa=true)
+BlockHaloArray(dims::NTuple{N,Int}, nhalo::Integer, nblocks=nthreads(); T=Float64, use_numa=true)
+BlockHaloArray(A::AbstractArray{T,N}, nhalo::Integer, nblocks=nthreads())
+BlockHaloArray(A::AbstractArray{T,N}, halodims::NTuple{N2,Integer}, nhalo::Integer, nblocks=nthreads()) "><pre><span class="pl-c1">BlockHaloArray</span>(dims<span class="pl-k">::</span><span class="pl-c1">NTuple{N,Int}</span>, halodims<span class="pl-k">::</span><span class="pl-c1">NTuple{N2,Int}</span>, nhalo<span class="pl-k">::</span><span class="pl-c1">Integer</span>, nblocks<span class="pl-k">=</span><span class="pl-c1">nthreads</span>(); T<span class="pl-k">=</span>Float64, use_numa<span class="pl-k">=</span><span class="pl-c1">true</span>)
+<span class="pl-c1">BlockHaloArray</span>(dims<span class="pl-k">::</span><span class="pl-c1">NTuple{N,Int}</span>, nhalo<span class="pl-k">::</span><span class="pl-c1">Integer</span>, nblocks<span class="pl-k">=</span><span class="pl-c1">nthreads</span>(); T<span class="pl-k">=</span>Float64, use_numa<span class="pl-k">=</span><span class="pl-c1">true</span>)
+<span class="pl-c1">BlockHaloArray</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractArray{T,N}</span>, nhalo<span class="pl-k">::</span><span class="pl-c1">Integer</span>, nblocks<span class="pl-k">=</span><span class="pl-c1">nthreads</span>())
+<span class="pl-c1">BlockHaloArray</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractArray{T,N}</span>, halodims<span class="pl-k">::</span><span class="pl-c1">NTuple{N2,Integer}</span>, nhalo<span class="pl-k">::</span><span class="pl-c1">Integer</span>, nblocks<span class="pl-k">=</span><span class="pl-c1">nthreads</span>()) </pre></div>
+<h4 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using .Threads
+using ThreadPools
+using BlockHaloArrays
+
+dims = (30, 20) # a 30 x 20 matrix
+nhalo = 2 # number of halo entries in each dimension
+nblocks = nthreads() # nblocks must be ≤ nthreads() or a warning will be issued
+
+A = BlockHaloArray(dims, nhalo, nblocks; T=Float64) # create with empty data
+B = BlockHaloArray(rand(dims...), nhalo, nblocks) # create from an existing array
+
+# Create a 3D array, but only do halo exchange on the 2nd and 3rd dimensions
+newdims = (4, 100, 200)
+haloax = (2, 3) # these must be monotonically increasing and the outer-most dims, i.e. can't be (1, 2), or (1, 3)
+C = BlockHaloArray(newdims, haloax, nhalo, nblocks; T=Float64)
+
+# Fill each block with it's corresponding threadid value
+function init(A)
+    dom = domainview(A, threadid())
+    fill!(dom, threadid())
+end
+
+# Let each thread initialize it's own block
+@sync for tid in 1:nblocks(A)
+    @tspawnat tid init(A1)
+end
+
+# Let each block sync its halo region with its neighbors
+updatehalo!(A)
+
+Anew = flatten(A) # Anew is a 2D Array -- no longer a BlockHaloArray"><pre><span class="pl-k">using</span> <span class="pl-k">.</span>Threads
+<span class="pl-k">using</span> ThreadPools
+<span class="pl-k">using</span> BlockHaloArrays
+
+dims <span class="pl-k">=</span> (<span class="pl-c1">30</span>, <span class="pl-c1">20</span>) <span class="pl-c"><span class="pl-c">#</span> a 30 x 20 matrix</span>
+nhalo <span class="pl-k">=</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> number of halo entries in each dimension</span>
+nblocks <span class="pl-k">=</span> <span class="pl-c1">nthreads</span>() <span class="pl-c"><span class="pl-c">#</span> nblocks must be ≤ nthreads() or a warning will be issued</span>
+
+A <span class="pl-k">=</span> <span class="pl-c1">BlockHaloArray</span>(dims, nhalo, nblocks; T<span class="pl-k">=</span>Float64) <span class="pl-c"><span class="pl-c">#</span> create with empty data</span>
+B <span class="pl-k">=</span> <span class="pl-c1">BlockHaloArray</span>(<span class="pl-c1">rand</span>(dims<span class="pl-k">...</span>), nhalo, nblocks) <span class="pl-c"><span class="pl-c">#</span> create from an existing array</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Create a 3D array, but only do halo exchange on the 2nd and 3rd dimensions</span>
+newdims <span class="pl-k">=</span> (<span class="pl-c1">4</span>, <span class="pl-c1">100</span>, <span class="pl-c1">200</span>)
+haloax <span class="pl-k">=</span> (<span class="pl-c1">2</span>, <span class="pl-c1">3</span>) <span class="pl-c"><span class="pl-c">#</span> these must be monotonically increasing and the outer-most dims, i.e. can't be (1, 2), or (1, 3)</span>
+C <span class="pl-k">=</span> <span class="pl-c1">BlockHaloArray</span>(newdims, haloax, nhalo, nblocks; T<span class="pl-k">=</span>Float64)
+
+<span class="pl-c"><span class="pl-c">#</span> Fill each block with it's corresponding threadid value</span>
+<span class="pl-k">function</span> <span class="pl-en">init</span>(A)
+    dom <span class="pl-k">=</span> <span class="pl-c1">domainview</span>(A, <span class="pl-c1">threadid</span>())
+    <span class="pl-c1">fill!</span>(dom, <span class="pl-c1">threadid</span>())
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Let each thread initialize it's own block</span>
+<span class="pl-c1">@sync</span> <span class="pl-k">for</span> tid <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">nblocks</span>(A)
+    <span class="pl-c1">@tspawnat</span> tid <span class="pl-c1">init</span>(A1)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Let each block sync its halo region with its neighbors</span>
+<span class="pl-c1">updatehalo!</span>(A)
+
+Anew <span class="pl-k">=</span> <span class="pl-c1">flatten</span>(A) <span class="pl-c"><span class="pl-c">#</span> Anew is a 2D Array -- no longer a BlockHaloArray</span></pre></div>
+<ul dir="auto">
+<li><code>MPIBlockHaloArray</code>: (to be implemented) An MPI-aware version of a <code>BlockHaloArray</code>. This facilitates halo communication between nodes via MPI.</li>
+</ul>
+<h3 dir="auto"><a id="user-content-functions" class="anchor" aria-hidden="true" href="#functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Functions</h3>
+<ul dir="auto">
+<li><code>flatten(A)</code>: Return a flattened <code>Array</code> of <code>A</code>. This is a copy.</li>
+<li><code>repartition(A, nblocks)</code>: Repartition the BlockHaloArray into a different block layout</li>
+<li><code>updatehalo!(A, include_periodic_bc=false)</code>: Sync all block halo regions. This uses a <code>@sync</code> loop with @tspawnat to sync each block.</li>
+<li><code>updateblockhalo!(A, block_id, include_periodic_bc=false)</code>: Sync the halo regions of a single block. No <code>@sync</code> or <code>@spawn</code> calls are used.</li>
+<li><code>domainview(A, blockid)</code>: Return a view of a the domain (no halo regions) of block <code>blockid</code></li>
+<li><code>onboundary(A, blockid)</code>: Is the current block <code>blockid</code> on a boundary? This is used help apply boundary conditions in a user code.</li>
+</ul>
+<p dir="auto">Additional overloaded methods include</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="eltype(A::AbstractBlockHaloArray) = eltype(first(A.blocks))
+
+size(A::AbstractBlockHaloArray) = A.globaldims
+size(A::AbstractBlockHaloArray, dim) = size.(A.blocks, dim)
+
+axes(A::AbstractBlockHaloArray) = axes.(A.blocks)
+axes(A::AbstractBlockHaloArray, dim) = axes.(A.blocks, dim)
+
+first(A::AbstractBlockHaloArray) = first(A.blocks)
+firstindex(A::AbstractBlockHaloArray) = firstindex(A.blocks)
+
+last(A::AbstractBlockHaloArray) = last(A.blocks)
+lastindex(A::AbstractBlockHaloArray) = lastindex(A.blocks)
+
+eachindex(A::AbstractBlockHaloArray) = eachindex(A.blocks)
+
+nblocks(A::AbstractBlockHaloArray) = length(A.blocks)"><pre><span class="pl-en">eltype</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">eltype</span>(<span class="pl-c1">first</span>(A<span class="pl-k">.</span>blocks))
+
+<span class="pl-en">size</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> A<span class="pl-k">.</span>globaldims
+<span class="pl-en">size</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>, dim) <span class="pl-k">=</span> <span class="pl-c1">size</span>.(A<span class="pl-k">.</span>blocks, dim)
+
+<span class="pl-en">axes</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">axes</span>.(A<span class="pl-k">.</span>blocks)
+<span class="pl-en">axes</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>, dim) <span class="pl-k">=</span> <span class="pl-c1">axes</span>.(A<span class="pl-k">.</span>blocks, dim)
+
+<span class="pl-en">first</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">first</span>(A<span class="pl-k">.</span>blocks)
+<span class="pl-en">firstindex</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">firstindex</span>(A<span class="pl-k">.</span>blocks)
+
+<span class="pl-en">last</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">last</span>(A<span class="pl-k">.</span>blocks)
+<span class="pl-en">lastindex</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">lastindex</span>(A<span class="pl-k">.</span>blocks)
+
+<span class="pl-en">eachindex</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">eachindex</span>(A<span class="pl-k">.</span>blocks)
+
+<span class="pl-en">nblocks</span>(A<span class="pl-k">::</span><span class="pl-c1">AbstractBlockHaloArray</span>) <span class="pl-k">=</span> <span class="pl-c1">length</span>(A<span class="pl-k">.</span>blocks)</pre></div>
+</article></div>

@@ -1,0 +1,85 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-baobzijl" class="anchor" aria-hidden="true" href="#baobzijl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Baobzi.jl</h1>
+<p dir="auto">Wrapper library for Baobzi interpolator library</p>
+<p dir="auto">TLDR: Baobzi takes a function and represents adatively it as a tree of polynomial
+interpolants. This is <em>very</em> fast and <em>very</em> accurate. Basically it allows you to precompute a
+"heavy" function into a very good approximation of that function that can be orders of
+magnitude faster. Operations on 1D functions are typically ~100-200 million evaluations per
+second, depending on hardware. I.e. functions can often evaluate faster than some fancy
+implementations of functions like <code>log</code>, and can be orders of magnitude faster than special function evaluations.</p>
+<p dir="auto">Unfortunately, Baobzi is not a pure Julia implementation. The core library is written in <code>c++</code>
+and has with <code>c</code> bindings as a public API. Since <code>Baobzi</code> needs to call the function you want
+to approximate, this presents some limitations with Julia due to mutability and type
+constraints. Basically you need to make your "callback" function C callable (<code>double myfunc(double* x))</code>.  That or generate the function object in another language and call it in
+julia. This is probably best shown by example. All functions you want to fit need a signature
+identical to the <code>testfunc</code> below.</p>
+<p dir="auto">Simple 2d example for the function <code>z = x*y</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Baobzi
+
+function testfunc(xp::Ptr{Float64})::Cdouble
+    x = unsafe_load(xp, 1)
+    y = unsafe_load(xp, 2)
+    return x * y
+end
+
+center = [0.0, 0.0]             # center of our function's rectangular domain
+hl = [1.0, 1.0]                 # half widths of the functions rectangular domain
+test_point = [0.25, 0.25]       # just a point we want to evaluate at
+dim = 2                         # number of independent variables in our function (x, y)
+order = 6                       # order of polynomial fit
+tol = 1E-10                     # requested precision of fit
+output_file = &quot;simple2d.baobzi&quot; # place to store the file
+split_multi_eval = 0            # Whether to split evaluation into two steps or not. Has mild performance implications
+
+# Fit our function
+func_approx = Baobzi.init(testfunc, dim, order, center, hl, tol, 0)
+# Print some stats about the fit procedure
+Baobzi.stats(func_approx)
+# Compare result
+println(Baobzi.eval(func_approx, test_point) - testfunc(pointer(test_point)))
+
+# Save our function and then delete it
+Baobzi.save(func_approx, output_file)
+Baobzi.free(func_approx)
+
+# Restore function and compare
+func_approx = Baobzi.restore(output_file)
+println(Baobzi.eval(func_approx, test_point) - testfunc(pointer(test_point)))
+
+# Evaluate function at many points in our domain
+points = 2.0 * (rand(Float64, 2000000)) .- 1.0
+z = Baobzi.eval_multi(func_approx, points)"><pre><span class="pl-k">import</span> Baobzi
+
+<span class="pl-k">function</span> <span class="pl-en">testfunc</span>(xp<span class="pl-k">::</span><span class="pl-c1">Ptr{Float64}</span>)<span class="pl-k">::</span><span class="pl-c1">Cdouble</span>
+    x <span class="pl-k">=</span> <span class="pl-c1">unsafe_load</span>(xp, <span class="pl-c1">1</span>)
+    y <span class="pl-k">=</span> <span class="pl-c1">unsafe_load</span>(xp, <span class="pl-c1">2</span>)
+    <span class="pl-k">return</span> x <span class="pl-k">*</span> y
+<span class="pl-k">end</span>
+
+center <span class="pl-k">=</span> [<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>]             <span class="pl-c"><span class="pl-c">#</span> center of our function's rectangular domain</span>
+hl <span class="pl-k">=</span> [<span class="pl-c1">1.0</span>, <span class="pl-c1">1.0</span>]                 <span class="pl-c"><span class="pl-c">#</span> half widths of the functions rectangular domain</span>
+test_point <span class="pl-k">=</span> [<span class="pl-c1">0.25</span>, <span class="pl-c1">0.25</span>]       <span class="pl-c"><span class="pl-c">#</span> just a point we want to evaluate at</span>
+dim <span class="pl-k">=</span> <span class="pl-c1">2</span>                         <span class="pl-c"><span class="pl-c">#</span> number of independent variables in our function (x, y)</span>
+order <span class="pl-k">=</span> <span class="pl-c1">6</span>                       <span class="pl-c"><span class="pl-c">#</span> order of polynomial fit</span>
+tol <span class="pl-k">=</span> <span class="pl-c1">1E-10</span>                     <span class="pl-c"><span class="pl-c">#</span> requested precision of fit</span>
+output_file <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>simple2d.baobzi<span class="pl-pds">"</span></span> <span class="pl-c"><span class="pl-c">#</span> place to store the file</span>
+split_multi_eval <span class="pl-k">=</span> <span class="pl-c1">0</span>            <span class="pl-c"><span class="pl-c">#</span> Whether to split evaluation into two steps or not. Has mild performance implications</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Fit our function</span>
+func_approx <span class="pl-k">=</span> Baobzi<span class="pl-k">.</span><span class="pl-c1">init</span>(testfunc, dim, order, center, hl, tol, <span class="pl-c1">0</span>)
+<span class="pl-c"><span class="pl-c">#</span> Print some stats about the fit procedure</span>
+Baobzi<span class="pl-k">.</span><span class="pl-c1">stats</span>(func_approx)
+<span class="pl-c"><span class="pl-c">#</span> Compare result</span>
+<span class="pl-c1">println</span>(Baobzi<span class="pl-k">.</span><span class="pl-c1">eval</span>(func_approx, test_point) <span class="pl-k">-</span> <span class="pl-c1">testfunc</span>(<span class="pl-c1">pointer</span>(test_point)))
+
+<span class="pl-c"><span class="pl-c">#</span> Save our function and then delete it</span>
+Baobzi<span class="pl-k">.</span><span class="pl-c1">save</span>(func_approx, output_file)
+Baobzi<span class="pl-k">.</span><span class="pl-c1">free</span>(func_approx)
+
+<span class="pl-c"><span class="pl-c">#</span> Restore function and compare</span>
+func_approx <span class="pl-k">=</span> Baobzi<span class="pl-k">.</span><span class="pl-c1">restore</span>(output_file)
+<span class="pl-c1">println</span>(Baobzi<span class="pl-k">.</span><span class="pl-c1">eval</span>(func_approx, test_point) <span class="pl-k">-</span> <span class="pl-c1">testfunc</span>(<span class="pl-c1">pointer</span>(test_point)))
+
+<span class="pl-c"><span class="pl-c">#</span> Evaluate function at many points in our domain</span>
+points <span class="pl-k">=</span> <span class="pl-c1">2.0</span> <span class="pl-k">*</span> (<span class="pl-c1">rand</span>(Float64, <span class="pl-c1">2000000</span>)) <span class="pl-k">.-</span> <span class="pl-c1">1.0</span>
+z <span class="pl-k">=</span> Baobzi<span class="pl-k">.</span><span class="pl-c1">eval_multi</span>(func_approx, points)</pre></div>
+</article></div>

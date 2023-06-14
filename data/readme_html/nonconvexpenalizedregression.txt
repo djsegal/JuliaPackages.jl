@@ -1,0 +1,192 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://pnavaro.github.io/NonConvexPenalizedRegression.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/pnavaro/NonConvexPenalizedRegression.jl/actions/workflows/ci.yml/badge.svg"><img src="https://github.com/pnavaro/NonConvexPenalizedRegression.jl/actions/workflows/ci.yml/badge.svg" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/pnavaro/NonConvexPenalizedRegression.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/a41079803ebf5222b731a4e16a17041e609c040a0c87afaf2a8bb6291604817b/68747470733a2f2f636f6465636f762e696f2f67682f706e617661726f2f4e6f6e436f6e76657850656e616c697a656452656772657373696f6e2e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/pnavaro/NonConvexPenalizedRegression.jl/branch/master/graph/badge.svg" style="max-width: 100%;"></a></p>
+<h1 dir="auto"><a id="user-content-nonconvexpenalizedregressionjl" class="anchor" aria-hidden="true" href="#nonconvexpenalizedregressionjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>NonConvexPenalizedRegression.jl</h1>
+<p dir="auto">Regularization Paths for SCAD and MCP Penalized Regression Models</p>
+<p dir="auto">This is a quick, naive and partial Julia translation of the R package <a href="http://pbreheny.github.io/ncvreg/" rel="nofollow">ncvreg</a>.  Only <code>gaussian</code> family is translated but if you need more, just ask, i can do it if it is useful for someone.</p>
+<p dir="auto">Algorithm is described in <strong>Breheny P and Huang J (2011)</strong> "Coordinate descent algorithms for nonconvex penalized regression, with applications to biological feature selection". <em>Annals of Applied Statistics</em>, 5: 232–253</p>
+<p dir="auto">I needed to do regression with SCAD penalty and I can't find it in any Julia package.
+Perharps it is now implemented in <a href="https://github.com/alan-turing-institute/MLJLinearModels.jl">MLJLinearModels.jl</a>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using LinearAlgebra 
+julia&gt; using Random
+julia&gt; using NonConvexPenalizedRegression 
+julia&gt; using RCall
+julia&gt; rng = MersenneTwister(1234);
+julia&gt; n, p = 50, 5
+(50, 5)
+
+julia&gt; X = randn(rng, n, p)              # feature matrix
+50×5 Array{Float64,2}:
+  0.867347   -1.22672     0.183976    0.0377058   1.48494
+ -0.901744   -0.541716   -1.27635    -0.490009    1.23969
+  ⋮
+ -1.00978    -1.66323    -0.744522    0.427383   -1.37986
+ -0.543805   -0.521229   -0.191176   -0.492253   -0.984217
+
+julia&gt; a0 = collect(1:p)                # ground truths
+5-element Array{Int64,1}:
+ 1
+ 2
+ 3
+ 4
+ 5
+
+julia&gt; y = X * a0 + 0.1 * randn(n) # generate response
+50-element Array{Float64,1}:
+   6.411769869798991
+  -1.59817739694925
+   ⋮
+ -11.769008550241434
+  -9.107294931708777
+
+julia&gt; XX = hcat(X, randn(rng, n, p))
+50×10 Array{Float64,2}:
+  0.867347   -1.22672     0.183976    0.0377058  …   1.69129     0.969694    0.222167    -0.953909
+  ⋮                                              ⋱
+ -0.543805   -0.521229   -0.191176   -0.492253      -2.5788     -0.329958    0.00775707  -0.370354
+
+julia&gt; @rput XX
+50×10 Array{Float64,2}:
+  0.867347   -1.22672     0.183976    0.0377058  …   1.69129     0.969694    0.222167    -0.953909
+  ⋮                                              ⋱
+ -0.543805   -0.521229   -0.191176   -0.492253      -2.5788     -0.329958    0.00775707  -0.370354
+
+julia&gt; @rput y
+50-element Array{Float64,1}:
+   6.411769869798991
+  -1.59817739694925
+   ⋮
+ -11.769008550241434
+  -9.107294931708777
+
+julia&gt; R&quot;library(ncvreg)&quot;
+RObject{StrSxp}
+[1] &quot;ncvreg&quot;    &quot;stats&quot;     &quot;graphics&quot;  &quot;grDevices&quot; &quot;utils&quot;     &quot;datasets&quot;
+[7] &quot;methods&quot;   &quot;base&quot;
+
+julia&gt; R&quot;scad &lt;- coef(ncvreg(XX, y, lambda=0.2, penalty='SCAD', eps=.0001))&quot;
+RObject{RealSxp}
+ (Intercept)           V1           V2           V3           V4           V5
+-0.003322903  1.025666431  2.000108987  2.983498545  3.997543804  4.982264144
+          V6           V7           V8           V9          V10
+ 0.000000000  0.000000000  0.000000000  0.000000000  0.000000000
+
+julia&gt; @rget scad
+11-element Array{Float64,1}:
+ -0.0033229032078964105
+  1.0256664305062173
+  2.000108987156345
+  2.9834985454557157
+  3.997543803872521
+  4.982264143916537
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0
+
+julia&gt; println( &quot; R scad = $scad&quot;)
+ R scad = [-0.0033229032078964105, 1.0256664305062173, 2.000108987156345, 2.9834985454557157, 3.997543803872521, 4.982264143916537, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+julia&gt; λ = [0.2]
+1-element Array{Float64,1}:
+ 0.2
+
+julia&gt; scad = NonConvexPenalizedRegression.coef(SCAD(XX, y, λ))
+SCAD([-0.003322960709765954; 1.0256660512338405; … ; 0.0; 0.0])
+
+julia&gt; println( &quot; Julia scad = $scad&quot;)
+ Julia scad = SCAD([-0.003322960709765954; 1.0256660512338405; 2.00010933635426; 2.983498839847109; 3.99754375703709; 4.982264100245242; 0.0; 0.0; 0.0; 0.0; 0.0])
+"><pre lang="julia-repl" class="notranslate"><code>julia&gt; using LinearAlgebra 
+julia&gt; using Random
+julia&gt; using NonConvexPenalizedRegression 
+julia&gt; using RCall
+julia&gt; rng = MersenneTwister(1234);
+julia&gt; n, p = 50, 5
+(50, 5)
+
+julia&gt; X = randn(rng, n, p)              # feature matrix
+50×5 Array{Float64,2}:
+  0.867347   -1.22672     0.183976    0.0377058   1.48494
+ -0.901744   -0.541716   -1.27635    -0.490009    1.23969
+  ⋮
+ -1.00978    -1.66323    -0.744522    0.427383   -1.37986
+ -0.543805   -0.521229   -0.191176   -0.492253   -0.984217
+
+julia&gt; a0 = collect(1:p)                # ground truths
+5-element Array{Int64,1}:
+ 1
+ 2
+ 3
+ 4
+ 5
+
+julia&gt; y = X * a0 + 0.1 * randn(n) # generate response
+50-element Array{Float64,1}:
+   6.411769869798991
+  -1.59817739694925
+   ⋮
+ -11.769008550241434
+  -9.107294931708777
+
+julia&gt; XX = hcat(X, randn(rng, n, p))
+50×10 Array{Float64,2}:
+  0.867347   -1.22672     0.183976    0.0377058  …   1.69129     0.969694    0.222167    -0.953909
+  ⋮                                              ⋱
+ -0.543805   -0.521229   -0.191176   -0.492253      -2.5788     -0.329958    0.00775707  -0.370354
+
+julia&gt; @rput XX
+50×10 Array{Float64,2}:
+  0.867347   -1.22672     0.183976    0.0377058  …   1.69129     0.969694    0.222167    -0.953909
+  ⋮                                              ⋱
+ -0.543805   -0.521229   -0.191176   -0.492253      -2.5788     -0.329958    0.00775707  -0.370354
+
+julia&gt; @rput y
+50-element Array{Float64,1}:
+   6.411769869798991
+  -1.59817739694925
+   ⋮
+ -11.769008550241434
+  -9.107294931708777
+
+julia&gt; R"library(ncvreg)"
+RObject{StrSxp}
+[1] "ncvreg"    "stats"     "graphics"  "grDevices" "utils"     "datasets"
+[7] "methods"   "base"
+
+julia&gt; R"scad &lt;- coef(ncvreg(XX, y, lambda=0.2, penalty='SCAD', eps=.0001))"
+RObject{RealSxp}
+ (Intercept)           V1           V2           V3           V4           V5
+-0.003322903  1.025666431  2.000108987  2.983498545  3.997543804  4.982264144
+          V6           V7           V8           V9          V10
+ 0.000000000  0.000000000  0.000000000  0.000000000  0.000000000
+
+julia&gt; @rget scad
+11-element Array{Float64,1}:
+ -0.0033229032078964105
+  1.0256664305062173
+  2.000108987156345
+  2.9834985454557157
+  3.997543803872521
+  4.982264143916537
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0
+
+julia&gt; println( " R scad = $scad")
+ R scad = [-0.0033229032078964105, 1.0256664305062173, 2.000108987156345, 2.9834985454557157, 3.997543803872521, 4.982264143916537, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+julia&gt; λ = [0.2]
+1-element Array{Float64,1}:
+ 0.2
+
+julia&gt; scad = NonConvexPenalizedRegression.coef(SCAD(XX, y, λ))
+SCAD([-0.003322960709765954; 1.0256660512338405; … ; 0.0; 0.0])
+
+julia&gt; println( " Julia scad = $scad")
+ Julia scad = SCAD([-0.003322960709765954; 1.0256660512338405; 2.00010933635426; 2.983498839847109; 3.99754375703709; 4.982264100245242; 0.0; 0.0; 0.0; 0.0; 0.0])
+
+</code></pre></div>
+</article></div>

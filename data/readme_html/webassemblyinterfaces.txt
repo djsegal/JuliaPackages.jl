@@ -1,0 +1,145 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-webassemblyinterfaces" class="anchor" aria-hidden="true" href="#webassemblyinterfaces"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>WebAssemblyInterfaces</h1>
+<p dir="auto"><a href="https://github.com/tshort/WebAssemblyInterfaces.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/tshort/WebAssemblyInterfaces.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">NOTE: This is still experimental, and not all features have been tested with WebAssembly.</p>
+<p dir="auto">For a working example, see this <a href="http://tshort.github.io/Lorenz-WebAssembly-Model.jl" rel="nofollow">Lorenz Attraction App in Julia</a>.</p>
+<p dir="auto">This is a small package to write out definitions in JavaScript that correspond to Julia types and object definitions. This JavaScript code is meant to be used with the <a href="https://github.com/DeMille/wasm-ffi/tree/master">wasm-ffi</a> package, a great package for interfacing between JavaScript and WebAssembly. This allows JavaScript to read and write to memory that is shared by the Julia code (after being compiled to WebAssembly). The <a href="https://github.com/DeMille/wasm-ffi/tree/master">wasm-ffi</a> package writes to the same memory layout used by Julia.</p>
+<p dir="auto">The following types are supported:</p>
+<ul dir="auto">
+<li>Structs, tuples, named tuples</li>
+<li>Concrete types that include: Bool, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, and Float64</li>
+</ul>
+<p dir="auto">Functions and other types that don't have a size are not written. For vectors, the <code>MallocVector</code> type from <a href="https://github.com/brenhinkeller/StaticTools.jl">StaticTools</a> works with the <code>ffi.rust.vector</code> type in wasm-ffi. The memory layouts do not match exactly, but it works for some uses.</p>
+<p dir="auto"><code>wasm-ffi</code> performs allocations when objects are created on the JavaScript side. It is also possible to do allocation on the Julia side. The WebAssembly file needs to include <code>allocate</code> and <code>free</code> functions.</p>
+<p dir="auto">Three functions are provided:</p>
+<ul dir="auto">
+<li><code>js_types(T)</code>: Return a string with the JavaScript definition of type <code>T</code>.</li>
+<li><code>js_def(x)</code>: Return a string with the JavaScript code to define object <code>x</code>.</li>
+<li><code>js_repr(x)</code>: Return a string with the JavaScript code with the types and the code to define <code>x</code>.</li>
+</ul>
+<p dir="auto">Here is an example of Julia code that defines a custom type and generates JavaScript interfacing code.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="mutable struct X{A,B,C}
+    a::A
+    b::B
+    c::C
+end
+
+struct Y{A,B,C}
+    a::A
+    b::B
+    c::C
+end
+
+x = X(2, Y(1.1, 2, (1, 1.1)), Y(1, 2, 3))
+
+using WebAssemblyInterfaces
+
+print(js_repr(x))"><pre><span class="pl-k">mutable struct</span> X{A,B,C}
+    a<span class="pl-k">::</span><span class="pl-c1">A</span>
+    b<span class="pl-k">::</span><span class="pl-c1">B</span>
+    c<span class="pl-k">::</span><span class="pl-c1">C</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> Y{A,B,C}
+    a<span class="pl-k">::</span><span class="pl-c1">A</span>
+    b<span class="pl-k">::</span><span class="pl-c1">B</span>
+    c<span class="pl-k">::</span><span class="pl-c1">C</span>
+<span class="pl-k">end</span>
+
+x <span class="pl-k">=</span> <span class="pl-c1">X</span>(<span class="pl-c1">2</span>, <span class="pl-c1">Y</span>(<span class="pl-c1">1.1</span>, <span class="pl-c1">2</span>, (<span class="pl-c1">1</span>, <span class="pl-c1">1.1</span>)), <span class="pl-c1">Y</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>))
+
+<span class="pl-k">using</span> WebAssemblyInterfaces
+
+<span class="pl-c1">print</span>(<span class="pl-c1">js_repr</span>(x))</pre></div>
+<p dir="auto">Here is the JavaScript code that is printed:</p>
+<div class="highlight highlight-source-js notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="const Y = new ffi.Struct({
+    a: 'f64',
+    b: 'int64',
+    c: ffi.rust.tuple(['int64','f64']),
+});
+
+const YInt64_Int64_Int64 = new ffi.Struct({
+    a: 'int64',
+    b: 'int64',
+    c: 'int64',
+});
+
+const X = new ffi.Struct({
+    a: 'int64',
+    b: Y,
+    c: YInt64_Int64_Int64,
+});
+
+new X({
+a: 2,
+b: new Y({
+a: 1.1,
+b: 2,
+c: new ffi.rust.tuple(['int64','f64'], [1, 1.1]),
+}),
+c: new YInt64_Int64_Int64({
+a: 1,
+b: 2,
+c: 3,
+}),
+})"><pre><span class="pl-k">const</span> <span class="pl-v">Y</span> <span class="pl-c1">=</span> <span class="pl-k">new</span> <span class="pl-s1">ffi</span><span class="pl-kos">.</span><span class="pl-c1">Struct</span><span class="pl-kos">(</span><span class="pl-kos">{</span>
+    <span class="pl-c1">a</span>: <span class="pl-s">'f64'</span><span class="pl-kos">,</span>
+    <span class="pl-c1">b</span>: <span class="pl-s">'int64'</span><span class="pl-kos">,</span>
+    <span class="pl-c1">c</span>: <span class="pl-s1">ffi</span><span class="pl-kos">.</span><span class="pl-c1">rust</span><span class="pl-kos">.</span><span class="pl-en">tuple</span><span class="pl-kos">(</span><span class="pl-kos">[</span><span class="pl-s">'int64'</span><span class="pl-kos">,</span><span class="pl-s">'f64'</span><span class="pl-kos">]</span><span class="pl-kos">)</span><span class="pl-kos">,</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">;</span>
+
+<span class="pl-k">const</span> <span class="pl-v">YInt64_Int64_Int64</span> <span class="pl-c1">=</span> <span class="pl-k">new</span> <span class="pl-s1">ffi</span><span class="pl-kos">.</span><span class="pl-c1">Struct</span><span class="pl-kos">(</span><span class="pl-kos">{</span>
+    <span class="pl-c1">a</span>: <span class="pl-s">'int64'</span><span class="pl-kos">,</span>
+    <span class="pl-c1">b</span>: <span class="pl-s">'int64'</span><span class="pl-kos">,</span>
+    <span class="pl-c1">c</span>: <span class="pl-s">'int64'</span><span class="pl-kos">,</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">;</span>
+
+<span class="pl-k">const</span> <span class="pl-v">X</span> <span class="pl-c1">=</span> <span class="pl-k">new</span> <span class="pl-s1">ffi</span><span class="pl-kos">.</span><span class="pl-c1">Struct</span><span class="pl-kos">(</span><span class="pl-kos">{</span>
+    <span class="pl-c1">a</span>: <span class="pl-s">'int64'</span><span class="pl-kos">,</span>
+    <span class="pl-c1">b</span>: <span class="pl-v">Y</span><span class="pl-kos">,</span>
+    <span class="pl-c1">c</span>: <span class="pl-v">YInt64_Int64_Int64</span><span class="pl-kos">,</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">;</span>
+
+<span class="pl-k">new</span> <span class="pl-v">X</span><span class="pl-kos">(</span><span class="pl-kos">{</span>
+<span class="pl-c1">a</span>: <span class="pl-c1">2</span><span class="pl-kos">,</span>
+<span class="pl-c1">b</span>: <span class="pl-k">new</span> <span class="pl-v">Y</span><span class="pl-kos">(</span><span class="pl-kos">{</span>
+<span class="pl-c1">a</span>: <span class="pl-c1">1.1</span><span class="pl-kos">,</span>
+<span class="pl-c1">b</span>: <span class="pl-c1">2</span><span class="pl-kos">,</span>
+<span class="pl-c1">c</span>: <span class="pl-k">new</span> <span class="pl-s1">ffi</span><span class="pl-kos">.</span><span class="pl-c1">rust</span><span class="pl-kos">.</span><span class="pl-c1">tuple</span><span class="pl-kos">(</span><span class="pl-kos">[</span><span class="pl-s">'int64'</span><span class="pl-kos">,</span><span class="pl-s">'f64'</span><span class="pl-kos">]</span><span class="pl-kos">,</span> <span class="pl-kos">[</span><span class="pl-c1">1</span><span class="pl-kos">,</span> <span class="pl-c1">1.1</span><span class="pl-kos">]</span><span class="pl-kos">)</span><span class="pl-kos">,</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">,</span>
+<span class="pl-c1">c</span>: <span class="pl-k">new</span> <span class="pl-v">YInt64_Int64_Int64</span><span class="pl-kos">(</span><span class="pl-kos">{</span>
+<span class="pl-c1">a</span>: <span class="pl-c1">1</span><span class="pl-kos">,</span>
+<span class="pl-c1">b</span>: <span class="pl-c1">2</span><span class="pl-kos">,</span>
+<span class="pl-c1">c</span>: <span class="pl-c1">3</span><span class="pl-kos">,</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">,</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span></pre></div>
+<p dir="auto">Here is a Julia function that could operate on this object. This can be compiled with <a href="https://github.com/tshort/StaticCompiler.jl">StaticCompiler</a>. The Julia code can read data from the object passed in, and it can write to this object in memory.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function f(x)
+    x.a = x.b[2] * x.c[3]
+    return x.c[1] + x.b.c[1]
+end
+
+# Compile it to WebAssembly:
+using StaticCompiler
+wasm_path = compile_wasm(f, Tuple{typeof(x)}, flags = `walloc.o`)
+"><pre><span class="pl-k">function</span> <span class="pl-en">f</span>(x)
+    x<span class="pl-k">.</span>a <span class="pl-k">=</span> x<span class="pl-k">.</span>b[<span class="pl-c1">2</span>] <span class="pl-k">*</span> x<span class="pl-k">.</span>c[<span class="pl-c1">3</span>]
+    <span class="pl-k">return</span> x<span class="pl-k">.</span>c[<span class="pl-c1">1</span>] <span class="pl-k">+</span> x<span class="pl-k">.</span>b<span class="pl-k">.</span>c[<span class="pl-c1">1</span>]
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Compile it to WebAssembly:</span>
+<span class="pl-k">using</span> StaticCompiler
+wasm_path <span class="pl-k">=</span> <span class="pl-c1">compile_wasm</span>(f, Tuple{<span class="pl-c1">typeof</span>(x)}, flags <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">`</span>walloc.o<span class="pl-pds">`</span></span>)
+</pre></div>
+<h3 dir="auto"><a id="user-content-options-going-forward" class="anchor" aria-hidden="true" href="#options-going-forward"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Options going forward</h3>
+<ul dir="auto">
+<li>
+<p dir="auto">Should we include a copy of <code>wasm-ffi.browser.js</code>? It makes sense if we add support for more Julia types.</p>
+</li>
+<li>
+<p dir="auto">Figure out where <code>walloc.o</code> should live. Should we add object code from other sources to make WebAssembly easier?</p>
+</li>
+<li>
+<p dir="auto">We could create and package a set of method overrides for StaticCompiler that are targeted at WebAssembly. We could also develop Mixtape passes to be able to compile more code.</p>
+</li>
+</ul>
+</article></div>

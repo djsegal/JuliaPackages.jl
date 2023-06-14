@@ -1,0 +1,144 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Introduction</h1>
+<p dir="auto">This module provides utilities for iterating over multiple type stable iterators in an ordered fashion. That is provided n iterators that iterate in a non-decreasing fashion we want a single iterator that iterates over
+all elements in all n iterators in a non-decreasing fashion.</p>
+<p dir="auto">The module has two interfaces. A macro interface and an object interface. The macro interface is recommended as it is signifcantly more performant. The object interface is only recommended in the case where you are merging many iterators (more than 10 roughly), or if performance does not matter.</p>
+<p dir="auto">The name <code>MergedIterators</code> must be in scope even if you do not use it to qualify names (i.e when you directly import or use the functions inside the module). This is because the macros <code>@merge_and_process</code> and <code>@custom_lt</code> expect it to be there.</p>
+<p dir="auto">In the example code snippets you may need to import or use the appropirate definitions before they work.</p>
+<h1 dir="auto"><a id="user-content-macro-interface" class="anchor" aria-hidden="true" href="#macro-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Macro Interface</h1>
+<p dir="auto">The macro <code>@merge_and_process</code>, the abstract class <code>IteratorProcess</code>, and the function <code>rank_key</code> form the macro interface.</p>
+<p dir="auto"><code>@merge_and_process</code> takes as input an <code>IteratorProcess</code> followed by a variable number of iterators.</p>
+<p dir="auto">One should extend <code>IteratorProcess</code> with a function like object that can
+handle the outputs of the iterators. This represents the process portion of <code>@merge_and_process</code>.</p>
+<p dir="auto">The <code>rank_key</code> function maps an output of the iterators to a <code>Float64</code>. By default <code>rank_key</code> simply converts its input to <code>Float64</code>. Processing will happen in increasing order as according to the <code>rank_key</code> function.</p>
+<p dir="auto">Below is an example of using this interface:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="struct Message
+    timestamp::Int64
+    amount::Float64
+end
+
+MergedIterators.rank_key(m::Message) = m.amount
+
+struct CollectAmounts &lt;: IteratorProcess
+    amounts::Vector{Float64}
+end
+
+(ca::CollectAmounts)(x::Message) = begin
+    push!(ca.amounts, x.amount)
+    nothing
+end
+
+iter1 = [
+    Message(1, 1),
+    Message(3, 3),
+    Message(7, 7)
+]
+
+iter2 = [
+    Message(2, 2),
+    Message(4, 4), 
+    Message(5, 5),
+    Message(6, 6),
+    Message(8, 8), 
+    Message(10, 10)
+]
+
+iter3 = [
+    Message(0, 0), 
+    Message(9, 9)
+]
+
+iter4 = []
+
+collector = CollectAmounts([])
+
+@merge_and_process collector iter1 iter2 iter3 iter4
+
+collector.amounts == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # true"><pre class="notranslate"><code>struct Message
+    timestamp::Int64
+    amount::Float64
+end
+
+MergedIterators.rank_key(m::Message) = m.amount
+
+struct CollectAmounts &lt;: IteratorProcess
+    amounts::Vector{Float64}
+end
+
+(ca::CollectAmounts)(x::Message) = begin
+    push!(ca.amounts, x.amount)
+    nothing
+end
+
+iter1 = [
+    Message(1, 1),
+    Message(3, 3),
+    Message(7, 7)
+]
+
+iter2 = [
+    Message(2, 2),
+    Message(4, 4), 
+    Message(5, 5),
+    Message(6, 6),
+    Message(8, 8), 
+    Message(10, 10)
+]
+
+iter3 = [
+    Message(0, 0), 
+    Message(9, 9)
+]
+
+iter4 = []
+
+collector = CollectAmounts([])
+
+@merge_and_process collector iter1 iter2 iter3 iter4
+
+collector.amounts == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # true
+</code></pre></div>
+<h1 dir="auto"><a id="user-content-object-interface" class="anchor" aria-hidden="true" href="#object-interface"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Object Interface</h1>
+<p dir="auto">The objects <code>SingleIterator</code> and <code>MergedIterator</code> and the macro <code>@custom_lt</code> form the object interface.</p>
+<p dir="auto"><code>SinlgeIterator{I, V, S}</code> wraps any type stable iterator. <code>I</code> ist the type of the iterator, <code>V</code> is the type of the values coming out of the iterator (not including the <code>nothing</code> at the end) and <code>S</code> is the type of the state of the iterator.</p>
+<p dir="auto"><code>MergedIterator{T, O}</code> represents a collection of single iterators. <code>T</code> is the type of the tuple of the included iterators but the user does not need to worry about that. <code>O</code> is the <code>Base.Order.Ordering</code> that the iterator will use. By default the iterator will use <code>Base.Order.ForwardOrdering</code>.</p>
+<p dir="auto"><code>@custom_lt</code> is used in front of adding a method to <code>Base.Order.lt</code> that you want to use with your own <code>Ordering</code> type. The macro simply defines a method of <code>Base.Order.lt</code> for an internal type so that the library can do its job. Internally that method is already defined when using a <code>Base.Order.ForwardOrdering</code> so if you are simply using that <code>Ordering</code> you don't need to use the macro in front of your method definition. You only need it when using your own <code>Ordering</code>.</p>
+<p dir="auto">Below is an example of using this interface:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="iter5 = [-2, 3, -5, 6]
+iter6 = (0, -1.2, -2.4, 2.9, 3.4, -5.6, -9)
+
+siter5 = SingleIterator{typeof(iter5), Int64, Int64}(iter5)
+siter6 = SingleIterator{typeof(iter6), Real, Int64}(iter6)
+
+struct AbsOrder &lt;: Base.Order.Ordering end
+
+@custom_lt Base.Order.lt(::AbsOrder, a, b) = Base.Order.lt(Base.Order.Forward, abs(a), abs(b))
+
+miter2 = MergedIterator(AbsOrder(), siter5, siter6)
+
+merged_result2 = [0, -1.2, -2, -2.4, 2.9, 3, 3.4, -5, -5.6, 6, -9]
+v2 = Vector{Any}()
+for x ∈ miter2
+    push!(v2, x)
+end
+
+merged_result2 == v2 # true"><pre class="notranslate"><code>iter5 = [-2, 3, -5, 6]
+iter6 = (0, -1.2, -2.4, 2.9, 3.4, -5.6, -9)
+
+siter5 = SingleIterator{typeof(iter5), Int64, Int64}(iter5)
+siter6 = SingleIterator{typeof(iter6), Real, Int64}(iter6)
+
+struct AbsOrder &lt;: Base.Order.Ordering end
+
+@custom_lt Base.Order.lt(::AbsOrder, a, b) = Base.Order.lt(Base.Order.Forward, abs(a), abs(b))
+
+miter2 = MergedIterator(AbsOrder(), siter5, siter6)
+
+merged_result2 = [0, -1.2, -2, -2.4, 2.9, 3, 3.4, -5, -5.6, 6, -9]
+v2 = Vector{Any}()
+for x ∈ miter2
+    push!(v2, x)
+end
+
+merged_result2 == v2 # true
+</code></pre></div>
+</article></div>

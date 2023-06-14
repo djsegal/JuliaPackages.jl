@@ -1,0 +1,81 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-constructfromjl" class="anchor" aria-hidden="true" href="#constructfromjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ConstructFrom.jl</h1>
+<p dir="auto">Construct objects without spelling out their types if the types can be inferred from context.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; vec::Vector{Vector{Int}} = construct_from(undef, 3);
+
+julia&gt; vec
+3-element Vector{Vector{Int64}}:
+ #undef
+ #undef
+ #undef"><pre>julia<span class="pl-k">&gt;</span> vec<span class="pl-k">::</span><span class="pl-c1">Vector{Vector{Int}}</span> <span class="pl-k">=</span> <span class="pl-c1">construct_from</span>(undef, <span class="pl-c1">3</span>);
+
+julia<span class="pl-k">&gt;</span> vec
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Vector{Vector{Int64}}<span class="pl-k">:</span>
+ <span class="pl-c"><span class="pl-c">#</span>undef</span>
+ <span class="pl-c"><span class="pl-c">#</span>undef</span>
+ <span class="pl-c"><span class="pl-c">#</span>undef</span></pre></div>
+<p dir="auto"><code>construct_from()</code> may be useful in a number of circumstances.</p>
+<ul dir="auto">
+<li>
+<p dir="auto">When defining default values for function arguments.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="foo(data::Vector{Int} = construct_from()) = ..."><pre><span class="pl-en">foo</span>(data<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span> <span class="pl-k">=</span> <span class="pl-en">construct_from</span>()) <span class="pl-k">=</span> <span class="pl-k">...</span></pre></div>
+</li>
+<li>
+<p dir="auto">When defining default values for fields of <code>@kwdef</code> structs.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Base.@kwdef struct Foo
+    data::Vector{Int} = construct_from()
+end"><pre>Base<span class="pl-k">.</span><span class="pl-c1">@kwdef</span> <span class="pl-k">struct</span> Foo
+    data<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span> <span class="pl-k">=</span> <span class="pl-c1">construct_from</span>()
+<span class="pl-k">end</span></pre></div>
+</li>
+<li>
+<p dir="auto">When initializing typed globals.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="data::Vector{Int} = construct_from()"><pre>data<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span> <span class="pl-k">=</span> <span class="pl-c1">construct_from</span>()</pre></div>
+</li>
+<li>
+<p dir="auto">When providing a default value for dictionary lookups.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="dict = Dict{Int, Vector{Int}}()
+get(dict, 42, construct_from())"><pre>dict <span class="pl-k">=</span> <span class="pl-c1">Dict</span><span class="pl-c1">{Int, Vector{Int}}</span>()
+<span class="pl-c1">get</span>(dict, <span class="pl-c1">42</span>, <span class="pl-c1">construct_from</span>())</pre></div>
+</li>
+</ul>
+<hr>
+<p dir="auto"><strong>Note.</strong> <code>construct_from()</code> exploits that Julia inserts an implicit <code>convert()</code> in many circumstances. (Most prominently, <code>a::T = b</code> is syntactic sugar for <code>a = typeassert(convert(T, b), T)</code>.) Correspondingly, <code>construct_from()</code> fails in cases where there is no conversion, or the conversion happens too late.</p>
+<ul dir="auto">
+<li>
+<p dir="auto">No conversion:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; foo(data::Vector{Int}) = data;
+
+julia&gt; # Doesn't work because no conversion
+       foo(construct_from())
+ERROR: MethodError: no method matching foo(::ConstructFrom.Arguments{...})
+
+julia&gt; # Let's add the conversion ourselves
+       foo(data) = foo(convert(Vector{Int}, data));
+
+julia&gt; # Now it works
+       foo(construct_from())
+Int64[]"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">foo</span>(data<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>) <span class="pl-k">=</span> data;
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Doesn't work because no conversion</span>
+       <span class="pl-c1">foo</span>(<span class="pl-c1">construct_from</span>())
+ERROR<span class="pl-k">:</span> MethodError<span class="pl-k">:</span> no method matching <span class="pl-c1">foo</span>(<span class="pl-k">::</span><span class="pl-c1">ConstructFrom.Arguments{...}</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Let's add the conversion ourselves</span>
+       <span class="pl-en">foo</span>(data) <span class="pl-k">=</span> <span class="pl-c1">foo</span>(<span class="pl-c1">convert</span>(Vector{Int}, data));
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> Now it works</span>
+       <span class="pl-c1">foo</span>(<span class="pl-c1">construct_from</span>())
+Int64[]</pre></div>
+</li>
+<li>
+<p dir="auto">Conversion happens too late:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; a = construct_from()
+       push!(a, 42) # &lt;- Julia won't deduce the type of `a` from how it's used later
+       b::Vector{Int} = a
+ERROR: MethodError: no method matching push!(::ConstructFrom.Arguments{...}, ::Int64)"><pre>julia<span class="pl-k">&gt;</span> a <span class="pl-k">=</span> <span class="pl-c1">construct_from</span>()
+       <span class="pl-c1">push!</span>(a, <span class="pl-c1">42</span>) <span class="pl-c"><span class="pl-c">#</span> &lt;- Julia won't deduce the type of `a` from how it's used later</span>
+       b<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span> <span class="pl-k">=</span> a
+ERROR<span class="pl-k">:</span> MethodError<span class="pl-k">:</span> no method matching <span class="pl-c1">push!</span>(<span class="pl-k">::</span><span class="pl-c1">ConstructFrom.Arguments{...}</span>, <span class="pl-k">::</span><span class="pl-c1">Int64</span>)</pre></div>
+</li>
+</ul>
+</article></div>

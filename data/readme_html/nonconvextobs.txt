@@ -1,0 +1,81 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-nonconvextobs" class="anchor" aria-hidden="true" href="#nonconvextobs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>NonconvexTOBS</h1>
+<p dir="auto"><a href="https://github.com/JuliaNonconvex/NonconvexTOBS.jl/actions?query=workflow%3ACI"><img src="https://github.com/JuliaNonconvex/NonconvexTOBS.jl/workflows/CI/badge.svg?branch=main" alt="CI" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/JuliaNonconvex/NonconvexTOBS.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/090ae20e07ed4dfa03559a59324fbe0148ac1cbae6b16cd526e2b58095c48bd2/68747470733a2f2f636f6465636f762e696f2f67682f4a756c69614e6f6e636f6e7665782f4e6f6e636f6e766578544f42532e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/JuliaNonconvex/NonconvexTOBS.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">The method of topological optimization of binary structures (<a href="https://www.sciencedirect.com/science/article/abs/pii/S0168874X17305619?via%3Dihub" rel="nofollow">TOBS</a>) was originally developed in the context of optimal distribution of material in mechanical components. This package implements the heuristic for binary nonlinear programming problems.</p>
+<h2 dir="auto"><a id="user-content-example-use-tobs-to-optimize-cantilever-beam" class="anchor" aria-hidden="true" href="#example-use-tobs-to-optimize-cantilever-beam"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example: use TOBS to optimize cantilever beam</h2>
+<p dir="auto">Begin by installing the base package and what's necessary for the specific problem:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Pkg
+Pkg.add(&quot;NonconvexTOBS&quot;)
+Pkg.add(&quot;TopOpt&quot;)"><pre><span class="pl-k">import</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>NonconvexTOBS<span class="pl-pds">"</span></span>)
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>TopOpt<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">First, the finite element problem must be built. This is done using <a href="https://github.com/JuliaTopOpt/TopOpt.jl">TopOpt.jl</a>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using NonconvexTOBS, TopOpt
+
+E = 1.0 # Young’s modulus
+v = 0.3 # Poisson’s ratio
+f = 1.0 # downward force
+rmin = 6.0 # filter radius
+xmin = 0.001 # minimum density
+V = 0.5 # maximum volume fraction
+p = 3.0 # topological optimization penalty
+
+# Define FEA problem
+problem_size = (160, 100) # size of rectangular mesh
+x0 = fill(1.0, prod(problem_size)) # initial design
+problem = PointLoadCantilever(Val{:Linear}, problem_size, (1.0, 1.0), E, v, f)"><pre><span class="pl-k">using</span> NonconvexTOBS, TopOpt
+
+E <span class="pl-k">=</span> <span class="pl-c1">1.0</span> <span class="pl-c"><span class="pl-c">#</span> Young’s modulus</span>
+v <span class="pl-k">=</span> <span class="pl-c1">0.3</span> <span class="pl-c"><span class="pl-c">#</span> Poisson’s ratio</span>
+f <span class="pl-k">=</span> <span class="pl-c1">1.0</span> <span class="pl-c"><span class="pl-c">#</span> downward force</span>
+rmin <span class="pl-k">=</span> <span class="pl-c1">6.0</span> <span class="pl-c"><span class="pl-c">#</span> filter radius</span>
+xmin <span class="pl-k">=</span> <span class="pl-c1">0.001</span> <span class="pl-c"><span class="pl-c">#</span> minimum density</span>
+V <span class="pl-k">=</span> <span class="pl-c1">0.5</span> <span class="pl-c"><span class="pl-c">#</span> maximum volume fraction</span>
+p <span class="pl-k">=</span> <span class="pl-c1">3.0</span> <span class="pl-c"><span class="pl-c">#</span> topological optimization penalty</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Define FEA problem</span>
+problem_size <span class="pl-k">=</span> (<span class="pl-c1">160</span>, <span class="pl-c1">100</span>) <span class="pl-c"><span class="pl-c">#</span> size of rectangular mesh</span>
+x0 <span class="pl-k">=</span> <span class="pl-c1">fill</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">prod</span>(problem_size)) <span class="pl-c"><span class="pl-c">#</span> initial design</span>
+problem <span class="pl-k">=</span> <span class="pl-c1">PointLoadCantilever</span>(Val{<span class="pl-c1">:Linear</span>}, problem_size, (<span class="pl-c1">1.0</span>, <span class="pl-c1">1.0</span>), E, v, f)</pre></div>
+<p dir="auto">FEA solver and auxiliary functions need to be defined as well:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="solver = FEASolver(Direct, problem; xmin=xmin)
+cheqfilter = DensityFilter(solver; rmin=rmin) # filter function
+comp = TopOpt.Compliance(problem, solver) # compliance function"><pre>solver <span class="pl-k">=</span> <span class="pl-c1">FEASolver</span>(Direct, problem; xmin<span class="pl-k">=</span>xmin)
+cheqfilter <span class="pl-k">=</span> <span class="pl-c1">DensityFilter</span>(solver; rmin<span class="pl-k">=</span>rmin) <span class="pl-c"><span class="pl-c">#</span> filter function</span>
+comp <span class="pl-k">=</span> TopOpt<span class="pl-k">.</span><span class="pl-c1">Compliance</span>(problem, solver) <span class="pl-c"><span class="pl-c">#</span> compliance function</span></pre></div>
+<p dir="auto">The usual topology optimization problem adresses compliance minimization under volume restriction. Therefore, the objective and the constraint are:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="obj(x) = comp(cheqfilter(x)) # compliance objective
+constr(x) = sum(cheqfilter(x)) / length(x) - V # volume fraction constraint"><pre><span class="pl-en">obj</span>(x) <span class="pl-k">=</span> <span class="pl-c1">comp</span>(<span class="pl-c1">cheqfilter</span>(x)) <span class="pl-c"><span class="pl-c">#</span> compliance objective</span>
+<span class="pl-en">constr</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(<span class="pl-c1">cheqfilter</span>(x)) <span class="pl-k">/</span> <span class="pl-c1">length</span>(x) <span class="pl-k">-</span> V <span class="pl-c"><span class="pl-c">#</span> volume fraction constraint</span></pre></div>
+<p dir="auto">Finally, the optimization problem is defined and solved:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Optimization setup
+m = Model(obj) # create optimization model
+addvar!(m, zeros(length(x0)), ones(length(x0))) # setup optimization variables
+Nonconvex.add_ineq_constraint!(m, constr) # setup volume inequality constraint
+options = TOBSOptions() # optimization options with default values
+TopOpt.setpenalty!(solver, p)
+
+# Perform TOBS optimization
+@time r = Nonconvex.optimize(m, TOBSAlg(), x0; options=options)
+
+# Results
+@show obj(r.minimizer)
+@show constr(r.minimizer)
+topology = r.minimizer"><pre><span class="pl-c"><span class="pl-c">#</span> Optimization setup</span>
+m <span class="pl-k">=</span> <span class="pl-c1">Model</span>(obj) <span class="pl-c"><span class="pl-c">#</span> create optimization model</span>
+<span class="pl-c1">addvar!</span>(m, <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x0)), <span class="pl-c1">ones</span>(<span class="pl-c1">length</span>(x0))) <span class="pl-c"><span class="pl-c">#</span> setup optimization variables</span>
+Nonconvex<span class="pl-k">.</span><span class="pl-c1">add_ineq_constraint!</span>(m, constr) <span class="pl-c"><span class="pl-c">#</span> setup volume inequality constraint</span>
+options <span class="pl-k">=</span> <span class="pl-c1">TOBSOptions</span>() <span class="pl-c"><span class="pl-c">#</span> optimization options with default values</span>
+TopOpt<span class="pl-k">.</span><span class="pl-c1">setpenalty!</span>(solver, p)
+
+<span class="pl-c"><span class="pl-c">#</span> Perform TOBS optimization</span>
+<span class="pl-c1">@time</span> r <span class="pl-k">=</span> Nonconvex<span class="pl-k">.</span><span class="pl-c1">optimize</span>(m, <span class="pl-c1">TOBSAlg</span>(), x0; options<span class="pl-k">=</span>options)
+
+<span class="pl-c"><span class="pl-c">#</span> Results</span>
+<span class="pl-c1">@show</span> <span class="pl-c1">obj</span>(r<span class="pl-k">.</span>minimizer)
+<span class="pl-c1">@show</span> <span class="pl-c1">constr</span>(r<span class="pl-k">.</span>minimizer)
+topology <span class="pl-k">=</span> r<span class="pl-k">.</span>minimizer</pre></div>
+<p dir="auto">Visualizing the results from this example:</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer nofollow" href="https://user-images.githubusercontent.com/84910559/164938659-797a6a6d-3518-4f7b-a4ff-24b43b822080.png"><img src="https://user-images.githubusercontent.com/84910559/164938659-797a6a6d-3518-4f7b-a4ff-24b43b822080.png" alt="histories" style="max-width: 100%;"></a></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer nofollow" href="https://user-images.githubusercontent.com/19524993/167059067-f08502a8-c62d-4d62-a2df-e132efc5e25c.gif"><img src="https://user-images.githubusercontent.com/19524993/167059067-f08502a8-c62d-4d62-a2df-e132efc5e25c.gif" alt="gif" data-animated-image="" style="max-width: 100%;"></a></p>
+</article></div>

@@ -1,0 +1,209 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-staticmpi" class="anchor" aria-hidden="true" href="#staticmpi"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>StaticMPI</h1>
+<p dir="auto"><a href="https://brenhinkeller.github.io/StaticMPI.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/brenhinkeller/StaticMPI.jl/actions/workflows/CI.yml"><img src="https://github.com/brenhinkeller/StaticMPI.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="CI" style="max-width: 100%;"></a>
+<a href="https://github.com/brenhinkeller/StaticMPI.jl/actions/workflows/CI-julia-nightly.yml"><img src="https://github.com/brenhinkeller/StaticMPI.jl/workflows/CI%20(Julia%20nightly)/badge.svg" alt="CI (Julia nightly)" style="max-width: 100%;"></a></p>
+<p dir="auto">An MPICH-compatible interface for calling <a href="https://www.mpi-forum.org/" rel="nofollow">MPI</a> from
+<a href="https://github.com/tshort/StaticCompiler.jl">StaticCompiler.jl</a> <code>compile_executable</code>'d
+standalone Julia executables, building upon the <a href="https://github.com/brenhinkeller/StaticTools.jl">StaticTools.jl</a> approach.</p>
+<p dir="auto">For all purposes other than compiling standalone exacutables, see
+<a href="https://github.com/JuliaParallel/MPI.jl">MPI.jl</a> instead.</p>
+<p dir="auto">Currently, only <a href="https://www.mpich.org" rel="nofollow">MPICH</a>-style implementations of libmpi
+are supported. A relatively complete low-level interface is provided in the
+<a href="src/mpich.jl">Mpich</a> submodule, while the more Julian top-level implementation
+is still relatively incomplete and under active development.</p>
+<p dir="auto">Note that the functions herein insert LLVM IR that directly calls functions from libmpi.
+As such, they will only work when linked against a valid libmpi during compilation.
+If you want to use them interactively in the REPL (e.g., for debugging), a valid
+libmpi must first have been <code>dlopen</code>ed with mode <code>RTLD_GLOBAL</code>. By default,
+StaticMPI will attempt to automatically <code>dlopen</code> (on init) the libmpi from
+<a href="https://github.com/JuliaBinaryWrappers/MPICH_jll.jl">MPICH_jll.jl</a>.
+If you want to use a different libmpi interactively, just <code>dlopen</code> it <em>before</em>
+<code>using StaticMPI</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using Libdl
+
+julia&gt; dlopen(&quot;/opt/local/lib/mpich-mp/libmpi&quot;, RTLD_GLOBAL)
+Ptr{Nothing} @0x00007fd5c4c40f40
+
+julia&gt; using StaticMPI
+
+julia&gt; MPI_Init() == MPI_SUCCESS
+true"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Libdl
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">dlopen</span>(<span class="pl-s"><span class="pl-pds">"</span>/opt/local/lib/mpich-mp/libmpi<span class="pl-pds">"</span></span>, RTLD_GLOBAL)
+Ptr{Nothing} @<span class="pl-c1">0x00007fd5c4c40f40</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> StaticMPI
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">MPI_Init</span>() <span class="pl-k">==</span> MPI_SUCCESS
+<span class="pl-c1">true</span></pre></div>
+<p dir="auto">If any MPI functions herein were somehow ever called <em>without</em> linking to libmpi
+one way or another, expect segfaults!</p>
+<h2 dir="auto"><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Examples</h2>
+<h4 dir="auto"><a id="user-content-hello-world" class="anchor" aria-hidden="true" href="#hello-world"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Hello World:</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using StaticCompiler, StaticTools, StaticMPI
+
+julia&gt; function mpihello(argc, argv)
+           MPI_Init(argc, argv)
+
+           comm = MPI_COMM_WORLD
+           world_size, world_rank = MPI_Comm_size(comm), MPI_Comm_rank(comm)
+
+           printf((c&quot;Hello from &quot;, world_rank, c&quot; of &quot;, world_size, c&quot; processors!\n&quot;))
+           MPI_Finalize()
+       end
+mpihello (generic function with 1 method)
+
+julia&gt; compile_executable(mpihello, (Int, Ptr{Ptr{UInt8}}), &quot;./&quot;;
+           cflags=`-lmpi -L/opt/local/lib/mpich-mp/`
+           # -lmpi instructs compiler to link against libmpi.so / libmpi.dylib
+           # -L/opt/local/lib/mpich-mp/ provides path to my local MPICH installation where libmpi can be found
+       )
+
+ld: warning: object file (./mpihello.o) was built for newer OSX version (12.0) than being linked (10.13)
+&quot;/Users/me/code/StaticTools.jl/mpihello&quot;
+
+shell&gt; mpiexec -np 4 ./mpihello
+Hello from 1 of 4 processors!
+Hello from 3 of 4 processors!
+Hello from 2 of 4 processors!
+Hello from 0 of 4 processors!"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> StaticCompiler, StaticTools, StaticMPI
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">function</span> <span class="pl-en">mpihello</span>(argc, argv)
+           <span class="pl-c1">MPI_Init</span>(argc, argv)
+
+           comm <span class="pl-k">=</span> MPI_COMM_WORLD
+           world_size, world_rank <span class="pl-k">=</span> <span class="pl-c1">MPI_Comm_size</span>(comm), <span class="pl-c1">MPI_Comm_rank</span>(comm)
+
+           <span class="pl-c1">printf</span>((<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Hello from <span class="pl-pds">"</span></span>, world_rank, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span> of <span class="pl-pds">"</span></span>, world_size, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span> processors!<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>))
+           <span class="pl-c1">MPI_Finalize</span>()
+       <span class="pl-k">end</span>
+mpihello (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">compile_executable</span>(mpihello, (Int, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>;
+           cflags<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">`</span>-lmpi -L/opt/local/lib/mpich-mp/<span class="pl-pds">`</span></span>
+           <span class="pl-c"><span class="pl-c">#</span> -lmpi instructs compiler to link against libmpi.so / libmpi.dylib</span>
+           <span class="pl-c"><span class="pl-c">#</span> -L/opt/local/lib/mpich-mp/ provides path to my local MPICH installation where libmpi can be found</span>
+       )
+
+ld<span class="pl-k">:</span> warning<span class="pl-k">:</span> object file (<span class="pl-k">./</span>mpihello<span class="pl-k">.</span>o) was built <span class="pl-k">for</span> newer OSX version (<span class="pl-c1">12.0</span>) than being linked (<span class="pl-c1">10.13</span>)
+<span class="pl-s"><span class="pl-pds">"</span>/Users/me/code/StaticTools.jl/mpihello<span class="pl-pds">"</span></span>
+
+shell<span class="pl-k">&gt;</span> mpiexec <span class="pl-k">-</span>np <span class="pl-c1">4</span> <span class="pl-k">./</span>mpihello
+Hello from <span class="pl-c1">1</span> of <span class="pl-c1">4</span> processors!
+Hello from <span class="pl-c1">3</span> of <span class="pl-c1">4</span> processors!
+Hello from <span class="pl-c1">2</span> of <span class="pl-c1">4</span> processors!
+Hello from <span class="pl-c1">0</span> of <span class="pl-c1">4</span> processors!</pre></div>
+<h4 dir="auto"><a id="user-content-send-and-recieve" class="anchor" aria-hidden="true" href="#send-and-recieve"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Send and recieve:</h4>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StaticCompiler, StaticTools, StaticMPI, MPICH_jll
+libpath = joinpath(first(splitdir(MPICH_jll.PATH[])), &quot;lib&quot;)
+
+# Function to compile
+function mpisendrecv(argc, argv)
+    MPI_Init(argc, argv) == MPI_SUCCESS || error(c&quot;MPI failed to initialize\n&quot;)
+
+    comm = MPI_COMM_WORLD
+    world_size, world_rank = MPI_Comm_size(comm), MPI_Comm_rank(comm)
+    nworkers = world_size - 1
+
+    if world_rank == 0
+        # Gather results on root note
+        buffer = mfill(0, nworkers)
+        requests = mfill(MPI_REQUEST_NULL, nworkers)
+        for i ∈ 1:nworkers
+            MPI_Irecv(buffer[i:i], i, 10, MPI_COMM_WORLD, requests[i:i])
+            # Note that this [i:i] syntax only works because contiguous indexing
+            # of `StaticTools.MallocArray`s returns a view
+        end
+        MPI_Waitall(requests)
+        printf((c&quot;Rank 0 recieved:\n&quot;, buffer, c&quot;\n&quot;))
+        printdlm(c&quot;results.csv&quot;, buffer)
+        free(requests), free(buffer)
+    else
+        # Send results back to root node
+        # Best to use malloc'd things when Sending (or esp. Isend-ing),
+        # to ensure they won't get unwound before send happens
+        x = mfill(world_rank)
+        printf((c&quot;Rank &quot;, world_rank, c&quot;, sending &quot;, x[], c&quot;\n&quot;))
+        MPI_Send(x, 0, 10, comm)
+        free(x)
+    end
+    MPI_Finalize()
+end
+
+# Compile it to binary executable
+compile_executable(mpisendrecv, (Int, Ptr{Ptr{UInt8}}), &quot;./&quot;;
+    cflags=`-lmpi -L$libpath -Wl,-rpath,$libpath`
+    # -lmpi instructs compiler to link against libmpi.so / libmpi.dylib
+    # -L$libpath tells the compiler about the path to libmpi
+    # -Wl,-rpath,$libpath tells the linker about the path to libmpi (not needed on all systems)
+)"><pre><span class="pl-k">using</span> StaticCompiler, StaticTools, StaticMPI, MPICH_jll
+libpath <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(<span class="pl-c1">first</span>(<span class="pl-c1">splitdir</span>(MPICH_jll<span class="pl-k">.</span>PATH[])), <span class="pl-s"><span class="pl-pds">"</span>lib<span class="pl-pds">"</span></span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Function to compile</span>
+<span class="pl-k">function</span> <span class="pl-en">mpisendrecv</span>(argc, argv)
+    <span class="pl-c1">MPI_Init</span>(argc, argv) <span class="pl-k">==</span> MPI_SUCCESS <span class="pl-k">||</span> <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>MPI failed to initialize<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+
+    comm <span class="pl-k">=</span> MPI_COMM_WORLD
+    world_size, world_rank <span class="pl-k">=</span> <span class="pl-c1">MPI_Comm_size</span>(comm), <span class="pl-c1">MPI_Comm_rank</span>(comm)
+    nworkers <span class="pl-k">=</span> world_size <span class="pl-k">-</span> <span class="pl-c1">1</span>
+
+    <span class="pl-k">if</span> world_rank <span class="pl-k">==</span> <span class="pl-c1">0</span>
+        <span class="pl-c"><span class="pl-c">#</span> Gather results on root note</span>
+        buffer <span class="pl-k">=</span> <span class="pl-c1">mfill</span>(<span class="pl-c1">0</span>, nworkers)
+        requests <span class="pl-k">=</span> <span class="pl-c1">mfill</span>(MPI_REQUEST_NULL, nworkers)
+        <span class="pl-k">for</span> i <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nworkers
+            <span class="pl-c1">MPI_Irecv</span>(buffer[i<span class="pl-k">:</span>i], i, <span class="pl-c1">10</span>, MPI_COMM_WORLD, requests[i<span class="pl-k">:</span>i])
+            <span class="pl-c"><span class="pl-c">#</span> Note that this [i:i] syntax only works because contiguous indexing</span>
+            <span class="pl-c"><span class="pl-c">#</span> of `StaticTools.MallocArray`s returns a view</span>
+        <span class="pl-k">end</span>
+        <span class="pl-c1">MPI_Waitall</span>(requests)
+        <span class="pl-c1">printf</span>((<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Rank 0 recieved:<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>, buffer, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span><span class="pl-cce">\n</span><span class="pl-pds">"</span></span>))
+        <span class="pl-c1">printdlm</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>results.csv<span class="pl-pds">"</span></span>, buffer)
+        <span class="pl-c1">free</span>(requests), <span class="pl-c1">free</span>(buffer)
+    <span class="pl-k">else</span>
+        <span class="pl-c"><span class="pl-c">#</span> Send results back to root node</span>
+        <span class="pl-c"><span class="pl-c">#</span> Best to use malloc'd things when Sending (or esp. Isend-ing),</span>
+        <span class="pl-c"><span class="pl-c">#</span> to ensure they won't get unwound before send happens</span>
+        x <span class="pl-k">=</span> <span class="pl-c1">mfill</span>(world_rank)
+        <span class="pl-c1">printf</span>((<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>Rank <span class="pl-pds">"</span></span>, world_rank, <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>, sending <span class="pl-pds">"</span></span>, x[], <span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span><span class="pl-cce">\n</span><span class="pl-pds">"</span></span>))
+        <span class="pl-c1">MPI_Send</span>(x, <span class="pl-c1">0</span>, <span class="pl-c1">10</span>, comm)
+        <span class="pl-c1">free</span>(x)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">MPI_Finalize</span>()
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Compile it to binary executable</span>
+<span class="pl-c1">compile_executable</span>(mpisendrecv, (Int, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>;
+    cflags<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">`</span>-lmpi -L$libpath -Wl,-rpath,$libpath<span class="pl-pds">`</span></span>
+    <span class="pl-c"><span class="pl-c">#</span> -lmpi instructs compiler to link against libmpi.so / libmpi.dylib</span>
+    <span class="pl-c"><span class="pl-c">#</span> -L$libpath tells the compiler about the path to libmpi</span>
+    <span class="pl-c"><span class="pl-c">#</span> -Wl,-rpath,$libpath tells the linker about the path to libmpi (not needed on all systems)</span>
+)</pre></div>
+<p dir="auto">Since this example linked to the <code>libmpi</code> from <a href="https://github.com/JuliaBinaryWrappers/MPICH_jll.jl">MPICH_jll</a>, let's also use the <code>mpiexec</code> <code>from MPICH_jll</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="shell&gt; $(MPICH_jll.PATH[])/mpiexec -np 6 ./mpisendrecv
+Rank 1, sending 1
+Rank 2, sending 2
+Rank 3, sending 3
+Rank 4, sending 4
+Rank 5, sending 5
+Rank 0 recieved:
+1
+2
+3
+4
+5"><pre>shell<span class="pl-k">&gt;</span> <span class="pl-k">$</span>(MPICH_jll<span class="pl-k">.</span>PATH[])<span class="pl-k">/</span>mpiexec <span class="pl-k">-</span>np <span class="pl-c1">6</span> <span class="pl-k">./</span>mpisendrecv
+Rank <span class="pl-c1">1</span>, sending <span class="pl-c1">1</span>
+Rank <span class="pl-c1">2</span>, sending <span class="pl-c1">2</span>
+Rank <span class="pl-c1">3</span>, sending <span class="pl-c1">3</span>
+Rank <span class="pl-c1">4</span>, sending <span class="pl-c1">4</span>
+Rank <span class="pl-c1">5</span>, sending <span class="pl-c1">5</span>
+Rank <span class="pl-c1">0</span> recieved<span class="pl-k">:</span>
+<span class="pl-c1">1</span>
+<span class="pl-c1">2</span>
+<span class="pl-c1">3</span>
+<span class="pl-c1">4</span>
+<span class="pl-c1">5</span></pre></div>
+<p dir="auto">Since we're compiling to standalone executables, we've used the special non-GC-allocating
+arrays, strings, and IO from <a href="https://github.com/brenhinkeller/StaticTools.jl">StaticTools.jl</a>
+throughout the above examples.</p>
+</article></div>

@@ -1,0 +1,107 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-multithreadedcaches" class="anchor" aria-hidden="true" href="#multithreadedcaches"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>MultiThreadedCaches</h1>
+<p dir="auto"><code>MultiThreadedCache{K,V}()</code> is a fast-ish, thread-safe cache.</p>
+<p dir="auto">This cache stores k=&gt;v pairs that cache a deterministic computation. The only API into the
+cache is <code>get!()</code>: you can look up a key, and if it is not available, you can produce a
+value which will be added to the cache.</p>
+<p dir="auto">Accesses to the cache will look first in the per-thread cache, and then fall back to the
+shared thread-safe cache. Concurrent misses to the same key in the shared cache will
+coordinate, so that only one Task will perform the compuatation for that value, and the
+other Task(s) will block.</p>
+<p dir="auto">The per-thread caches have very low contention (usually only locked by that single Task), so
+a MultiThreadedCache{K,V} scales much better than the naive baseline Dict+ReentrantLock that
+you might use instead.</p>
+<h2 dir="auto"><a id="user-content-alternatives-considered" class="anchor" aria-hidden="true" href="#alternatives-considered"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Alternatives Considered</h2>
+<p dir="auto">Some other approaches to concurrent caches include:</p>
+<ul dir="auto">
+<li>Concurrent Hash Table
+<ul dir="auto">
+<li>The <em>theory</em> in this package is to take advantage of the append-only aspect of a Cache
+to get some contention benefits over a conventional multi-threaded dictionary, but we're
+less sure in practice if this is actually true. (Once we had to make the adjustments to
+account for task migration, the benefits of the current design became less clear...)</li>
+</ul>
+</li>
+<li>Multithread caches designed for low contention by sharding the <strong>key space</strong>, and keeping
+a separate lock per sub-cache. For example, having an array of e.g. 64 separate caches,
+sharded by a prefix of a key's hash, each with their own lock.
+<ul dir="auto">
+<li>This package differs from this design by sharding the hash by Thread ID, rather than
+by the key space.</li>
+<li>This tradeoff accepts greater data duplication in exchange for hopefully less
+contention.</li>
+</ul>
+</li>
+</ul>
+<h2 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example:</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; cache = MultiThreadedCache{Int, Int}(Dict(1=&gt;2, 2=&gt;3))
+MultiThreadedCache{Int64, Int64}(Dict(2 =&gt; 3, 1 =&gt; 2))
+
+julia&gt; init_cache!(cache)
+MultiThreadedCache{Int64, Int64}(Dict(2 =&gt; 3, 1 =&gt; 2))
+
+julia&gt; get!(cache, 2) do
+           2+1
+       end
+3
+
+julia&gt; get!(cache, 5) do  # These accesses are safe from arbitrary threads.
+           5+1
+       end
+6
+
+julia&gt; get!(cache, 5) do
+           5+10
+       end
+6"><pre>julia<span class="pl-k">&gt;</span> cache <span class="pl-k">=</span> <span class="pl-c1">MultiThreadedCache</span><span class="pl-c1">{Int, Int}</span>(<span class="pl-c1">Dict</span>(<span class="pl-c1">1</span><span class="pl-k">=&gt;</span><span class="pl-c1">2</span>, <span class="pl-c1">2</span><span class="pl-k">=&gt;</span><span class="pl-c1">3</span>))
+<span class="pl-c1">MultiThreadedCache</span><span class="pl-c1">{Int64, Int64}</span>(<span class="pl-c1">Dict</span>(<span class="pl-c1">2</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">3</span>, <span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">2</span>))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">init_cache!</span>(cache)
+<span class="pl-c1">MultiThreadedCache</span><span class="pl-c1">{Int64, Int64}</span>(<span class="pl-c1">Dict</span>(<span class="pl-c1">2</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">3</span>, <span class="pl-c1">1</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">2</span>))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">get!</span>(cache, <span class="pl-c1">2</span>) <span class="pl-k">do</span>
+           <span class="pl-c1">2</span><span class="pl-k">+</span><span class="pl-c1">1</span>
+       <span class="pl-k">end</span>
+<span class="pl-c1">3</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">get!</span>(cache, <span class="pl-c1">5</span>) <span class="pl-k">do</span>  <span class="pl-c"><span class="pl-c">#</span> These accesses are safe from arbitrary threads.</span>
+           <span class="pl-c1">5</span><span class="pl-k">+</span><span class="pl-c1">1</span>
+       <span class="pl-k">end</span>
+<span class="pl-c1">6</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">get!</span>(cache, <span class="pl-c1">5</span>) <span class="pl-k">do</span>
+           <span class="pl-c1">5</span><span class="pl-k">+</span><span class="pl-c1">10</span>
+       <span class="pl-k">end</span>
+<span class="pl-c1">6</span></pre></div>
+<h2 dir="auto"><a id="user-content-performance" class="anchor" aria-hidden="true" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Performance</h2>
+<p dir="auto">Current benchmark results measuring scaling recorded against a baseline of a Dict() + ReentrantLock():</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="┌ Info: benchmark results
+│   Threads.nthreads() = 1
+│   time_serial = 0.03260747
+│   time_parallel = 0.152217246
+└   time_baseline = 0.131397639"><pre class="notranslate"><code>┌ Info: benchmark results
+│   Threads.nthreads() = 1
+│   time_serial = 0.03260747
+│   time_parallel = 0.152217246
+└   time_baseline = 0.131397639
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="┌ Info: benchmark results
+│   Threads.nthreads() = 20
+│   time_serial = 0.030174521
+│   time_parallel = 0.307062643
+└   time_baseline = 1.239406026"><pre class="notranslate"><code>┌ Info: benchmark results
+│   Threads.nthreads() = 20
+│   time_serial = 0.030174521
+│   time_parallel = 0.307062643
+└   time_baseline = 1.239406026
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="┌ Info: benchmark results
+│   Threads.nthreads() = 100
+│   time_serial = 0.030373533
+│   time_parallel = 1.771401144
+└   time_baseline = 5.397114559"><pre class="notranslate"><code>┌ Info: benchmark results
+│   Threads.nthreads() = 100
+│   time_serial = 0.030373533
+│   time_parallel = 1.771401144
+└   time_baseline = 5.397114559
+</code></pre></div>
+</article></div>

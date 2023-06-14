@@ -1,0 +1,185 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-jldistributedquery" class="anchor" aria-hidden="true" href="#jldistributedquery"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>jlDistributedQuery</h1>
+<p dir="auto"><strong>DistributedQuery</strong> Is meant to host large datasets in partitioned across multiple workers with queryable access. Idealy, worker will be remote worker with their own memory. has 3 major part, <code>deployDataStore()</code>, <code>sentinel()</code>, <code>make_query_channels()</code>, <code>query_client()</code>. The basic exicution is the following,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Test
+using Distributed
+using ClusterManagers
+using DistributedQuery
+
+if Base.current_project() != nothing
+    proj_path = joinpath([&quot;/&quot;, split(Base.current_project(), &quot;/&quot;)[1:end-1]...])
+    p = addprocs(SlurmManager(3),
+                 time=&quot;00:30:00&quot;,
+                 exeflags=&quot;--project=$(proj_path)&quot;, ntasks_per_node=1)
+else
+    p = addprocs(SlurmManager(3),
+                 time=&quot;00:30:00&quot;,
+                 ntasks_per_node=1)
+end
+
+@everywhere using DistributedQuery
+@everywhere using DataFrames
+@everywhere using CSV
+#proc_chan, data_chan = make_query_channels(p, [1], chan_depth::Int=5);
+
+_shard_file_list = [&quot;../mockData/iris_df_1.jlb&quot;,
+                    &quot;../mockData/iris_df_2.jlb&quot;,
+                    &quot;../mockData/iris_df_3.jlb&quot;]
+
+shard_file_list = [joinpath(dirname(pathof(DistributedQuery)), sf) for sf in _shard_file_list]
+serialized_file_list = shard_file_list
+data_worker_pool = p
+proc_worker_pool = [myid()]
+fut = DistributedQuery.deployDataStore(data_worker_pool, serialized_file_list)
+
+test_res = [fetch(fut[p]) == @fetchfrom p DistributedQuery.DataContainer for p in data_worker_pool]
+
+@test all(test_res)
+
+if all(test_res)
+    print(&quot;DistributedQuery.deployDataStore passed\n&quot;)
+else
+    print(&quot;DistributedQuery.deployDataStore Failed\n test_res: $(test_res)&quot;)
+end
+
+
+proc_chan, data_chan = DistributedQuery.make_query_channels(data_worker_pool, proc_worker_pool)
+
+status_chan = RemoteChannel(()-&gt;Channel{Any}(10000), myid())
+
+query_f = (data, column) -&gt; data[:, column]
+
+query_args = [&quot;sepal_l&quot;]
+
+agrigate_f = (x...) -&gt; sum(vcat(x...))
+
+sentinel_fut =
+    [@spawnat p DistributedQuery.sentinel(DistributedQuery.DataContainer,
+                                          data_chan[myid()] ,proc_chan,
+                                          status_chan)
+     for p in data_worker_pool]
+
+
+
+
+query_task = @async DistributedQuery.query_client(data_chan, proc_chan[1], agrigate_f, query_f, query_args...)
+
+[take!(status_chan) for i in 1:1000 if isready(status_chan)]
+[put!(v, &quot;Done&quot;) for (k,v) in data_chan]
+[wait(f) for f in sentinel_fut]
+[take!(status_chan) for i in 1:1000 if isready(status_chan)]
+
+sentinel_fut =
+    [@spawnat p DistributedQuery.sentinel(DistributedQuery.DataContainer,
+                                          data_chan[myid()] ,proc_chan,
+                                          status_chan)
+     for p in data_worker_pool]
+
+query_task = @async DistributedQuery.query_client(data_chan, proc_chan[1], agrigate_f, query_f, query_args...)
+query_timeout_in_s = 10
+sleep(query_timeout_in_s)
+
+
+if istaskdone(query_task)
+    local_result = sum([sum(fetch(f[2])[:, query_args[1]]) for f in fut])
+    query_result = fetch(query_task)
+    @test local_result == query_result
+else
+    print(&quot;test query was not done in query_timeout_in_s: $query_timeout_in_s&quot;)
+    @test false
+end
+
+
+#rmprocs(p);
+"><pre class="notranslate"><code>using Test
+using Distributed
+using ClusterManagers
+using DistributedQuery
+
+if Base.current_project() != nothing
+    proj_path = joinpath(["/", split(Base.current_project(), "/")[1:end-1]...])
+    p = addprocs(SlurmManager(3),
+                 time="00:30:00",
+                 exeflags="--project=$(proj_path)", ntasks_per_node=1)
+else
+    p = addprocs(SlurmManager(3),
+                 time="00:30:00",
+                 ntasks_per_node=1)
+end
+
+@everywhere using DistributedQuery
+@everywhere using DataFrames
+@everywhere using CSV
+#proc_chan, data_chan = make_query_channels(p, [1], chan_depth::Int=5);
+
+_shard_file_list = ["../mockData/iris_df_1.jlb",
+                    "../mockData/iris_df_2.jlb",
+                    "../mockData/iris_df_3.jlb"]
+
+shard_file_list = [joinpath(dirname(pathof(DistributedQuery)), sf) for sf in _shard_file_list]
+serialized_file_list = shard_file_list
+data_worker_pool = p
+proc_worker_pool = [myid()]
+fut = DistributedQuery.deployDataStore(data_worker_pool, serialized_file_list)
+
+test_res = [fetch(fut[p]) == @fetchfrom p DistributedQuery.DataContainer for p in data_worker_pool]
+
+@test all(test_res)
+
+if all(test_res)
+    print("DistributedQuery.deployDataStore passed\n")
+else
+    print("DistributedQuery.deployDataStore Failed\n test_res: $(test_res)")
+end
+
+
+proc_chan, data_chan = DistributedQuery.make_query_channels(data_worker_pool, proc_worker_pool)
+
+status_chan = RemoteChannel(()-&gt;Channel{Any}(10000), myid())
+
+query_f = (data, column) -&gt; data[:, column]
+
+query_args = ["sepal_l"]
+
+agrigate_f = (x...) -&gt; sum(vcat(x...))
+
+sentinel_fut =
+    [@spawnat p DistributedQuery.sentinel(DistributedQuery.DataContainer,
+                                          data_chan[myid()] ,proc_chan,
+                                          status_chan)
+     for p in data_worker_pool]
+
+
+
+
+query_task = @async DistributedQuery.query_client(data_chan, proc_chan[1], agrigate_f, query_f, query_args...)
+
+[take!(status_chan) for i in 1:1000 if isready(status_chan)]
+[put!(v, "Done") for (k,v) in data_chan]
+[wait(f) for f in sentinel_fut]
+[take!(status_chan) for i in 1:1000 if isready(status_chan)]
+
+sentinel_fut =
+    [@spawnat p DistributedQuery.sentinel(DistributedQuery.DataContainer,
+                                          data_chan[myid()] ,proc_chan,
+                                          status_chan)
+     for p in data_worker_pool]
+
+query_task = @async DistributedQuery.query_client(data_chan, proc_chan[1], agrigate_f, query_f, query_args...)
+query_timeout_in_s = 10
+sleep(query_timeout_in_s)
+
+
+if istaskdone(query_task)
+    local_result = sum([sum(fetch(f[2])[:, query_args[1]]) for f in fut])
+    query_result = fetch(query_task)
+    @test local_result == query_result
+else
+    print("test query was not done in query_timeout_in_s: $query_timeout_in_s")
+    @test false
+end
+
+
+#rmprocs(p);
+
+</code></pre></div>
+</article></div>

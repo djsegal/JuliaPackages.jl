@@ -1,0 +1,79 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-sentineljl" class="anchor" aria-hidden="true" href="#sentineljl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Sentinel.jl</h1>
+<p dir="auto">Note: Installation via Pkg.add("Sentinel") should work on Monday or Tuesday. For now, please use Pkg.add(url="<a href="https://github.com/mhudecheck/Sentinel.jl">https://github.com/mhudecheck/Sentinel.jl</a>").</p>
+<p dir="auto">Sentinel.jl is a Julia library for working with ESA Sentinel 2 data. It includes functions for finding, downloading, reading, interpolating, and merging Sentinel 2 bands. It also includes functions for creating cloud cover screens by comparing multiple band captures and applying user-specified threshold values.</p>
+<p dir="auto">This library interfaces extensively with ArchGDAL.jl, GoogleCloud.jl, and - where applicable - CUDA.jl.</p>
+<p dir="auto">This is the first version of the library. At the moment, it only works with Level 2a files. Sentinel.jl lets you search for and download L2a SAFE file directories from Google Cloud's Sentinel 2 repository, and you can also work with SAFE file directories downloaded outside fo Sentinel.jl from the ESA or Amazon AWS.</p>
+<p dir="auto">Sentinel.jl is currently under development, so expect more features - as well as breaking changes - in the near future.</p>
+<p dir="auto">A standard workflow looks something like:</p>
+<ul dir="auto">
+<li>ID UTM Tile Grid (e.g., with <a href="https://eatlas.org.au/data/uuid/f7468d15-12be-4e3f-a246-b2882a324f59" rel="nofollow">https://eatlas.org.au/data/uuid/f7468d15-12be-4e3f-a246-b2882a324f59</a>)</li>
+<li>Get a list of current L2a products from Google Cloud's Sentinel 2 repository with safeList()</li>
+<li>Screen for your UTM tile, along with a capture date range and - if relevant - a maximum cloud cover threshold, with filterList()</li>
+<li>Download one or more L2a SAFE files with downloadTiles()</li>
+<li>Load one or more SAFE files with loadSentinel()</li>
+</ul>
+<p dir="auto">If you want to create a custom cloud screen composite, you would then:</p>
+<ul dir="auto">
+<li>Generate and attach individual cloud screens with generateScreens([captureOne, captureTwo, ...])</li>
+<li>Interpolate 20m and 60m bands to 10m, and apply your cloud screens with applyScreens([captureOne, captureTwo, ...])</li>
+<li>Create a composite product by running compositeProduct = Sentinel.generateCloudless(captureOne, captureTwo, ...)</li>
+<li>Save the composite as a GeoTiff with saveScreenedRasters(compositeProduct, names=["composite.tif"])</li>
+</ul>
+<p dir="auto">While most people will perform these functions natively, if you have a relatively modern GPU, you can set GPU = true in many of these functions to receive a 10-15x speedup. Note that only Nvidia GPUs are supported, and you must install CUDA, as well as CUDA.jl, for this to work. Each L2a product takes up ~2gb of RAM, so you'll need a GPU with at least 6gb of memory to load and generate cloud screens for two L2a products. Interpolating and applying the cloud screens will consume significantly more memory, so most users who generate cloud screens with generateScreens(; GPU=true) will want to move their products off of the GPU before running applyScreens(; GPU=false) or generateCloudless(; GPU=false).</p>
+<p dir="auto">You will need to have a working Google account, as well as credentials for Google Cloud, before you can search for and download SAFE files programmatically. For now, please follow the Google Cloud Prerequisites tutorial from GoogleCloud.jl, which you can read at <a href="https://juliacloud.github.io/GoogleCloud.jl/latest/" rel="nofollow">https://juliacloud.github.io/GoogleCloud.jl/latest/</a>.</p>
+<p dir="auto">If you want to access the Google Cloud repository, first initialize your credentials by running:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Sentinel.jl
+using GoogleCloud.jl 
+
+creds = JSONCredentials(&quot;path_to_credentials.json&quot;)
+session = GoogleSession(creds, [&quot;devstorage.full_control&quot;])
+set_session!(storage, session)
+
+# Note that you can also run cloudInit(&quot;path_to_credentials.json&quot;)"><pre class="notranslate"><code>using Sentinel.jl
+using GoogleCloud.jl 
+
+creds = JSONCredentials("path_to_credentials.json")
+session = GoogleSession(creds, ["devstorage.full_control"])
+set_session!(storage, session)
+
+# Note that you can also run cloudInit("path_to_credentials.json")
+</code></pre></div>
+<p dir="auto">Then, get a list of Sentinel L2A products with safeList(). Note that you can set a custom cache directory by running safeList(; cacheLocation = "/your_cache_directory"):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="l2aList = safeList() # Outputs a DataFrame Array"><pre class="notranslate"><code>l2aList = safeList() # Outputs a DataFrame Array
+</code></pre></div>
+<p dir="auto">You can then run filterList(l2aList, UTM_Tile, startDate, endDate; cloud) to subset the L2A capture list for your targeted UTM tile and date range. You can specify a maximum cloud cover level with filterList(...; cover=10).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="l2aSubSet = filterList(l2aList, &quot;32TNT&quot;, Date(2021,10,01), Date(2021,10,31); cover=5); # Returns a DataFrame with all captures of St. Gallen, CH and the surrounding region in October 2021 that have CLOUD_COVER set to 5 or less."><pre class="notranslate"><code>l2aSubSet = filterList(l2aList, "32TNT", Date(2021,10,01), Date(2021,10,31); cover=5); # Returns a DataFrame with all captures of St. Gallen, CH and the surrounding region in October 2021 that have CLOUD_COVER set to 5 or less.
+</code></pre></div>
+<p dir="auto">The files in l2aList can be downloaded by running downloadTiles(l2aSubSet, #_of_files; cache="...").</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="captureDirectory = downloadTiles(l2aSubSet, 4)"><pre class="notranslate"><code>captureDirectory = downloadTiles(l2aSubSet, 4)
+</code></pre></div>
+<p dir="auto">Sentinel 2 SAFE files are loaded with loadSentinel(). You can specify GPU = true to load the individual bands as CuArrays. The output is a dictionary with the bands specified as "BandName-Resolution" (e.g., Band One loads as B1-60m). The band values MetaArrays with relevant band and file metadata from gdalinfo() loaded to file["BandName-Resolution"].metadata and .filedata.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="cd(captureDirectory)
+downloadedFiles = readdir()
+
+# Load to CPU 
+cpuOne = loadSentinel(downloadedFiles[1]; GPU=false)
+cpuTwo= loadSentinel(downloadedFiles[2]; GPU=false)
+"><pre class="notranslate"><code>cd(captureDirectory)
+downloadedFiles = readdir()
+
+# Load to CPU 
+cpuOne = loadSentinel(downloadedFiles[1]; GPU=false)
+cpuTwo= loadSentinel(downloadedFiles[2]; GPU=false)
+
+</code></pre></div>
+<p dir="auto">Cloud screens are created with generateScreens(). It requires two or more SAFE files from the same UTM that preferably have low cloud cover levels. generateScreens() merges the Sen2Cor cloud screens and scene classification matrix provided in the SAFE file by the ESA with band capture deltas (Band 1, Band 2, and Band 4). Screen thresholds can be provided for Bands 1, 2, and 4, as well as the existing cloud screen mask. If the input variable has the bands saved as CuArrays, GPU should be set to true. Note that you will see better results if you use three or more input SAFE files.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="fileList = [cpuOne, cpuTwo] 
+generateScreens(fileList, GPU=false) "><pre class="notranslate"><code>fileList = [cpuOne, cpuTwo] 
+generateScreens(fileList, GPU=false) 
+</code></pre></div>
+<p dir="auto">The cloud screens are saved to the input variables as file["CloudScreen"]. The screens can then be applied to the input bands by running applyScreens(). The output bands are saved to the input file as file["Band-Screened"]. Note that all 20m and 60m bands are first interpolated to 10m before the cloud screen is applied. You will also see slightly different results if you run applyScreens() on the CPU or GPU (GPU = true).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="applyScreens(fileList, GPU=false) "><pre class="notranslate"><code>applyScreens(fileList, GPU=false) 
+</code></pre></div>
+<p dir="auto">Cloudless composites are created by running generateCloudless().</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="cloudlessFile = applyScreens(fileList, GPU=false) "><pre class="notranslate"><code>cloudlessFile = applyScreens(fileList, GPU=false) 
+</code></pre></div>
+<p dir="auto">You can then write the results of applyScreens() to disk as a GeoTiff with named bands with saveScreenedRasters(). saveScreenedRasters can accept multiple inputs (e.g., saveScreenedRasters(cloudlessA, cloudlessB; names=["a.tif", "b.tif"]).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="saveScreenedRasters(cloudlessFile; names=[&quot;32TNT_Cloudless_October_2021.tif&quot;])"><pre class="notranslate"><code>saveScreenedRasters(cloudlessFile; names=["32TNT_Cloudless_October_2021.tif"])
+</code></pre></div>
+</article></div>

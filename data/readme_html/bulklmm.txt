@@ -1,0 +1,266 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-bulklmmjl" class="anchor" aria-hidden="true" href="#bulklmmjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BulkLMM.jl</h1>
+<p dir="auto">BulkLMM is a Julia package for performing genome scans for multiple traits (in
+"Bulk" sizes) using linear mixed models (LMMs). It is suitable for eQTL mapping
+with thousands of traits and markers. BulkLMM also performs permutation
+testing for LMMs taking into account the relatedness of individuals.
+We use multi-threading and matrix operations to speed up computations.</p>
+<p dir="auto">The current implementation is for genome scans with one-degree of
+freedom tests with choices of adding additional covariates. Future releases will
+cover the scenario of more-than-one degrees of freedom tests.</p>
+<h2 dir="auto"><a id="user-content-linear-mixed-model-lmm" class="anchor" aria-hidden="true" href="#linear-mixed-model-lmm"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Linear Mixed Model (LMM)</h2>
+<p dir="auto">We consider the case when a univariate trait of interest is measured
+in a population of related individuals with kinship matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$K$</math-renderer>.  Let
+the trait vector, <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$y$</math-renderer> follow the following linear model.</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$$ y = X\beta + \epsilon,$$</math-renderer></p>
+<p dir="auto">where</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$$V(\epsilon) = \sigma^2_g K+\sigma^2_e I.$$</math-renderer></p>
+<p dir="auto">where <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$X$</math-renderer> is a matrix of covariates which would include the intercept,
+candidate genetic markers of interest, and (optionally) any background covariates.
+The variance components <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$\sigma^2_g$</math-renderer> and <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$\sigma^2_e$</math-renderer> denote the
+genetic and random error variance components respectively.</p>
+<h3 dir="auto">
+<a id="user-content-single-trait-scan" class="anchor" aria-hidden="true" href="#single-trait-scan"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Single trait scan</h3>
+<p dir="auto">For a single trait and candidate marker, we use a likelihood ratio
+test to compare a model with and without the candidate genetic marker
+(and including the intercept and all background covariates).  This
+process is repeated for each marker to generate the genome scan.  The
+result is reported in LOD (log 10 of likelihood ratio) units.</p>
+<p dir="auto">Users can specify if the variance components should be estimated using
+ML (maximum likelihood) or REML (restricted maximum likelihood).  The
+scans can be performed with the variance components estimated once
+under the null, or separately for each marker.  The latter approach is
+slower, but more accurate.</p>
+<h3 dir="auto">
+<a id="user-content-permutation-tests-for-single-trait" class="anchor" aria-hidden="true" href="#permutation-tests-for-single-trait"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Permutation tests for single trait</h3>
+<p dir="auto">Under the null hypothesis that no individual genetic marker is
+associated with the trait, traits are correlated according if the
+kinship matrix is not identity, and the genetic variance component is
+non-zero.  Thus, a standard permutation test where we shuffle the
+trait data randomly, is not appropriate.  Instead, we rotate the data
+using the eigen decomposition of the kinship matrix, which
+de-correlates the data, and then shuffle the data after rescaling them
+by their standard deviations.</p>
+<h3 dir="auto">
+<a id="user-content-scans-for-multiple-traits" class="anchor" aria-hidden="true" href="#scans-for-multiple-traits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Scans for multiple traits</h3>
+<p dir="auto">Scans for multiple traits are performed by running univariate LMMs for
+each combination of trait and marker.  We are exploring algorithms for
+optimizing this process by judicious use of approximations.</p>
+<h3 dir="auto">
+<a id="user-content-multi-threading" class="anchor" aria-hidden="true" href="#multi-threading"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Multi-threading</h3>
+<p dir="auto">This package uses multi-threading to speed up some operations.  You
+will have to start Julia with mutliple threads to take advantage of
+this.  You should use as many threads as your computer is capable of.
+Further speedups may be obtained by spreading (distributing) the
+computation across mutliple computers.</p>
+<h2 dir="auto">
+<a id="user-content-example-application-on-bxd-spleen-expression-data" class="anchor" aria-hidden="true" href="#example-application-on-bxd-spleen-expression-data"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example: application on BXD spleen expression data</h2>
+<p dir="auto">We demonstrate basic usage of <code>BulkLMM.jl</code> through an example applying
+the package on the BXD mouse strains data.</p>
+<p dir="auto">First, after successfully installed the package, load it to the
+current <em>Julia</em> session by</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BulkLMM
+using CSV, DelimitedFiles, DataFrames, Statistics"><pre><span class="pl-k">using</span> BulkLMM
+<span class="pl-k">using</span> CSV, DelimitedFiles, DataFrames, Statistics</pre></div>
+<p dir="auto">The BXD data are accessible through our published <a href="https://github.com/senresearch/BulkLMM.jl">github
+repo</a> of the <code>BulkLMM.jl</code>
+package as .csv files under the <code>data/bxdData</code> directory.</p>
+<p dir="auto">The raw BXD traits <code>BXDtraits_with_missing.csv</code>contains missing
+values. After removing the missings, load the BXD traits data</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="bulklmmdir = dirname(pathof(BulkLMM));
+pheno_file = joinpath(bulklmmdir,&quot;..&quot;,&quot;data/bxdData/spleen-pheno-nomissing.csv&quot;);
+pheno = readdlm(pheno_file, ',', header = false);
+pheno_processed = pheno[2:end, 2:(end-1)].*1.0; # exclude the header, the first (transcript ID)and the last columns (sex)"><pre>bulklmmdir <span class="pl-k">=</span> <span class="pl-c1">dirname</span>(<span class="pl-c1">pathof</span>(BulkLMM));
+pheno_file <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(bulklmmdir,<span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>data/bxdData/spleen-pheno-nomissing.csv<span class="pl-pds">"</span></span>);
+pheno <span class="pl-k">=</span> <span class="pl-c1">readdlm</span>(pheno_file, <span class="pl-s"><span class="pl-pds">'</span>,<span class="pl-pds">'</span></span>, header <span class="pl-k">=</span> <span class="pl-c1">false</span>);
+pheno_processed <span class="pl-k">=</span> pheno[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">2</span><span class="pl-k">:</span>(<span class="pl-k">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>)]<span class="pl-k">.</span><span class="pl-k">*</span><span class="pl-c1">1.0</span>; <span class="pl-c"><span class="pl-c">#</span> exclude the header, the first (transcript ID)and the last columns (sex)</span></pre></div>
+<p dir="auto">Required data format for traits should be .csv or .txt files with
+values separated by <code>','</code>, with each column being the observations of
+<math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$n$</math-renderer> BXD strains on a particular trait and each row being the
+observations on all <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$m$</math-renderer> traits of a particular mouse strain.</p>
+<p dir="auto">Also load the BXD genotypes data. The raw BXD genotypes file
+<code>BXDgeno_prob.csv</code> contains even columns that each contains the
+complement genotype probabilities of the column immediately preceded
+(odd columns). Calling the function <code>readBXDgeno</code> will read the BXD
+genotype file excluding the even columns.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="geno_file = joinpath(bulklmmdir,&quot;..&quot;,&quot;data/bxdData/spleen-bxd-genoprob.csv&quot;);
+geno = readdlm(geno_file, ',', header = false);
+geno_processed = geno[2:end, 1:2:end] .* 1.0;"><pre>geno_file <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(bulklmmdir,<span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>data/bxdData/spleen-bxd-genoprob.csv<span class="pl-pds">"</span></span>);
+geno <span class="pl-k">=</span> <span class="pl-c1">readdlm</span>(geno_file, <span class="pl-s"><span class="pl-pds">'</span>,<span class="pl-pds">'</span></span>, header <span class="pl-k">=</span> <span class="pl-c1">false</span>);
+geno_processed <span class="pl-k">=</span> geno[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">.*</span> <span class="pl-c1">1.0</span>;</pre></div>
+<p dir="auto">Required data format for genotypes should be .csv or .txt files with
+values separated by <code>','</code>, with each column being the observations of
+genotype probabilities of <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$n$</math-renderer> BXD strains on a particular marker place
+and each row being the observations on all <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$p$</math-renderer> marker places of a
+particular mouse strain.</p>
+<p dir="auto">For the BXD data,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="size(pheno_processed) # (number of strains, number of traits)"><pre><span class="pl-c1">size</span>(pheno_processed) <span class="pl-c"><span class="pl-c">#</span> (number of strains, number of traits)</span></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(79, 35554)"><pre class="notranslate"><code>(79, 35554)
+</code></pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="size(geno_processed) # (number of strains, number of markers)"><pre><span class="pl-c1">size</span>(geno_processed) <span class="pl-c"><span class="pl-c">#</span> (number of strains, number of markers)</span></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(79, 7321)"><pre class="notranslate"><code>(79, 7321)
+</code></pre></div>
+<p dir="auto">Compute the kinship matrix <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$K$</math-renderer> from the genotype probabilities using the function <code>calcKinship</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="kinship = calcKinship(geno_processed); # calculate K"><pre>kinship <span class="pl-k">=</span> <span class="pl-c1">calcKinship</span>(geno_processed); <span class="pl-c"><span class="pl-c">#</span> calculate K</span></pre></div>
+<h3 dir="auto">
+<a id="user-content-single-trait-scanning" class="anchor" aria-hidden="true" href="#single-trait-scanning"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Single trait scanning:</h3>
+<p dir="auto">For example, to conduct genome-wide association mappings on the
+1112-th trait, ran the function <code>scan()</code> with inputs of the trait (as
+a 2D-array of one column), geno matrix, and the kinship matrix.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="traitID = 1112;
+pheno_y = reshape(pheno_processed[:, traitID], :, 1);"><pre>traitID <span class="pl-k">=</span> <span class="pl-c1">1112</span>;
+pheno_y <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(pheno_processed[:, traitID], :, <span class="pl-c1">1</span>);</pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time single_results = scan(pheno_y, geno_processed, kinship);"><pre><span class="pl-c1">@time</span> single_results <span class="pl-k">=</span> <span class="pl-c1">scan</span>(pheno_y, geno_processed, kinship);</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="  0.059480 seconds (80.86 k allocations: 47.266 MiB)"><pre class="notranslate"><code>  0.059480 seconds (80.86 k allocations: 47.266 MiB)
+</code></pre></div>
+<p dir="auto">The output structure <code>single_results</code> stores the model estimates about the variance components (VC, environmental variance, heritability estimated under the null intercept model) and the lod scores. They are obtainable by</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# VCs: environmental variance, heritability, genetic_variance/total_variance
+(single_results.sigma2_e, single_results.h2_null)"><pre><span class="pl-c"><span class="pl-c">#</span> VCs: environmental variance, heritability, genetic_variance/total_variance</span>
+(single_results<span class="pl-k">.</span>sigma2_e, single_results<span class="pl-k">.</span>h2_null)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(0.0942525841453798, 0.850587848871709)"><pre class="notranslate"><code>(0.0942525841453798, 0.850587848871709)
+</code></pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LOD scores calculated for a single trait under VCs estimated under the null (intercept model)
+single_results.lod; "><pre><span class="pl-c"><span class="pl-c">#</span> LOD scores calculated for a single trait under VCs estimated under the null (intercept model)</span>
+single_results<span class="pl-k">.</span>lod; </pre></div>
+<p dir="auto"><code>BulkLMM.jl</code> supports permutation testing for a single trait GWAS. Simply run the function <code>scan()</code> and input the optional keyword argument <code>permutation_test = true</code> with the number of permutations passed to the keyword argument <code>nperms = # of permutations</code>. For example, to ask the package to do a permutation testing of 1000 permutations, do</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time single_results_perms = scan(pheno_y, geno_processed, kinship; permutation_test = true, nperms = 1000, original = false);"><pre><span class="pl-c1">@time</span> single_results_perms <span class="pl-k">=</span> <span class="pl-c1">scan</span>(pheno_y, geno_processed, kinship; permutation_test <span class="pl-k">=</span> <span class="pl-c1">true</span>, nperms <span class="pl-k">=</span> <span class="pl-c1">1000</span>, original <span class="pl-k">=</span> <span class="pl-c1">false</span>);</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="  0.079464 seconds (94.02 k allocations: 207.022 MiB)"><pre class="notranslate"><code>  0.079464 seconds (94.02 k allocations: 207.022 MiB)
+</code></pre></div>
+<p dir="auto">(use the input <code>original = false</code> to suppress the default of performing genome scans on the original trait)</p>
+<p dir="auto">The output <code>single_results_perms</code> is a matrix of LOD scores of dimension <code>p * nperms</code>, with each column being the LOD scores of the <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$p$</math-renderer> markers on a permuted copy and each row being the marker-specific LOD scores on all permuted copies.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="size(single_results_perms)"><pre><span class="pl-c1">size</span>(single_results_perms)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(7321, 1000)"><pre class="notranslate"><code>(7321, 1000)
+</code></pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="max_lods = vec(mapslices(x -&gt; maximum(x), single_results_perms; dims = 1));"><pre>max_lods <span class="pl-k">=</span> <span class="pl-c1">vec</span>(<span class="pl-c1">mapslices</span>(x <span class="pl-k">-&gt;</span> <span class="pl-c1">maximum</span>(x), single_results_perms; dims <span class="pl-k">=</span> <span class="pl-c1">1</span>));</pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="thrs = map(x -&gt; quantile(max_lods, x), [0.05, 0.95]);"><pre>thrs <span class="pl-k">=</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> <span class="pl-c1">quantile</span>(max_lods, x), [<span class="pl-c1">0.05</span>, <span class="pl-c1">0.95</span>]);</pre></div>
+<p dir="auto">Plot the BulkLMM LOD scores of the 1112-th trait and compare with the results from running
+<a href="https://github.com/genetics-statistics/GEMMA">GEMMA</a>:</p>
+<p dir="auto">Note: to get results from GEMMA, one would need to run GEMMA on a Linux machine with input files of the same trait (here the 1112-th trait, X10339113), genetic markers and the kinship matrix, and finally convert the LRT p-values into corresponding LOD scores. Alternatively, you may simply load the results we obtained by following the procedures mentioned above. The resulting LOD scores from GEMMA are a .txt file in <code>data/bxdData/GEMMA_BXDTrait1112/gemma_lod_1112.txt</code>.</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="img/output_41_0.svg"><img src="img/output_41_0.svg" alt="svg" style="max-width: 100%;"></a></p>
+<p dir="auto">For reproducing this figure, we need to do the following steps:</p>
+<p dir="auto">First, read in the <code>gmap.csv</code> and the <code>phenocovar.csv</code> under <code>data/bxdData/</code> directory as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="gmap_file = joinpath(bulklmmdir,&quot;..&quot;,&quot;data/bxdData/gmap.csv&quot;);
+gInfo = CSV.read(gmap_file, DataFrame);
+phenocovar_file = joinpath(bulklmmdir,&quot;..&quot;,&quot;data/bxdData/phenocovar.csv&quot;);
+pInfo = CSV.read(phenocovar_file, DataFrame);"><pre>gmap_file <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(bulklmmdir,<span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>data/bxdData/gmap.csv<span class="pl-pds">"</span></span>);
+gInfo <span class="pl-k">=</span> CSV<span class="pl-k">.</span><span class="pl-c1">read</span>(gmap_file, DataFrame);
+phenocovar_file <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(bulklmmdir,<span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>data/bxdData/phenocovar.csv<span class="pl-pds">"</span></span>);
+pInfo <span class="pl-k">=</span> CSV<span class="pl-k">.</span><span class="pl-c1">read</span>(phenocovar_file, DataFrame);</pre></div>
+<p dir="auto">We would need to use some utility functions for plotting in the package named <code>BigRiverPlots.jl</code>, which will be released soon.</p>
+<p dir="auto">After downloading the package, run</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BigRiverPlots
+
+# Get information for the genetic markers about which chromosome each was measured at
+Chr_bxd = string.(gInfo[:, :Chr]);
+Chr_bxd = reshape(Chr_bxd, :, 1);
+
+# Get information for the genetic markers about where (in Mb length) on the chromosome each was measured at
+Pos_bxd = gInfo[:, :Mb];
+Pos_bxd = reshape(Pos_bxd, :, 1);
+
+Lod_bxd = single_results.lod[1:end, :]; # load the BulkLMM LOD scores results
+gemma_results_path = joinpath(bulklmmdir,&quot;..&quot;,&quot;data/bxdData/GEMMA_BXDTrait1112/gemma_lod_1112.txt&quot;)
+Lod_gemma = readdlm(gemma_results_path, '\t'); # load gemma LOD scores results available in the package
+
+traitName = pInfo[traitID, 1] # get the trait name of the 1112-th trait
+"><pre><span class="pl-k">using</span> BigRiverPlots
+
+<span class="pl-c"><span class="pl-c">#</span> Get information for the genetic markers about which chromosome each was measured at</span>
+Chr_bxd <span class="pl-k">=</span> <span class="pl-c1">string</span>.(gInfo[:, <span class="pl-c1">:Chr</span>]);
+Chr_bxd <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(Chr_bxd, :, <span class="pl-c1">1</span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Get information for the genetic markers about where (in Mb length) on the chromosome each was measured at</span>
+Pos_bxd <span class="pl-k">=</span> gInfo[:, <span class="pl-c1">:Mb</span>];
+Pos_bxd <span class="pl-k">=</span> <span class="pl-c1">reshape</span>(Pos_bxd, :, <span class="pl-c1">1</span>);
+
+Lod_bxd <span class="pl-k">=</span> single_results<span class="pl-k">.</span>lod[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>, :]; <span class="pl-c"><span class="pl-c">#</span> load the BulkLMM LOD scores results</span>
+gemma_results_path <span class="pl-k">=</span> <span class="pl-c1">joinpath</span>(bulklmmdir,<span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>data/bxdData/GEMMA_BXDTrait1112/gemma_lod_1112.txt<span class="pl-pds">"</span></span>)
+Lod_gemma <span class="pl-k">=</span> <span class="pl-c1">readdlm</span>(gemma_results_path, <span class="pl-s"><span class="pl-pds">'</span><span class="pl-cce">\t</span><span class="pl-pds">'</span></span>); <span class="pl-c"><span class="pl-c">#</span> load gemma LOD scores results available in the package</span>
+
+traitName <span class="pl-k">=</span> pInfo[traitID, <span class="pl-c1">1</span>] <span class="pl-c"><span class="pl-c">#</span> get the trait name of the 1112-th trait</span>
+</pre></div>
+<p dir="auto">Then, to use the functions in the package <code>BigRiverPlots.jl</code>, run</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="vecSteps_bxd = BigRiverPlots.get_chromosome_steps(Pos_bxd, Chr_bxd)
+
+# get unique chr id
+v_chr_names_bxd = unique(Chr_bxd)
+
+# generate new distances coordinates
+
+x_bxd, y_bxd = BigRiverPlots.get_qtl_coord(Pos_bxd, Chr_bxd, Lod_bxd);
+x_bxd_gemma, y_bxd_gemma = BigRiverPlots.get_qtl_coord(Pos_bxd, Chr_bxd, Lod_gemma);
+
+qtlplot(x_bxd, y_bxd, vecSteps_bxd, v_chr_names_bxd;
+        label = &quot;BulkLMM.jl&quot;,
+        xlabel = &quot;Locus (Chromosome)&quot;, ylims = (0.0, 6.5),
+        title = &quot;Single trait $traitName LOD scores&quot;) # plot BulkLMM LODs
+plot!(x_bxd, y_bxd_gemma, color = :purple, label = &quot;GEMMA&quot;, legend = true) # plot GEMMA LODs
+
+hline!([thrs], color = &quot;red&quot;, linestyle=:dash, label = &quot;&quot;) # plot thresholds..."><pre>vecSteps_bxd <span class="pl-k">=</span> BigRiverPlots<span class="pl-k">.</span><span class="pl-c1">get_chromosome_steps</span>(Pos_bxd, Chr_bxd)
+
+<span class="pl-c"><span class="pl-c">#</span> get unique chr id</span>
+v_chr_names_bxd <span class="pl-k">=</span> <span class="pl-c1">unique</span>(Chr_bxd)
+
+<span class="pl-c"><span class="pl-c">#</span> generate new distances coordinates</span>
+
+x_bxd, y_bxd <span class="pl-k">=</span> BigRiverPlots<span class="pl-k">.</span><span class="pl-c1">get_qtl_coord</span>(Pos_bxd, Chr_bxd, Lod_bxd);
+x_bxd_gemma, y_bxd_gemma <span class="pl-k">=</span> BigRiverPlots<span class="pl-k">.</span><span class="pl-c1">get_qtl_coord</span>(Pos_bxd, Chr_bxd, Lod_gemma);
+
+<span class="pl-c1">qtlplot</span>(x_bxd, y_bxd, vecSteps_bxd, v_chr_names_bxd;
+        label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>BulkLMM.jl<span class="pl-pds">"</span></span>,
+        xlabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Locus (Chromosome)<span class="pl-pds">"</span></span>, ylims <span class="pl-k">=</span> (<span class="pl-c1">0.0</span>, <span class="pl-c1">6.5</span>),
+        title <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Single trait <span class="pl-v">$traitName</span> LOD scores<span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> plot BulkLMM LODs</span>
+<span class="pl-c1">plot!</span>(x_bxd, y_bxd_gemma, color <span class="pl-k">=</span> <span class="pl-c1">:purple</span>, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>GEMMA<span class="pl-pds">"</span></span>, legend <span class="pl-k">=</span> <span class="pl-c1">true</span>) <span class="pl-c"><span class="pl-c">#</span> plot GEMMA LODs</span>
+
+<span class="pl-c1">hline!</span>([thrs], color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>, linestyle<span class="pl-k">=</span><span class="pl-c1">:dash</span>, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> plot thresholds...</span></pre></div>
+<h3 dir="auto">
+<a id="user-content-multiple-traits-scanning" class="anchor" aria-hidden="true" href="#multiple-traits-scanning"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Multiple traits scanning:</h3>
+<p dir="auto">To get LODs for multiple traits, for better runtime performance, first
+start <em>julia</em> with multiple threads following <a href="https://docs.julialang.org/en/v1/manual/multi-threading/" rel="nofollow">Instructions for
+starting Julia REPL with
+multi-threads</a>
+or switch to a multi-threaded <em>julia</em> kernel if using Jupyter
+notebooks.</p>
+<p dir="auto">Then, run the function <code>bulkscan_null()</code> with the matrices of
+traits, genome markers, kinship. The fourth required input is the
+number of parallelized tasks and we recommend it to be the number of
+<em>julia</em> threads.</p>
+<p dir="auto">Here, we started a 16-threaded <em>julia</em> and executed the program on a
+Linux server with the Intel(R) Xeon(R) Silver 4214 CPU @ 2.20GHz to
+get the LOD scores for all <strong>~35k</strong> BXD traits:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@time multiple_results_allTraits = bulkscan_null(pheno_processed, geno_processed, kinship; nb = Threads.nthreads()).L;"><pre><span class="pl-c1">@time</span> multiple_results_allTraits <span class="pl-k">=</span> <span class="pl-c1">bulkscan_null</span>(pheno_processed, geno_processed, kinship; nb <span class="pl-k">=</span> Threads<span class="pl-k">.</span><span class="pl-c1">nthreads</span>())<span class="pl-k">.</span>L;</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content=" 82.421037 seconds (2.86 G allocations: 710.821 GiB, 41.76% gc time)"><pre class="notranslate"><code> 82.421037 seconds (2.86 G allocations: 710.821 GiB, 41.76% gc time)
+</code></pre></div>
+<p dir="auto">The output <code>multiple_results_allTraits</code> is a matrix of LOD scores of dimension <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="72297353020dc3a50742ffaac6e95d6f">$p \times n$</math-renderer>, with each column being the LOD scores from performing GWAS on each given trait.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="size(multiple_results_allTraits)"><pre><span class="pl-c1">size</span>(multiple_results_allTraits)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(7321, 35554)"><pre class="notranslate"><code>(7321, 35554)
+</code></pre></div>
+<p dir="auto">To visualize the multiple-trait scan results, we can use the plotting utility function <code>plot_eQTL</code>to generate the eQTL plot.
+The functions for plotting utilities will be available in the package <code>BigRiverPlots.jl</code> in the future. For now, we can easily have access to the plotting function in the script <code>plot_utils/visuals_utils.jl</code>, by running the following commands:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using RecipesBase, Plots, Plots.PlotMeasures, ColorSchemes
+include(joinpath(bulklmmdir, &quot;..&quot;, &quot;plot_utils&quot;, &quot;visuals_utils.jl&quot;));"><pre><span class="pl-k">using</span> RecipesBase, Plots, Plots<span class="pl-k">.</span>PlotMeasures, ColorSchemes
+<span class="pl-c1">include</span>(<span class="pl-c1">joinpath</span>(bulklmmdir, <span class="pl-s"><span class="pl-pds">"</span>..<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>plot_utils<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>visuals_utils.jl<span class="pl-pds">"</span></span>));</pre></div>
+<p dir="auto">For the following example, we only plot the LOD scores that are above 5.0 by calling the function and specifying in the optional argument <code>thr = 5.0</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="plot_eQTL(multiple_results_allTraits, pheno, gInfo, pInfo; thr = 5.0)"><pre><span class="pl-c1">plot_eQTL</span>(multiple_results_allTraits, pheno, gInfo, pInfo; thr <span class="pl-k">=</span> <span class="pl-c1">5.0</span>)</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="img/output_112_1.svg"><img src="img/output_112_1.svg" alt="svg" style="max-width: 100%;"></a></p>
+<h2 dir="auto">
+<a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation:</h2>
+<p dir="auto">The package <code>BulkLMM.jl</code> can be installed by running</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(&quot;BulkLMM&quot;)"><pre><span class="pl-k">using</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>BulkLMM<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">To install from the <strong>Julia</strong> REPL, first press <code>]</code> to enter the Pkg
+mode and then use:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="add BulkLMM"><pre class="notranslate"><code>add BulkLMM
+</code></pre></div>
+<p dir="auto">The most recent release of the package can be obtained by running</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(url = &quot;https://github.com/senresearch/BulkLMM.jl&quot;, rev=&quot;main&quot;)"><pre><span class="pl-k">using</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(url <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>https://github.com/senresearch/BulkLMM.jl<span class="pl-pds">"</span></span>, rev<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>main<span class="pl-pds">"</span></span>)</pre></div>
+<h2 dir="auto">
+<a id="user-content-contact-contribution-and-feedback" class="anchor" aria-hidden="true" href="#contact-contribution-and-feedback"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Contact, contribution and feedback</h2>
+<p dir="auto">If you find any bugs, please post an issue on GitHub or contact the
+maintainer (<a href="https://github.com/learningMalanya">Zifan Yu</a>) directly.
+You may also fork the repository and send us a pull request with any
+contributions you wish to make.</p>
+<p dir="auto">Check out NEWS.md to see what's new in each <code>BulkLMM.jl</code> release.</p>
+</article></div>

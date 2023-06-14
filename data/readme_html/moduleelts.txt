@@ -1,0 +1,162 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a id="user-content-moduleelts" href="#ModuleElts">#</a>
+<strong><code>ModuleElts</code></strong> — <em>Module</em>.</p>
+<p dir="auto">Module Elements –- elements of free modules.</p>
+<p dir="auto">A  <code>ModuleElt{K,V}</code>  represents  an  element  of  a free module where basis elements  are of type  <code>K</code> and coefficients  of type <code>V</code>.  Usually you want objects  of type <code>V</code> to be elements of  a ring, but it could also be useful if  they just belong to  an abelian group. This  is similar to the SageMath CombinatorialFreeModule.  You can  also see  them as  <code>SparseVector</code>s where keys can be type <code>K</code> instead of integers.</p>
+<p dir="auto">This  basic  data  structure  is  used  in  my  packages  as  an  efficient representation   at  many   places.  For   example,  the   <code>Monomial</code>  type representing multivariate monomials is a <code>ModuleElt{Symbol,Int}</code>:</p>
+<p dir="auto"><code>x^2y^-3</code> is represented by <code>ModuleElt(:x=&gt;2,:y=&gt;-3)</code></p>
+<p dir="auto">And  multivariate polynomials are  represented by a <code>ModuleElt{Monomial,C}</code> where <code>C</code> is the type of the coefficients:</p>
+<p dir="auto"><code>x*y-z^2</code> is represented by <code>ModuleElt(x*y=&gt;1,z^2=&gt;-1)</code></p>
+<p dir="auto"><code>ModuleElts</code>  are  also  used  for  cyclotomics, CycPols, elements of Hecke algebras, etc…</p>
+<p dir="auto">A  <code>ModuleElt{K,V}</code> is essentially a  list of <code>Pairs{K,V}</code>. The constructor takes  as argument a list of pairs, or a variable number of pair arguments, or a generator of pairs.</p>
+<p dir="auto">We provide two implementations:</p>
+<ul dir="auto">
+<li><code>HModuleElt</code>, an implementation by <code>Dict</code>s</li>
+</ul>
+<p dir="auto">This  requires  that  the  type  <code>K</code>  is  hashable.  It  is  a  very simple implementation  since the interface of the type  is close to that of dicts; the  only difference is weeding  out keys which have  a zero cofficient –- which  is necessary since for testing equality of module elements one needs a canonical form for each element.</p>
+<ul dir="auto">
+<li><code>ModuleElt</code>, a faster implementation which keeps a list of pairs sorted by key.</li>
+</ul>
+<p dir="auto">This  demands that the type <code>K</code>  has a <code>isless</code> method. This implementation is  two to  four times  faster than  the <code>Dict</code>  one and  requires half the memory.</p>
+<p dir="auto">Both  implementations  have  the  same  methods,  which are mostly the same methods  as a  <code>Dict</code> (<code>haskey</code>,  <code>getindex</code>, <code>setindex</code>, <code>keys</code>, <code>values</code>. <code>pairs</code>,   <code>first</code>,  <code>iterate</code>,  <code>length</code>,  <code>eltype</code>,  <code>copy</code>),  with  some exceptions.  Adding elements  is implemented  as <code>merge(+,...)</code>  which is a variation  on <code>merge</code>  for <code>Dict</code>s  where keys  with zero value are deleted after  the operation (here <code>+</code>  can be replaced by  any operation <code>op</code> with the property that <code>op(0,x)=op(x,0)=x</code>).</p>
+<p dir="auto">A module element can also be negated, or multiplied or divided (<code>/</code>or <code>//</code>) by  some element (acting on coefficients)  if the method is defined between type <code>V</code> and that element; there are also <code>zero</code> and <code>iszero</code> methods.</p>
+<p dir="auto"><code>ModuleElt</code>s  have  methods  <code>cmp</code>  and  <code>isless</code> which <code>HModuleElt</code>s don't have. There is also <code>ModuleElts.merge2</code> which does the same as merge but is valid  for more  general operations  (I use  it with  <code>min</code> and <code>max</code> which implement <code>gcd</code> and <code>lcm</code> for <code>Monomial</code>s and <code>CycPol</code>s).</p>
+<p dir="auto">Here  is an example where basis elements are <code>Symbol</code>s and coefficients are <code>Int</code>. As you can see in the examples, at the REPL (or in Jupyter or Pluto, when  <code>IO</code>  has  the  <code>:limit</code>  attribute)  the  <code>show</code>  method  shows  the coefficients  (bracketed  if  necessary,  which  is  when  they  have inner occurences  of <code>+-*/</code>), followed by showing  the basis elements. The <code>repr</code> method gives a representation which can be read back in julia:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; a=ModuleElt(:xy=&gt;1,:yx=&gt;-1)
+:xy-:yx
+
+julia&gt; repr(a)
+&quot;ModuleElt([:xy =&gt; 1, :yx =&gt; -1])&quot;
+
+julia&gt; ModuleElt([:xy=&gt;1//2,:yx=&gt;-1])
+(1//2):xy+(-1//1):yx"><pre lang="julia-repl" class="notranslate"><code>julia&gt; a=ModuleElt(:xy=&gt;1,:yx=&gt;-1)
+:xy-:yx
+
+julia&gt; repr(a)
+"ModuleElt([:xy =&gt; 1, :yx =&gt; -1])"
+
+julia&gt; ModuleElt([:xy=&gt;1//2,:yx=&gt;-1])
+(1//2):xy+(-1//1):yx
+</code></pre></div>
+<p dir="auto">Setting  the  <code>IO</code>  property  <code>:showbasis</code>  to  a  custom printing function changes how the basis elements are printed.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; show(IOContext(stdout,:showbasis=&gt;(io,s)-&gt;string(&quot;&lt;&quot;,s,&quot;&gt;&quot;)),a)
+3&lt;xy&gt;+2&lt;yx&gt;"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; show(IOContext(stdout,:showbasis=&gt;(io,s)-&gt;string("&lt;",s,"&gt;")),a)
+3&lt;xy&gt;+2&lt;yx&gt;
+</code></pre></div>
+<p dir="auto">We illustrate basic operations on <code>ModuleElt</code>s:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; a-a
+0
+
+julia&gt; a*99
+99:xy-99:yx
+
+julia&gt; a//2
+(1//2):xy+(-1//2):yx
+
+julia&gt; a/2
+0.5:xy-0.5:yx
+
+julia&gt; a+ModuleElt(:yx=&gt;1)
+:xy
+
+julia&gt; a[:xy] # indexing by a basis element finds the coefficient
+1
+
+julia&gt; a[:xx] # the coefficient of an absent basis element is zero.
+0
+
+julia&gt; haskey(a,:xx)
+false
+
+julia&gt; first(a)
+:xy =&gt; 1
+
+julia&gt; collect(a)
+2-element Vector{Pair{Symbol, Int64}}:
+ :xy =&gt; 1
+ :yx =&gt; -1
+
+julia&gt; collect(keys(a))
+2-element Vector{Symbol}:
+ :xy
+ :yx
+
+julia&gt; collect(values(a))
+2-element Vector{Int64}:
+  1
+ -1
+
+julia&gt; length(a)
+2
+
+julia&gt; eltype(a)
+Pair{Symbol, Int64}"><pre lang="julia-repl" class="notranslate"><code>julia&gt; a-a
+0
+
+julia&gt; a*99
+99:xy-99:yx
+
+julia&gt; a//2
+(1//2):xy+(-1//2):yx
+
+julia&gt; a/2
+0.5:xy-0.5:yx
+
+julia&gt; a+ModuleElt(:yx=&gt;1)
+:xy
+
+julia&gt; a[:xy] # indexing by a basis element finds the coefficient
+1
+
+julia&gt; a[:xx] # the coefficient of an absent basis element is zero.
+0
+
+julia&gt; haskey(a,:xx)
+false
+
+julia&gt; first(a)
+:xy =&gt; 1
+
+julia&gt; collect(a)
+2-element Vector{Pair{Symbol, Int64}}:
+ :xy =&gt; 1
+ :yx =&gt; -1
+
+julia&gt; collect(keys(a))
+2-element Vector{Symbol}:
+ :xy
+ :yx
+
+julia&gt; collect(values(a))
+2-element Vector{Int64}:
+  1
+ -1
+
+julia&gt; length(a)
+2
+
+julia&gt; eltype(a)
+Pair{Symbol, Int64}
+</code></pre></div>
+<p dir="auto">In both implementations the constructor normalizes the constructed element, removing zero coefficients and merging duplicate basis elements, adding the corresponding   coefficients  (and   sorting  the   basis  in  the  default implementation).  If  you  know  this  normalisation is unnecessary, to get maximum  speed you can disable this  by giving the keyword <code>check=false</code> to the constructor.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; a=ModuleElt(:yy=&gt;1, :yx=&gt;2, :xy=&gt;3, :yy=&gt;-1;check=false)
+:yy+2:yx+3:xy-:yy
+
+julia&gt; a=ModuleElt(:yy=&gt;1, :yx=&gt;2, :xy=&gt;3, :yy=&gt;-1)
+3:xy+2:yx"><pre lang="julia-repl" class="notranslate"><code>julia&gt; a=ModuleElt(:yy=&gt;1, :yx=&gt;2, :xy=&gt;3, :yy=&gt;-1;check=false)
+:yy+2:yx+3:xy-:yy
+
+julia&gt; a=ModuleElt(:yy=&gt;1, :yx=&gt;2, :xy=&gt;3, :yy=&gt;-1)
+3:xy+2:yx
+</code></pre></div>
+<p dir="auto">Adding  or subtracting <code>ModuleElt</code>s does promotion  on the type of the keys and the coefficients if needed:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; a+ModuleElt([:z=&gt;1.0])
+3.0:xy+2.0:yx+1.0:z"><pre lang="julia-repl" class="notranslate"><code>julia&gt; a+ModuleElt([:z=&gt;1.0])
+3.0:xy+2.0:yx+1.0:z
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/jmichel7/ModuleElts.jl/blob/e699813afe72977ac1a21d7a432b9470142d41ac/src/ModuleElts.jl#L1-L162">source</a><br></p>
+<p dir="auto"><a id="user-content-moduleelts.merge2" href="#ModuleElts.merge2">#</a>
+<strong><code>ModuleElts.merge2</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>merge2(op::Function,a::ModuleElt,b::ModuleElt)</code></p>
+<p dir="auto">does  <code>op</code> between coefficients of  the same basis element  in <code>a</code> and <code>b</code>. This  version works for  general ops (not  necessarily commutative or which need not satisfy op(0,x)=op(x,0)=x), but has too much overhead currently to replace  <code>merge</code> for  + or  other ops  such that  op(0,x)==op(x,0)=x. It is useful for max or min which do lcm and gcd of <code>Monomial</code>s or <code>CycPol</code>s.</p>
+<p dir="auto"><a href="https://github.com/jmichel7/ModuleElts.jl/blob/e699813afe72977ac1a21d7a432b9470142d41ac/src/ModuleElts.jl#L273-L281">source</a><br></p>
+</article></div>

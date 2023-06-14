@@ -1,0 +1,172 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-besselkjl" class="anchor" aria-hidden="true" href="#besselkjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BesselK.jl</h1>
+<p dir="auto"><a href="https://github.com/cgeoga/BesselK.jl/actions?query=workflow"><img src="https://github.com/cgeoga/BesselK.jl/workflows/CI/badge.svg" alt="" style="max-width: 100%;"></a></p>
+<p dir="auto">This package implements one function: the modified second-kind Bessel function
+Kᵥ(x). It is designed specifically to be automatically differentiable <strong>with
+ForwardDiff.jl</strong>, including providing derivatives with respect to the order
+parameter <code>v</code> <strong>that are fast and non-allocating in the entire domain for both
+first and second order</strong>.</p>
+<p dir="auto">Derivatives with respect to \nu are significantly faster than any finite
+differencing method, including the most naive fixed-step minimum-order method,
+and in almost all of the domain are meaningful more accurate. Particularly near
+the origin you should expect to gain at least 3-5 digits. Second derivatives are
+even more dramatic, both in terms of the speedup and accuracy gains, now
+commonly giving 10+ more digits of accuracy.</p>
+<p dir="auto">As a happy accident/side-effect, if you're willing to give up the last couple
+digits of accuracy, you could also use <code>ForwardDiff.jl</code> on this code for
+derivatives with respect to argument for an order-of-magnitude speedup. In some
+casual testing the argument-derivative errors with this code are never worse
+than <code>1e-12</code>, and they turn 1.4 μs with allocations into 140 ns without any
+allocations.</p>
+<p dir="auto">In order to avoid naming conflicts with other packages, this package exports
+three functions:</p>
+<ul dir="auto">
+<li><code>matern</code>: the Matern covariance function in its most common parameterization.
+See the docstrings for more info.</li>
+<li><code>adbesselk</code>: Gives Kᵥ(x), using <code>Bessels.jl</code> if applicable and our more
+specialized order-AD codes otherwise.</li>
+<li><code>adbesselkxv</code>: Gives Kᵥ(x)*(x^v), using <code>Bessels.jl</code> if applicable and our
+more specialized order-AD codes otherwise.</li>
+</ul>
+<p dir="auto">Here is a very basic demo:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ForwardDiff, SpecialFunctions, BesselK
+
+(v, x) = (1.1, 2.1)
+
+# For regular evaluations, you get what you're used to getting:
+@assert isapprox(besselk(v, x), adbesselk(v, x))
+@assert isapprox((x^v)*besselk(v, x), adbesselkxv(v, x))
+
+# But now you also get good (and fast!) derivatves:
+@show ForwardDiff.derivative(_v-&gt;adbesselk(_v, x), v)   # good to go.
+@show ForwardDiff.derivative(_v-&gt;adbesselkxv(_v, x), v) # good to go."><pre><span class="pl-k">using</span> ForwardDiff, SpecialFunctions, BesselK
+
+(v, x) <span class="pl-k">=</span> (<span class="pl-c1">1.1</span>, <span class="pl-c1">2.1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> For regular evaluations, you get what you're used to getting:</span>
+<span class="pl-c1">@assert</span> <span class="pl-c1">isapprox</span>(<span class="pl-c1">besselk</span>(v, x), <span class="pl-c1">adbesselk</span>(v, x))
+<span class="pl-c1">@assert</span> <span class="pl-c1">isapprox</span>((x<span class="pl-k">^</span>v)<span class="pl-k">*</span><span class="pl-c1">besselk</span>(v, x), <span class="pl-c1">adbesselkxv</span>(v, x))
+
+<span class="pl-c"><span class="pl-c">#</span> But now you also get good (and fast!) derivatves:</span>
+<span class="pl-c1">@show</span> ForwardDiff<span class="pl-k">.</span><span class="pl-c1">derivative</span>(_v<span class="pl-k">-&gt;</span><span class="pl-c1">adbesselk</span>(_v, x), v)   <span class="pl-c"><span class="pl-c">#</span> good to go.</span>
+<span class="pl-c1">@show</span> ForwardDiff<span class="pl-k">.</span><span class="pl-c1">derivative</span>(_v<span class="pl-k">-&gt;</span><span class="pl-c1">adbesselkxv</span>(_v, x), v) <span class="pl-c"><span class="pl-c">#</span> good to go.</span></pre></div>
+<h1 dir="auto"><a id="user-content-a-note-to-people-coming-here-from-the-paper" class="anchor" aria-hidden="true" href="#a-note-to-people-coming-here-from-the-paper"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>A note to people coming here from the paper</h1>
+<p dir="auto">You'll see that this repo defines a great deal of specific derivative functions
+in the files in <code>./paperscripts</code>. <strong>This is only because we specifically tested
+those quantities in the paper</strong>. If you're just here to fit a Matern covariance
+function, then you should <strong>not</strong> be doing that. Your code, at least in the
+simplest case, should probably look more like this:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="
+using ForwardDiff, BesselK
+
+function my_covariance_function(loc1, loc2, params)
+  ... # your awesome covariance function, presumably using adbesselk somewhere.
+end
+
+const my_data = ... # load in your data
+const my_locations = ... # load in your locations
+
+# Create your likelihood and use ForwardDiff for the grad and Hessian:
+function nll(params)
+  K = cholesky!(Symmetric([my_covariance_function(x, y, params) 
+                           for x in my_locations, y in my_locations]))
+  0.5*(logdet(K) + dot(my_data, K\my_data))
+end
+nllg(params) = ForwardDiff.gradient(nll, params)
+nllh(params) = ForwardDiff.hessian(nll, params)
+
+my_mle = some_optimizer(init_params, nll, nllg, nllh, ...)"><pre><span class="pl-k">using</span> ForwardDiff, BesselK
+
+<span class="pl-k">function</span> <span class="pl-en">my_covariance_function</span>(loc1, loc2, params)
+  <span class="pl-k">...</span> <span class="pl-c"><span class="pl-c">#</span> your awesome covariance function, presumably using adbesselk somewhere.</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">const</span> my_data <span class="pl-k">=</span> <span class="pl-k">...</span> <span class="pl-c"><span class="pl-c">#</span> load in your data</span>
+<span class="pl-k">const</span> my_locations <span class="pl-k">=</span> <span class="pl-k">...</span> <span class="pl-c"><span class="pl-c">#</span> load in your locations</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Create your likelihood and use ForwardDiff for the grad and Hessian:</span>
+<span class="pl-k">function</span> <span class="pl-en">nll</span>(params)
+  K <span class="pl-k">=</span> <span class="pl-c1">cholesky!</span>(<span class="pl-c1">Symmetric</span>([<span class="pl-c1">my_covariance_function</span>(x, y, params) 
+                           <span class="pl-k">for</span> x <span class="pl-k">in</span> my_locations, y <span class="pl-k">in</span> my_locations]))
+  <span class="pl-c1">0.5</span><span class="pl-k">*</span>(<span class="pl-c1">logdet</span>(K) <span class="pl-k">+</span> <span class="pl-c1">dot</span>(my_data, K<span class="pl-k">\</span>my_data))
+<span class="pl-k">end</span>
+<span class="pl-en">nllg</span>(params) <span class="pl-k">=</span> ForwardDiff<span class="pl-k">.</span><span class="pl-c1">gradient</span>(nll, params)
+<span class="pl-en">nllh</span>(params) <span class="pl-k">=</span> ForwardDiff<span class="pl-k">.</span><span class="pl-c1">hessian</span>(nll, params)
+
+my_mle <span class="pl-k">=</span> <span class="pl-c1">some_optimizer</span>(init_params, nll, nllg, nllh, <span class="pl-k">...</span>)</pre></div>
+<p dir="auto">Or something like that. You of course do not <em>have</em> to do it this way, and could
+manually implement the gradient and Hessian of the likelihood after manually
+creating derivatives of the covariance function itself (see
+<code>./example/matern.jl</code> for a demo of that), and manual implementations,
+particularly for the Hessian, will be faster if they are thoughtful enough. But
+what I mean to emphasize here is that in general you should <em>not</em> be doing
+manual chain rule or derivative computations of your covariance function itself.
+Let the AD handle that for you and enjoy the power that Julia's composability
+offers.</p>
+<h1 dir="auto"><a id="user-content-limitations" class="anchor" aria-hidden="true" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Limitations</h1>
+<p dir="auto">For the moment there are two primary limitations:</p>
+<ul dir="auto">
+<li>
+<p dir="auto"><strong>AD compatibility with <code>ForwardDiff.jl</code> only</strong>. The issue here is that in one
+particular case I use a different function branch of one is taking a
+derivative with respect to <code>v</code> or just evaluating <code>besselk(v, x)</code>. The way that
+is currently checked in the code is with <code>if (v isa AbstractFloat)</code>, which may
+not work properly for other methods.</p>
+</li>
+<li>
+<p dir="auto"><strong>Only derivatives up to the second are checked and confirmed accurate.</strong> The
+code uses a large number of local polynomial expansions at slightly hairy
+values of internal intermediate functions, and so at some sufficiently high
+level of derivative those local polynomials won't give accurate partial
+information.</p>
+</li>
+</ul>
+<h1 dir="auto"><a id="user-content-also-consider-besselsjl" class="anchor" aria-hidden="true" href="#also-consider-besselsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Also consider: <code>Bessels.jl</code></h1>
+<p dir="auto">This software package was written with the pretty specific goal of computing
+derivatives of Kᵥ(x) with respect to the order using <code>ForwardDiff.jl</code>. While it
+is in general a bit faster than AMOS, we give up a few digits of accuracy here
+and there in the interest of better and faster derivatives. If you just want the
+fastest possible Kᵥ(x) for floating point order and argument (as in, you don't
+need to do AD), then you would probably be better off using
+<a href="https://github.com/heltonmc/Bessels.jl"><code>Bessels.jl</code></a>.</p>
+<p dir="auto">This code now uses <code>Bessels.jl</code> whenever possible, so now the only question is
+really about whether you need AD. If you need AD with respect to order, use this
+package. If you don't, then this package offers nothing beyond what <code>Bessels.jl</code>
+does.</p>
+<h1 dir="auto"><a id="user-content-implementation-details" class="anchor" aria-hidden="true" href="#implementation-details"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Implementation details</h1>
+<p dir="auto">See the reference for an entire paper discussing the implementation. But in a
+word, this code uses several routines to evaluate Kᵥ accurately on different
+parts of the domain, and has to use some non-standard to maintain AD
+compatibility and correctness. When <code>v</code> is an integer or half-integer, for
+example, a lot of additional work is required.</p>
+<p dir="auto">The code is also pretty well-optimized, and you can benchmark for yourself or
+look at the paper to see that in several cases the <code>ForwardDiff.jl</code>-generated
+derivatives are faster than a single call to <code>SpecialFunctions.besselk</code>. To
+achieve this performance, particularly for second derivatives, some work was
+required to make sure that all of the function calls are non-allocating, which
+means switching from raw <code>Tuple</code>s to <code>Polynomial</code> types in places where the
+polynomials are large enough and things like that. Again this arguably makes the
+code look a bit disorganized or inconsistent, but to my knowledge it is all
+necessary. If somebody looking at the source finds a simplification, I would
+love to see it, either in terms of an issue or a PR or an email or a patch file
+or anything.</p>
+<h1 dir="auto"><a id="user-content-citation" class="anchor" aria-hidden="true" href="#citation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Citation</h1>
+<p dir="auto">If you use this package in your research that gets compiled into some kind of
+report/article/poster/etc, please cite <a href="https://arxiv.org/abs/2201.00090" rel="nofollow">this paper</a>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="@misc{GMSS_2022,
+      title={Fitting Mat\'ern Smoothness Parameters Using Automatic Differentiation}, 
+      author={Christopher J. Geoga and Oana Marin and Michel Schanen and Michael L. Stein},
+      year={2022},
+      journal={Statistics and Computing}
+}"><pre class="notranslate"><code>@misc{GMSS_2022,
+      title={Fitting Mat\'ern Smoothness Parameters Using Automatic Differentiation}, 
+      author={Christopher J. Geoga and Oana Marin and Michel Schanen and Michael L. Stein},
+      year={2022},
+      journal={Statistics and Computing}
+}
+</code></pre></div>
+<p dir="auto">While this package ostensibly only covers a single function, putting all of this
+together and making it this fast and accurate was really a lot of work. I would
+<em>really</em> appreciate you citing this paper if this package was useful in your
+research. Like, for example, if you used this package to fit a Matern smoothness
+parameter with second order optimization methods.</p>
+</article></div>

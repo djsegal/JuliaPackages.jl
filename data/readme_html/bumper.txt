@@ -1,0 +1,229 @@
+<div id="readme" class="org" data-path="README.org"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-bumperjl" class="anchor" aria-hidden="true" href="#bumperjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Bumper.jl</h1>
+<p dir="auto">Bumper.jl is an experimental package that aims to make working with bump allocators easy and safer (when used right).
+  You can dynamically allocate memory to these bump allocators, and reset them at the end of a code block, just like
+  Julia’s default stack. Allocating to the a <code>AllocBuffer</code> with Bumper.jl can be just as efficient as stack allocation.</p>
+<p dir="auto">The point of this is to not have to pay the hefty cost of intermediate allocations.</p>
+<p dir="auto">Bumper.jl has a global default buffer, which starts off with <code>1MB</code> of capacity. You can change the default buffer size
+  with <code>set_default_buffer_size!(nbytes)</code> where <code>nbytes</code> is the new size of the default buffer. If a buffer runs out of
+  memory, it’ll throw an error. Resizing a buffer which is in active use is not allowed, and should be
+  considered memory un-safe.</p>
+<p dir="auto">The simplest way to use Bumper is to rely on its default buffer implicitly like so:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Bumper
+using StrideArrays # Not necessary, but makes operations like broadcasting with Bumper.jl faster.
+
+function f(x::Vector{Int})
+    @no_escape begin
+        y = alloc(Int, length(x)) # This will allocate a `PtrArray` from StrideArraysCore.jl using memory from the default buffer.
+        y .= x .+ 1
+        sum(y)
+    end
+end
+
+f([1,2,3])"><pre><span class="pl-k">using</span> Bumper
+<span class="pl-k">using</span> StrideArrays <span class="pl-c"><span class="pl-c">#</span> Not necessary, but makes operations like broadcasting with Bumper.jl faster.</span>
+
+<span class="pl-k">function</span> <span class="pl-en">f</span>(x<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>)
+    <span class="pl-c1">@no_escape</span> <span class="pl-k">begin</span>
+        y <span class="pl-k">=</span> <span class="pl-c1">alloc</span>(Int, <span class="pl-c1">length</span>(x)) <span class="pl-c"><span class="pl-c">#</span> This will allocate a `PtrArray` from StrideArraysCore.jl using memory from the default buffer.</span>
+        y <span class="pl-k">.=</span> x <span class="pl-k">.+</span> <span class="pl-c1">1</span>
+        <span class="pl-c1">sum</span>(y)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">f</span>([<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>])</pre></div>
+<p dir="auto">When you use <code>@no_escape</code>, you are promising that any code enclosed in the supplied code block will not leak any memory
+  created by <code>alloc</code>. That is, you are <b>only</b> allowed to do intermediate <code>alloc</code> allocations inside a <code>@no_escape</code> block,
+  and the lifetime of those allocations is the block. This is important. Once a <code>@no_escape</code> block finishes running, it
+  will reset its internal pointer to its position from before the block started.</p>
+<p dir="auto">Let’s compare the performance of <code>f</code> to the equivalent with an intermediate heap allocation:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BenchmarkTools
+@benchmark f(x) setup=(x = rand(1:10, 30))"><pre><span class="pl-k">using</span> BenchmarkTools
+<span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(x) setup<span class="pl-k">=</span>(x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>, <span class="pl-c1">30</span>))</pre></div>
+<pre>BenchmarkTools.Trial: 10000 samples with 997 evaluations.
+ Range (min … max):  22.197 ns … 45.256 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     22.909 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   23.060 ns ±  1.126 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+        ▆█▇▂                                                   
+  ▂▂▂▃▅█████▇▅▄▄▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▂▂▂▁▂▂▂▂▂▂▂▂▂▂▂▂▁▁▂▁▂▂▂▂▂ ▃
+  22.2 ns         Histogram: frequency by time        27.4 ns &lt;
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+</pre>
+<p dir="auto">and</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function g(x::Vector{Int})
+    y = StrideArray{Int}(undef, length(x))
+    y .= x .+ 1
+    sum(y)
+end
+
+@benchmark g(x) setup=(x = rand(1:10, 30))"><pre><span class="pl-k">function</span> <span class="pl-en">g</span>(x<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>)
+    y <span class="pl-k">=</span> <span class="pl-c1">StrideArray</span><span class="pl-c1">{Int}</span>(undef, <span class="pl-c1">length</span>(x))
+    y <span class="pl-k">.=</span> x <span class="pl-k">.+</span> <span class="pl-c1">1</span>
+    <span class="pl-c1">sum</span>(y)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@benchmark</span> <span class="pl-c1">g</span>(x) setup<span class="pl-k">=</span>(x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>, <span class="pl-c1">30</span>))</pre></div>
+<pre>BenchmarkTools.Trial: 10000 samples with 995 evaluations.
+ Range (min … max):  30.975 ns …   4.676 μs  ┊ GC (min … max):  0.00% … 98.25%
+ Time  (median):     74.342 ns               ┊ GC (median):     0.00%
+ Time  (mean ± σ):   72.151 ns ± 228.449 ns  ┊ GC (mean ± σ):  17.50% ±  5.47%
+
+   █▂                                                           
+  ▂██▄▄▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▁▂▂▁▁▁▁▂▂▄▅▅▄▄▄▅▆▅▄▄▃▃▃▂▂▂▂▂▂▂▂▂▂▂▁▂▂ ▃
+  31 ns           Histogram: frequency by time          111 ns &lt;
+
+ Memory estimate: 304 bytes, allocs estimate: 1.
+</pre>
+<p dir="auto">Nice speedup!</p>
+<p dir="auto">However, we can actually do better if we’re okay with manually manipulating some state. The way I invoked <code>@no_escape</code> and <code>alloc</code> implicitly used
+  the default buffer, and fetching that default buffer is not as fast as using a <code>const</code> global variable, because Bumper.jl is working to protect
+  you against concurrency bugs (more on that in the next section).</p>
+<p dir="auto">If we provide the buffer to <code>f</code> explicitly, these safety features aren’t needed:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function f(x, buf::AllocBuffer)
+    @no_escape buf begin # &lt;----- Notice I specified buf here
+        y = alloc(Int, buf, length(x)) # &lt;----- and here
+        y .= x .+ 1
+        sum(y)
+    end
+end
+
+@benchmark f(x, buf) setup=(x = rand(1:10, 30);
+                            buf = default_buffer())"><pre><span class="pl-k">function</span> <span class="pl-en">f</span>(x, buf<span class="pl-k">::</span><span class="pl-c1">AllocBuffer</span>)
+    <span class="pl-c1">@no_escape</span> buf <span class="pl-k">begin</span> <span class="pl-c"><span class="pl-c">#</span> &lt;----- Notice I specified buf here</span>
+        y <span class="pl-k">=</span> <span class="pl-c1">alloc</span>(Int, buf, <span class="pl-c1">length</span>(x)) <span class="pl-c"><span class="pl-c">#</span> &lt;----- and here</span>
+        y <span class="pl-k">.=</span> x <span class="pl-k">.+</span> <span class="pl-c1">1</span>
+        <span class="pl-c1">sum</span>(y)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(x, buf) setup<span class="pl-k">=</span>(x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span>, <span class="pl-c1">30</span>);
+                            buf <span class="pl-k">=</span> <span class="pl-c1">default_buffer</span>())</pre></div>
+<pre>BenchmarkTools.Trial: 10000 samples with 999 evaluations.
+ Range (min … max):  10.119 ns … 23.664 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     10.340 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   10.374 ns ±  0.456 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  ▁ ▁ ▂▃▄▇▄█▅▆▁                                               ▂
+  █▄████████████▆▆▁▁▃▃▁▄▃▁▁▄▅▃▁▁▁▃▁▄▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃▃▃▄▃▃▁▃ █
+  10.1 ns      Histogram: log(frequency) by time      11.5 ns &lt;
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+</pre>
+<p dir="auto">Running <code>default_buffer()</code> will give you the current task’s default buffer, or you can explicitly construct an <code>N</code> byte buffer by calling <code>AllocBuffer(N)</code>.</p>
+<p dir="auto">E.g. if we want to do something that requires a very large buffer temporarily, we could do this:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="let x = rand(1:100, 10_000_000), buf = AllocBuffer(2*sizeof(x))
+    f(x, buf)
+end"><pre><span class="pl-k">let</span> x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>, <span class="pl-c1">10_000_000</span>), buf <span class="pl-k">=</span> <span class="pl-c1">AllocBuffer</span>(<span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">sizeof</span>(x))
+    <span class="pl-c1">f</span>(x, buf)
+<span class="pl-k">end</span></pre></div>
+<pre>515035101
+</pre>
+<p dir="auto">Some miscellaneous notes:</p>
+<ul dir="auto">
+  <li><code>@no_escape</code> blocks can be nested as much as you want (so long as the allocator has enough memory to store the objects you’re using.</li>
+  <li><code>alloc(T, n...)</code> is dynamically scoped, meaning that you can have deeply nested <code>alloc</code> calls inside a <code>@no_escape</code> block, and they’ll
+    still use the same default buffer, and be reset once the block ends.</li>
+  <li>As mentioned previously, <b>Do not allow any memory which was initialized inside a</b> <code>@no_escape</code> <b>block to escape the block.</b> Doing so can cause memory
+    corruption.</li>
+  <li>You can use <code>alloc</code> outside of an <code>@no_escape</code> block, but that will leak memory from the buffer and cause it to overflow if you do it to many times.
+    If you accidentally do this, and need to reset the buffer, use <code>Bumper.reset_buffer!(::AllocBuffer)</code>.</li>
+  <li><code>alloc(T, n...)</code> creates a <code>StrideArraysCore.PtrArray{T, length(n)}</code>.</li>
+  <li>In order to be lightweight, Bumper.jl only depends on StrideArraysCore.jl, not the full <a href="https://github.com/JuliaSIMD/StrideArrays.jl">StrideArrays.jl</a>, so if you need some of
+    the more advanced functionality from StrideArrays.jl itself, you’ll need to do <code>using StrideArrays</code> separately.</li>
+  <li>Bumper.jl is experimental, and may have bugs. Let me know if you find any. Contributing to the test suite would be greatly appreciated.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-concurrency-and-parallelism" class="anchor" aria-hidden="true" href="#concurrency-and-parallelism"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Concurrency and parallelism</h2>
+<p dir="auto">Every task has its own <b>independent</b> default buffer which inherit the size of their parent’s task buffer. A task’s buffer is only created
+  if it is used, so this does not slow down the spawning of Julia tasks in general. Here’s a demo that the default buffers are different:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Bumper
+let b = default_buffer() # The default buffer on the main task
+    t = @async default_buffer() # Get the default buffer on an asychronous task
+    fetch(t) === b
+end"><pre><span class="pl-k">using</span> Bumper
+<span class="pl-k">let</span> b <span class="pl-k">=</span> <span class="pl-c1">default_buffer</span>() <span class="pl-c"><span class="pl-c">#</span> The default buffer on the main task</span>
+    t <span class="pl-k">=</span> <span class="pl-c1">@async</span> <span class="pl-c1">default_buffer</span>() <span class="pl-c"><span class="pl-c">#</span> Get the default buffer on an asychronous task</span>
+    <span class="pl-c1">fetch</span>(t) <span class="pl-k">===</span> b
+<span class="pl-k">end</span></pre></div>
+<pre>false
+</pre>
+<p dir="auto">Whereas if we don’t spawn any tasks, we don’t have to worry about unnecessary buffer creation:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="let b = default_buffer() # The default buffer on the main task
+    b2 = default_buffer() # Get the default buffer on an asychronous task
+    b2 === b
+end"><pre><span class="pl-k">let</span> b <span class="pl-k">=</span> <span class="pl-c1">default_buffer</span>() <span class="pl-c"><span class="pl-c">#</span> The default buffer on the main task</span>
+    b2 <span class="pl-k">=</span> <span class="pl-c1">default_buffer</span>() <span class="pl-c"><span class="pl-c">#</span> Get the default buffer on an asychronous task</span>
+    b2 <span class="pl-k">===</span> b
+<span class="pl-k">end</span></pre></div>
+<pre>true
+</pre>
+<p dir="auto">Because of this, we don’t have to worry about <code>@no_escape begin ... alloc() ... end</code> blocks on different threads or tasks interfering
+  with each other, so long as they are only operating on buffers local to that task or the <code>default_buffer()</code>.</p>
+<h2 dir="auto"><a id="user-content-changing-buffers" class="anchor" aria-hidden="true" href="#changing-buffers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Changing buffers</h2>
+<p dir="auto">If for some reason you want to run a chunk of code with the default bufferr temporarily modified, you can use <code>with_buffer(f, b)</code> for that:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="let b = default_buffer()
+    with_buffer(AllocBuffer(100)) do
+        b === default_buffer()
+    end
+end"><pre><span class="pl-k">let</span> b <span class="pl-k">=</span> <span class="pl-c1">default_buffer</span>()
+    <span class="pl-c1">with_buffer</span>(<span class="pl-c1">AllocBuffer</span>(<span class="pl-c1">100</span>)) <span class="pl-k">do</span>
+        b <span class="pl-k">===</span> <span class="pl-c1">default_buffer</span>()
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<pre>false
+</pre>
+<p dir="auto">This is dynamically scoped, so any nested function calls inside the <code>with_buffer</code> block will see a modified <code>default_buffer</code>.</p>
+<h2 dir="auto"><a id="user-content-advanced-usage-with-staticcompilerjl" class="anchor" aria-hidden="true" href="#advanced-usage-with-staticcompilerjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Advanced usage with StaticCompiler.jl</h2>
+<p dir="auto">Bumper.jl can be useful to those who are trying to compile standalone static binaries with StaticCompiler.jl since those binaries
+  do not have Julia’s GC available to them. To do so, we won’t be able to count on the global default buffer or <code>with_buffer</code>, but
+  will instead have to explicitly provide it. We’ll also need to use <code>alloc_nothrow</code> instead due to a current limitation of
+  StaticCompiler.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Bumper, StaticCompiler, StaticTools
+function foo(argc::Int, argv::Ptr{Ptr{UInt8}})
+    n = argparse(Int, argv, 2)
+    v = MallocArray{UInt8}(undef, 100) # 100 bytes of malloc'd memory to work with.
+    buf = AllocBuffer(v) # create an AllocBuffer{MallocVector{UInt8}} because regular Vector doesn't work in this mode.
+
+    s = 0
+    for i ∈ 1:10000
+        @no_escape buf begin # &lt;----- Note that we specify buf here.
+            # allocate a chunk of n bytes at a time before resetting, so we don't spill over our 100 byte limit
+            x = alloc_nothrow(Int, buf, n) # &lt;--- Note that we're using alloc_nothrow
+            x .= 1
+            s += sum(x)
+        end
+    end
+
+    printf(c&quot;The sum is: %d\n&quot;, s)
+    free(v)
+end
+
+compile_executable(foo, (Int, Ptr{Ptr{UInt8}}), &quot;./&quot;) # compile it to an execuable
+
+run(`./foo 5`) # run it"><pre><span class="pl-k">using</span> Bumper, StaticCompiler, StaticTools
+<span class="pl-k">function</span> <span class="pl-en">foo</span>(argc<span class="pl-k">::</span><span class="pl-c1">Int</span>, argv<span class="pl-k">::</span><span class="pl-c1">Ptr{Ptr{UInt8}}</span>)
+    n <span class="pl-k">=</span> <span class="pl-c1">argparse</span>(Int, argv, <span class="pl-c1">2</span>)
+    v <span class="pl-k">=</span> <span class="pl-c1">MallocArray</span><span class="pl-c1">{UInt8}</span>(undef, <span class="pl-c1">100</span>) <span class="pl-c"><span class="pl-c">#</span> 100 bytes of malloc'd memory to work with.</span>
+    buf <span class="pl-k">=</span> <span class="pl-c1">AllocBuffer</span>(v) <span class="pl-c"><span class="pl-c">#</span> create an AllocBuffer{MallocVector{UInt8}} because regular Vector doesn't work in this mode.</span>
+
+    s <span class="pl-k">=</span> <span class="pl-c1">0</span>
+    <span class="pl-k">for</span> i <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10000</span>
+        <span class="pl-c1">@no_escape</span> buf <span class="pl-k">begin</span> <span class="pl-c"><span class="pl-c">#</span> &lt;----- Note that we specify buf here.</span>
+            <span class="pl-c"><span class="pl-c">#</span> allocate a chunk of n bytes at a time before resetting, so we don't spill over our 100 byte limit</span>
+            x <span class="pl-k">=</span> <span class="pl-c1">alloc_nothrow</span>(Int, buf, n) <span class="pl-c"><span class="pl-c">#</span> &lt;--- Note that we're using alloc_nothrow</span>
+            x <span class="pl-k">.=</span> <span class="pl-c1">1</span>
+            s <span class="pl-k">+=</span> <span class="pl-c1">sum</span>(x)
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-c1">printf</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">c</span>"</span>The sum is: %d<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>, s)
+    <span class="pl-c1">free</span>(v)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">compile_executable</span>(foo, (Int, Ptr{Ptr{UInt8}}), <span class="pl-s"><span class="pl-pds">"</span>./<span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> compile it to an execuable</span>
+
+<span class="pl-c1">run</span>(<span class="pl-s"><span class="pl-pds">`</span>./foo 5<span class="pl-pds">`</span></span>) <span class="pl-c"><span class="pl-c">#</span> run it</span></pre></div>
+<pre>The sum is: 50000
+Process(`./foo 5`, ProcessExited(0))
+</pre>
+</article></div>

@@ -1,0 +1,555 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-lazytablesjl" class="anchor" aria-hidden="true" href="#lazytablesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>LazyTables.jl</h1>
+<p dir="auto"><em>All the good of <code>TypedTables.jl</code> but FASTER and without as many allocations!</em></p>
+<p dir="auto">A <code>LazyTable</code> is basically a <a href="https://github.com/JuliaData/TypedTables.jl#typedtablesjl"><code>TypedTables.Table</code></a> but better.
+At worst, a <code>LazyTable</code> will perform just as well as a <code>Table</code>.
+But at its best it can be hundreds of times faster with no allocations.
+Here are some <a href="%60test/bench.jl%60">benchmarks which you can run for yourself</a>.</p>
+<h2 dir="auto"><a id="user-content-benchmarks" class="anchor" aria-hidden="true" href="#benchmarks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Benchmarks</h2>
+<p dir="auto">All benchmarks are performed using the same data for each table.
+The tables have 1000 rows and 52 columns (column names are <code>:A</code> to <code>:Z</code> and <code>:a</code> to <code>:z</code>) where each column is a <code>Vector</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LazyTable is 68.64 times FASTER than TypedTables.Table
+# LazyTable used 100.00% LESS memory than TypedTables.Table
+# LazyTable made 100.00% FEWER allocations than TypedTables.Table
+
+julia&gt; @benchmark values($lazytab[i]) setup=(i=rand(1:1000))
+BenchmarkTools.Trial: 10000 samples with 961 evaluations.
+ Range (min … max):  86.613 ns … 115.137 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     86.665 ns               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   87.101 ns ±   1.653 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Memory estimate: 0 bytes, allocs estimate: 0.
+
+julia&gt; @benchmark values($typetab[i]) setup=(i=rand(1:1000))
+BenchmarkTools.Trial: 10000 samples with 6 evaluations.
+ Range (min … max):  5.437 μs … 142.746 μs  ┊ GC (min … max): 0.00% … 93.06%
+ Time  (median):     5.686 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   5.979 μs ±   3.144 μs  ┊ GC (mean ± σ):  1.24% ±  2.29%
+ Memory estimate: 4.78 KiB, allocs estimate: 126."><pre><span class="pl-c"><span class="pl-c">#</span> LazyTable is 68.64 times FASTER than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable used 100.00% LESS memory than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable made 100.00% FEWER allocations than TypedTables.Table</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">values</span>(<span class="pl-k">$</span>lazytab[i]) setup<span class="pl-k">=</span>(i<span class="pl-k">=</span><span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>))
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">961</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">86.613</span> ns … <span class="pl-c1">115.137</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">86.665</span> ns               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">87.101</span> ns ±   <span class="pl-c1">1.653</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">values</span>(<span class="pl-k">$</span>typetab[i]) setup<span class="pl-k">=</span>(i<span class="pl-k">=</span><span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>))
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">6</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">5.437</span> μs … <span class="pl-c1">142.746</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">93.06</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">5.686</span> μs               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">5.979</span> μs ±   <span class="pl-c1">3.144</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">1.24</span><span class="pl-k">%</span> ±  <span class="pl-c1">2.29</span><span class="pl-k">%</span>
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">4.78</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">126.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LazyTable is 47.10 times FASTER than TypedTables.Table
+# LazyTable used 100.00% LESS memory than TypedTables.Table
+# LazyTable made 100.00% FEWER allocations than TypedTables.Table
+
+julia&gt; @benchmark pairs($lazytab[i]) setup=(i=rand(1:1000))
+BenchmarkTools.Trial: 10000 samples with 961 evaluations.
+ Range (min … max):  86.620 ns … 113.056 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     86.674 ns               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   87.068 ns ±   1.517 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+
+julia&gt; @benchmark pairs($typetab[i]) setup=(i=rand(1:1000))
+BenchmarkTools.Trial: 10000 samples with 8 evaluations.
+ Range (min … max):  3.729 μs … 129.913 μs  ┊ GC (min … max): 0.00% … 94.93%
+ Time  (median):     3.872 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.101 μs ±   2.678 μs  ┊ GC (mean ± σ):  1.41% ±  2.12%
+
+ Memory estimate: 3.48 KiB, allocs estimate: 91."><pre><span class="pl-c"><span class="pl-c">#</span> LazyTable is 47.10 times FASTER than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable used 100.00% LESS memory than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable made 100.00% FEWER allocations than TypedTables.Table</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">pairs</span>(<span class="pl-k">$</span>lazytab[i]) setup<span class="pl-k">=</span>(i<span class="pl-k">=</span><span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>))
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">961</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">86.620</span> ns … <span class="pl-c1">113.056</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">86.674</span> ns               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">87.068</span> ns ±   <span class="pl-c1">1.517</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">pairs</span>(<span class="pl-k">$</span>typetab[i]) setup<span class="pl-k">=</span>(i<span class="pl-k">=</span><span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>))
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">8</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">3.729</span> μs … <span class="pl-c1">129.913</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">94.93</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">3.872</span> μs               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">4.101</span> μs ±   <span class="pl-c1">2.678</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">1.41</span><span class="pl-k">%</span> ±  <span class="pl-c1">2.12</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">3.48</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">91.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LazyTable is 87.58 times FASTER than TypedTables.Table
+# LazyTable used 100.00% LESS memory than TypedTables.Table
+# LazyTable made 100.00% FEWER allocations than TypedTables.Table
+
+julia&gt; f(x) = Iterators.map(x -&gt; x.a, x)
+
+julia&gt; @benchmark f($lazytab[i]) setup=(i=rand(1:1000))
+BenchmarkTools.Trial: 10000 samples with 988 evaluations.
+ Range (min … max):  46.230 ns … 66.602 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     46.272 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   46.568 ns ±  1.127 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+
+julia&gt; @benchmark f($typetab[i]) setup=(i=rand(1:1000))
+BenchmarkTools.Trial: 10000 samples with 8 evaluations.
+ Range (min … max):  3.725 μs … 120.630 μs  ┊ GC (min … max): 0.00% … 95.06%
+ Time  (median):     3.847 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.078 μs ±   2.568 μs  ┊ GC (mean ± σ):  1.36% ±  2.12%
+
+ Memory estimate: 3.48 KiB, allocs estimate: 91."><pre><span class="pl-c"><span class="pl-c">#</span> LazyTable is 87.58 times FASTER than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable used 100.00% LESS memory than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable made 100.00% FEWER allocations than TypedTables.Table</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> Iterators<span class="pl-k">.</span><span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">.</span>a, x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab[i]) setup<span class="pl-k">=</span>(i<span class="pl-k">=</span><span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>))
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">988</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">46.230</span> ns … <span class="pl-c1">66.602</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">46.272</span> ns              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">46.568</span> ns ±  <span class="pl-c1">1.127</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab[i]) setup<span class="pl-k">=</span>(i<span class="pl-k">=</span><span class="pl-c1">rand</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1000</span>))
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">8</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">3.725</span> μs … <span class="pl-c1">120.630</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">95.06</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">3.847</span> μs               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">4.078</span> μs ±   <span class="pl-c1">2.568</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">1.36</span><span class="pl-k">%</span> ±  <span class="pl-c1">2.12</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">3.48</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">91.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LazyTable is 89.21 times FASTER than TypedTables.Table
+# LazyTable used 100.00% LESS memory than TypedTables.Table
+# LazyTable made 100.00% FEWER allocations than TypedTables.Table
+
+julia&gt; f(x) = x[500]
+
+julia&gt; @benchmark f($lazytab)
+BenchmarkTools.Trial: 10000 samples with 988 evaluations.
+ Range (min … max):  45.949 ns … 67.608 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     46.002 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   46.240 ns ±  0.993 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+
+julia&gt; @benchmark f($typetab)
+BenchmarkTools.Trial: 10000 samples with 8 evaluations.
+ Range (min … max):  3.746 μs … 124.082 μs  ┊ GC (min … max): 0.00% … 94.28%
+ Time  (median):     3.910 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.125 μs ±   2.650 μs  ┊ GC (mean ± σ):  1.40% ±  2.13%
+
+ Memory estimate: 3.48 KiB, allocs estimate: 91."><pre><span class="pl-c"><span class="pl-c">#</span> LazyTable is 89.21 times FASTER than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable used 100.00% LESS memory than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable made 100.00% FEWER allocations than TypedTables.Table</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> x[<span class="pl-c1">500</span>]
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">988</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">45.949</span> ns … <span class="pl-c1">67.608</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">46.002</span> ns              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">46.240</span> ns ±  <span class="pl-c1">0.993</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">8</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">3.746</span> μs … <span class="pl-c1">124.082</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">94.28</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">3.910</span> μs               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">4.125</span> μs ±   <span class="pl-c1">2.650</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">1.40</span><span class="pl-k">%</span> ±  <span class="pl-c1">2.13</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">3.48</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">91.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LazyTable is 1.70 times FASTER than TypedTables.Table
+# LazyTable used 94.69% LESS memory than TypedTables.Table
+# LazyTable made 62.83% FEWER allocations than TypedTables.Table
+
+julia&gt; f(x) = sum(x[500])
+
+julia&gt; @benchmark f($lazytab)
+BenchmarkTools.Trial: 10000 samples with 6 evaluations.
+ Range (min … max):  5.034 μs … 199.959 μs  ┊ GC (min … max): 0.00% … 95.24%
+ Time  (median):     5.466 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   5.402 μs ±   1.964 μs  ┊ GC (mean ± σ):  0.35% ±  0.95%
+
+ Memory estimate: 1.31 KiB, allocs estimate: 84.
+
+julia&gt; @benchmark f($typetab)
+BenchmarkTools.Trial: 10000 samples with 3 evaluations.
+ Range (min … max):  7.946 μs … 363.028 μs  ┊ GC (min … max): 0.00% … 94.70%
+ Time  (median):     8.261 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   9.206 μs ±  12.401 μs  ┊ GC (mean ± σ):  5.08% ±  3.71%
+
+ Memory estimate: 24.72 KiB, allocs estimate: 226."><pre><span class="pl-c"><span class="pl-c">#</span> LazyTable is 1.70 times FASTER than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable used 94.69% LESS memory than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable made 62.83% FEWER allocations than TypedTables.Table</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(x[<span class="pl-c1">500</span>])
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">6</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">5.034</span> μs … <span class="pl-c1">199.959</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">95.24</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">5.466</span> μs               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">5.402</span> μs ±   <span class="pl-c1">1.964</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.35</span><span class="pl-k">%</span> ±  <span class="pl-c1">0.95</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">1.31</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">84.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">3</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">7.946</span> μs … <span class="pl-c1">363.028</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">94.70</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">8.261</span> μs               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">9.206</span> μs ±  <span class="pl-c1">12.401</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">5.08</span><span class="pl-k">%</span> ±  <span class="pl-c1">3.71</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">24.72</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">226.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# this is a draw
+
+julia&gt; f(x) = filter(&lt;(0.5), x.z)
+
+julia&gt; @benchmark f($lazytab)
+BenchmarkTools.Trial: 10000 samples with 10 evaluations.
+ Range (min … max):  1.019 μs … 91.588 μs  ┊ GC (min … max): 0.00% … 97.02%
+ Time  (median):     1.056 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.188 μs ±  1.237 μs  ┊ GC (mean ± σ):  1.44% ±  1.38%
+
+ Memory estimate: 1.06 KiB, allocs estimate: 1.
+
+julia&gt; @benchmark f($typetab)
+BenchmarkTools.Trial: 10000 samples with 10 evaluations.
+ Range (min … max):  1.017 μs … 90.782 μs  ┊ GC (min … max): 0.00% … 96.64%
+ Time  (median):     1.055 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.195 μs ±  1.277 μs  ┊ GC (mean ± σ):  1.47% ±  1.37%
+
+ Memory estimate: 1.06 KiB, allocs estimate: 1."><pre><span class="pl-c"><span class="pl-c">#</span> this is a draw</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">filter</span>(<span class="pl-k">&lt;</span>(<span class="pl-c1">0.5</span>), x<span class="pl-k">.</span>z)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">10</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">1.019</span> μs … <span class="pl-c1">91.588</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">97.02</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">1.056</span> μs              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">1.188</span> μs ±  <span class="pl-c1">1.237</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">1.44</span><span class="pl-k">%</span> ±  <span class="pl-c1">1.38</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">1.06</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">1.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">10</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">1.017</span> μs … <span class="pl-c1">90.782</span> μs  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">96.64</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">1.055</span> μs              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">1.195</span> μs ±  <span class="pl-c1">1.277</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">1.47</span><span class="pl-k">%</span> ±  <span class="pl-c1">1.37</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">1.06</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">1.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# LazyTable is 245.80 times FASTER than TypedTables.Table
+# LazyTable used 99.46% LESS memory than TypedTables.Table
+# LazyTable made 99.88% FEWER allocations than TypedTables.Table
+
+julia&gt; f(x) = filter(x -&gt; x.z &lt; 0.5, x)
+
+julia&gt; @benchmark f($lazytab)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  13.791 μs …  1.433 ms  ┊ GC (min … max): 0.00% … 97.16%
+ Time  (median):     14.262 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   15.707 μs ± 25.517 μs  ┊ GC (mean ± σ):  3.18% ±  1.95%
+
+ Memory estimate: 19.62 KiB, allocs estimate: 113.
+
+julia&gt; @benchmark f($typetab)
+BenchmarkTools.Trial: 1294 samples with 1 evaluation.
+ Range (min … max):  3.677 ms …   6.025 ms  ┊ GC (min … max): 0.00% … 23.36%
+ Time  (median):     3.743 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   3.861 ms ± 340.557 μs  ┊ GC (mean ± σ):  2.11% ±  5.71%
+
+ Memory estimate: 3.57 MiB, allocs estimate: 91112."><pre><span class="pl-c"><span class="pl-c">#</span> LazyTable is 245.80 times FASTER than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable used 99.46% LESS memory than TypedTables.Table</span>
+<span class="pl-c"><span class="pl-c">#</span> LazyTable made 99.88% FEWER allocations than TypedTables.Table</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">filter</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">.</span>z <span class="pl-k">&lt;</span> <span class="pl-c1">0.5</span>, x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1</span> evaluation.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">13.791</span> μs …  <span class="pl-c1">1.433</span> ms  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">97.16</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">14.262</span> μs              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">15.707</span> μs ± <span class="pl-c1">25.517</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">3.18</span><span class="pl-k">%</span> ±  <span class="pl-c1">1.95</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">19.62</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">113.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">1294</span> samples with <span class="pl-c1">1</span> evaluation.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">3.677</span> ms …   <span class="pl-c1">6.025</span> ms  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">23.36</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">3.743</span> ms               ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">3.861</span> ms ± <span class="pl-c1">340.557</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">2.11</span><span class="pl-k">%</span> ±  <span class="pl-c1">5.71</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">3.57</span> MiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">91112.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# this is a draw
+
+julia&gt; f(x) = Iterators.filter(x -&gt; x.z &lt; 0.5, x)
+
+julia&gt; @benchmark f($lazytab)
+BenchmarkTools.Trial: 10000 samples with 1000 evaluations.
+ Range (min … max):  5.858 ns … 22.717 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     5.903 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   6.026 ns ±  0.303 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+
+julia&gt; @benchmark f($typetab)
+BenchmarkTools.Trial: 10000 samples with 1000 evaluations.
+ Range (min … max):  5.863 ns … 21.733 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     5.888 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   6.005 ns ±  0.359 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+ Memory estimate: 0 bytes, allocs estimate: 0."><pre><span class="pl-c"><span class="pl-c">#</span> this is a draw</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> Iterators<span class="pl-k">.</span><span class="pl-c1">filter</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">.</span>z <span class="pl-k">&lt;</span> <span class="pl-c1">0.5</span>, x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1000</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">5.858</span> ns … <span class="pl-c1">22.717</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">5.903</span> ns              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">6.026</span> ns ±  <span class="pl-c1">0.303</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1000</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">5.863</span> ns … <span class="pl-c1">21.733</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">5.888</span> ns              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">6.005</span> ns ±  <span class="pl-c1">0.359</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span></pre></div>
+<hr>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# this is a draw
+
+julia&gt; f(x) = vcat(x, x)
+
+julia&gt; @benchmark f($lazytab)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  45.199 μs …  1.421 ms  ┊ GC (min … max):  0.00% … 91.16%
+ Time  (median):     58.151 μs              ┊ GC (median):     0.00%
+ Time  (mean ± σ):   72.780 μs ± 98.033 μs  ┊ GC (mean ± σ):  14.86% ± 10.44%
+
+ Memory estimate: 619.73 KiB, allocs estimate: 61.
+
+julia&gt; @benchmark f($typetab)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  49.442 μs …  1.421 ms  ┊ GC (min … max):  0.00% … 88.79%
+ Time  (median):     58.011 μs              ┊ GC (median):     0.00%
+ Time  (mean ± σ):   70.518 μs ± 93.531 μs  ┊ GC (mean ± σ):  14.89% ± 10.42%
+
+ Memory estimate: 619.30 KiB, allocs estimate: 60."><pre><span class="pl-c"><span class="pl-c">#</span> this is a draw</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-en">f</span>(x) <span class="pl-k">=</span> <span class="pl-c1">vcat</span>(x, x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>lazytab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1</span> evaluation.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">45.199</span> μs …  <span class="pl-c1">1.421</span> ms  ┊ GC (min … max)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">91.16</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">58.151</span> μs              ┊ GC (median)<span class="pl-k">:</span>     <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">72.780</span> μs ± <span class="pl-c1">98.033</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">14.86</span><span class="pl-k">%</span> ± <span class="pl-c1">10.44</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">619.73</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">61.</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">f</span>(<span class="pl-k">$</span>typetab)
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1</span> evaluation.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">49.442</span> μs …  <span class="pl-c1">1.421</span> ms  ┊ GC (min … max)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">88.79</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">58.011</span> μs              ┊ GC (median)<span class="pl-k">:</span>     <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">70.518</span> μs ± <span class="pl-c1">93.531</span> μs  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">14.89</span><span class="pl-k">%</span> ± <span class="pl-c1">10.42</span><span class="pl-k">%</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">619.30</span> KiB, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">60.</span></pre></div>
+<h2 dir="auto"><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage</h2>
+<p dir="auto">Full integration with the <a href="https://github.com/JuliaData/Tables.jl#tablesjl"><code>Tables.jl</code></a> interface.</p>
+<p dir="auto">Should function as a drop in replacement for <code>TypedTables.Table</code>.</p>
+<p dir="auto">A <code>LazyTable</code> actually uses <code>Table</code> as its store and can be constructed the same way.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using LazyTables
+
+julia&gt; lazytable = LazyTable(x = rand(10), y = rand(10))
+LazyTable with 2 columns with 10 rows:
+╭─────┬───────────┬───────────╮
+│ row │     x     │     y     │
+├─────┼───────────┼───────────┤
+│   1 │ 0.26997   │ 0.662442  │
+│   2 │ 0.315106  │ 0.745717  │
+│   3 │ 0.700736  │ 0.499348  │
+│   4 │ 0.531262  │ 0.387146  │
+│   5 │ 0.961951  │ 0.531365  │
+│   6 │ 0.22444   │ 0.498552  │
+│   7 │ 0.0450473 │ 0.648617  │
+│   8 │ 0.182706  │ 0.0796079 │
+│   9 │ 0.216163  │ 0.437709  │
+│  10 │ 0.929186  │ 0.899007  │
+╰─────┴───────────┴───────────╯
+
+julia&gt; lazytable[1]
+(x = 0.26997004281231074, y = 0.6624416805539212)
+
+julia&gt; lazytable[1].x
+0.26997004281231074"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> LazyTables
+
+julia<span class="pl-k">&gt;</span> lazytable <span class="pl-k">=</span> <span class="pl-c1">LazyTable</span>(x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>), y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">10</span>))
+LazyTable with <span class="pl-c1">2</span> columns with <span class="pl-c1">10</span> rows<span class="pl-k">:</span>
+╭─────┬───────────┬───────────╮
+│ row │     x     │     y     │
+├─────┼───────────┼───────────┤
+│   <span class="pl-c1">1</span> │ <span class="pl-c1">0.26997</span>   │ <span class="pl-c1">0.662442</span>  │
+│   <span class="pl-c1">2</span> │ <span class="pl-c1">0.315106</span>  │ <span class="pl-c1">0.745717</span>  │
+│   <span class="pl-c1">3</span> │ <span class="pl-c1">0.700736</span>  │ <span class="pl-c1">0.499348</span>  │
+│   <span class="pl-c1">4</span> │ <span class="pl-c1">0.531262</span>  │ <span class="pl-c1">0.387146</span>  │
+│   <span class="pl-c1">5</span> │ <span class="pl-c1">0.961951</span>  │ <span class="pl-c1">0.531365</span>  │
+│   <span class="pl-c1">6</span> │ <span class="pl-c1">0.22444</span>   │ <span class="pl-c1">0.498552</span>  │
+│   <span class="pl-c1">7</span> │ <span class="pl-c1">0.0450473</span> │ <span class="pl-c1">0.648617</span>  │
+│   <span class="pl-c1">8</span> │ <span class="pl-c1">0.182706</span>  │ <span class="pl-c1">0.0796079</span> │
+│   <span class="pl-c1">9</span> │ <span class="pl-c1">0.216163</span>  │ <span class="pl-c1">0.437709</span>  │
+│  <span class="pl-c1">10</span> │ <span class="pl-c1">0.929186</span>  │ <span class="pl-c1">0.899007</span>  │
+╰─────┴───────────┴───────────╯
+
+julia<span class="pl-k">&gt;</span> lazytable[<span class="pl-c1">1</span>]
+(x <span class="pl-k">=</span> <span class="pl-c1">0.26997004281231074</span>, y <span class="pl-k">=</span> <span class="pl-c1">0.6624416805539212</span>)
+
+julia<span class="pl-k">&gt;</span> lazytable[<span class="pl-c1">1</span>]<span class="pl-k">.</span>x
+<span class="pl-c1">0.26997004281231074</span></pre></div>
+<h2 dir="auto"><a id="user-content-differences-from-typedtablestable" class="anchor" aria-hidden="true" href="#differences-from-typedtablestable"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Differences from <code>TypedTables.Table</code></h2>
+<h3 dir="auto"><a id="user-content-lazyrow" class="anchor" aria-hidden="true" href="#lazyrow"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><code>LazyRow</code></h3>
+<p dir="auto"><code>LazyTable</code> does not return a <code>NamedTuple</code>.
+Instead it returns a <code>LazyRow</code> which should act and feel just like a <code>NamedTuple</code> (for the most part).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using TypedTables: Table
+
+julia&gt; typetable = lazytable |&gt; Table;
+
+julia&gt; lt1 = lazytable[1]
+(x = 0.26997004281231074, y = 0.6624416805539212)
+
+julia&gt; tt1 = typetable[1]
+(x = 0.26997004281231074, y = 0.6624416805539212)
+
+julia&gt; lt1[:x]
+0.26997004281231074
+
+julia&gt; tt1[:x]
+0.26997004281231074"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> TypedTables<span class="pl-k">:</span> Table
+
+julia<span class="pl-k">&gt;</span> typetable <span class="pl-k">=</span> lazytable <span class="pl-k">|&gt;</span> Table;
+
+julia<span class="pl-k">&gt;</span> lt1 <span class="pl-k">=</span> lazytable[<span class="pl-c1">1</span>]
+(x <span class="pl-k">=</span> <span class="pl-c1">0.26997004281231074</span>, y <span class="pl-k">=</span> <span class="pl-c1">0.6624416805539212</span>)
+
+julia<span class="pl-k">&gt;</span> tt1 <span class="pl-k">=</span> typetable[<span class="pl-c1">1</span>]
+(x <span class="pl-k">=</span> <span class="pl-c1">0.26997004281231074</span>, y <span class="pl-k">=</span> <span class="pl-c1">0.6624416805539212</span>)
+
+julia<span class="pl-k">&gt;</span> lt1[<span class="pl-c1">:x</span>]
+<span class="pl-c1">0.26997004281231074</span>
+
+julia<span class="pl-k">&gt;</span> tt1[<span class="pl-c1">:x</span>]
+<span class="pl-c1">0.26997004281231074</span></pre></div>
+<p dir="auto">However, you can assign values through a <code>LazyRow</code> into the <code>LazyTable</code> which isn't possible with <code>Table</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; lt1.x = 10
+10
+
+julia&gt; tt1.x = 10
+ERROR: setfield!: immutable struct of type NamedTuple cannot be changed
+
+julia&gt; lt1
+(x = 10.0, y = 0.6624416805539212)
+
+julia&gt; tt1
+(x = 0.26997004281231074, y = 0.6624416805539212)"><pre>julia<span class="pl-k">&gt;</span> lt1<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">10</span>
+<span class="pl-c1">10</span>
+
+julia<span class="pl-k">&gt;</span> tt1<span class="pl-k">.</span>x <span class="pl-k">=</span> <span class="pl-c1">10</span>
+ERROR<span class="pl-k">:</span> setfield!<span class="pl-k">:</span> immutable <span class="pl-k">struct</span> of type NamedTuple cannot be changed
+
+julia<span class="pl-k">&gt;</span> lt1
+(x <span class="pl-k">=</span> <span class="pl-c1">10.0</span>, y <span class="pl-k">=</span> <span class="pl-c1">0.6624416805539212</span>)
+
+julia<span class="pl-k">&gt;</span> tt1
+(x <span class="pl-k">=</span> <span class="pl-c1">0.26997004281231074</span>, y <span class="pl-k">=</span> <span class="pl-c1">0.6624416805539212</span>)</pre></div>
+<h3 dir="auto"><a id="user-content-indexing" class="anchor" aria-hidden="true" href="#indexing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Indexing</h3>
+<p dir="auto">To make indexing consistent between rows and tables, columns of the <code>LazyTable</code> can be accessed via the property interface or the dictionary like index interface</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; lazytable.x === lazytable[:x]
+true
+
+julia&gt; typetable[:x]
+ERROR: ArgumentError: invalid index: :x of type Symbol"><pre>julia<span class="pl-k">&gt;</span> lazytable<span class="pl-k">.</span>x <span class="pl-k">===</span> lazytable[<span class="pl-c1">:x</span>]
+<span class="pl-c1">true</span>
+
+julia<span class="pl-k">&gt;</span> typetable[<span class="pl-c1">:x</span>]
+ERROR<span class="pl-k">:</span> ArgumentError<span class="pl-k">:</span> invalid index<span class="pl-k">:</span> <span class="pl-c1">:x</span> of type Symbol</pre></div>
+<h3 dir="auto"><a id="user-content-multidimensional-columns" class="anchor" aria-hidden="true" href="#multidimensional-columns"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Multidimensional Columns</h3>
+<p dir="auto">Just like <code>Table</code>, multidimensional columns are supported</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; lazymatrixtable = hcat(lazytable, lazytable)
+LazyTable with 2 columns with 20 rows:
+╭─────┬───────┬───────────┬───────────╮
+│ row │ index │     x     │     y     │
+├─────┼───────┼───────────┼───────────┤
+│   1 │  1, 1 │ 10.0      │ 0.662442  │
+│   2 │  2, 1 │ 0.315106  │ 0.745717  │
+│   3 │  3, 1 │ 0.700736  │ 0.499348  │
+│   4 │  4, 1 │ 0.531262  │ 0.387146  │
+│   5 │  5, 1 │ 0.961951  │ 0.531365  │
+│   6 │  6, 1 │ 0.22444   │ 0.498552  │
+│   7 │  7, 1 │ 0.0450473 │ 0.648617  │
+│   8 │  8, 1 │ 0.182706  │ 0.0796079 │
+│   9 │  9, 1 │ 0.216163  │ 0.437709  │
+│  10 │ 10, 1 │ 0.929186  │ 0.899007  │
+│  11 │  1, 2 │ 10.0      │ 0.662442  │
+│  12 │  2, 2 │ 0.315106  │ 0.745717  │
+│  13 │  3, 2 │ 0.700736  │ 0.499348  │
+│  14 │  4, 2 │ 0.531262  │ 0.387146  │
+│  15 │  5, 2 │ 0.961951  │ 0.531365  │
+│  16 │  6, 2 │ 0.22444   │ 0.498552  │
+│  17 │  7, 2 │ 0.0450473 │ 0.648617  │
+│  18 │  8, 2 │ 0.182706  │ 0.0796079 │
+│  19 │  9, 2 │ 0.216163  │ 0.437709  │
+│  20 │ 10, 2 │ 0.929186  │ 0.899007  │
+╰─────┴───────┴───────────┴───────────╯
+
+julia&gt; lazymatrixtable[5,2]
+(0.9619514860009788, 0.5313645724703538)"><pre>julia<span class="pl-k">&gt;</span> lazymatrixtable <span class="pl-k">=</span> <span class="pl-c1">hcat</span>(lazytable, lazytable)
+LazyTable with <span class="pl-c1">2</span> columns with <span class="pl-c1">20</span> rows<span class="pl-k">:</span>
+╭─────┬───────┬───────────┬───────────╮
+│ row │ index │     x     │     y     │
+├─────┼───────┼───────────┼───────────┤
+│   <span class="pl-c1">1</span> │  <span class="pl-c1">1</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">10.0</span>      │ <span class="pl-c1">0.662442</span>  │
+│   <span class="pl-c1">2</span> │  <span class="pl-c1">2</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.315106</span>  │ <span class="pl-c1">0.745717</span>  │
+│   <span class="pl-c1">3</span> │  <span class="pl-c1">3</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.700736</span>  │ <span class="pl-c1">0.499348</span>  │
+│   <span class="pl-c1">4</span> │  <span class="pl-c1">4</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.531262</span>  │ <span class="pl-c1">0.387146</span>  │
+│   <span class="pl-c1">5</span> │  <span class="pl-c1">5</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.961951</span>  │ <span class="pl-c1">0.531365</span>  │
+│   <span class="pl-c1">6</span> │  <span class="pl-c1">6</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.22444</span>   │ <span class="pl-c1">0.498552</span>  │
+│   <span class="pl-c1">7</span> │  <span class="pl-c1">7</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.0450473</span> │ <span class="pl-c1">0.648617</span>  │
+│   <span class="pl-c1">8</span> │  <span class="pl-c1">8</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.182706</span>  │ <span class="pl-c1">0.0796079</span> │
+│   <span class="pl-c1">9</span> │  <span class="pl-c1">9</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.216163</span>  │ <span class="pl-c1">0.437709</span>  │
+│  <span class="pl-c1">10</span> │ <span class="pl-c1">10</span>, <span class="pl-c1">1</span> │ <span class="pl-c1">0.929186</span>  │ <span class="pl-c1">0.899007</span>  │
+│  <span class="pl-c1">11</span> │  <span class="pl-c1">1</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">10.0</span>      │ <span class="pl-c1">0.662442</span>  │
+│  <span class="pl-c1">12</span> │  <span class="pl-c1">2</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.315106</span>  │ <span class="pl-c1">0.745717</span>  │
+│  <span class="pl-c1">13</span> │  <span class="pl-c1">3</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.700736</span>  │ <span class="pl-c1">0.499348</span>  │
+│  <span class="pl-c1">14</span> │  <span class="pl-c1">4</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.531262</span>  │ <span class="pl-c1">0.387146</span>  │
+│  <span class="pl-c1">15</span> │  <span class="pl-c1">5</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.961951</span>  │ <span class="pl-c1">0.531365</span>  │
+│  <span class="pl-c1">16</span> │  <span class="pl-c1">6</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.22444</span>   │ <span class="pl-c1">0.498552</span>  │
+│  <span class="pl-c1">17</span> │  <span class="pl-c1">7</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.0450473</span> │ <span class="pl-c1">0.648617</span>  │
+│  <span class="pl-c1">18</span> │  <span class="pl-c1">8</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.182706</span>  │ <span class="pl-c1">0.0796079</span> │
+│  <span class="pl-c1">19</span> │  <span class="pl-c1">9</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.216163</span>  │ <span class="pl-c1">0.437709</span>  │
+│  <span class="pl-c1">20</span> │ <span class="pl-c1">10</span>, <span class="pl-c1">2</span> │ <span class="pl-c1">0.929186</span>  │ <span class="pl-c1">0.899007</span>  │
+╰─────┴───────┴───────────┴───────────╯
+
+julia<span class="pl-k">&gt;</span> lazymatrixtable[<span class="pl-c1">5</span>,<span class="pl-c1">2</span>]
+(<span class="pl-c1">0.9619514860009788</span>, <span class="pl-c1">0.5313645724703538</span>)</pre></div>
+<p dir="auto">Although <code>Table</code> errors when showing <code>Array</code> columns.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; typematrixtable = lazymatrixtable |&gt; Table;
+
+julia&gt; lazymatrixtable[5,2]
+(0.9619514860009788, 0.5313645724703538)
+
+julia&gt; typematrixtable
+Table with 2 columns and 10×2 rowsError showing value of type Table{NamedTuple{(:x, :y), Tuple{Float64, Float64}}, 2, NamedTuple{(:x, :y), Tuple{Matrix{Float64}, Matrix{Float64}}}}:
+ERROR: MethodError: no method matching isassigned(::Matrix{Float64}, ::CartesianIndex{2})"><pre>julia<span class="pl-k">&gt;</span> typematrixtable <span class="pl-k">=</span> lazymatrixtable <span class="pl-k">|&gt;</span> Table;
+
+julia<span class="pl-k">&gt;</span> lazymatrixtable[<span class="pl-c1">5</span>,<span class="pl-c1">2</span>]
+(<span class="pl-c1">0.9619514860009788</span>, <span class="pl-c1">0.5313645724703538</span>)
+
+julia<span class="pl-k">&gt;</span> typematrixtable
+Table with <span class="pl-c1">2</span> columns and <span class="pl-c1">10</span><span class="pl-k">×</span><span class="pl-c1">2</span> rowsError showing value of type Table{NamedTuple{(<span class="pl-c1">:x</span>, <span class="pl-c1">:y</span>), Tuple{Float64, Float64}}, <span class="pl-c1">2</span>, NamedTuple{(<span class="pl-c1">:x</span>, <span class="pl-c1">:y</span>), Tuple{Matrix{Float64}, Matrix{Float64}}}}<span class="pl-k">:</span>
+ERROR<span class="pl-k">:</span> MethodError<span class="pl-k">:</span> no method matching <span class="pl-c1">isassigned</span>(<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>, <span class="pl-k">::</span><span class="pl-c1">CartesianIndex{2}</span>)</pre></div>
+</article></div>

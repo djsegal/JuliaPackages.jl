@@ -1,0 +1,143 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-cusolverrfjl" class="anchor" aria-hidden="true" href="#cusolverrfjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>CUSOLVERRF.jl</h1>
+<p dir="auto"><a href="https://github.com/exanauts/CUSOLVERRF.jl/actions?query=workflow"><img src="https://github.com/exanauts/CUSOLVERRF.jl/workflows/CI/badge.svg?branch=master" alt="" style="max-width: 100%;"></a></p>
+<p dir="auto">This package is a thin Julia wrapper for <a href="https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverRF-reference%60" rel="nofollow">cusolverRF</a>
+It extends <a href="https://github.com/JuliaGPU/CUDA.jl/tree/master/lib/cusolver">CUSOLVER.jl</a>, and is compatible with the rest of the Julia CUDA ecosystem.</p>
+<h2 dir="auto"><a id="user-content-what-is-cusolverrf" class="anchor" aria-hidden="true" href="#what-is-cusolverrf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>What is cusolverRF?</h2>
+<p dir="auto">cusolverRF is a package to perform fast sparse refactorization on CUDA GPU.
+The LU factorization of a sparse matrix usually happens in two steps.</p>
+<ol dir="auto">
+<li>During the symbolic factorization, the matrix is reordered to minimize the fill-in, and the sparsity patterns of the <code>L</code> and <code>U</code> factor are computed.</li>
+<li>During the numerical factorization, the coefficients of the factors <code>L</code> and <code>U</code> are computed.</li>
+</ol>
+<p dir="auto">The first step is challenging to compute on the GPU, as most sparse matrices
+have unstructured sparsity pattern. <a href="https://docs.nvidia.com/cuda/cusolver/index.html#cusolver-lt-t-gt-csrlsvlu" rel="nofollow">cusolver</a> implements a default LU factorization,
+but it transfers the sparse matrix on the host under the hood to perform
+the symbolic factorization. This impairs the performance when the same
+matrix has to be factorized multiple times.</p>
+<p dir="auto"><code>cusolverRF</code> uses a different approach: it computes the symbolic factorization on the
+CPU and then transfers it on the device. If the coefficient of the sparse matrix
+are updated <strong>without affecting the sparsity pattern of the matrix</strong>, then there
+is no need to recompute the symbolic factorization and we can compute the
+numerical factorization entirely on the device, <strong>without data transfer between
+the host and the device</strong>.</p>
+<p dir="auto">Hence, <code>cusolverRF</code> is very efficient when the same sparse matrix has to be factorized
+multiple times. The package is also efficient to solve a sparse linear system
+with multiple right-hand-side entirely on the GPU.</p>
+<h2 dir="auto"><a id="user-content-how-to-use-cusolverrf" class="anchor" aria-hidden="true" href="#how-to-use-cusolverrf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>How to use cusolverRF?</h2>
+<p dir="auto">Suppose we have a sparse matrix <code>dA</code> instantiated on the GPU.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using SparseArrays, CUDA, LinearAlgebra
+using CUDA.CUSPARSE
+
+# Generate a random example
+n = 10
+A = sprand(n, n, .2) + I
+# Move A to the GPU
+dA = CuSparseMatrixCSR(A)"><pre><span class="pl-k">using</span> SparseArrays, CUDA, LinearAlgebra
+<span class="pl-k">using</span> CUDA<span class="pl-k">.</span>CUSPARSE
+
+<span class="pl-c"><span class="pl-c">#</span> Generate a random example</span>
+n <span class="pl-k">=</span> <span class="pl-c1">10</span>
+A <span class="pl-k">=</span> <span class="pl-c1">sprand</span>(n, n, .<span class="pl-c1">2</span>) <span class="pl-k">+</span> I
+<span class="pl-c"><span class="pl-c">#</span> Move A to the GPU</span>
+dA <span class="pl-k">=</span> <span class="pl-c1">CuSparseMatrixCSR</span>(A)</pre></div>
+<p dir="auto">Computing the LU factorization of the sparse matrix <code>dA</code> with <code>cusolverRF</code> simply amount to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CUSOLVERRF
+rf = CUSOLVERRF.RFLU(dA; symbolic=:RF)"><pre><span class="pl-k">using</span> CUSOLVERRF
+rf <span class="pl-k">=</span> CUSOLVERRF<span class="pl-k">.</span><span class="pl-c1">RFLU</span>(dA; symbolic<span class="pl-k">=</span><span class="pl-c1">:RF</span>)</pre></div>
+<p dir="auto">In this step, the matrix is moved back to the host to compute the
+symbolic factorization. The factors <code>L</code> and <code>U</code> are then deported on
+the device, and can be accessed as a matrix <code>M = L + U</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="rf.M
+"><pre>rf<span class="pl-k">.</span>M
+</pre></div>
+<p dir="auto">The symbolic factorization is computed by default (<code>symbolic=:RF</code>) using <code>cusolver</code> internal
+routines, which can be inefficient.
+As an alternative, CUSOLVERRF.jl allows to compute the symbolic factorization
+with <a href="https://github.com/JuliaSparse/KLU.jl">KLU</a> (<code>symbolic=:KLU</code>). However, this second option is still experimental.</p>
+<p dir="auto">Then, computing the solution of the linear system <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="3506e9cdbe4f09863e6d82d4880ae520">$Ax = b$</math-renderer> translates to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="b = rand(n)      # random RHS
+db = CuVector(b) # move RHS to the device
+ldiv!(rf, db)    # compute solution inplace
+"><pre>b <span class="pl-k">=</span> <span class="pl-c1">rand</span>(n)      <span class="pl-c"><span class="pl-c">#</span> random RHS</span>
+db <span class="pl-k">=</span> <span class="pl-c1">CuVector</span>(b) <span class="pl-c"><span class="pl-c">#</span> move RHS to the device</span>
+<span class="pl-c1">ldiv!</span>(rf, db)    <span class="pl-c"><span class="pl-c">#</span> compute solution inplace</span>
+</pre></div>
+<p dir="auto">Suppose now we change the coefficients of the matrix <code>dA</code>, <strong>without
+modifying its sparsity pattern</strong>. Then, the new system can be
+solved entirely on the device as:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# update coefficients (use whichever update you want here)
+dA.nzVal .*= 2.0
+# update factorization on the device
+lu!(rf, dA)
+# resolve Ax = b
+copyto!(db, b)
+ldiv!(rf, b)"><pre><span class="pl-c"><span class="pl-c">#</span> update coefficients (use whichever update you want here)</span>
+dA<span class="pl-k">.</span>nzVal <span class="pl-k">.*=</span> <span class="pl-c1">2.0</span>
+<span class="pl-c"><span class="pl-c">#</span> update factorization on the device</span>
+<span class="pl-c1">lu!</span>(rf, dA)
+<span class="pl-c"><span class="pl-c">#</span> resolve Ax = b</span>
+<span class="pl-c1">copyto!</span>(db, b)
+<span class="pl-c1">ldiv!</span>(rf, b)</pre></div>
+<h2 dir="auto">
+<a id="user-content-how-to-solve-a-system-with-multiple-right-hand-side" class="anchor" aria-hidden="true" href="#how-to-solve-a-system-with-multiple-right-hand-side"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>How to solve a system with multiple right-hand-side?</h2>
+<p dir="auto">Any <code>RFLU</code> instance stores different buffers to avoid unnecessary
+allocations when calling <code>lu!</code> and <code>ldiv!</code>. To solve a system
+with <code>k</code> multiple right-hand-side <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="3506e9cdbe4f09863e6d82d4880ae520">$AX=B$</math-renderer>, one has
+to instantiate a <code>RFLU</code> with the proper buffers, as:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="k = 64
+rf_batched = CUSOLVERRF.RFLU(dA; nrhs=k)
+"><pre>k <span class="pl-k">=</span> <span class="pl-c1">64</span>
+rf_batched <span class="pl-k">=</span> CUSOLVERRF<span class="pl-k">.</span><span class="pl-c1">RFLU</span>(dA; nrhs<span class="pl-k">=</span>k)
+</pre></div>
+<p dir="auto">Then, solving the system <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="3506e9cdbe4f09863e6d82d4880ae520">$AX=B$</math-renderer> on the GPU simply amounts to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="B = rand(n, k)
+dX = CuMatrix(B)
+# Compute solution inplace
+ldiv!(rf_batched, dX)
+"><pre>B <span class="pl-k">=</span> <span class="pl-c1">rand</span>(n, k)
+dX <span class="pl-k">=</span> <span class="pl-c1">CuMatrix</span>(B)
+<span class="pl-c"><span class="pl-c">#</span> Compute solution inplace</span>
+<span class="pl-c1">ldiv!</span>(rf_batched, dX)
+</pre></div>
+<h2 dir="auto">
+<a id="user-content-how-to-use-the-low-level-wrapper" class="anchor" aria-hidden="true" href="#how-to-use-the-low-level-wrapper"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>How to use the low-level wrapper?</h2>
+<p dir="auto">Someone, one prefers to have full control on the factorization,
+without any boilerplate code. CUSOLVERRF provides a direct interface
+to <code>cusolverRF</code> for this purpose. In that case, a <code>cusolverRF</code> instance
+is instantiated as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="rf_lowlevel = CUSOLVERRF.RFLowLevel(
+    dA;              # matrix to factorize
+    fast_mode=true,  # fast mode is recommended
+    ordering=:AMD,   # :AMD, :MDQ, :METIS or :RCM
+    check=true,
+    factorization_algo=CUSOLVERRF.CUSOLVERRF_FACTORIZATION_ALG0,
+    triangular_algo=CUSOLVERRF.CUSOLVERRF_TRIANGULAR_SOLVE_ALG1,
+)
+"><pre>rf_lowlevel <span class="pl-k">=</span> CUSOLVERRF<span class="pl-k">.</span><span class="pl-c1">RFLowLevel</span>(
+    dA;              <span class="pl-c"><span class="pl-c">#</span> matrix to factorize</span>
+    fast_mode<span class="pl-k">=</span><span class="pl-c1">true</span>,  <span class="pl-c"><span class="pl-c">#</span> fast mode is recommended</span>
+    ordering<span class="pl-k">=</span><span class="pl-c1">:AMD</span>,   <span class="pl-c"><span class="pl-c">#</span> :AMD, :MDQ, :METIS or :RCM</span>
+    check<span class="pl-k">=</span><span class="pl-c1">true</span>,
+    factorization_algo<span class="pl-k">=</span>CUSOLVERRF<span class="pl-k">.</span>CUSOLVERRF_FACTORIZATION_ALG0,
+    triangular_algo<span class="pl-k">=</span>CUSOLVERRF<span class="pl-k">.</span>CUSOLVERRF_TRIANGULAR_SOLVE_ALG1,
+)
+</pre></div>
+<p dir="auto">Once the matrix factorized,
+solving the linear system <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="3506e9cdbe4f09863e6d82d4880ae520">$Ax =b$</math-renderer> translates to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="b = rand(n)
+dx = CuVector(b)
+CUSOLVERRF.rf_solve!(rf_lowlevel, dx)
+"><pre>b <span class="pl-k">=</span> <span class="pl-c1">rand</span>(n)
+dx <span class="pl-k">=</span> <span class="pl-c1">CuVector</span>(b)
+CUSOLVERRF<span class="pl-k">.</span><span class="pl-c1">rf_solve!</span>(rf_lowlevel, dx)
+</pre></div>
+<p dir="auto">And refactorizing the matrix inplace on the device:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="dA.nzVal .*= 2.0
+CUSOLVERRF.rf_refactor!(rf_lowlevel, dA)
+"><pre>dA<span class="pl-k">.</span>nzVal <span class="pl-k">.*=</span> <span class="pl-c1">2.0</span>
+CUSOLVERRF<span class="pl-k">.</span><span class="pl-c1">rf_refactor!</span>(rf_lowlevel, dA)
+</pre></div>
+<h2 dir="auto">
+<a id="user-content-funding" class="anchor" aria-hidden="true" href="#funding"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Funding</h2>
+<p dir="auto">This package was supported by the Exascale Computing Project (17-SC-20-SC), a joint project of the U.S. Department of Energy’s Office of Science and National Nuclear Security Administration, responsible for delivering a capable exascale ecosystem, including software, applications, and hardware technology, to support the nation’s exascale computing imperative.</p>
+</article></div>

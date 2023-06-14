@@ -1,0 +1,79 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-adaptivewindowsjl" class="anchor" aria-hidden="true" href="#adaptivewindowsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>AdaptiveWindows.jl</h1>
+<p dir="auto">Adaptive window implementation (ADWIN2: Bifet &amp; Gavalda)</p>
+<p dir="auto"><em>Bifet, Albert &amp; Gavaldà, Ricard. (2007). Learning from Time-Changing Data with Adaptive Windowing. Proceedings of the 7th SIAM International Conference on Data Mining. 7. 10.1137/1.9781611972771.42.</em></p>
+<p dir="auto">Abstract (abbreviated)</p>
+<blockquote>
+<p dir="auto">We present a new approach for dealing with distribution
+change and concept drift when learning from data sequences
+that may vary with time. We use sliding windows whose
+size, instead of being fixed a priori, is recomputed online
+according to the rate of change observed from the data in
+the window itself: The window will grow automatically when
+the data is stationary, for greater accuracy, and will shrink
+automatically when change is taking place, to discard stale
+data. This delivers the user or programmer from having to
+guess a time-scale for change.
+Contrary to many related works, we provide rigorous
+guarantees of performance, as bounds on the rates of false
+positives and false negatives. In fact, for some change structures, we can formally show that the
+algorithm automatically adjusts the window to a statistically optimal length.</p>
+</blockquote>
+<p dir="auto">The adaptive windowing algorithm works by maintaining a set of buckets (the window) with Variance() objects in each of these. Each group of buckets has a maximum capacity for the number of observations it holds. A constant M is used to define the size of the group. In the package, M is hardcoded to be equal to 5, but M=3 will be used below.</p>
+<p dir="auto">The content of the window is exponentially increasing, with the first group of buckets containing at most 1 observation, the next group at most 2, then at most 4, etc.:</p>
+<p dir="auto">1 1 1 2 2 2 4 4 4 8 8 8 16 16 16 32 32 32 ...</p>
+<p dir="auto">The algorithm perform a statistical test using Hoeffding bounds on every splitpoint between these buckets, using the accumulated means and variances. If the front of the window is considered to have a statistically different mean than the back of the window, the observations at the back are removed, and 'drift' is detected.</p>
+<p dir="auto">The adaptive window is driven by a tolerance parameter δ, the probability for a false positive (incorrectly identified drift).</p>
+<h1 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h1>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using AdaptiveWindows
+
+m = AdaptiveMean(δ = 0.001) 
+
+fit!(m, randn(1_000))
+
+println(nobs(m)) # we should see that the stats are computed over 1_000 data points
+
+println(&quot;The mean: $(value(m)) should be close to 0.0&quot;)
+
+# change the distribution
+fit!(m, randn(1_000) .+ 1) 
+
+# now the older observations should be dropped
+println(nobs(m)) 
+
+# mean should be close to 1.0 (not 0.5 if we did a mean over all 2_000 points)
+println(&quot;The mean: $(value(m)) should be close to 1.0&quot;)
+"><pre><span class="pl-k">using</span> AdaptiveWindows
+
+m <span class="pl-k">=</span> <span class="pl-c1">AdaptiveMean</span>(δ <span class="pl-k">=</span> <span class="pl-c1">0.001</span>) 
+
+<span class="pl-c1">fit!</span>(m, <span class="pl-c1">randn</span>(<span class="pl-c1">1_000</span>))
+
+<span class="pl-c1">println</span>(<span class="pl-c1">nobs</span>(m)) <span class="pl-c"><span class="pl-c">#</span> we should see that the stats are computed over 1_000 data points</span>
+
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>The mean: <span class="pl-v">$(<span class="pl-c1">value</span>(m))</span> should be close to 0.0<span class="pl-pds">"</span></span>)
+
+<span class="pl-c"><span class="pl-c">#</span> change the distribution</span>
+<span class="pl-c1">fit!</span>(m, <span class="pl-c1">randn</span>(<span class="pl-c1">1_000</span>) <span class="pl-k">.+</span> <span class="pl-c1">1</span>) 
+
+<span class="pl-c"><span class="pl-c">#</span> now the older observations should be dropped</span>
+<span class="pl-c1">println</span>(<span class="pl-c1">nobs</span>(m)) 
+
+<span class="pl-c"><span class="pl-c">#</span> mean should be close to 1.0 (not 0.5 if we did a mean over all 2_000 points)</span>
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>The mean: <span class="pl-v">$(<span class="pl-c1">value</span>(m))</span> should be close to 1.0<span class="pl-pds">"</span></span>)
+</pre></div>
+<p dir="auto">The package uses the interface from OnlineStatsBase. The 'nobs' measurement returns the number of observations underlying the current mean value. Values might have dropped out of the adaptive window, so nobs is not necessarily equal to the number of times fit! is called.</p>
+<p dir="auto">In the following example, the adaptive window should detect the shift in distribution about 50 observations after the 500th one. If you want the mean to be more sensitive increase the probability of detecting shift (delta). Note that this can lead more easily to false positives.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using AdaptiveWindows
+
+m = AdaptiveMean(onshiftdetected = ad -&gt; println(&quot;Shift detected!&quot;))
+
+fit!(m, vcat(randn(1000), randn(1000) .+ 1))
+"><pre><span class="pl-k">using</span> AdaptiveWindows
+
+m <span class="pl-k">=</span> <span class="pl-c1">AdaptiveMean</span>(onshiftdetected <span class="pl-k">=</span> ad <span class="pl-k">-&gt;</span> <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Shift detected!<span class="pl-pds">"</span></span>))
+
+<span class="pl-c1">fit!</span>(m, <span class="pl-c1">vcat</span>(<span class="pl-c1">randn</span>(<span class="pl-c1">1000</span>), <span class="pl-c1">randn</span>(<span class="pl-c1">1000</span>) <span class="pl-k">.+</span> <span class="pl-c1">1</span>))
+</pre></div>
+<p dir="auto">The graph below shows the computed means for the Adaptive mean, a regular arithmetic mean and an exponential moving average on the dataset generated above. The discontinuity in the Adaptive Mean occurs when the shift in the distribution is detected. Note that before the shift is detected, the adaptive mean is the same as the arithmetic, global, mean, while the exponential moving average differs.</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="graph.svg"><img src="graph.svg" alt="Getting Started" style="max-width: 100%;"></a></p>
+</article></div>

@@ -1,0 +1,113 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-distributedenvironments" class="anchor" aria-hidden="true" href="#distributedenvironments"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>DistributedEnvironments</h1>
+<p dir="auto">This package provides a simple way to sync a local development environment to a cluster of workers using the distributed functionalities in julia.</p>
+<p dir="auto">The main functionality is exported through the macro <code>@initcluster</code> which takes a list of machines accessible through ssh using keys (see <code>addprocs</code> in <code>Distributed.jl</code> for more information).
+It looks at the active environment and takes packages with local paths associated to them, i.e. <code>dev</code> packages,
+as well as the <code>Project.toml</code> and <code>Manifest.toml</code> and copies them to the corresponding locations on the added machines.</p>
+<p dir="auto">Each machine then have workers equal to the number of the available threads added, and the environment is activated for each of them.</p>
+<p dir="auto">It also export the <code>@everywhere</code> macro from <code>Distributed.jl</code> as well as a <code>@eachmachine</code> macro that is similar to <code>@everywhere</code> but runs
+the command only once for each machine which can be useful for things that the workers on one machine can share such as precompilation or
+downloading datasets.</p>
+<h2 dir="auto"><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; ] add DistributedEnvironments"><pre>julia<span class="pl-k">&gt;</span> ] add DistributedEnvironments</pre></div>
+<h2 dir="auto"><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage</h2>
+<p dir="auto">Make sure the current active environment is the one that should be copied.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using DistributedEnvironments
+
+machines = [&quot;10.0.0.1&quot;, &quot;otherserver&quot;]
+@initcluster machines                           # Copies environment and sets up workers on all machines
+
+@everywhere using DelimitedFiles                # Want this loaded on all machines
+@eachmachine download(&quot;somepage.com/somedata.csv&quot;)  # If each worker wants same data we only need to download once per machine
+@everywhere data = readdlm(&quot;somedata.csv&quot;, ',') # Want to read the data everywhere
+..."><pre><span class="pl-k">using</span> DistributedEnvironments
+
+machines <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>10.0.0.1<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>otherserver<span class="pl-pds">"</span></span>]
+<span class="pl-c1">@initcluster</span> machines                           <span class="pl-c"><span class="pl-c">#</span> Copies environment and sets up workers on all machines</span>
+
+<span class="pl-c1">@everywhere</span> <span class="pl-k">using</span> DelimitedFiles                <span class="pl-c"><span class="pl-c">#</span> Want this loaded on all machines</span>
+<span class="pl-c1">@eachmachine</span> <span class="pl-c1">download</span>(<span class="pl-s"><span class="pl-pds">"</span>somepage.com/somedata.csv<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span> If each worker wants same data we only need to download once per machine</span>
+<span class="pl-c1">@everywhere</span> data <span class="pl-k">=</span> <span class="pl-c1">readdlm</span>(<span class="pl-s"><span class="pl-pds">"</span>somedata.csv<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">'</span>,<span class="pl-pds">'</span></span>) <span class="pl-c"><span class="pl-c">#</span> Want to read the data everywhere</span>
+<span class="pl-k">...</span></pre></div>
+<h2 dir="auto"><a id="user-content-example" class="anchor" aria-hidden="true" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example</h2>
+<p dir="auto">One could for example run hyperparameter optimization using the <code>@phyperopt</code> macro from <a href="https://github.com/baggepinnen/Hyperopt.jl">Hypteropt.jl</a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using DistributedEnvironments
+
+machines = [&quot;10.0.0.1&quot;, &quot;otherserver&quot;]
+@initcluster machines 
+
+@everywhere using Hyperopt, Flux, MLDatasets, Statistics
+@eachmachine MNIST.download(i_accept_the_terms_of_use=true)
+
+ho = @phyperopt for i=30, fun = [tanh, σ, relu], units = [16, 64, 256], hidden = 1:5, epochs = 1:7
+    # Read data (already downloaded)
+    train_x, train_y = MNIST.traindata()
+    test_x,  test_y  = MNIST.testdata()
+    # Create model based on optimization parameters
+    model = Chain([
+        flatten; 
+        Dense(784, units, fun);
+        [Dense(units, units, fun) for _ in 1:hidden];
+        Dense(units, 10); 
+        softmax;
+    ]...)
+    loss(data) = Flux.Losses.mse(model(data.x), data.y)
+    # Train
+    Flux.@epochs epochs Flux.train!(
+        loss, 
+        Flux.params(model), 
+        Flux.DataLoader((x=train_x, y=Flux.onehotbatch(train_y, 0:9)), batchsize=16, shuffle=true), 
+        ADAM()
+    )
+    # Return test score
+    mean(Flux.onecold(model(test_x), 0:9) .== test_y)
+end"><pre><span class="pl-k">using</span> DistributedEnvironments
+
+machines <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>10.0.0.1<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>otherserver<span class="pl-pds">"</span></span>]
+<span class="pl-c1">@initcluster</span> machines 
+
+<span class="pl-c1">@everywhere</span> <span class="pl-k">using</span> Hyperopt, Flux, MLDatasets, Statistics
+<span class="pl-c1">@eachmachine</span> MNIST<span class="pl-k">.</span><span class="pl-c1">download</span>(i_accept_the_terms_of_use<span class="pl-k">=</span><span class="pl-c1">true</span>)
+
+ho <span class="pl-k">=</span> <span class="pl-c1">@phyperopt</span> <span class="pl-k">for</span> i<span class="pl-k">=</span><span class="pl-c1">30</span>, fun <span class="pl-k">=</span> [tanh, σ, relu], units <span class="pl-k">=</span> [<span class="pl-c1">16</span>, <span class="pl-c1">64</span>, <span class="pl-c1">256</span>], hidden <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>, epochs <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>
+    <span class="pl-c"><span class="pl-c">#</span> Read data (already downloaded)</span>
+    train_x, train_y <span class="pl-k">=</span> MNIST<span class="pl-k">.</span><span class="pl-c1">traindata</span>()
+    test_x,  test_y  <span class="pl-k">=</span> MNIST<span class="pl-k">.</span><span class="pl-c1">testdata</span>()
+    <span class="pl-c"><span class="pl-c">#</span> Create model based on optimization parameters</span>
+    model <span class="pl-k">=</span> <span class="pl-c1">Chain</span>([
+        flatten; 
+        <span class="pl-c1">Dense</span>(<span class="pl-c1">784</span>, units, fun);
+        [<span class="pl-c1">Dense</span>(units, units, fun) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>hidden];
+        <span class="pl-c1">Dense</span>(units, <span class="pl-c1">10</span>); 
+        softmax;
+    ]<span class="pl-k">.</span><span class="pl-k">..</span>)
+    <span class="pl-en">loss</span>(data) <span class="pl-k">=</span> Flux<span class="pl-k">.</span>Losses<span class="pl-k">.</span><span class="pl-c1">mse</span>(<span class="pl-c1">model</span>(data<span class="pl-k">.</span>x), data<span class="pl-k">.</span>y)
+    <span class="pl-c"><span class="pl-c">#</span> Train</span>
+    Flux<span class="pl-k">.</span><span class="pl-c1">@epochs</span> epochs Flux<span class="pl-k">.</span><span class="pl-c1">train!</span>(
+        loss, 
+        Flux<span class="pl-k">.</span><span class="pl-c1">params</span>(model), 
+        Flux<span class="pl-k">.</span><span class="pl-c1">DataLoader</span>((x<span class="pl-k">=</span>train_x, y<span class="pl-k">=</span>Flux<span class="pl-k">.</span><span class="pl-c1">onehotbatch</span>(train_y, <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">9</span>)), batchsize<span class="pl-k">=</span><span class="pl-c1">16</span>, shuffle<span class="pl-k">=</span><span class="pl-c1">true</span>), 
+        <span class="pl-c1">ADAM</span>()
+    )
+    <span class="pl-c"><span class="pl-c">#</span> Return test score</span>
+    <span class="pl-c1">mean</span>(Flux<span class="pl-k">.</span><span class="pl-c1">onecold</span>(<span class="pl-c1">model</span>(test_x), <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">9</span>) <span class="pl-k">.==</span> test_y)
+<span class="pl-k">end</span></pre></div>
+<h2 dir="auto"><a id="user-content-todo" class="anchor" aria-hidden="true" href="#todo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>TODO</h2>
+<p dir="auto">Currently it is a very simple implementation making some not perfect assumptions.</p>
+<ul dir="auto">
+<li>Same directory structure needed on all nodes for now
+<ul dir="auto">
+<li>Allow for supplying a <code>project</code> folder which all dev packages and env files are added to. Modify Manifest to update paths. Could be problematic with nested packages?</li>
+</ul>
+</li>
+<li>Do something with depot path?</li>
+<li><code>rsync</code> exists on host and workers (allow for choise between scp/rsync other?)</li>
+<li>rsync with multicast?</li>
+<li>Allow to set addprocs keywords, such as julia executable, env vars...?</li>
+<li>Check for julia, otherwise suggest installation?</li>
+<li>Check if we can create a SSHManager object and keep that alive to have acces to individual machines, would allow for either running <code>@everywhere</code> or something like <code>@allmachines</code> to only run once on each machine (downloading dataset, precompiling)</li>
+<li>Should it rather reexport <code>Distributed</code> since it will likely never be used without it?</li>
+<li>So far no testing, but not really sure how to do that in a good way since the only functionality needs ssh and other machines...</li>
+</ul>
+<h2 dir="auto"><a id="user-content-contributors" class="anchor" aria-hidden="true" href="#contributors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Contributors</h2>
+<p dir="auto">Mattias Fält and Johan Ruuskanen created a script for doing distributed environment syncing at the Dept. of Automatic Control in Lund which was used as the base for this package.</p>
+</article></div>

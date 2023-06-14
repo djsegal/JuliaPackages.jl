@@ -1,0 +1,39 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-implicitadjl" class="anchor" aria-hidden="true" href="#implicitadjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ImplicitAD.jl</h1>
+
+<p dir="auto"><a href="https://byuflowlab.github.io/ImplicitAD.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/byuflowlab/ImplicitAD.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/byuflowlab/ImplicitAD.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto"><strong>Summary</strong>: Automate adjoints: make implicit functions compatible with algorithmic differentiation without differenting inside the solvers. Also allow for custom rules with explicit functions (e.g., calling external code, mixed mode AD).</p>
+<p dir="auto"><strong>Author</strong>: Andrew Ning and Taylor McDonnell</p>
+<p dir="auto"><strong>Features</strong>:</p>
+<ul dir="auto">
+<li>Compatible with ForwardDiff and ReverseDiff</li>
+<li>Compatible with any solver (no differentiation occurs inside the solver)</li>
+<li>Simple drop in functionality</li>
+<li>Customizable subfunctions to accommodate different use cases like iterative linear solvers, custom Jacobian vector products, etc.</li>
+<li>Version for ordinary differentiation equations (i.e., discrete unsteady adjoint)</li>
+<li>Analytic overrides for linear systems</li>
+<li>Analytic overrides for eigenvalue problems</li>
+<li>Can provide custom rules to be inserted into the AD chain. Provides finite differencing and complex step defaults for cases where AD is not available (e.g., calling another language).</li>
+</ul>
+<p dir="auto"><strong>Implicit Motivation</strong>:</p>
+<p dir="auto">Many engineering analyses use implicit functions.  We can represent any such implicit function generally as:</p>
+<math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="d65afa3f64b02a490ad63edcb38817d4">$$r(y; x) = 0$$</math-renderer>
+<p dir="auto">where <code>r</code> are the residual functions we wish to drive to zero, <code>x</code> are inputs, and <code>y</code> are the state variables, which are also outputs once the system of equations is solved.  In other words, <code>y</code> is an implicit function of <code>x</code> (<code>x -&gt; r(y; x) -&gt; y</code>).</p>
+<p dir="auto">We then chose some appropriate solver to converge these residuals.  From a differentiation perspective, we would like to compute <code>dy/dx</code>.  One can often use algorithmic differentiation (AD) in the same way one would for any explicit function.  Once we unroll the iterations of the solver the set of instructions is explicit.  However, this is at best inefficient and at worse inaccurate or not possible (at least not without a lot more effort).  To obtain accurate derivatives by propgating AD through a solver, the solver must be solved to a tight tolerance.  Generally tighter than is required to converge the primal values.  Sometimes this is not feasible because operations inside the solvers may not be overloaded for AD, this is especially true when calling solvers in other languages.  But even if we can do it (tight convergence is possible and everything under the hood is overloaded) we usually still shouldn't, as it would be computationally inefficient.  Instead we can use implicit differentiation, to allow for AD to work seemlessly with implicit functions without having to differentiate through them.</p>
+<p dir="auto">This package provides an implementation so that a simple one-line change can be applied to allow AD to be propgated around any solver.  Note that the implementation of the solver need not be AD compatible since AD does not not occur inside the solver.  This package is overloaded for <a href="https://github.com/JuliaDiff/ForwardDiff.jl">ForwardDiff.jl</a> and <a href="https://github.com/JuliaDiff/ReverseDiff.jl">ReverseDiff.jl</a>.  There are also optional inputs so that subfunction behavior can be customized (e.g., preallocation, custom linear solvers, custom factorizations).</p>
+<p dir="auto"><strong>Custom Rule Motivation</strong>:</p>
+<p dir="auto">A different but related need is to propagate AD through functions that are not-AD compatible. A common example would be a call to a subfunction is another language that is part of a larger AD compatible function. This packages provides a simple wrapper to estimate the derivatives of the subfunction with finite differencing (forward or central) or complex step.  Those derivatives are then inserted into the AD chain so that the overall function seamlessly works with ForwardDiff or ReverseDiff.</p>
+<p dir="auto">That same functionality is useful also in cases where a function is already AD compatible but where a more efficient rule is available.  We can provide the Jacobian or the Jacobian vector / vector Jacobian products directly.  One common example is mixed mode AD.  In this case we may have a subfunction that is most efficiently differentiated in reverse mode, but the overall function is differentiated in forward mode.  We can provide a custom rule for the subfunction which will then be inserted into the forward mode chain.</p>
+<p dir="auto"><strong>Documentation</strong>:</p>
+<ul dir="auto">
+<li>Start with the tutorial to learn usage.</li>
+<li>The API is described in the reference page.</li>
+<li>The math is particularly helpful for those wanting to provide their own custom subfunctions. See the theory page.</li>
+</ul>
+<p dir="auto"><strong>Run Unit Tests</strong>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; activate .
+pkg&gt; test"><pre>pkg<span class="pl-k">&gt;</span> activate .
+pkg<span class="pl-k">&gt;</span> test</pre></div>
+<p dir="auto"><strong>Other Packages</strong>:</p>
+<p dir="auto"><a href="https://julianonconvex.github.io/Nonconvex.jl/stable/gradients/implicit/" rel="nofollow">Nonconvex.jl</a> and <a href="https://github.com/gdalle/ImplicitDifferentiation.jl">ImplicitDifferentiation.jl</a> are other prior implementations of the nonlinear case. <a href="https://docs.sciml.ai/SciMLSensitivity/stable/manual/differential_equation_sensitivities/#sensitivity_diffeq" rel="nofollow">SciML</a> provides support for continuous unsteady adjoints of ODEs.  They have also recently added an implementation for the <a href="https://docs.sciml.ai/SciMLSensitivity/stable/manual/nonlinear_solve_sensitivities/" rel="nofollow">nonlinear case</a>.</p>
+</article></div>

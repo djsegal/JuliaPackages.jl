@@ -1,0 +1,77 @@
+<div id="readme" class="md" data-path="Readme.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-parametricairfoilsjl" class="anchor" aria-hidden="true" href="#parametricairfoilsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>ParametricAirfoils.jl</h1>
+<p dir="auto">A Parametric Airfoils package for julia.</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="https://github.com/xue-cheng/ParametricAirfoils.jl/actions/workflows/ci.yml/badge.svg"><img src="https://github.com/xue-cheng/ParametricAirfoils.jl/actions/workflows/ci.yml/badge.svg" alt="ci" style="max-width: 100%;"></a>
+<a href="https://coveralls.io/github/xue-cheng/ParametricAirfoils.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/2ae8a3aeb15df53c7ebc999c423c42da92e46c66690967f96281717e6fb46e7e/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f7875652d6368656e672f506172616d6574726963416972666f696c732e6a6c2f62616467652e737667" alt="Coverage Status" data-canonical-src="https://coveralls.io/repos/github/xue-cheng/ParametricAirfoils.jl/badge.svg" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-examples" class="anchor" aria-hidden="true" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Examples</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ParametricAirfoils, AirfoilDatabase
+########## STEP 1. Select a parameterization method ##########
+# 1.1. CST Method
+    N = 9 # num of params for **EACH** curve
+    cst = CST(N) # == CST(N, Float64; N1=0.5, N2=1)
+    csts = CST(N; link_le=false) # Different `A0` for upper and lower surfaces, **NOT recommended**
+# 1.2. Mean Camber + Thickness (MCT)
+    # 1.2.1 CST(mean-camber) + CST(half-thicness)
+    mctcc = MCT(CurveCST(N, 1, 1, Float64), CurveCST(N, 0.5, 1.0, Float64))
+    # 1.2.2 CST(mean-camber) + polynomial(half-thicness)
+    indicies = tuple((max(0.5, i-1) for i in 1:N)...) # poly nomial indicies
+    mctcp = MCT(CurveCST(N, 1, 1, Float64), CurvePoly(indicies, Float64))
+    # 1.2.3 More curve types can be derived from `CurveFunction`, see `src/curve/_init.jl`
+########## STEP 2. Create ParametricAirfoil ##########
+# 2.1. Fitting airfoil data
+    # install AirfoilDatabase.jl
+    # run in REPL: `] add AirfoilDatabase`
+    result = query_airfoil(&quot;N0012&quot;)
+    @assert length(result)==1
+    NACA0012 = result[1]
+    airfoil, fiterr = fit(cst, NACA0012.x, NACA0012.y)
+    # `cst` can be replaced with any parameterization method
+# 2.2. Create from parameters
+    param = get_param(airfoil) # any vector of length `num_param(cst)`
+    airfoil2 = ParametricAirfoil(cst, param)
+########## STEP 3. Airfoil Coordinates ##########
+    xm = LinRange(0, 1, 33)
+    yu = airfoil(:U, xm) # Upper side
+    yl = airfoil(:L, xm) # Lower side
+    # OR with gradient information
+    yu, dyu =  airfoil(:U, xm, true)
+    # OR generate points at once for meshing 
+    x, y = gen_airfoil(airfoil)"><pre><span class="pl-k">using</span> ParametricAirfoils, AirfoilDatabase
+<span class="pl-c"><span class="pl-c">#</span>######### STEP 1. Select a parameterization method ##########</span>
+<span class="pl-c"><span class="pl-c">#</span> 1.1. CST Method</span>
+    N <span class="pl-k">=</span> <span class="pl-c1">9</span> <span class="pl-c"><span class="pl-c">#</span> num of params for **EACH** curve</span>
+    cst <span class="pl-k">=</span> <span class="pl-c1">CST</span>(N) <span class="pl-c"><span class="pl-c">#</span> == CST(N, Float64; N1=0.5, N2=1)</span>
+    csts <span class="pl-k">=</span> <span class="pl-c1">CST</span>(N; link_le<span class="pl-k">=</span><span class="pl-c1">false</span>) <span class="pl-c"><span class="pl-c">#</span> Different `A0` for upper and lower surfaces, **NOT recommended**</span>
+<span class="pl-c"><span class="pl-c">#</span> 1.2. Mean Camber + Thickness (MCT)</span>
+    <span class="pl-c"><span class="pl-c">#</span> 1.2.1 CST(mean-camber) + CST(half-thicness)</span>
+    mctcc <span class="pl-k">=</span> <span class="pl-c1">MCT</span>(<span class="pl-c1">CurveCST</span>(N, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, Float64), <span class="pl-c1">CurveCST</span>(N, <span class="pl-c1">0.5</span>, <span class="pl-c1">1.0</span>, Float64))
+    <span class="pl-c"><span class="pl-c">#</span> 1.2.2 CST(mean-camber) + polynomial(half-thicness)</span>
+    indicies <span class="pl-k">=</span> <span class="pl-c1">tuple</span>((<span class="pl-c1">max</span>(<span class="pl-c1">0.5</span>, i<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>N)<span class="pl-k">...</span>) <span class="pl-c"><span class="pl-c">#</span> poly nomial indicies</span>
+    mctcp <span class="pl-k">=</span> <span class="pl-c1">MCT</span>(<span class="pl-c1">CurveCST</span>(N, <span class="pl-c1">1</span>, <span class="pl-c1">1</span>, Float64), <span class="pl-c1">CurvePoly</span>(indicies, Float64))
+    <span class="pl-c"><span class="pl-c">#</span> 1.2.3 More curve types can be derived from `CurveFunction`, see `src/curve/_init.jl`</span>
+<span class="pl-c"><span class="pl-c">#</span>######### STEP 2. Create ParametricAirfoil ##########</span>
+<span class="pl-c"><span class="pl-c">#</span> 2.1. Fitting airfoil data</span>
+    <span class="pl-c"><span class="pl-c">#</span> install AirfoilDatabase.jl</span>
+    <span class="pl-c"><span class="pl-c">#</span> run in REPL: `] add AirfoilDatabase`</span>
+    result <span class="pl-k">=</span> <span class="pl-c1">query_airfoil</span>(<span class="pl-s"><span class="pl-pds">"</span>N0012<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">@assert</span> <span class="pl-c1">length</span>(result)<span class="pl-k">==</span><span class="pl-c1">1</span>
+    NACA0012 <span class="pl-k">=</span> result[<span class="pl-c1">1</span>]
+    airfoil, fiterr <span class="pl-k">=</span> <span class="pl-c1">fit</span>(cst, NACA0012<span class="pl-k">.</span>x, NACA0012<span class="pl-k">.</span>y)
+    <span class="pl-c"><span class="pl-c">#</span> `cst` can be replaced with any parameterization method</span>
+<span class="pl-c"><span class="pl-c">#</span> 2.2. Create from parameters</span>
+    param <span class="pl-k">=</span> <span class="pl-c1">get_param</span>(airfoil) <span class="pl-c"><span class="pl-c">#</span> any vector of length `num_param(cst)`</span>
+    airfoil2 <span class="pl-k">=</span> <span class="pl-c1">ParametricAirfoil</span>(cst, param)
+<span class="pl-c"><span class="pl-c">#</span>######### STEP 3. Airfoil Coordinates ##########</span>
+    xm <span class="pl-k">=</span> <span class="pl-c1">LinRange</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">33</span>)
+    yu <span class="pl-k">=</span> <span class="pl-c1">airfoil</span>(<span class="pl-c1">:U</span>, xm) <span class="pl-c"><span class="pl-c">#</span> Upper side</span>
+    yl <span class="pl-k">=</span> <span class="pl-c1">airfoil</span>(<span class="pl-c1">:L</span>, xm) <span class="pl-c"><span class="pl-c">#</span> Lower side</span>
+    <span class="pl-c"><span class="pl-c">#</span> OR with gradient information</span>
+    yu, dyu <span class="pl-k">=</span>  <span class="pl-c1">airfoil</span>(<span class="pl-c1">:U</span>, xm, <span class="pl-c1">true</span>)
+    <span class="pl-c"><span class="pl-c">#</span> OR generate points at once for meshing </span>
+    x, y <span class="pl-k">=</span> <span class="pl-c1">gen_airfoil</span>(airfoil)</pre></div>
+<h2 dir="auto"><a id="user-content-changelog" class="anchor" aria-hidden="true" href="#changelog"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Changelog</h2>
+<h3 dir="auto"><a id="user-content-20----21" class="anchor" aria-hidden="true" href="#20----21"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>2.0 --&gt; 2.1</h3>
+<ol dir="auto">
+<li>The thicness function of the MCT model is now <strong>HALF</strong> of the airfoil thickness.</li>
+<li>Least-square fitting is applied for MCT model.</li>
+</ol>
+</article></div>

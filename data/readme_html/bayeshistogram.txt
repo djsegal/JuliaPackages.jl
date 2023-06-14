@@ -1,0 +1,114 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-bayeshistogramjl" class="anchor" aria-hidden="true" href="#bayeshistogramjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BayesHistogram.jl</h1>
+<p dir="auto">Optimal histogram binning based on piecewise constant model.</p>
+<p dir="auto">Paper: <em>Studies in Astronomical Time Series Analysis. VI. Bayesian Block Representations</em> [<a href="https://arxiv.org/abs/1207.5578" rel="nofollow">https://arxiv.org/abs/1207.5578</a>]</p>
+<ul dir="auto">
+<li><a href="#bayeshistogramjl">BayesHistogram.jl</a>
+<ul dir="auto">
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#usage-examples">Usage examples</a></li>
+<li><a href="#showcase">Showcase</a>
+<ul dir="auto">
+<li><a href="#bins-are-determined-automatically--optimally">bins are determined automatically &amp; optimally</a></li>
+<li><a href="#it-handles-weighted-data-and-errors-correctly">it handles weighted data and errors correctly</a></li>
+<li><a href="#it-routinely-outperforms-common-binning-rules">it routinely outperforms common binning rules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 dir="auto"><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Introduction</h2>
+<p dir="auto">Have you ever hated the default histogram binning rules in your favourite analysis and plotting library?</p>
+<p dir="auto">You can solve your problem by relying on <code>BayesHistogram.jl</code>! :)</p>
+<p dir="auto">This package provides the function <code>bayesian_blocks</code>, which determines the bin sequence that maximises the probability of observing your data, assuming a histogram can describe it.</p>
+<p dir="auto">In other words, the package implements a complicated algorithm that returns the optimal histogram, respecting some simple constraints you can customise.</p>
+<p dir="auto">If you can't take it anymore, go directly to the usage examples or look at the file <code>make_plot.jl</code>, or if you want to know all the internal details look at <code>test/run_tests.jl</code>.</p>
+<p dir="auto">Four ingredients determine the optimal histogram:</p>
+<ol dir="auto">
+<li>The likelihood of a given bin.</li>
+<li>The apriori probability of observing that bin.</li>
+<li>The maximum resolution at which you want to separate the data (default is <code>Inf</code>).</li>
+<li>The minimum possible number of observations in each bin (default is <code>1</code>).</li>
+</ol>
+<p dir="auto">How can you influence these factors?</p>
+<ol dir="auto">
+<li>
+<p dir="auto">It is not modifiable. For a long time now, the Likelihood principle and its natural Bayesian extension have been part of the toolbox of every statistician: it is a solid principle that we can reasonably trust :)</p>
+</li>
+<li>
+<p dir="auto">It is modifiable. The package implements a wide choice of possibilities. Indeed you can choose the prior among the following alternatives:</p>
+<ul dir="auto">
+<li><code>BIC</code> (default): Bayesian information criterion, requires no parameters and is asymptotically consistent.</li>
+<li><code>AIC</code>: Akaike information criterion: minimises prediction error, requires no parameters (in some cases adds too many bins, but the problem can be solved using (3) and (4)).</li>
+<li><code>HQIC</code>: Hannan-Quinn criterion, has intermediate behaviour between BIC and AIC, is close to consistency, and tries to minimise prediction error.</li>
+<li><code>FPR(p)</code>: Scargle Criterion, a data bin is added if it has a false positive rate lower than <code>p</code>.</li>
+<li><code>Geometric(gamma)</code>: varying the parameter <code>gamma</code> changes the average number of bins allowed.</li>
+<li><code>Pearson(p)</code>: This is useful when you want bins containing about <code>N*p</code> observations, where <code>N</code> is the total number of events.</li>
+<li><code>NoPrior</code>: for non-Bayesians, it always requires tuning (3) and (4).</li>
+<li><code>?</code>, You can implement a customised prior by following the examples in the <code>src/priors.jl</code> file</li>
+</ul>
+</li>
+<li>
+<p dir="auto">If you need to alter this parameter, add the keyword argument <code>resolution = ?</code> to the <code>bayesian_blocks</code> function. A typical value might be <code>100</code>.</p>
+</li>
+<li>
+<p dir="auto">Like (3), you can configure it via <code>min_counts = ?</code>.</p>
+</li>
+</ol>
+<p dir="auto">Thank you for reading this (brief?) introductory section.</p>
+<h2 dir="auto"><a id="user-content-installation" class="anchor" aria-hidden="true" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Installation</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(&quot;BayesHistogram&quot;)"><pre><span class="pl-k">using</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>BayesHistogram<span class="pl-pds">"</span></span>)</pre></div>
+<h2 dir="auto"><a id="user-content-usage-examples" class="anchor" aria-hidden="true" href="#usage-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage examples</h2>
+<p dir="auto">for looking at every option available type in the repl <code>?bayesian_blocks</code>.</p>
+<p dir="auto">Examples:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Plots, BayesHistogram
+X = exp.(randn(5000)./3)
+bl = bayesian_blocks(X)
+# plot using &quot;to_pdf&quot;
+support, density = to_pdf(bl)
+plot(support, density)
+# or using &quot;edges&quot; parameter and an histogramming procedure
+histogram(X, bins=bl.edges, normalize = :pdf)"><pre><span class="pl-k">using</span> Plots, BayesHistogram
+X <span class="pl-k">=</span> <span class="pl-c1">exp</span>.(<span class="pl-c1">randn</span>(<span class="pl-c1">5000</span>)<span class="pl-k">./</span><span class="pl-c1">3</span>)
+bl <span class="pl-k">=</span> <span class="pl-c1">bayesian_blocks</span>(X)
+<span class="pl-c"><span class="pl-c">#</span> plot using "to_pdf"</span>
+support, density <span class="pl-k">=</span> <span class="pl-c1">to_pdf</span>(bl)
+<span class="pl-c1">plot</span>(support, density)
+<span class="pl-c"><span class="pl-c">#</span> or using "edges" parameter and an histogramming procedure</span>
+<span class="pl-c1">histogram</span>(X, bins<span class="pl-k">=</span>bl<span class="pl-k">.</span>edges, normalize <span class="pl-k">=</span> <span class="pl-c1">:pdf</span>)</pre></div>
+<p dir="auto">we can change the prior as follows:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="bl = bayesian_blocks(X, prior=AIC(), resolution=40)
+plot(to_pdf(bl)...)
+bl = bayesian_blocks(X, prior=FPR(0.2), resolution=40)
+plot!(to_pdf(bl)...)"><pre>bl <span class="pl-k">=</span> <span class="pl-c1">bayesian_blocks</span>(X, prior<span class="pl-k">=</span><span class="pl-c1">AIC</span>(), resolution<span class="pl-k">=</span><span class="pl-c1">40</span>)
+<span class="pl-c1">plot</span>(<span class="pl-c1">to_pdf</span>(bl)<span class="pl-k">...</span>)
+bl <span class="pl-k">=</span> <span class="pl-c1">bayesian_blocks</span>(X, prior<span class="pl-k">=</span><span class="pl-c1">FPR</span>(<span class="pl-c1">0.2</span>), resolution<span class="pl-k">=</span><span class="pl-c1">40</span>)
+<span class="pl-c1">plot!</span>(<span class="pl-c1">to_pdf</span>(bl)<span class="pl-k">...</span>)</pre></div>
+<p dir="auto">we can also plot the errors:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="plot(to_pdf(bl)..., color=&quot;black&quot;)
+scatter!(bl.centers, bl.heights, yerr = bl.error_heights, color=&quot;black&quot;)"><pre><span class="pl-c1">plot</span>(<span class="pl-c1">to_pdf</span>(bl)<span class="pl-k">...</span>, color<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>black<span class="pl-pds">"</span></span>)
+<span class="pl-c1">scatter!</span>(bl<span class="pl-k">.</span>centers, bl<span class="pl-k">.</span>heights, yerr <span class="pl-k">=</span> bl<span class="pl-k">.</span>error_heights, color<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>black<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">we can also estimate averages and their errors:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="estimate(bl) do v; v end 
+# result: (1.0610279949641472, 0.014646660658986687)
+
+# the result can be refined by increasing the number of integration points
+
+estimate(bl,100) do v; v^2 end 
+# result: (1.2574274634942957, 0.021142852215391358)"><pre><span class="pl-c1">estimate</span>(bl) <span class="pl-k">do</span> v; v <span class="pl-k">end</span> 
+<span class="pl-c"><span class="pl-c">#</span> result: (1.0610279949641472, 0.014646660658986687)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> the result can be refined by increasing the number of integration points</span>
+
+<span class="pl-c1">estimate</span>(bl,<span class="pl-c1">100</span>) <span class="pl-k">do</span> v; v<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">end</span> 
+<span class="pl-c"><span class="pl-c">#</span> result: (1.2574274634942957, 0.021142852215391358)</span></pre></div>
+<h2 dir="auto"><a id="user-content-showcase" class="anchor" aria-hidden="true" href="#showcase"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Showcase</h2>
+<h3 dir="auto"><a id="user-content-bins-are-determined-automatically--optimally" class="anchor" aria-hidden="true" href="#bins-are-determined-automatically--optimally"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>bins are determined automatically &amp; optimally</h3>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="plot3.png"><img src="plot3.png" alt="plot3.png" style="max-width: 100%;"></a></p>
+<h3 dir="auto"><a id="user-content-it-handles-weighted-data-and-errors-correctly" class="anchor" aria-hidden="true" href="#it-handles-weighted-data-and-errors-correctly"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>it handles weighted data and errors correctly</h3>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="plot2.png"><img src="plot2.png" alt="plot2.png" style="max-width: 100%;"></a></p>
+<h3 dir="auto"><a id="user-content-it-routinely-outperforms-common-binning-rules" class="anchor" aria-hidden="true" href="#it-routinely-outperforms-common-binning-rules"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>it routinely outperforms common binning rules</h3>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="plot.png"><img src="plot.png" alt="plot.png" style="max-width: 100%;"></a></p>
+</article></div>

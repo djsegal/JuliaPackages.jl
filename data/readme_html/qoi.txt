@@ -1,0 +1,541 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-qoijl---implementation-of-the-qoi-quite-ok-image-format" class="anchor" aria-hidden="true" href="#qoijl---implementation-of-the-qoi-quite-ok-image-format"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>QOI.jl - Implementation of the QOI (Quite OK Image) format</h1>
+<p dir="auto"><a href="https://github.com/KristofferC/QOI.jl/actions?query=workflows/CI"><img src="https://github.com/KristofferC/QOI.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width: 100%;"></a><a href="https://codecov.io/gh/KristofferC/QOI.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/865cf7cce8ce1469c4220fa749adff0fde1e546a22b466123da5f2fdf07b1c34/68747470733a2f2f636f6465636f762e696f2f67682f4b726973746f66666572432f514f492e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/KristofferC/QOI.jl/branch/master/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">This Julia package contains a decoder and encoder for the <a href="https://qoiformat.org/" rel="nofollow">QOI image format</a>. The QOI format is very simple and can be faster than using PNG (see the <a href="#benchmarks">benchmarks</a>) at the cost of a slightly worse compression ratio.</p>
+<p dir="auto">The code here is based on the reference C implementation given in <a href="https://github.com/phoboslab/qoi">https://github.com/phoboslab/qoi</a>.</p>
+<h2 dir="auto"><a id="user-content-fileio-api" class="anchor" aria-hidden="true" href="#fileio-api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>FileIO API</h2>
+<p dir="auto">This is the simplest API and likely the one that most should use. Simply, use the <code>load</code>/<code>save</code> API from FileIO.jl to load and save QOI images.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using FileIO
+image = load(&quot;test.qoi&quot;)
+save(&quot;test2.qoi&quot;, image)"><pre><span class="pl-k">using</span> FileIO
+image <span class="pl-k">=</span> <span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>test.qoi<span class="pl-pds">"</span></span>)
+<span class="pl-c1">save</span>(<span class="pl-s"><span class="pl-pds">"</span>test2.qoi<span class="pl-pds">"</span></span>, image)</pre></div>
+<h2 dir="auto"><a id="user-content-basic-api" class="anchor" aria-hidden="true" href="#basic-api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Basic API</h2>
+<ul dir="auto">
+<li><code>QOI.qoi_decode(f::Union{String, IO})</code> - Read an image in the QOI format from the file/IO <code>f</code> and return a matrix with <code>RGB</code> or <code>RGBA</code> colorants from <a href="https://github.com/JuliaGraphics/ColorTypes.jl">ColorTypes.jl</a></li>
+<li><code>QOI.qoi_encode(f::Union{String, IO}, image::AbstractMatrix{&lt;:Colorant})</code> - Write the <code>image</code> to the the file/IO <code>f</code>.</li>
+</ul>
+<h2 dir="auto"><a id="user-content-advanced-api" class="anchor" aria-hidden="true" href="#advanced-api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Advanced API</h2>
+<p dir="auto">The QOI format is read in row-major order.
+This means that a transpose is required to create the matrices returned in the basic API.
+To avoid this, the following more advanced APIs exist:</p>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>QOI.qoi_decode_raw(v::AbstractVector{UIt8}})</code> - Takes a vector of the bytes of an image in QOI format and returns the uncompressed vector of bytes from decoding.</p>
+</li>
+<li>
+<p dir="auto"><code>QOI.qoi_encode_raw(image::AbstractVecOrMat{UInt8}, header::QOI.QOIHeader)</code> - Returns the bytes from compressing the bytes in <code>image</code>. The required header is defined as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct QOIHeader
+  width::UInt32
+  height::UInt32
+  channels::QOI.QOIChannel # @enum
+  colorspace::QOI.QOIColorSpace # @enum
+end"><pre><span class="pl-k">struct</span> QOIHeader
+  width<span class="pl-k">::</span><span class="pl-c1">UInt32</span>
+  height<span class="pl-k">::</span><span class="pl-c1">UInt32</span>
+  channels<span class="pl-k">::</span><span class="pl-c1">QOI.QOIChannel</span> <span class="pl-c"><span class="pl-c">#</span> @enum</span>
+  colorspace<span class="pl-k">::</span><span class="pl-c1">QOI.QOIColorSpace</span> <span class="pl-c"><span class="pl-c">#</span> @enum</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">where <code>channels</code> can be either <code>QOI.QOI_RGB</code> or <code>QOI.QOI_RGBA</code> and <code>colorspace</code> can be either <code>QOI.QOI_SRGB</code> or <code>QOI.QOI_LINEAR</code></p>
+</li>
+<li>
+<p dir="auto"><code>QOI.qoi_encode_raw!(data::AbstractVecOrMat{UInt8}, image::AbstractVecOrMat{UInt8}, header::QOIHeader)</code> - Same as above except writing the compressed data into <code>data</code>.</p>
+</li>
+</ul>
+<h2 dir="auto"><a id="user-content-benchmarks" class="anchor" aria-hidden="true" href="#benchmarks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Benchmarks</h2>
+<p dir="auto">The benchmarks here compares the speed of encoding/decoding images with QOI.jl and PNGFiles.jl (which uses <code>libpng</code>)
+It is supposed to mimic <a href="https://qoiformat.org/benchmark/" rel="nofollow">https://qoiformat.org/benchmark/</a>.
+The images used in the benchmark are taken from <code>TestImages.jl</code>, specifically, all the PNG images in <a href="https://testimages.juliaimages.org/stable/imagelist/" rel="nofollow">https://testimages.juliaimages.org/stable/imagelist/</a>.
+The benchmarks were run on Linux on a 12th Gen Intel(R) Core(TM) i9-12900K CPU.
+They can be repeated by running the <code>benchmark/runbenchmarks.jl</code> file with the associated environment.</p>
+<details><summary>Expand to see benchmark results</summary>
+<p dir="auto"><code>autumn_leaves.png</code> 105x140 57.42kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">0.24</td>
+<td align="right">0.41</td>
+<td align="right">233.52</td>
+<td align="right">137.4</td>
+<td align="right">22.18</td>
+<td align="right">38.6%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.04</td>
+<td align="right">0.13</td>
+<td align="right">1418.35</td>
+<td align="right">425.17</td>
+<td align="right">28.25</td>
+<td align="right">49.2%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>barbara_color.png</code> 576x720 1215.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">9.05</td>
+<td align="right">14.07</td>
+<td align="right">131.12</td>
+<td align="right">84.35</td>
+<td align="right">812.84</td>
+<td align="right">66.9%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">3.52</td>
+<td align="right">5.03</td>
+<td align="right">337.19</td>
+<td align="right">235.74</td>
+<td align="right">945.75</td>
+<td align="right">77.8%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>chelsea.png</code> 300x451 396.39kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">2.24</td>
+<td align="right">4.4</td>
+<td align="right">172.82</td>
+<td align="right">88.02</td>
+<td align="right">218.84</td>
+<td align="right">55.2%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.64</td>
+<td align="right">1.55</td>
+<td align="right">605.92</td>
+<td align="right">250.3</td>
+<td align="right">233.27</td>
+<td align="right">58.8%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>coffee.png</code> 400x600 703.12kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">5.35</td>
+<td align="right">11.6</td>
+<td align="right">128.28</td>
+<td align="right">59.19</td>
+<td align="right">443.18</td>
+<td align="right">63.0%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">1.98</td>
+<td align="right">5.23</td>
+<td align="right">346.76</td>
+<td align="right">131.24</td>
+<td align="right">493.3</td>
+<td align="right">70.2%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>fabio_color_256.png</code> 256x256 192.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">1.56</td>
+<td align="right">2.11</td>
+<td align="right">119.84</td>
+<td align="right">88.84</td>
+<td align="right">118.0</td>
+<td align="right">61.5%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.54</td>
+<td align="right">0.86</td>
+<td align="right">344.22</td>
+<td align="right">216.96</td>
+<td align="right">154.86</td>
+<td align="right">80.7%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>fabio_color_512.png</code> 512x512 768.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">5.42</td>
+<td align="right">8.0</td>
+<td align="right">138.44</td>
+<td align="right">93.76</td>
+<td align="right">327.45</td>
+<td align="right">42.6%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">2.04</td>
+<td align="right">3.13</td>
+<td align="right">366.9</td>
+<td align="right">239.9</td>
+<td align="right">463.9</td>
+<td align="right">60.4%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>fabio_gray_256.png</code> 256x256 192.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">1.08</td>
+<td align="right">1.65</td>
+<td align="right">174.16</td>
+<td align="right">113.7</td>
+<td align="right">108.65</td>
+<td align="right">56.6%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.38</td>
+<td align="right">0.78</td>
+<td align="right">491.28</td>
+<td align="right">239.6</td>
+<td align="right">87.99</td>
+<td align="right">45.8%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>fabio_gray_512.png</code> 512x512 768.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">3.68</td>
+<td align="right">5.84</td>
+<td align="right">203.88</td>
+<td align="right">128.53</td>
+<td align="right">259.41</td>
+<td align="right">33.8%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">1.55</td>
+<td align="right">2.99</td>
+<td align="right">483.08</td>
+<td align="right">251.05</td>
+<td align="right">298.29</td>
+<td align="right">38.8%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>lena_gray_16bit.png</code> 256x256 192.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">1.12</td>
+<td align="right">1.7</td>
+<td align="right">167.17</td>
+<td align="right">109.98</td>
+<td align="right">100.71</td>
+<td align="right">52.5%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.4</td>
+<td align="right">0.78</td>
+<td align="right">468.04</td>
+<td align="right">241.2</td>
+<td align="right">82.01</td>
+<td align="right">42.7%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>lighthouse.png</code> 512x768 1152.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">8.4</td>
+<td align="right">13.02</td>
+<td align="right">133.94</td>
+<td align="right">86.39</td>
+<td align="right">692.56</td>
+<td align="right">60.1%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">3.41</td>
+<td align="right">8.14</td>
+<td align="right">329.92</td>
+<td align="right">138.25</td>
+<td align="right">638.75</td>
+<td align="right">55.4%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>monarch_color.png</code> 512x768 1152.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">8.36</td>
+<td align="right">13.34</td>
+<td align="right">134.6</td>
+<td align="right">84.3</td>
+<td align="right">613.23</td>
+<td align="right">53.2%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">3.64</td>
+<td align="right">5.04</td>
+<td align="right">309.24</td>
+<td align="right">223.43</td>
+<td align="right">715.79</td>
+<td align="right">62.1%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>monarch_color_256.png</code> 256x256 192.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">1.24</td>
+<td align="right">2.3</td>
+<td align="right">150.65</td>
+<td align="right">81.55</td>
+<td align="right">129.52</td>
+<td align="right">67.5%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.34</td>
+<td align="right">1.46</td>
+<td align="right">557.65</td>
+<td align="right">128.6</td>
+<td align="right">144.39</td>
+<td align="right">75.2%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>mountainstream.png</code> 512x768 1152.0kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">8.8</td>
+<td align="right">13.46</td>
+<td align="right">127.78</td>
+<td align="right">83.6</td>
+<td align="right">892.34</td>
+<td align="right">77.5%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">3.05</td>
+<td align="right">4.41</td>
+<td align="right">369.44</td>
+<td align="right">255.16</td>
+<td align="right">824.83</td>
+<td align="right">71.6%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p dir="auto"><code>toucan.png</code> 150x162 94.92kB</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right">decode ms</th>
+<th align="right">encode ms</th>
+<th align="right">decode mpps</th>
+<th align="right">encode mpps</th>
+<th align="right">size kb</th>
+<th align="right">rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">PNGFiles</td>
+<td align="right">0.34</td>
+<td align="right">0.58</td>
+<td align="right">274.49</td>
+<td align="right">158.87</td>
+<td align="right">25.84</td>
+<td align="right">27.2%</td>
+</tr>
+<tr>
+<td align="left">QOI</td>
+<td align="right">0.06</td>
+<td align="right">0.18</td>
+<td align="right">1513.03</td>
+<td align="right">514.79</td>
+<td align="right">43.28</td>
+<td align="right">45.6%</td>
+</tr>
+</tbody>
+</table>
+</details>
+</article></div>

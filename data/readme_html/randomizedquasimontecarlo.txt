@@ -1,0 +1,211 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-randomizedquasimontecarlo" class="anchor" aria-hidden="true" href="#randomizedquasimontecarlo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>RandomizedQuasiMonteCarlo</h1>
+<p dir="auto"><strong>This package will soon be deprecated as most of the relevant functionalities will be merged into <a href="https://github.com/SciML/QuasiMonteCarlo.jl">QuasiMonteCarlo.jl</a> <a href="https://github.com/SciML/QuasiMonteCarlo.jl/pull/57" data-hovercard-type="pull_request" data-hovercard-url="/SciML/QuasiMonteCarlo.jl/pull/57/hovercard">PR57</a></strong></p>
+<p dir="auto">The purpose of this package is to provide randomization method of low discrepancy sequences.</p>
+<p dir="auto">So far only <a href="https://link.springer.com/chapter/10.1007/978-1-4612-2552-2_19" rel="nofollow">nested uniform scrambling</a>, Cranley Patterson Rotation (shift mod 1) and Linear Matrix Scrambling.</p>
+<p dir="auto">Compared to over Quasi Monte Carlo package the focus here is not to generate low discrepancy sequences <code>(ξ₁, ..., ξₙ)</code> (Sobol', lattice, ...) but on randomization of these sequences <code>(ξ₁, ..., ξₙ) → (x₁, ..., xₙ)</code>.
+The purpose is to obtain many independent realizations of <code>(x₁, ..., xₙ)</code> by using the functions <code>shift!</code>, <code>scrambling!</code>, etc.
+The original sequences can be obtained for example via the <a href="https://github.com/SciML/QuasiMonteCarlo.jl">QuasiMonteCarlo.jl</a> package.</p>
+<p dir="auto">The scrambling codes are inspired from Owen's <code>R</code> implementation that can be found <a href="https://artowen.su.domains/code/rsobol.R" rel="nofollow">here</a>.</p>
+<h2 dir="auto"><a id="user-content-basic-examples" class="anchor" aria-hidden="true" href="#basic-examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Basic examples</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using RandomizedQuasiMonteCarlo, QuasiMonteCarlo
+m = 7
+N = 2^m # Number of points
+d = 2 # dimension
+M = 32 # Number of bit to represent a digit
+b = 2 # Base
+u_uniform = rand(N, d) # i.i.d. uniform
+u_sobol = permutedims(QuasiMonteCarlo.sample(N, zeros(d),  ones(d), SobolSample()))  # I should update the convention in my pkg to have dim × n and not n × dim
+u_nus = nested_uniform_scramble(u_sobol; M=M)
+u_lms = linear_matrix_scramble(u_sobol, b; M=M)
+u_digital_shift = digital_shift(u_sobol, b; M=M)
+u_shift = shift(u_sobol)
+
+# Plot #
+using Plots, LaTeXStrings
+# Settings I like for plotting
+default(fontfamily=&quot;Computer Modern&quot;, linewidth=1, label=nothing, grid=true, framestyle=:default)
+
+begin
+    d1 = 1
+    d2 = 2
+    sequences = [u_uniform, u_sobol, u_nus, u_lms, u_shift, u_digital_shift]
+    names = [&quot;Uniform&quot;, &quot;Sobol (unrandomized)&quot;, &quot;Nested Uniform Scrambling&quot;, &quot;Linear Matrix Scrambling&quot;, &quot;Shift&quot;, &quot;Digital Shift&quot;]
+    p = [plot(thickness_scaling=2, aspect_ratio=:equal) for i in sequences]
+    for (i, x) in enumerate(sequences)
+        scatter!(p[i], x[:, d1], x[:, d2], ms=0.9, c=1, grid=false)
+        title!(names[i])
+        xlims!(p[i], (0, 1))
+        ylims!(p[i], (0, 1))
+        yticks!(p[i], [0, 1])
+        xticks!(p[i], [0, 1])
+        hline!(p[i], range(0, 1, step=1 / 4), c=:gray, alpha=0.2)
+        vline!(p[i], range(0, 1, step=1 / 4), c=:gray, alpha=0.2)
+        hline!(p[i], range(0, 1, step=1 / 2), c=:gray, alpha=0.8)
+        vline!(p[i], range(0, 1, step=1 / 2), c=:gray, alpha=0.8)
+    end
+    plot(p..., size=(1500, 900))
+end"><pre><span class="pl-k">using</span> RandomizedQuasiMonteCarlo, QuasiMonteCarlo
+m <span class="pl-k">=</span> <span class="pl-c1">7</span>
+N <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">^</span>m <span class="pl-c"><span class="pl-c">#</span> Number of points</span>
+d <span class="pl-k">=</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> dimension</span>
+M <span class="pl-k">=</span> <span class="pl-c1">32</span> <span class="pl-c"><span class="pl-c">#</span> Number of bit to represent a digit</span>
+b <span class="pl-k">=</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> Base</span>
+u_uniform <span class="pl-k">=</span> <span class="pl-c1">rand</span>(N, d) <span class="pl-c"><span class="pl-c">#</span> i.i.d. uniform</span>
+u_sobol <span class="pl-k">=</span> <span class="pl-c1">permutedims</span>(QuasiMonteCarlo<span class="pl-k">.</span><span class="pl-c1">sample</span>(N, <span class="pl-c1">zeros</span>(d),  <span class="pl-c1">ones</span>(d), <span class="pl-c1">SobolSample</span>()))  <span class="pl-c"><span class="pl-c">#</span> I should update the convention in my pkg to have dim × n and not n × dim</span>
+u_nus <span class="pl-k">=</span> <span class="pl-c1">nested_uniform_scramble</span>(u_sobol; M<span class="pl-k">=</span>M)
+u_lms <span class="pl-k">=</span> <span class="pl-c1">linear_matrix_scramble</span>(u_sobol, b; M<span class="pl-k">=</span>M)
+u_digital_shift <span class="pl-k">=</span> <span class="pl-c1">digital_shift</span>(u_sobol, b; M<span class="pl-k">=</span>M)
+u_shift <span class="pl-k">=</span> <span class="pl-c1">shift</span>(u_sobol)
+
+<span class="pl-c"><span class="pl-c">#</span> Plot #</span>
+<span class="pl-k">using</span> Plots, LaTeXStrings
+<span class="pl-c"><span class="pl-c">#</span> Settings I like for plotting</span>
+<span class="pl-c1">default</span>(fontfamily<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Computer Modern<span class="pl-pds">"</span></span>, linewidth<span class="pl-k">=</span><span class="pl-c1">1</span>, label<span class="pl-k">=</span><span class="pl-c1">nothing</span>, grid<span class="pl-k">=</span><span class="pl-c1">true</span>, framestyle<span class="pl-k">=</span><span class="pl-c1">:default</span>)
+
+<span class="pl-k">begin</span>
+    d1 <span class="pl-k">=</span> <span class="pl-c1">1</span>
+    d2 <span class="pl-k">=</span> <span class="pl-c1">2</span>
+    sequences <span class="pl-k">=</span> [u_uniform, u_sobol, u_nus, u_lms, u_shift, u_digital_shift]
+    names <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>Uniform<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Sobol (unrandomized)<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Nested Uniform Scrambling<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Linear Matrix Scrambling<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Shift<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Digital Shift<span class="pl-pds">"</span></span>]
+    p <span class="pl-k">=</span> [<span class="pl-c1">plot</span>(thickness_scaling<span class="pl-k">=</span><span class="pl-c1">2</span>, aspect_ratio<span class="pl-k">=</span><span class="pl-c1">:equal</span>) <span class="pl-k">for</span> i <span class="pl-k">in</span> sequences]
+    <span class="pl-k">for</span> (i, x) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(sequences)
+        <span class="pl-c1">scatter!</span>(p[i], x[:, d1], x[:, d2], ms<span class="pl-k">=</span><span class="pl-c1">0.9</span>, c<span class="pl-k">=</span><span class="pl-c1">1</span>, grid<span class="pl-k">=</span><span class="pl-c1">false</span>)
+        <span class="pl-c1">title!</span>(names[i])
+        <span class="pl-c1">xlims!</span>(p[i], (<span class="pl-c1">0</span>, <span class="pl-c1">1</span>))
+        <span class="pl-c1">ylims!</span>(p[i], (<span class="pl-c1">0</span>, <span class="pl-c1">1</span>))
+        <span class="pl-c1">yticks!</span>(p[i], [<span class="pl-c1">0</span>, <span class="pl-c1">1</span>])
+        <span class="pl-c1">xticks!</span>(p[i], [<span class="pl-c1">0</span>, <span class="pl-c1">1</span>])
+        <span class="pl-c1">hline!</span>(p[i], <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, step<span class="pl-k">=</span><span class="pl-c1">1</span> <span class="pl-k">/</span> <span class="pl-c1">4</span>), c<span class="pl-k">=</span><span class="pl-c1">:gray</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.2</span>)
+        <span class="pl-c1">vline!</span>(p[i], <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, step<span class="pl-k">=</span><span class="pl-c1">1</span> <span class="pl-k">/</span> <span class="pl-c1">4</span>), c<span class="pl-k">=</span><span class="pl-c1">:gray</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.2</span>)
+        <span class="pl-c1">hline!</span>(p[i], <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, step<span class="pl-k">=</span><span class="pl-c1">1</span> <span class="pl-k">/</span> <span class="pl-c1">2</span>), c<span class="pl-k">=</span><span class="pl-c1">:gray</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.8</span>)
+        <span class="pl-c1">vline!</span>(p[i], <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, step<span class="pl-k">=</span><span class="pl-c1">1</span> <span class="pl-k">/</span> <span class="pl-c1">2</span>), c<span class="pl-k">=</span><span class="pl-c1">:gray</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.8</span>)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">plot</span>(p<span class="pl-k">...</span>, size<span class="pl-k">=</span>(<span class="pl-c1">1500</span>, <span class="pl-c1">900</span>))
+<span class="pl-k">end</span></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="img/different_scrambling_N_128.svg"><img src="img/different_scrambling_N_128.svg" alt="different_scrambling_N_128.svg" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-scrambling-of-faure-sequences-in-base-b" class="anchor" aria-hidden="true" href="#scrambling-of-faure-sequences-in-base-b"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Scrambling of Faure sequences in base <code>b</code></h2>
+<p dir="auto">Now let say you want to do scrambling in base <code>b</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using QuasiMonteCarlo
+using Random"><pre><span class="pl-k">using</span> QuasiMonteCarlo
+<span class="pl-k">using</span> Random</pre></div>
+<p dir="auto">The <code>InertSampler</code> is used to obtain a randomized Faure sequences (see <a href="https://github.com/SciML/QuasiMonteCarlo.jl/pull/45/files#diff-3b9314a6f9f2d7eec1d0ef69fa76cfabafdbe6d0df923768f9ec32f27a249c63">here</a> in the test file).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct InertSampler &lt;: Random.AbstractRNG end
+InertSampler(args...; kwargs...) = InertSampler()
+Random.rand(::InertSampler, ::Type{T}) where {T} = zero(T)
+Random.shuffle!(::InertSampler, arg::AbstractArray) = arg"><pre><span class="pl-k">struct</span> InertSampler <span class="pl-k">&lt;:</span> <span class="pl-c1">Random.AbstractRNG</span> <span class="pl-k">end</span>
+<span class="pl-en">InertSampler</span>(args<span class="pl-k">...</span>; kwargs<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">InertSampler</span>()
+Random<span class="pl-k">.</span><span class="pl-en">rand</span>(<span class="pl-k">::</span><span class="pl-c1">InertSampler</span>, <span class="pl-k">::</span><span class="pl-c1">Type{T}</span>) <span class="pl-k">where</span> {T} <span class="pl-k">=</span> <span class="pl-c1">zero</span>(T)
+Random<span class="pl-k">.</span><span class="pl-en">shuffle!</span>(<span class="pl-k">::</span><span class="pl-c1">InertSampler</span>, arg<span class="pl-k">::</span><span class="pl-c1">AbstractArray</span>) <span class="pl-k">=</span> arg</pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="m = 4
+d = 3
+b = QuasiMonteCarlo.nextprime(d)
+N = b^m # Number of points
+M = m
+rng = InertSampler()
+
+# Unrandomized low discrepency sequence
+u_faure = permutedims(QuasiMonteCarlo.sample(N, d, FaureSample(rng)))
+
+# Randomized version
+u_nus = nested_uniform_scramble(u_faure, b; M=M)
+u_lms = linear_matrix_scramble(u_faure, b; M=M)
+u_digital_shift = digital_shift(u_faure, b; M=M)
+"><pre>m <span class="pl-k">=</span> <span class="pl-c1">4</span>
+d <span class="pl-k">=</span> <span class="pl-c1">3</span>
+b <span class="pl-k">=</span> QuasiMonteCarlo<span class="pl-k">.</span><span class="pl-c1">nextprime</span>(d)
+N <span class="pl-k">=</span> b<span class="pl-k">^</span>m <span class="pl-c"><span class="pl-c">#</span> Number of points</span>
+M <span class="pl-k">=</span> m
+rng <span class="pl-k">=</span> <span class="pl-c1">InertSampler</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> Unrandomized low discrepency sequence</span>
+u_faure <span class="pl-k">=</span> <span class="pl-c1">permutedims</span>(QuasiMonteCarlo<span class="pl-k">.</span><span class="pl-c1">sample</span>(N, d, <span class="pl-c1">FaureSample</span>(rng)))
+
+<span class="pl-c"><span class="pl-c">#</span> Randomized version</span>
+u_nus <span class="pl-k">=</span> <span class="pl-c1">nested_uniform_scramble</span>(u_faure, b; M<span class="pl-k">=</span>M)
+u_lms <span class="pl-k">=</span> <span class="pl-c1">linear_matrix_scramble</span>(u_faure, b; M<span class="pl-k">=</span>M)
+u_digital_shift <span class="pl-k">=</span> <span class="pl-c1">digital_shift</span>(u_faure, b; M<span class="pl-k">=</span>M)
+</pre></div>
+<p dir="auto">This plot checks (visually) that you are dealing with <math-renderer class="js-inline-math" style="display: inline" data-static-url="https://github.githubassets.com/static" data-run-id="54dde4195271414d8600abacaef5f2ca">$(t,d,m)$</math-renderer> sequence i.e. you must see one point per rectangle.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="begin
+    d1 = 1 
+    d2 = 3
+    x = u_lms
+    p = [plot(thickness_scaling=2, aspect_ratio=:equal) for i in 0:m]
+    for i in 0:m
+        j = m - i
+        xᵢ = range(0, 1, step=1 / b^(i))
+        xⱼ = range(0, 1, step=1 / b^(j))
+        scatter!(p[i+1], x[:, d1], x[:, d2], ms=2, c=1, grid=false)
+        xlims!(p[i+1], (0, 1.01))
+        ylims!(p[i+1], (0, 1.01))
+        yticks!(p[i+1], [0, 1])
+        xticks!(p[i+1], [0, 1])
+        hline!(p[i+1], xᵢ, c=:gray, alpha=0.2)
+        vline!(p[i+1], xⱼ, c=:gray, alpha=0.2)
+    end
+    plot(p..., size=(1500, 900))
+end
+"><pre><span class="pl-k">begin</span>
+    d1 <span class="pl-k">=</span> <span class="pl-c1">1</span> 
+    d2 <span class="pl-k">=</span> <span class="pl-c1">3</span>
+    x <span class="pl-k">=</span> u_lms
+    p <span class="pl-k">=</span> [<span class="pl-c1">plot</span>(thickness_scaling<span class="pl-k">=</span><span class="pl-c1">2</span>, aspect_ratio<span class="pl-k">=</span><span class="pl-c1">:equal</span>) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span>m]
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span>m
+        j <span class="pl-k">=</span> m <span class="pl-k">-</span> i
+        xᵢ <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, step<span class="pl-k">=</span><span class="pl-c1">1</span> <span class="pl-k">/</span> b<span class="pl-k">^</span>(i))
+        xⱼ <span class="pl-k">=</span> <span class="pl-c1">range</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, step<span class="pl-k">=</span><span class="pl-c1">1</span> <span class="pl-k">/</span> b<span class="pl-k">^</span>(j))
+        <span class="pl-c1">scatter!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], x[:, d1], x[:, d2], ms<span class="pl-k">=</span><span class="pl-c1">2</span>, c<span class="pl-k">=</span><span class="pl-c1">1</span>, grid<span class="pl-k">=</span><span class="pl-c1">false</span>)
+        <span class="pl-c1">xlims!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], (<span class="pl-c1">0</span>, <span class="pl-c1">1.01</span>))
+        <span class="pl-c1">ylims!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], (<span class="pl-c1">0</span>, <span class="pl-c1">1.01</span>))
+        <span class="pl-c1">yticks!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], [<span class="pl-c1">0</span>, <span class="pl-c1">1</span>])
+        <span class="pl-c1">xticks!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], [<span class="pl-c1">0</span>, <span class="pl-c1">1</span>])
+        <span class="pl-c1">hline!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], xᵢ, c<span class="pl-k">=</span><span class="pl-c1">:gray</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.2</span>)
+        <span class="pl-c1">vline!</span>(p[i<span class="pl-k">+</span><span class="pl-c1">1</span>], xⱼ, c<span class="pl-k">=</span><span class="pl-c1">:gray</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.2</span>)
+    <span class="pl-k">end</span>
+    <span class="pl-c1">plot</span>(p<span class="pl-k">...</span>, size<span class="pl-k">=</span>(<span class="pl-c1">1500</span>, <span class="pl-c1">900</span>))
+<span class="pl-k">end</span>
+</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="img/equapartition_lms_m_4_d_3.svg"><img src="img/equapartition_lms_m_4_d_3.svg" alt="equapartition_lms_m_4_d_3.svg" style="max-width: 100%;"></a></p>
+<h2 dir="auto">
+<a id="user-content-multiple-randomization" class="anchor" aria-hidden="true" href="#multiple-randomization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Multiple randomization</h2>
+<p dir="auto">In case you need to repeat randomization several times, I suggest you use in place functions and compute some stuff in advance e.g. <code>bit</code> expansion of your initial set of point to be randomized, the <code>which_permutation</code> function used in Nested Uniform Scrambling.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="unrandomized_bits = sobol_pts2bits(m, d, M) "><pre>unrandomized_bits <span class="pl-k">=</span> <span class="pl-c1">sobol_pts2bits</span>(m, d, M) </pre></div>
+<p dir="auto">Here I use directly the bit representation for Sobol sequence.
+I could have done like in previous example and import the Sobol sequence from <code>QuasiMonteCarlo.jl</code> (which calls <code>Sobol.jl</code>).
+Note that you can call any sequence of point into its bit representation with <code>points2bits</code> function.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="random_bits = similar(unrandomized_bits)
+indices = which_permutation(unrandomized_bits) # This function is used in Nested Uniform Scramble. I
+nus = NestedUniformScrambler(unrandomized_bits, indices)
+lms = LinearMatrixScrambler(unrandomized_bits)
+
+u_sob = dropdims(mapslices(bits2unif, unrandomized_bits, dims=3), dims=3)
+u_nus = copy(u_sob)
+u_lms = copy(u_sob)
+u_shift = copy(u_sob)
+
+NumberOfRand = 100
+
+for j in 1:NumberOfRand
+    scramble!(u_nus, random_bits, nus)
+    scramble!(u_lms, random_bits, lms)
+    shift!(u_shift)
+end
+"><pre>random_bits <span class="pl-k">=</span> <span class="pl-c1">similar</span>(unrandomized_bits)
+indices <span class="pl-k">=</span> <span class="pl-c1">which_permutation</span>(unrandomized_bits) <span class="pl-c"><span class="pl-c">#</span> This function is used in Nested Uniform Scramble. I</span>
+nus <span class="pl-k">=</span> <span class="pl-c1">NestedUniformScrambler</span>(unrandomized_bits, indices)
+lms <span class="pl-k">=</span> <span class="pl-c1">LinearMatrixScrambler</span>(unrandomized_bits)
+
+u_sob <span class="pl-k">=</span> <span class="pl-c1">dropdims</span>(<span class="pl-c1">mapslices</span>(bits2unif, unrandomized_bits, dims<span class="pl-k">=</span><span class="pl-c1">3</span>), dims<span class="pl-k">=</span><span class="pl-c1">3</span>)
+u_nus <span class="pl-k">=</span> <span class="pl-c1">copy</span>(u_sob)
+u_lms <span class="pl-k">=</span> <span class="pl-c1">copy</span>(u_sob)
+u_shift <span class="pl-k">=</span> <span class="pl-c1">copy</span>(u_sob)
+
+NumberOfRand <span class="pl-k">=</span> <span class="pl-c1">100</span>
+
+<span class="pl-k">for</span> j <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>NumberOfRand
+    <span class="pl-c1">scramble!</span>(u_nus, random_bits, nus)
+    <span class="pl-c1">scramble!</span>(u_lms, random_bits, lms)
+    <span class="pl-c1">shift!</span>(u_shift)
+<span class="pl-k">end</span>
+</pre></div>
+</article></div>

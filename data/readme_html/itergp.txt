@@ -1,0 +1,82 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-itergps" class="anchor" aria-hidden="true" href="#itergps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>IterGPs</h1>
+<p dir="auto">A Julia implementation of <a href="https://arxiv.org/pdf/2205.15449.pdf" rel="nofollow">Posterior and Computational Uncertainty
+in Gaussian Processes</a>.</p>
+<p dir="auto"><a href="https://github.com/SebastianCallh/IterGP.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/SebastianCallh/IterGP.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-usage" class="anchor" aria-hidden="true" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Usage</h2>
+<p dir="auto">IterGPs uses the <a href="https://github.com/JuliaGaussianProcesses/AbstractGPs.jl">AbstractGPs</a> interface.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Random
+using Plots
+using KernelFunctions
+using AbstractGPs
+using IterGPs
+
+
+# Generate some toy data
+n = 50
+σ = 0.1
+rng = Xoshiro(1234)
+noise = randn(rng, n).*σ
+x = rand(rng, n) .*6 .+ 0.1.*randn(rng)
+y = sin.(x) .+ noise
+
+# Set up a vanilla AbstractGPs.GP
+xx = collect(1.4 .* range(extrema(x)..., 200))
+k = Matern32Kernel()
+f = GP(k)
+fx = f(x, σ^2)
+
+# Cholesky actions
+maxiters = 15
+chol_pf = posterior(fx, y, CholeskyPolicy(length(x), maxiters))
+
+# Conjugate gradient actions
+maxiters = 15
+x0 = zeros(length(x))
+cg_pf = posterior(fx, y, ConjugateGradientPolicy(x0, maxiters))
+
+plt = plot(xx, chol_pf, label=&quot;Cholesky&quot;, title=&quot;Posterior after $maxiters iterations&quot;, color=1)
+plot!(plt, xx, rand(rng, chol_pf(xx), 5), color=1, label=nothing, alpha=0.5)
+plot!(plt, xx, cg_pf, label=&quot;CG&quot;, title=&quot;Posterior after $maxiters iterations&quot;, color=3)
+plot!(plt, xx, rand(rng, cg_pf(xx), 5), color=3, label=nothing, alpha=0.5)
+scatter!(plt, x, y, label=&quot;Data&quot;, color=2)"><pre><span class="pl-k">using</span> Random
+<span class="pl-k">using</span> Plots
+<span class="pl-k">using</span> KernelFunctions
+<span class="pl-k">using</span> AbstractGPs
+<span class="pl-k">using</span> IterGPs
+
+
+<span class="pl-c"><span class="pl-c">#</span> Generate some toy data</span>
+n <span class="pl-k">=</span> <span class="pl-c1">50</span>
+σ <span class="pl-k">=</span> <span class="pl-c1">0.1</span>
+rng <span class="pl-k">=</span> <span class="pl-c1">Xoshiro</span>(<span class="pl-c1">1234</span>)
+noise <span class="pl-k">=</span> <span class="pl-c1">randn</span>(rng, n)<span class="pl-k">.*</span>σ
+x <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, n) <span class="pl-k">.*</span><span class="pl-c1">6</span> <span class="pl-k">.+</span> <span class="pl-c1">0.1</span><span class="pl-k">.*</span><span class="pl-c1">randn</span>(rng)
+y <span class="pl-k">=</span> <span class="pl-c1">sin</span>.(x) <span class="pl-k">.+</span> noise
+
+<span class="pl-c"><span class="pl-c">#</span> Set up a vanilla AbstractGPs.GP</span>
+xx <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">1.4</span> <span class="pl-k">.*</span> <span class="pl-c1">range</span>(<span class="pl-c1">extrema</span>(x)<span class="pl-k">...</span>, <span class="pl-c1">200</span>))
+k <span class="pl-k">=</span> <span class="pl-c1">Matern32Kernel</span>()
+f <span class="pl-k">=</span> <span class="pl-c1">GP</span>(k)
+fx <span class="pl-k">=</span> <span class="pl-c1">f</span>(x, σ<span class="pl-k">^</span><span class="pl-c1">2</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Cholesky actions</span>
+maxiters <span class="pl-k">=</span> <span class="pl-c1">15</span>
+chol_pf <span class="pl-k">=</span> <span class="pl-c1">posterior</span>(fx, y, <span class="pl-c1">CholeskyPolicy</span>(<span class="pl-c1">length</span>(x), maxiters))
+
+<span class="pl-c"><span class="pl-c">#</span> Conjugate gradient actions</span>
+maxiters <span class="pl-k">=</span> <span class="pl-c1">15</span>
+x0 <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x))
+cg_pf <span class="pl-k">=</span> <span class="pl-c1">posterior</span>(fx, y, <span class="pl-c1">ConjugateGradientPolicy</span>(x0, maxiters))
+
+plt <span class="pl-k">=</span> <span class="pl-c1">plot</span>(xx, chol_pf, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Cholesky<span class="pl-pds">"</span></span>, title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Posterior after <span class="pl-v">$maxiters</span> iterations<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">1</span>)
+<span class="pl-c1">plot!</span>(plt, xx, <span class="pl-c1">rand</span>(rng, <span class="pl-c1">chol_pf</span>(xx), <span class="pl-c1">5</span>), color<span class="pl-k">=</span><span class="pl-c1">1</span>, label<span class="pl-k">=</span><span class="pl-c1">nothing</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.5</span>)
+<span class="pl-c1">plot!</span>(plt, xx, cg_pf, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>CG<span class="pl-pds">"</span></span>, title<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Posterior after <span class="pl-v">$maxiters</span> iterations<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">3</span>)
+<span class="pl-c1">plot!</span>(plt, xx, <span class="pl-c1">rand</span>(rng, <span class="pl-c1">cg_pf</span>(xx), <span class="pl-c1">5</span>), color<span class="pl-k">=</span><span class="pl-c1">3</span>, label<span class="pl-k">=</span><span class="pl-c1">nothing</span>, alpha<span class="pl-k">=</span><span class="pl-c1">0.5</span>)
+<span class="pl-c1">scatter!</span>(plt, x, y, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Data<span class="pl-pds">"</span></span>, color<span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="plots/readme_example_fit.svg"><img src="plots/readme_example_fit.svg" alt="" style="max-width: 100%;"></a></p>
+<h1 dir="auto"><a id="user-content-implementation-details" class="anchor" aria-hidden="true" href="#implementation-details"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Implementation details</h1>
+<p dir="auto">The user facing API exposes three primitives: the <code>IterGP</code> constructor, various policites, e.g. <code>ConjugateGradientPolicy</code>, and the <code>CholeskyPreconditioner</code>. Having used these primitives to construct a <code>GP</code>, you can call <code>AbstractGPs.posterior</code> on it, which is where the magic happens.</p>
+<p dir="auto">As a way to cache computations (such as preconditioners), the policy object itself is not called in the innermost loop. Instead, the policy is used to create an /actor/ which is then called in the inner loop until a convergence criteria is met.</p>
+<h1 dir="auto"><a id="user-content-references" class="anchor" aria-hidden="true" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>References</h1>
+<p dir="auto">Apart from the actual paper, these lecture notes (<a href="https://media.githubusercontent.com/media/philipphennig/NumericsOfML/main/slides/03_ScalingGPs.pdf" rel="nofollow">Scaling GPs</a>), (<a href="https://media.githubusercontent.com/media/philipphennig/NumericsOfML/main/slides/04_ComputationAwareGPs.pdf" rel="nofollow">Computation aware GPs</a>) explain a lot of the implementation.</p>
+</article></div>

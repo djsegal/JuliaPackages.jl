@@ -1,0 +1,125 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-tinygibbs" class="anchor" aria-hidden="true" href="#tinygibbs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>TinyGibbs</h1>
+
+<p dir="auto"><a href="https://github.com/enweg/TinyGibbs.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/enweg/TinyGibbs.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto"><em>TinyGibbs</em> is a small Gibbs sampler that makes use of the <em>AbstractMCMC</em> interface. It therefore allows for efficient Gibbs sampling including parallel sampling of multiple chains. Additionally, <em>TinyGibbs</em> can collect samples in two ways: (1) as a dictionary of tensors where each tensor or (2) as a <em>MCMCChains.Chains</em> type. Therefore, all the funcionality of <em>MCMCChains</em> can be exploited with <em>TinyGibbs</em>.</p>
+<blockquote>
+<p dir="auto"><em>TinyGibbs</em> goal is to be intuitive and as close as possible to research papers. That is, the goal is to have a syntax that is close to the notation used for Gibbs sampling procedures in research papers</p>
+</blockquote>
+<h2 dir="auto"><a id="user-content-how-does-it-work" class="anchor" aria-hidden="true" href="#how-does-it-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>How does it work?</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using TinyGibbs
+using StableRNGs
+using Random, Distributions
+using MCMCChains, AbstractMCMC
+using LinearAlgebra"><pre><span class="pl-k">using</span> TinyGibbs
+<span class="pl-k">using</span> StableRNGs
+<span class="pl-k">using</span> Random, Distributions
+<span class="pl-k">using</span> MCMCChains, AbstractMCMC
+<span class="pl-k">using</span> LinearAlgebra</pre></div>
+<p dir="auto">To achieve its goal of being as close as possible to research paper notation, <em>TinyGibbs</em> introduced the <code>@tiny_gibbs</code> macro. This macro allows one to abstract away all the computational elements and to strictly focus on the Gibbs step logic - that is, on the way in which each parameter is drawn given the other parameters.</p>
+<p dir="auto">As an example, consider the Multivariate Normal Distribution</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="2aa51d673bec977f9af22b0af93feb7e">$$
+\begin{bmatrix}X \ Y \end{bmatrix} \sim N(\mu, \Sigma)
+$$</math-renderer></p>
+<p dir="auto">where</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="2aa51d673bec977f9af22b0af93feb7e">$$
+\mu = \begin{bmatrix}\mu_X \ \mu_Y\end{bmatrix}
+$$</math-renderer></p>
+<p dir="auto">and</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="2aa51d673bec977f9af22b0af93feb7e">$$
+\Sigma = \begin{bmatrix}\Sigma_{XX} &amp; \Sigma_{XY} \ \Sigma_{YX} &amp; \Sigma_{YY}\end{bmatrix}
+$$</math-renderer></p>
+<p dir="auto">we then have the following rules:</p>
+<p dir="auto"><g-emoji class="g-emoji" alias="bulb" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f4a1.png">💡</g-emoji> <strong>Rules for multivariate normal distribution</strong></p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="2aa51d673bec977f9af22b0af93feb7e">$$
+X \sim N(\mu_X, \Sigma_{XX})
+$$</math-renderer></p>
+<p dir="auto">and</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="2aa51d673bec977f9af22b0af93feb7e">$$
+Y|X \sim N(\mu_Y + \Sigma_{YX}\Sigma_{XX}^{-1}(X-\mu_x),\quad \Sigma_{YY}-\Sigma_{YX}\Sigma_{XX}^{-1}\Sigma_{XY})
+$$</math-renderer></p>
+<hr>
+<p dir="auto">We can therefore create the following Gibbs sampling procedure</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@tiny_gibbs function gibbs_normal(mu, Σ)
+    # Drawing y: here a vector of all elements except the first
+    my = mu[2:end] + 1/Σ[1, 1]*Σ[2:end, 1]*(x - mu[1])
+    Σy = Σ[2:end, 2:end] - 1/Σ[1, 1]*Σ[2:end, 1]*Σ[1, 2:end]'
+    y ~ MultivariateNormal(my, Hermitian(Σy))
+
+    # drawing the first element conditional on the others
+    mx = mu[1] + Σ[1, 2:end]'*inv(Σ[2:end, 2:end])*(y - mu[2:end])
+    Σx = Σ[1, 1] - Σ[1, 2:end]'*inv(Σ[2:end, 2:end])*Σ[2:end, 1]
+    x ~ Normal(mx, sqrt(Σx))
+end"><pre><span class="pl-c1">@tiny_gibbs</span> <span class="pl-k">function</span> <span class="pl-en">gibbs_normal</span>(mu, Σ)
+    <span class="pl-c"><span class="pl-c">#</span> Drawing y: here a vector of all elements except the first</span>
+    my <span class="pl-k">=</span> mu[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">+</span> <span class="pl-c1">1</span><span class="pl-k">/</span>Σ[<span class="pl-c1">1</span>, <span class="pl-c1">1</span>]<span class="pl-k">*</span>Σ[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">1</span>]<span class="pl-k">*</span>(x <span class="pl-k">-</span> mu[<span class="pl-c1">1</span>])
+    Σy <span class="pl-k">=</span> Σ[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>] <span class="pl-k">-</span> <span class="pl-c1">1</span><span class="pl-k">/</span>Σ[<span class="pl-c1">1</span>, <span class="pl-c1">1</span>]<span class="pl-k">*</span>Σ[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">1</span>]<span class="pl-k">*</span>Σ[<span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>]<span class="pl-k">'</span>
+    y <span class="pl-k">~</span> <span class="pl-c1">MultivariateNormal</span>(my, <span class="pl-c1">Hermitian</span>(Σy))
+
+    <span class="pl-c"><span class="pl-c">#</span> drawing the first element conditional on the others</span>
+    mx <span class="pl-k">=</span> mu[<span class="pl-c1">1</span>] <span class="pl-k">+</span> Σ[<span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>]<span class="pl-k">'</span><span class="pl-k">*</span><span class="pl-c1">inv</span>(Σ[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>])<span class="pl-k">*</span>(y <span class="pl-k">-</span> mu[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>])
+    Σx <span class="pl-k">=</span> Σ[<span class="pl-c1">1</span>, <span class="pl-c1">1</span>] <span class="pl-k">-</span> Σ[<span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>]<span class="pl-k">'</span><span class="pl-k">*</span><span class="pl-c1">inv</span>(Σ[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>])<span class="pl-k">*</span>Σ[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>, <span class="pl-c1">1</span>]
+    x <span class="pl-k">~</span> <span class="pl-c1">Normal</span>(mx, <span class="pl-c1">sqrt</span>(Σx))
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">This will create a function <code>gibbs_normal</code> in our environment. This function takes as the first argument a dictionary of initial values. Each variable in the Gibbs sampling procedure that is on the LHS of a <code>~</code> must be a key in the dictionary and must therefore have an initial value. As the remaining arguments, <code>gibbs_normal</code> will take the arguments that were given in the macro - hence <code>mu</code> and <code>Σ</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Use a stable RNG for replicability reasons
+rng = StableRNG(123)
+# Create some parameters
+mu = rand(rng, MultivariateNormal(30*randn(rng, 3), I))
+Σ = rand(rng, Wishart(4, diagm(ones(3))))
+# Define initial values 
+initial_values = Dict(:x =&gt; mu[1], :y =&gt; mu[2:end])
+# Create a sampler
+sampler = gibbs_normal(initial_values, mu, Σ)"><pre><span class="pl-c"><span class="pl-c">#</span> Use a stable RNG for replicability reasons</span>
+rng <span class="pl-k">=</span> <span class="pl-c1">StableRNG</span>(<span class="pl-c1">123</span>)
+<span class="pl-c"><span class="pl-c">#</span> Create some parameters</span>
+mu <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, <span class="pl-c1">MultivariateNormal</span>(<span class="pl-c1">30</span><span class="pl-k">*</span><span class="pl-c1">randn</span>(rng, <span class="pl-c1">3</span>), I))
+Σ <span class="pl-k">=</span> <span class="pl-c1">rand</span>(rng, <span class="pl-c1">Wishart</span>(<span class="pl-c1">4</span>, <span class="pl-c1">diagm</span>(<span class="pl-c1">ones</span>(<span class="pl-c1">3</span>))))
+<span class="pl-c"><span class="pl-c">#</span> Define initial values </span>
+initial_values <span class="pl-k">=</span> <span class="pl-c1">Dict</span>(<span class="pl-c1">:x</span> <span class="pl-k">=&gt;</span> mu[<span class="pl-c1">1</span>], <span class="pl-c1">:y</span> <span class="pl-k">=&gt;</span> mu[<span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>])
+<span class="pl-c"><span class="pl-c">#</span> Create a sampler</span>
+sampler <span class="pl-k">=</span> <span class="pl-c1">gibbs_normal</span>(initial_values, mu, Σ)</pre></div>
+<p dir="auto">After creating a sampler, we are now ready to sample. <em>TinyGibbs</em> overwrites the <em>AbstractMCMC.sample</em> methods such that there is one argument less. If the user absolutely wishes to use the <em>AbstractMCMC.sample</em> methods though, they can still do so, by using <em>TinyGibbsModel</em> as the model.</p>
+<p dir="auto">Sampling can either be done for a single chain, or for multiple chains. In the latter case, sampling of the multiple chains can also make use of parallelization.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Sampling a single chain of 1000 draws and saving it as a MCMCChains.Chains type
+chain_single = sample(rng, sampler, 1_000; chain_type=MCMCChains.Chains)
+# Same as above, but this time saving draws as a dictionary of tensors
+# The last dimensions follow the following rules
+# 1. The last dimension of each tensor refers to the chain
+# 2. The second to last dimension refers to the draws
+# 3. The remaining dimensions are the dimensions of the sampled object, i.e. two dimensional for covariance matrices
+chain_single_dict = sample(rng, sampler, 1_000; chain_type=Dict)"><pre><span class="pl-c"><span class="pl-c">#</span> Sampling a single chain of 1000 draws and saving it as a MCMCChains.Chains type</span>
+chain_single <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, sampler, <span class="pl-c1">1_000</span>; chain_type<span class="pl-k">=</span>MCMCChains<span class="pl-k">.</span>Chains)
+<span class="pl-c"><span class="pl-c">#</span> Same as above, but this time saving draws as a dictionary of tensors</span>
+<span class="pl-c"><span class="pl-c">#</span> The last dimensions follow the following rules</span>
+<span class="pl-c"><span class="pl-c">#</span> 1. The last dimension of each tensor refers to the chain</span>
+<span class="pl-c"><span class="pl-c">#</span> 2. The second to last dimension refers to the draws</span>
+<span class="pl-c"><span class="pl-c">#</span> 3. The remaining dimensions are the dimensions of the sampled object, i.e. two dimensional for covariance matrices</span>
+chain_single_dict <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, sampler, <span class="pl-c1">1_000</span>; chain_type<span class="pl-k">=</span>Dict)</pre></div>
+<p dir="auto">To make use of parallel sampling, we can use any of <em>AbstractMCMC</em>s methods. Here I will choose <em>MCMCThreads()</em></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Sampling 4 chains each having 1000 draws in parallel 
+chain_parallel = sample(rng, sampler, MCMCThreads(), 1_000, 4; chain_type=MCMCChains.Chains)
+chain_parallel_dict = sample(rng, sampler, MCMCThreads(), 1_000, 4; chain_type=Dict)"><pre><span class="pl-c"><span class="pl-c">#</span> Sampling 4 chains each having 1000 draws in parallel </span>
+chain_parallel <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, sampler, <span class="pl-c1">MCMCThreads</span>(), <span class="pl-c1">1_000</span>, <span class="pl-c1">4</span>; chain_type<span class="pl-k">=</span>MCMCChains<span class="pl-k">.</span>Chains)
+chain_parallel_dict <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, sampler, <span class="pl-c1">MCMCThreads</span>(), <span class="pl-c1">1_000</span>, <span class="pl-c1">4</span>; chain_type<span class="pl-k">=</span>Dict)</pre></div>
+<p dir="auto">We can then use these draws like any other Bayesian draws. For example, we can just plot the draws using <em>MCMCChains</em> interface</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using StatsPlots
+plot(chain_parallel)"><pre><span class="pl-k">using</span> StatsPlots
+<span class="pl-c1">plot</span>(chain_parallel)</pre></div>
+<p dir="auto">We can also compare the Gibbs sampled distribution for <code>x</code> with the theoretical marginal distribution</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="histogram(chain_parallel[:x]; normalize=:pdf, legend=:none)
+plot!(minimum(chain_parallel[:x]):0.01:maximum(chain_parallel[:x]), x-&gt;pdf(Normal(mu[1], sqrt(Σ[1, 1])), x); color=:red, linewidth=2)"><pre><span class="pl-c1">histogram</span>(chain_parallel[<span class="pl-c1">:x</span>]; normalize<span class="pl-k">=</span><span class="pl-c1">:pdf</span>, legend<span class="pl-k">=</span><span class="pl-c1">:none</span>)
+<span class="pl-c1">plot!</span>(<span class="pl-c1">minimum</span>(chain_parallel[<span class="pl-c1">:x</span>])<span class="pl-k">:</span><span class="pl-c1">0.01</span><span class="pl-k">:</span><span class="pl-c1">maximum</span>(chain_parallel[<span class="pl-c1">:x</span>]), x<span class="pl-k">-&gt;</span><span class="pl-c1">pdf</span>(<span class="pl-c1">Normal</span>(mu[<span class="pl-c1">1</span>], <span class="pl-c1">sqrt</span>(Σ[<span class="pl-c1">1</span>, <span class="pl-c1">1</span>])), x); color<span class="pl-k">=</span><span class="pl-c1">:red</span>, linewidth<span class="pl-k">=</span><span class="pl-c1">2</span>)</pre></div>
+<h2 dir="auto">
+<a id="user-content-current-shortcomings--potential-next-steps" class="anchor" aria-hidden="true" href="#current-shortcomings--potential-next-steps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Current Shortcomings / Potential next steps</h2>
+<ul dir="auto">
+<li>
+<em>TinyGibbs</em> does not currently support the use of MH or HMC within Gibbs. A natrual next step would be to make this possible</li>
+<li>
+<em>TinyGibbs</em> does not currently support keeping track of any other quantities than those that are being sampled. This can be changed if the need ever comes up. A hack around this would also be to have a deterministic distribution.</li>
+</ul>
+<h2 dir="auto">
+<a id="user-content-todos" class="anchor" aria-hidden="true" href="#todos"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>TODOS</h2>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Documentation</li>
+</ul>
+</article></div>

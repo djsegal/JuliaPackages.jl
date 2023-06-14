@@ -1,0 +1,239 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-delaunator" class="anchor" aria-hidden="true" href="#delaunator"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Delaunator</h1>
+<p dir="auto"><a href="https://juliageometry.github.io/Delaunator.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/c97f0a5f2ae95755f64a27f1aa8d9a17462941fd3d6c907c7630abd5d3e60acf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://juliageometry.github.io/Delaunator.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/7fcec4b2d3ab291529fce8ef6a4fcd4129a0683b2f5d5fe2f5c648f02db8b616/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/juliageometry/Delaunator.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/65be138b85aeaf64ba5728a18c50247d76301af2392cb97e923d5948be6e6ac3/68747470733a2f2f636f6465636f762e696f2f67682f6a756c696167656f6d657472792f44656c61756e61746f722e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/juliageometry/Delaunator.jl/branch/master/graph/badge.svg" style="max-width: 100%;"></a>
+<a href="https://coveralls.io/github/juliageometry/Delaunator.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/6e78a6b2b90f84463fc2de083eba8659678c78dd9fef205abd0037932e3862c1/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f6a756c696167656f6d657472792f44656c61756e61746f722e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coveralls" data-canonical-src="https://coveralls.io/repos/github/juliageometry/Delaunator.jl/badge.svg?branch=master" style="max-width: 100%;"></a></p>
+<p dir="auto">A port of <a href="https://github.com/mapbox/delaunator">Mapbox's Delaunator</a> to Julia.</p>
+<blockquote>
+<p dir="auto">An incredibly fast and robust Javascript library for
+<a href="https://en.wikipedia.org/wiki/Delaunay_triangulation" rel="nofollow">Delaunay triangulation</a> of 2D points.</p>
+</blockquote>
+<p dir="auto">The Delaunator algorithm computes a simple 2d triangulation of an arbitrary set of points in the plane <em>quickly</em>. This package provides a Julia implementation of the algorithm along with a number of supporting routines that operate on the Delaunator data structures.</p>
+<p dir="auto">On a 2020 M1 Macbook Air, the Deluantor.jl package will triangulate a million points in about 500ms including computing circumcenters for the triangles for the closest site diagram.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using GeometryBasics, Delaunator, StableRNGs, CairoMakie, Statistics, LinearAlgebra
+
+# generate random points. 
+ipts = randn(StableRNG(1), ComplexF64, 100)
+ipts = sqrt.(abs.(ipts)).*ipts./abs.(ipts)
+pts = Point2f.(zip(real(ipts),imag(ipts)))
+t = triangulate(pts) # triangulate them! 
+f = Figure()
+ax = Axis(f[1,1])
+hidespines!(ax); hidedecorations!(ax) 
+rdata = rand(StableRNG(1), length(triangles(t)))
+# work over all triangles
+for (i,tri) in enumerate(triangles(t))
+  tripts = pts[collect(tri)]
+  poly!(ax , tripts, color=[norm(mean(tripts))*(1+0.5*rdata[i])],
+    colorrange=(0,3), 
+    colormap=map(c-&gt;RGBAf(c.r,c.g,c.b,0.9), Makie.to_colormap(:matter)))
+end
+scatter!(ax, pts, color=:black, markersize=5)
+f"><pre><span class="pl-k">using</span> GeometryBasics, Delaunator, StableRNGs, CairoMakie, Statistics, LinearAlgebra
+
+<span class="pl-c"><span class="pl-c">#</span> generate random points. </span>
+ipts <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">StableRNG</span>(<span class="pl-c1">1</span>), ComplexF64, <span class="pl-c1">100</span>)
+ipts <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>.(<span class="pl-c1">abs</span>.(ipts))<span class="pl-k">.*</span>ipts<span class="pl-k">./</span><span class="pl-c1">abs</span>.(ipts)
+pts <span class="pl-k">=</span> <span class="pl-c1">Point2f</span>.(<span class="pl-c1">zip</span>(<span class="pl-c1">real</span>(ipts),<span class="pl-c1">imag</span>(ipts)))
+t <span class="pl-k">=</span> <span class="pl-c1">triangulate</span>(pts) <span class="pl-c"><span class="pl-c">#</span> triangulate them! </span>
+f <span class="pl-k">=</span> <span class="pl-c1">Figure</span>()
+ax <span class="pl-k">=</span> <span class="pl-c1">Axis</span>(f[<span class="pl-c1">1</span>,<span class="pl-c1">1</span>])
+<span class="pl-c1">hidespines!</span>(ax); <span class="pl-c1">hidedecorations!</span>(ax) 
+rdata <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">StableRNG</span>(<span class="pl-c1">1</span>), <span class="pl-c1">length</span>(<span class="pl-c1">triangles</span>(t)))
+<span class="pl-c"><span class="pl-c">#</span> work over all triangles</span>
+<span class="pl-k">for</span> (i,tri) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(<span class="pl-c1">triangles</span>(t))
+  tripts <span class="pl-k">=</span> pts[<span class="pl-c1">collect</span>(tri)]
+  <span class="pl-c1">poly!</span>(ax , tripts, color<span class="pl-k">=</span>[<span class="pl-c1">norm</span>(<span class="pl-c1">mean</span>(tripts))<span class="pl-k">*</span>(<span class="pl-c1">1</span><span class="pl-k">+</span><span class="pl-c1">0.5</span><span class="pl-k">*</span>rdata[i])],
+    colorrange<span class="pl-k">=</span>(<span class="pl-c1">0</span>,<span class="pl-c1">3</span>), 
+    colormap<span class="pl-k">=</span><span class="pl-c1">map</span>(c<span class="pl-k">-&gt;</span><span class="pl-c1">RGBAf</span>(c<span class="pl-k">.</span>r,c<span class="pl-k">.</span>g,c<span class="pl-k">.</span>b,<span class="pl-c1">0.9</span>), Makie<span class="pl-k">.</span><span class="pl-c1">to_colormap</span>(<span class="pl-c1">:matter</span>)))
+<span class="pl-k">end</span>
+<span class="pl-c1">scatter!</span>(ax, pts, color<span class="pl-k">=</span><span class="pl-c1">:black</span>, markersize<span class="pl-k">=</span><span class="pl-c1">5</span>)
+f</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="docs/README_1_1.png"><img src="docs/README_1_1.png" alt="" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-synopsis" class="anchor" aria-hidden="true" href="#synopsis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Synopsis</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Delaunator, GeometryBasics, StableRNGs
+t = triangulate(rand(StableRNG(1), Point2f, 10))
+for i in eachindex(t) # iterate over each point index 
+  @show i, inhull(t, i) # this gives 0 or a pointer into t.hull
+end
+##  
+for n in neighbors(t, 1) # iterate over neighbors of i
+end 
+for (i,j) in edges(t) # iterate over all edges in triangulation
+end 
+
+##
+collect(triangles(t, 1)) # get the triangles that touch point 1."><pre><span class="pl-k">using</span> Delaunator, GeometryBasics, StableRNGs
+t <span class="pl-k">=</span> <span class="pl-c1">triangulate</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">StableRNG</span>(<span class="pl-c1">1</span>), Point2f, <span class="pl-c1">10</span>))
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">eachindex</span>(t) <span class="pl-c"><span class="pl-c">#</span> iterate over each point index </span>
+  <span class="pl-c1">@show</span> i, <span class="pl-c1">inhull</span>(t, i) <span class="pl-c"><span class="pl-c">#</span> this gives 0 or a pointer into t.hull</span>
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span>#  </span>
+<span class="pl-k">for</span> n <span class="pl-k">in</span> <span class="pl-c1">neighbors</span>(t, <span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> iterate over neighbors of i</span>
+<span class="pl-k">end</span> 
+<span class="pl-k">for</span> (i,j) <span class="pl-k">in</span> <span class="pl-c1">edges</span>(t) <span class="pl-c"><span class="pl-c">#</span> iterate over all edges in triangulation</span>
+<span class="pl-k">end</span> 
+
+<span class="pl-c"><span class="pl-c">#</span>#</span>
+<span class="pl-c1">collect</span>(<span class="pl-c1">triangles</span>(t, <span class="pl-c1">1</span>)) <span class="pl-c"><span class="pl-c">#</span> get the triangles that touch point 1.</span></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="(i, inhull(t, i)) = (1, 0)
+(i, inhull(t, i)) = (2, 0)
+(i, inhull(t, i)) = (3, 2)
+(i, inhull(t, i)) = (4, 4)
+(i, inhull(t, i)) = (5, 0)
+(i, inhull(t, i)) = (6, 3)
+(i, inhull(t, i)) = (7, 5)
+(i, inhull(t, i)) = (8, 0)
+(i, inhull(t, i)) = (9, 1)
+(i, inhull(t, i)) = (10, 0)
+6-element Vector{Int32}:
+  3
+  4
+  7
+ 11
+ 10
+  6"><pre class="notranslate"><code>(i, inhull(t, i)) = (1, 0)
+(i, inhull(t, i)) = (2, 0)
+(i, inhull(t, i)) = (3, 2)
+(i, inhull(t, i)) = (4, 4)
+(i, inhull(t, i)) = (5, 0)
+(i, inhull(t, i)) = (6, 3)
+(i, inhull(t, i)) = (7, 5)
+(i, inhull(t, i)) = (8, 0)
+(i, inhull(t, i)) = (9, 1)
+(i, inhull(t, i)) = (10, 0)
+6-element Vector{Int32}:
+  3
+  4
+  7
+ 11
+ 10
+  6
+</code></pre></div>
+<h3 dir="auto"><a id="user-content-drawing-the-triangulation" class="anchor" aria-hidden="true" href="#drawing-the-triangulation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Drawing the triangulation</h3>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CairoMakie
+f = linesegments(collect(edgelines(t)), color=:black, linewidth=0.75) # draw the edges 
+hidespines!(f.axis); hidedecorations!(f.axis) 
+poly!(f.axis, collect(hullpoly(t)), color=:transparent, strokewidth=1); f"><pre><span class="pl-k">using</span> CairoMakie
+f <span class="pl-k">=</span> <span class="pl-c1">linesegments</span>(<span class="pl-c1">collect</span>(<span class="pl-c1">edgelines</span>(t)), color<span class="pl-k">=</span><span class="pl-c1">:black</span>, linewidth<span class="pl-k">=</span><span class="pl-c1">0.75</span>) <span class="pl-c"><span class="pl-c">#</span> draw the edges </span>
+<span class="pl-c1">hidespines!</span>(f<span class="pl-k">.</span>axis); <span class="pl-c1">hidedecorations!</span>(f<span class="pl-k">.</span>axis) 
+<span class="pl-c1">poly!</span>(f<span class="pl-k">.</span>axis, <span class="pl-c1">collect</span>(<span class="pl-c1">hullpoly</span>(t)), color<span class="pl-k">=</span><span class="pl-c1">:transparent</span>, strokewidth<span class="pl-k">=</span><span class="pl-c1">1</span>); f</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="docs/README_3_1.png"><img src="docs/README_3_1.png" alt="" style="max-width: 100%;"></a></p>
+<h3 dir="auto"><a id="user-content-dual-cells-aka-voronoi-cells" class="anchor" aria-hidden="true" href="#dual-cells-aka-voronoi-cells"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Dual cells, aka Voronoi cells</h3>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="## dual cells, aka Voronoi cells (this interface is still a bit rough)
+# get an infinite poly description of the points nearest cell i 
+p = dualcell(t, 9) 
+@show contains(p, (1.0,2.0)) # test if a point (x,y) is in the polygon
+@show isfinite(p) # test if it's finite or infinite 
+bbox = margin_bbox(t, 0.05) 
+cp = clippedpoly(p, bbox) # produce a finite polygon
+poly!(f.axis, cp, color=Cycled(1), strokewidth=1)
+poly!(f.axis, clippedpoly(dualcell(t, 1), bbox), color=Cycled(2), strokewidth=1)
+f"><pre><span class="pl-c"><span class="pl-c">#</span># dual cells, aka Voronoi cells (this interface is still a bit rough)</span>
+<span class="pl-c"><span class="pl-c">#</span> get an infinite poly description of the points nearest cell i </span>
+p <span class="pl-k">=</span> <span class="pl-c1">dualcell</span>(t, <span class="pl-c1">9</span>) 
+<span class="pl-c1">@show</span> <span class="pl-c1">contains</span>(p, (<span class="pl-c1">1.0</span>,<span class="pl-c1">2.0</span>)) <span class="pl-c"><span class="pl-c">#</span> test if a point (x,y) is in the polygon</span>
+<span class="pl-c1">@show</span> <span class="pl-c1">isfinite</span>(p) <span class="pl-c"><span class="pl-c">#</span> test if it's finite or infinite </span>
+bbox <span class="pl-k">=</span> <span class="pl-c1">margin_bbox</span>(t, <span class="pl-c1">0.05</span>) 
+cp <span class="pl-k">=</span> <span class="pl-c1">clippedpoly</span>(p, bbox) <span class="pl-c"><span class="pl-c">#</span> produce a finite polygon</span>
+<span class="pl-c1">poly!</span>(f<span class="pl-k">.</span>axis, cp, color<span class="pl-k">=</span><span class="pl-c1">Cycled</span>(<span class="pl-c1">1</span>), strokewidth<span class="pl-k">=</span><span class="pl-c1">1</span>)
+<span class="pl-c1">poly!</span>(f<span class="pl-k">.</span>axis, <span class="pl-c1">clippedpoly</span>(<span class="pl-c1">dualcell</span>(t, <span class="pl-c1">1</span>), bbox), color<span class="pl-k">=</span><span class="pl-c1">Cycled</span>(<span class="pl-c1">2</span>), strokewidth<span class="pl-k">=</span><span class="pl-c1">1</span>)
+f</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="contains(p, (1.0, 2.0)) = false
+isfinite(p) = false"><pre class="notranslate"><code>contains(p, (1.0, 2.0)) = false
+isfinite(p) = false
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="docs/README_4_1.png"><img src="docs/README_4_1.png" alt="" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-example-uses" class="anchor" aria-hidden="true" href="#example-uses"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Example uses</h2>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Draw the key edges in the dual cells of a triangulation, aka the Voronoi diagram
+pts = rand(StableRNG(1), Point2f, 15)
+rval = triangulate(pts)
+f = scatter(pts); hidespines!(f.axis); hidedecorations!(f.axis) 
+text!(f.axis, pts, text=map(i-&gt;&quot;$i&quot;, 1:length(pts)))
+for i in eachindex(rval) 
+  p = Delaunator.dualcell(rval, i)
+  # use clipped poly to get closed polygons
+  # for the dualcells... 
+  linesegments!(f.axis, collect(segments(p)),
+    xautolimits=false,yautolimits=false, color=:black)
+end 
+f"><pre><span class="pl-c"><span class="pl-c">#</span> Draw the key edges in the dual cells of a triangulation, aka the Voronoi diagram</span>
+pts <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">StableRNG</span>(<span class="pl-c1">1</span>), Point2f, <span class="pl-c1">15</span>)
+rval <span class="pl-k">=</span> <span class="pl-c1">triangulate</span>(pts)
+f <span class="pl-k">=</span> <span class="pl-c1">scatter</span>(pts); <span class="pl-c1">hidespines!</span>(f<span class="pl-k">.</span>axis); <span class="pl-c1">hidedecorations!</span>(f<span class="pl-k">.</span>axis) 
+<span class="pl-c1">text!</span>(f<span class="pl-k">.</span>axis, pts, text<span class="pl-k">=</span><span class="pl-c1">map</span>(i<span class="pl-k">-&gt;</span><span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$i</span><span class="pl-pds">"</span></span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(pts)))
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">eachindex</span>(rval) 
+  p <span class="pl-k">=</span> Delaunator<span class="pl-k">.</span><span class="pl-c1">dualcell</span>(rval, i)
+  <span class="pl-c"><span class="pl-c">#</span> use clipped poly to get closed polygons</span>
+  <span class="pl-c"><span class="pl-c">#</span> for the dualcells... </span>
+  <span class="pl-c1">linesegments!</span>(f<span class="pl-k">.</span>axis, <span class="pl-c1">collect</span>(<span class="pl-c1">segments</span>(p)),
+    xautolimits<span class="pl-k">=</span><span class="pl-c1">false</span>,yautolimits<span class="pl-k">=</span><span class="pl-c1">false</span>, color<span class="pl-k">=</span><span class="pl-c1">:black</span>)
+<span class="pl-k">end</span> 
+f</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="docs/README_5_1.png"><img src="docs/README_5_1.png" alt="" style="max-width: 100%;"></a></p>
+<h2 dir="auto"><a id="user-content-philosophy" class="anchor" aria-hidden="true" href="#philosophy"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Philosophy</h2>
+<p dir="auto">When possible, everything is lazy and returns iterators and generators instead of arrays.
+Put simply: if you could have implemented something without copies / output arrays, we'd
+like to make it possible to do the same thing. Sometimes this is really tricky, like with
+the <code>clippedpoly</code> scenario. So there, we allow you to provide any data type you want
+to consume the points we are adding. This would enable one to implement something like
+an area computation without any allocations.</p>
+<h2 dir="auto"><a id="user-content-in-the-future" class="anchor" aria-hidden="true" href="#in-the-future"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>In the future</h2>
+<p dir="auto">In the future, we hope to make things like this work!</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="## Searching (NOT IMPLEMENTED)
+findtriangle(t, pt) 
+nearestpoint(t, pt) 
+
+## nearest point cell diagram aka Voronoi diagram. (NOT IMPLEMENTED)
+# you can get much of this with the &quot;dualcell/clippedpoly&quot; featuers
+# this will compute and store the info in a more compact way. 
+bc = boundedcells(t; margin=0.05) # get the nearest point cells
+cellarea(bc, i)
+cellpoly(bc, i) 
+neighbors(bc, i) # get an iterator over neighbors of the bounded cells"><pre><span class="pl-c"><span class="pl-c">#</span># Searching (NOT IMPLEMENTED)</span>
+<span class="pl-c1">findtriangle</span>(t, pt) 
+<span class="pl-c1">nearestpoint</span>(t, pt) 
+
+<span class="pl-c"><span class="pl-c">#</span># nearest point cell diagram aka Voronoi diagram. (NOT IMPLEMENTED)</span>
+<span class="pl-c"><span class="pl-c">#</span> you can get much of this with the "dualcell/clippedpoly" featuers</span>
+<span class="pl-c"><span class="pl-c">#</span> this will compute and store the info in a more compact way. </span>
+bc <span class="pl-k">=</span> <span class="pl-c1">boundedcells</span>(t; margin<span class="pl-k">=</span><span class="pl-c1">0.05</span>) <span class="pl-c"><span class="pl-c">#</span> get the nearest point cells</span>
+<span class="pl-c1">cellarea</span>(bc, i)
+<span class="pl-c1">cellpoly</span>(bc, i) 
+<span class="pl-c1">neighbors</span>(bc, i) <span class="pl-c"><span class="pl-c">#</span> get an iterator over neighbors of the bounded cells</span></pre></div>
+<h2 dir="auto"><a id="user-content-want-to-help" class="anchor" aria-hidden="true" href="#want-to-help"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Want to help?</h2>
+<ul dir="auto">
+<li>implement the searching routines "findtriangle" and "nearestpoint"</li>
+<li>use of <code>ExactPredicates.jl</code> to get better results on the robustness test cases</li>
+<li>use the new Julia 1.9 package extensions to implement plotting routines for Makie/Plots.jl</li>
+</ul>
+<h2 dir="auto"><a id="user-content-comparison-to-other-packages" class="anchor" aria-hidden="true" href="#comparison-to-other-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Comparison to other packages</h2>
+<p dir="auto">There are a variety of other Delaunay and Voronoi packages in the Julia ecosystem.</p>
+<ul dir="auto">
+<li><a href="https://github.com/JuliaGeometry/VoronoiDelaunay.jl"><code>VoronoiDelaunay.jl</code></a></li>
+<li><a href="https://github.com/JuliaGeometry/VoronoiCells.jl"><code>VoronoiCells.jl</code></a></li>
+<li><a href="https://github.com/DanielVandH/DelaunayTriangulation.jl"><code>DelaunayTriangulation.jl</code></a></li>
+<li><a href="https://github.com/gridap/MiniQhull.jl"><code>MiniQhull.jl</code></a></li>
+<li><a href="https://github.com/JuhaHeiskala/DirectQhull.jl"><code>DirectQhull.jl</code></a></li>
+</ul>
+<p dir="auto">Both MiniQhull and DirectQhull wrap the Qhull binary library. This is extremely accurate but is much slower
+than many other methods.</p>
+<p dir="auto">The others are pure Julia packages.</p>
+<ul dir="auto">
+<li><code>VoronoiDelaunay.jl</code> uses the <a href="https://github.com/JuliaGeometry/GeometricalPredicates.jl"><code>GeometricalPredicates.jl</code></a>
+to ensure accurate geometry. This package then imposes a restriction of points to the interval [1,2] to guarantee accuracy
+of floating point computations.</li>
+<li>There is limited support for dual cells / Voronoi cells in <code>VoronoiDelaunay</code> and
+a good deal of this functionality is provided by the package <code>VoronoiCells.jl</code>.</li>
+<li>The <code>DelaunayTriangulation.jl</code> package that
+uses <a href="https://github.com/lairez/ExactPredicates.jl"><code>ExactPredicates.jl</code></a> to implement various
+computational geometry tests.</li>
+</ul>
+<p dir="auto">In comparison, the <code>Delaunator.jl</code> package seeks to mirror the javascript Delauantor packages that give good
+enough triangulations for many pixel-level graphics applications and are fast for 2d problems, rather than those that
+might be suitable for those with computational geometry applications that need better guarantees
+(although we do hope to improve this in the future).</p>
+<blockquote>
+<p dir="auto">This readme is auto-generated by weave from <code>README.jmd</code></p>
+</blockquote>
+</article></div>

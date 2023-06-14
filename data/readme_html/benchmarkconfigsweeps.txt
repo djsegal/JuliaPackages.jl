@@ -1,0 +1,51 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-benchmarkconfigsweeps" class="anchor" aria-hidden="true" href="#benchmarkconfigsweeps"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>BenchmarkConfigSweeps</h1>
+<p dir="auto">BenchmarkConfigSweeps.jl can be used for running benchmarks over various
+<code>--nthreads</code> settings, environment variables, and <code>julia</code> versions.</p>
+<p dir="auto">Each configuration is specified as a combination of configuration specifiers
+such as <code>BenchmarkConfigSweeps.nthreads</code>, <code>BenchmarkConfigSweeps.env</code>, and
+<code>BenchmarkConfigSweeps.julia</code>.  The set of configurations to run benchmarks is
+simply an iterable of (tuples of) such configuration specifiers:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BenchmarkConfigSweeps
+
+nthreads_list = [1, 4, 8, 16]
+configs = Iterators.product(
+    zip(
+        BenchmarkConfigSweeps.nthreads.(nthreads_list),
+        BenchmarkConfigSweeps.env.(&quot;OPENBLAS_NUM_THREADS&quot; .=&gt; nthreads_list),
+    ),
+    BenchmarkConfigSweeps.env.(
+        &quot;JULIA_PROJECT&quot; .=&gt; [&quot;baseline&quot;, &quot;target&quot;],
+        &quot;JULIA_LOAD_PATH&quot; =&gt; &quot;@&quot;,  # not varied
+    ),
+    BenchmarkConfigSweeps.julia.([&quot;julia1.5&quot;, &quot;julia1.6&quot;]),
+)"><pre><span class="pl-k">using</span> BenchmarkConfigSweeps
+
+nthreads_list <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">16</span>]
+configs <span class="pl-k">=</span> Iterators<span class="pl-k">.</span><span class="pl-c1">product</span>(
+    <span class="pl-c1">zip</span>(
+        BenchmarkConfigSweeps<span class="pl-k">.</span><span class="pl-c1">nthreads</span>.(nthreads_list),
+        BenchmarkConfigSweeps<span class="pl-k">.</span><span class="pl-c1">env</span>.(<span class="pl-s"><span class="pl-pds">"</span>OPENBLAS_NUM_THREADS<span class="pl-pds">"</span></span> <span class="pl-k">.=&gt;</span> nthreads_list),
+    ),
+    BenchmarkConfigSweeps<span class="pl-k">.</span><span class="pl-c1">env</span>.(
+        <span class="pl-s"><span class="pl-pds">"</span>JULIA_PROJECT<span class="pl-pds">"</span></span> <span class="pl-k">.=&gt;</span> [<span class="pl-s"><span class="pl-pds">"</span>baseline<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>target<span class="pl-pds">"</span></span>],
+        <span class="pl-s"><span class="pl-pds">"</span>JULIA_LOAD_PATH<span class="pl-pds">"</span></span> <span class="pl-k">=&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>@<span class="pl-pds">"</span></span>,  <span class="pl-c"><span class="pl-c">#</span> not varied</span>
+    ),
+    BenchmarkConfigSweeps<span class="pl-k">.</span><span class="pl-c1">julia</span>.([<span class="pl-s"><span class="pl-pds">"</span>julia1.5<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>julia1.6<span class="pl-pds">"</span></span>]),
+)</pre></div>
+<p dir="auto">It can be then passed to <code>BenchmarkConfigSweeps.run</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="BenchmarkConfigSweeps.run(&quot;build&quot;, &quot;benchmarks.jl&quot;, configs)"><pre>BenchmarkConfigSweeps<span class="pl-k">.</span><span class="pl-c1">run</span>(<span class="pl-s"><span class="pl-pds">"</span>build<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>benchmarks.jl<span class="pl-pds">"</span></span>, configs)</pre></div>
+<p dir="auto">where <code>"build"</code> is the directory to store the result and <code>"benchmarks.jl"</code> is
+the Julia script that defines the variable <code>SUITE :: BenchmarkGroup</code> at the
+top-level.</p>
+<p dir="auto">The result can be loaded using</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sweepresult = BenchmarkConfigSweeps.load(&quot;build&quot;)"><pre>sweepresult <span class="pl-k">=</span> BenchmarkConfigSweeps<span class="pl-k">.</span><span class="pl-c1">load</span>(<span class="pl-s"><span class="pl-pds">"</span>build<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">The <code>sweepresult</code> object implements the Tables.jl interface. For example, it can
+be easily converted into a <code>DataFrame</code> by</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using DataFrames
+df = DataFrame(sweepresult)"><pre><span class="pl-k">using</span> DataFrames
+df <span class="pl-k">=</span> <span class="pl-c1">DataFrame</span>(sweepresult)</pre></div>
+<p dir="auto">Note that the default table conversion is rather too DWIM-y in that it tries to
+guess the meaning of <code>BenchmarkGroup</code> keys.  For more information, see
+<code>BenchmarkConfigSweeps.flattable</code> for how it works.  Use
+<code>BenchmarkConfigSweeps.simpletable</code> for programmatic processing.</p>
+</article></div>

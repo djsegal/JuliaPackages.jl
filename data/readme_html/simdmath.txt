@@ -1,0 +1,263 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-simdmathjl" class="anchor" aria-hidden="true" href="#simdmathjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>SIMDMath.jl</h1>
+<p dir="auto"><a href="https://github.com/heltonmc/SIMDMath.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/heltonmc/SIMDMath.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/heltonmc/SIMDMath.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/ff45a5fef652c344e82b8ec276d909bff7635b5463e689e1cf98331b4081e70d/68747470733a2f2f636f6465636f762e696f2f67682f68656c746f6e6d632f53494d444d6174682e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/heltonmc/SIMDMath.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">A lightweight module for explicit vectorization of simple math functions. The focus is mainly on vectorizing polynomial evaluation in two main cases: (1) evaluating many different polynomials of similar length and (2) evaluating a single large polynomial. It is primary used for vectorizing Bessel function evaluation in <a href="https://github.com/JuliaMath/Bessels.jl">Bessels.jl</a>.</p>
+<p dir="auto">This module is for statically known functions where the coefficients are unrolled and the size of the tuples is known at compilation. For more advanced needs it will be better to use SIMD.jl or LoopVectorization.jl.
+<a href="https://github.com/augustt198/SIMDPoly.jl">SIMDPoly.jl</a> is a similar package utilizing SIMD.jl.</p>
+<p dir="auto">Experimental support for complex numbers is provided. This package requires at least Julia v1.8.</p>
+<h3 dir="auto"><a id="user-content-case-1-evaluating-many-different-polynomials" class="anchor" aria-hidden="true" href="#case-1-evaluating-many-different-polynomials"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Case 1: Evaluating many different polynomials.</h3>
+<p dir="auto">In the evaluation of special functions, we often need to compute many polynomials at the same <code>x</code>. An example structure would look like...</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="const NT = 12
+const P = (
+           ntuple(n -&gt; rand()*(-1)^n / n, NT),
+           ntuple(n -&gt; rand()*(-1)^n / n, NT),
+           ntuple(n -&gt; rand()*(-1)^n / n, NT),
+           ntuple(n -&gt; rand()*(-1)^n / n, NT)
+       )
+
+function test(x)
+           x2 = x * x
+           x3 = x2 * x
+
+           p1 = evalpoly(x3, P[1])
+           p2 = evalpoly(x3, P[2])
+           p3 = evalpoly(x3, P[3])
+           p4 = evalpoly(x3, P[4])
+
+           return muladd(x, -p2, p1), muladd(x2, p4, -p3)
+       end"><pre><span class="pl-k">const</span> NT <span class="pl-k">=</span> <span class="pl-c1">12</span>
+<span class="pl-k">const</span> P <span class="pl-k">=</span> (
+           <span class="pl-c1">ntuple</span>(n <span class="pl-k">-&gt;</span> <span class="pl-c1">rand</span>()<span class="pl-k">*</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>n <span class="pl-k">/</span> n, NT),
+           <span class="pl-c1">ntuple</span>(n <span class="pl-k">-&gt;</span> <span class="pl-c1">rand</span>()<span class="pl-k">*</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>n <span class="pl-k">/</span> n, NT),
+           <span class="pl-c1">ntuple</span>(n <span class="pl-k">-&gt;</span> <span class="pl-c1">rand</span>()<span class="pl-k">*</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>n <span class="pl-k">/</span> n, NT),
+           <span class="pl-c1">ntuple</span>(n <span class="pl-k">-&gt;</span> <span class="pl-c1">rand</span>()<span class="pl-k">*</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>n <span class="pl-k">/</span> n, NT)
+       )
+
+<span class="pl-k">function</span> <span class="pl-en">test</span>(x)
+           x2 <span class="pl-k">=</span> x <span class="pl-k">*</span> x
+           x3 <span class="pl-k">=</span> x2 <span class="pl-k">*</span> x
+
+           p1 <span class="pl-k">=</span> <span class="pl-c1">evalpoly</span>(x3, P[<span class="pl-c1">1</span>])
+           p2 <span class="pl-k">=</span> <span class="pl-c1">evalpoly</span>(x3, P[<span class="pl-c1">2</span>])
+           p3 <span class="pl-k">=</span> <span class="pl-c1">evalpoly</span>(x3, P[<span class="pl-c1">3</span>])
+           p4 <span class="pl-k">=</span> <span class="pl-c1">evalpoly</span>(x3, P[<span class="pl-c1">4</span>])
+
+           <span class="pl-k">return</span> <span class="pl-c1">muladd</span>(x, <span class="pl-k">-</span>p2, p1), <span class="pl-c1">muladd</span>(x2, p4, <span class="pl-k">-</span>p3)
+       <span class="pl-k">end</span></pre></div>
+<p dir="auto">This structure is advantageous for vectorizing as <code>p1</code>, <code>p2</code>, <code>p3</code>, and <code>p4</code> are independent, require same number of evaluations, and coefficients are statically known.
+However, we are relying on the auto-vectorizer to make sure this happens which is very fragile. In general, two polynomials might auto-vectorizer depending on how the values are used but is not reliable.
+We can check that this function is not vectorizing (though it may on some architectures) by using <code>@code_llvm test(1.1)</code> and/or <code>@code_native(1.1)</code>.</p>
+<p dir="auto">Another way to test this is to benchmark this function and compare to the time to compute a single polynomial.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @btime test(x) setup=(x=rand()*2)
+  13.026 ns (0 allocations: 0 bytes)
+
+julia&gt; @btime evalpoly(x, P[1]) setup=(x=rand()*2)
+  3.973 ns (0 allocations: 0 bytes)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">test</span>(x) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>()<span class="pl-k">*</span><span class="pl-c1">2</span>)
+  <span class="pl-c1">13.026</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">evalpoly</span>(x, P[<span class="pl-c1">1</span>]) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>()<span class="pl-k">*</span><span class="pl-c1">2</span>)
+  <span class="pl-c1">3.973</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)</pre></div>
+<p dir="auto">In this case, <code>test</code> is almost 4x longer as all the polynomial evaluations are happening sequentially.</p>
+<p dir="auto">We can do much better by making sure these polynomials vectorize.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# using the same coefficients as above
+julia&gt; using SIMDMath
+
+const pack_p = pack_poly(P)
+
+@inline function test_simd(x)
+       x2 = x * x
+       x3 = x2 * x
+       p = horner_simd(x3, pack_p)
+       return muladd(x, -p.data[2].value, p.data[1].value), muladd(x2, p.data[4].value, -p.data[3].value)
+end
+
+julia&gt; @btime test_simd(x) setup=(x=rand()*2)
+  4.440 ns (0 allocations: 0 bytes)"><pre><span class="pl-c"><span class="pl-c">#</span> using the same coefficients as above</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SIMDMath
+
+<span class="pl-k">const</span> pack_p <span class="pl-k">=</span> <span class="pl-c1">pack_poly</span>(P)
+
+<span class="pl-c1">@inline</span> <span class="pl-k">function</span> <span class="pl-en">test_simd</span>(x)
+       x2 <span class="pl-k">=</span> x <span class="pl-k">*</span> x
+       x3 <span class="pl-k">=</span> x2 <span class="pl-k">*</span> x
+       p <span class="pl-k">=</span> <span class="pl-c1">horner_simd</span>(x3, pack_p)
+       <span class="pl-k">return</span> <span class="pl-c1">muladd</span>(x, <span class="pl-k">-</span>p<span class="pl-k">.</span>data[<span class="pl-c1">2</span>]<span class="pl-k">.</span>value, p<span class="pl-k">.</span>data[<span class="pl-c1">1</span>]<span class="pl-k">.</span>value), <span class="pl-c1">muladd</span>(x2, p<span class="pl-k">.</span>data[<span class="pl-c1">4</span>]<span class="pl-k">.</span>value, <span class="pl-k">-</span>p<span class="pl-k">.</span>data[<span class="pl-c1">3</span>]<span class="pl-k">.</span>value)
+<span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">test_simd</span>(x) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>()<span class="pl-k">*</span><span class="pl-c1">2</span>)
+  <span class="pl-c1">4.440</span> ns (<span class="pl-c1">0</span> allocations<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes)</pre></div>
+<h3 dir="auto"><a id="user-content-case-2-evaluating-a-single-polynomial" class="anchor" aria-hidden="true" href="#case-2-evaluating-a-single-polynomial"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Case 2: Evaluating a single polynomial.</h3>
+<p dir="auto">In some cases, we are interested in improving the performance when evaluating a single polynomial of larger degree. Horner's scheme is latency bound and for large polynomials (N&gt;10) this can become a large part of the total runtime. We can test the performance of using a straight Horner scheme using the Base library function <code>evalpoly</code> against the higher order Horner schemes.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="let
+    horner_times = []
+    horner2_times = []
+    horner4_times = []
+    horner8_times = []
+    horner16_times = []
+    horner32_times = []
+
+    for N in [4, 8, 12, 16, 32, 64, 128, 256, 512]
+        poly = ntuple(n -&gt; rand()*(-1)^n / n, N)
+        poly_packed2 = pack_horner(poly, Val(2))
+        poly_packed4 = pack_horner(poly, Val(4))
+        poly_packed8 = pack_horner(poly, Val(8))
+        poly_packed16 = pack_horner(poly, Val(16))
+        poly_packed32 = pack_horner(poly, Val(32))
+
+
+        t1 = @benchmark evalpoly(x, $poly) setup=(x=rand())
+        t2 = @benchmark horner(x, $poly_packed2) setup=(x=rand())
+        t3 = @benchmark horner(x, $poly_packed4) setup=(x=rand())
+        t4 = @benchmark horner(x, $poly_packed8) setup=(x=rand())
+        t5 = @benchmark horner(x, $poly_packed16) setup=(x=rand())
+        t6 = @benchmark horner(x, $poly_packed32) setup=(x=rand())
+
+
+        push!(horner_times,  round(minimum(t1).time, digits=3))
+        push!(horner2_times,  round(minimum(t2).time, digits=3))
+        push!(horner4_times,  round(minimum(t3).time, digits=3))
+        push!(horner8_times,  round(minimum(t4).time, digits=3))
+        push!(horner16_times,  round(minimum(t5).time, digits=3))
+        push!(horner32_times,  round(minimum(t6).time, digits=3))
+    end
+
+
+    
+    
+    using Plots
+    plot([4, 8, 12, 16, 32, 64, 128, 256, 512], horner_times ./ horner2_times, lw=1.5, label=&quot;2nd Order&quot;, xlabel=&quot;N degree polynomial&quot;, ylabel=&quot;Relative speedup to evalpoly&quot;, legend=:topleft)
+    plot!([4, 8, 12, 16, 32, 64, 128, 256, 512], horner_times ./ horner4_times, lw=1.5, label=&quot;4th Order&quot;)
+    plot!([4, 8, 12, 16, 32, 64, 128, 256, 512], horner_times ./ horner8_times, lw=1.5, label=&quot;8th Order&quot;)
+    plot!([4, 8, 12, 16, 32, 64, 128, 256, 512], horner_times ./ horner16_times, lw=1.5, label=&quot;16th Order&quot;)
+    plot!([4, 8, 12, 16, 32, 64, 128, 256, 512], horner_times ./ horner32_times, lw=1.5, label=&quot;32nd Order&quot;)
+
+end"><pre><span class="pl-k">let</span>
+    horner_times <span class="pl-k">=</span> []
+    horner2_times <span class="pl-k">=</span> []
+    horner4_times <span class="pl-k">=</span> []
+    horner8_times <span class="pl-k">=</span> []
+    horner16_times <span class="pl-k">=</span> []
+    horner32_times <span class="pl-k">=</span> []
+
+    <span class="pl-k">for</span> N <span class="pl-k">in</span> [<span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">12</span>, <span class="pl-c1">16</span>, <span class="pl-c1">32</span>, <span class="pl-c1">64</span>, <span class="pl-c1">128</span>, <span class="pl-c1">256</span>, <span class="pl-c1">512</span>]
+        poly <span class="pl-k">=</span> <span class="pl-c1">ntuple</span>(n <span class="pl-k">-&gt;</span> <span class="pl-c1">rand</span>()<span class="pl-k">*</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span>n <span class="pl-k">/</span> n, N)
+        poly_packed2 <span class="pl-k">=</span> <span class="pl-c1">pack_horner</span>(poly, <span class="pl-c1">Val</span>(<span class="pl-c1">2</span>))
+        poly_packed4 <span class="pl-k">=</span> <span class="pl-c1">pack_horner</span>(poly, <span class="pl-c1">Val</span>(<span class="pl-c1">4</span>))
+        poly_packed8 <span class="pl-k">=</span> <span class="pl-c1">pack_horner</span>(poly, <span class="pl-c1">Val</span>(<span class="pl-c1">8</span>))
+        poly_packed16 <span class="pl-k">=</span> <span class="pl-c1">pack_horner</span>(poly, <span class="pl-c1">Val</span>(<span class="pl-c1">16</span>))
+        poly_packed32 <span class="pl-k">=</span> <span class="pl-c1">pack_horner</span>(poly, <span class="pl-c1">Val</span>(<span class="pl-c1">32</span>))
+
+
+        t1 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">evalpoly</span>(x, <span class="pl-k">$</span>poly) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+        t2 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">horner</span>(x, <span class="pl-k">$</span>poly_packed2) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+        t3 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">horner</span>(x, <span class="pl-k">$</span>poly_packed4) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+        t4 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">horner</span>(x, <span class="pl-k">$</span>poly_packed8) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+        t5 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">horner</span>(x, <span class="pl-k">$</span>poly_packed16) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+        t6 <span class="pl-k">=</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">horner</span>(x, <span class="pl-k">$</span>poly_packed32) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+
+
+        <span class="pl-c1">push!</span>(horner_times,  <span class="pl-c1">round</span>(<span class="pl-c1">minimum</span>(t1)<span class="pl-k">.</span>time, digits<span class="pl-k">=</span><span class="pl-c1">3</span>))
+        <span class="pl-c1">push!</span>(horner2_times,  <span class="pl-c1">round</span>(<span class="pl-c1">minimum</span>(t2)<span class="pl-k">.</span>time, digits<span class="pl-k">=</span><span class="pl-c1">3</span>))
+        <span class="pl-c1">push!</span>(horner4_times,  <span class="pl-c1">round</span>(<span class="pl-c1">minimum</span>(t3)<span class="pl-k">.</span>time, digits<span class="pl-k">=</span><span class="pl-c1">3</span>))
+        <span class="pl-c1">push!</span>(horner8_times,  <span class="pl-c1">round</span>(<span class="pl-c1">minimum</span>(t4)<span class="pl-k">.</span>time, digits<span class="pl-k">=</span><span class="pl-c1">3</span>))
+        <span class="pl-c1">push!</span>(horner16_times,  <span class="pl-c1">round</span>(<span class="pl-c1">minimum</span>(t5)<span class="pl-k">.</span>time, digits<span class="pl-k">=</span><span class="pl-c1">3</span>))
+        <span class="pl-c1">push!</span>(horner32_times,  <span class="pl-c1">round</span>(<span class="pl-c1">minimum</span>(t6)<span class="pl-k">.</span>time, digits<span class="pl-k">=</span><span class="pl-c1">3</span>))
+    <span class="pl-k">end</span>
+
+
+    
+    
+    <span class="pl-k">using</span> Plots
+    <span class="pl-c1">plot</span>([<span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">12</span>, <span class="pl-c1">16</span>, <span class="pl-c1">32</span>, <span class="pl-c1">64</span>, <span class="pl-c1">128</span>, <span class="pl-c1">256</span>, <span class="pl-c1">512</span>], horner_times <span class="pl-k">./</span> horner2_times, lw<span class="pl-k">=</span><span class="pl-c1">1.5</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>2nd Order<span class="pl-pds">"</span></span>, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>N degree polynomial<span class="pl-pds">"</span></span>, ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Relative speedup to evalpoly<span class="pl-pds">"</span></span>, legend<span class="pl-k">=</span><span class="pl-c1">:topleft</span>)
+    <span class="pl-c1">plot!</span>([<span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">12</span>, <span class="pl-c1">16</span>, <span class="pl-c1">32</span>, <span class="pl-c1">64</span>, <span class="pl-c1">128</span>, <span class="pl-c1">256</span>, <span class="pl-c1">512</span>], horner_times <span class="pl-k">./</span> horner4_times, lw<span class="pl-k">=</span><span class="pl-c1">1.5</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>4th Order<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">plot!</span>([<span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">12</span>, <span class="pl-c1">16</span>, <span class="pl-c1">32</span>, <span class="pl-c1">64</span>, <span class="pl-c1">128</span>, <span class="pl-c1">256</span>, <span class="pl-c1">512</span>], horner_times <span class="pl-k">./</span> horner8_times, lw<span class="pl-k">=</span><span class="pl-c1">1.5</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>8th Order<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">plot!</span>([<span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">12</span>, <span class="pl-c1">16</span>, <span class="pl-c1">32</span>, <span class="pl-c1">64</span>, <span class="pl-c1">128</span>, <span class="pl-c1">256</span>, <span class="pl-c1">512</span>], horner_times <span class="pl-k">./</span> horner16_times, lw<span class="pl-k">=</span><span class="pl-c1">1.5</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>16th Order<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">plot!</span>([<span class="pl-c1">4</span>, <span class="pl-c1">8</span>, <span class="pl-c1">12</span>, <span class="pl-c1">16</span>, <span class="pl-c1">32</span>, <span class="pl-c1">64</span>, <span class="pl-c1">128</span>, <span class="pl-c1">256</span>, <span class="pl-c1">512</span>], horner_times <span class="pl-k">./</span> horner32_times, lw<span class="pl-k">=</span><span class="pl-c1">1.5</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>32nd Order<span class="pl-pds">"</span></span>)
+
+<span class="pl-k">end</span></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="/assets/horner_benchmark.png"><img src="/assets/horner_benchmark.png" alt="Alt text" title="Horner Benchmark" style="max-width: 100%;"></a></p>
+<p dir="auto">As mentioned, Horner's scheme requires sequential multiply-add instructions that can't be performed in parallel. One way (another way is Estrin's method which we won't discuss) to improve this structure is to break the polynomial down into even and odd polynomials (a second order Horner's scheme) or into larger powers of <code>x^4</code> or <code>x^8</code> (a fourth and eighth order Horner's scheme) which allow for computing many different polynomials of similar length simultaneously. In some regard, we are just rearranging the coefficients and using the same method as we did in the first case with some additional arithmetic at the end to add all the different polynomials together. This method should be considered a fastmath approach as it rearranges the floating point arithmetic.</p>
+<p dir="auto">The last fact is important because we are actually increasing the total amount of arithmetic operations needed but increasing by a large amount the number of operations that can happen in parallel. The increased operations make the advantages of this approach less straightforward than the first case which is always superior. The second and perhaps most important point is that floating point arithmetic is not associative so these approaches will give slightly different results as we are adding and multiplying in slightly differnet order.</p>
+<p dir="auto">Asymptotically, we can see that the method approaches a 2, 4, and 8x increase respecitively for large degrees, however, for smaller degrees the advanges are more complex. Therefore, it is encouraged to test the performance for individual cases. Of course, this depends on statically knowing the polynomial size during compilation which allows for packing the coefficients in the most efficient way.</p>
+<p dir="auto">Which order of Horner's method to use will depend on the degree polynomial we want to evaluate. A second order scheme is the fastest for degrees N &lt; 12 and is faster than the standard <code>evalpoly</code> even for small degrees N &lt; 4. For 12 &lt; N &lt; 30, a 4th or even 8th degree polynomial will be preferred while a 16th and 32nd order scheme will be preferred for very large polynomials N &gt; 75. The above benchmark should be run on the desired computer and measured for the static degree to see the fastest approach.</p>
+<h3 dir="auto"><a id="user-content-case-3-evaluating-a-polynomial-in-chebyshev-basis" class="anchor" aria-hidden="true" href="#case-3-evaluating-a-polynomial-in-chebyshev-basis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>Case 3: Evaluating a polynomial in Chebyshev basis.</h3>
+<p dir="auto">Similar to the first case evaluating many different polynomials this is also important when using a Chebyshev basis particularly in 2D problems. A simple comparison is the following...</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# define scalar version
+function clenshaw_chebyshev(x, c)
+    x2 = 2x
+    c0 = c[end-1]
+    c1 = c[end]
+    for i in length(c)-2:-1:1
+        c0, c1 = c[i] - c1, c0 + c1 * x2
+    end
+    return c0 + c1 * x
+end
+
+# scalar version evaluating single polynomial
+julia&gt; @benchmark clenshaw_chebyshev(x, (1.2, 1.2, 1.3, 1.5, 1.6, 1.8, 1.9, 2.1, 2.2, 2.3, 2.5, 1.3, 1.5, 1.6, 1.8, 1.9, 2.1, 2.2)) setup=(x=rand())
+BenchmarkTools.Trial: 10000 samples with 1000 evaluations.
+ Range (min … max):  7.041 ns … 24.583 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     7.166 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   7.173 ns ±  0.384 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+                         ▂          █                         
+  ▂▁▁▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▁▃ ▂
+  7.04 ns        Histogram: frequency by time        7.25 ns &lt;
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+
+# SIMD version evaluating two polynomials...
+julia&gt; const P2 =  SIMDMath.pack_horner(((1.2, 1.2, 1.3, 1.5, 1.6, 1.8, 1.9, 2.1, 2.2, 2.3, 2.5, 1.3, 1.5, 1.6, 1.8, 1.9, 2.1, 2.2), (2.4, 1.3, 1.5, 1.6, 1.8, 1.9, 2.1, 2.2, 2.1, 2.6, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8)))
+((VecElement{Float64}(1.2), VecElement{Float64}(2.4)), (VecElement{Float64}(1.2), VecElement{Float64}(1.3)), (VecElement{Float64}(1.3), VecElement{Float64}(1.5)), (VecElement{Float64}(1.5), VecElement{Float64}(1.6)), (VecElement{Float64}(1.6), VecElement{Float64}(1.8)), (VecElement{Float64}(1.8), VecElement{Float64}(1.9)), (VecElement{Float64}(1.9), VecElement{Float64}(2.1)), (VecElement{Float64}(2.1), VecElement{Float64}(2.2)), (VecElement{Float64}(2.2), VecElement{Float64}(2.1)), (VecElement{Float64}(2.3), VecElement{Float64}(2.6)), (VecElement{Float64}(2.5), VecElement{Float64}(2.1)), (VecElement{Float64}(1.3), VecElement{Float64}(2.2)), (VecElement{Float64}(1.5), VecElement{Float64}(2.3)), (VecElement{Float64}(1.6), VecElement{Float64}(2.4)), (VecElement{Float64}(1.8), VecElement{Float64}(2.5)), (VecElement{Float64}(1.9), VecElement{Float64}(2.6)), (VecElement{Float64}(2.1), VecElement{Float64}(2.7)), (VecElement{Float64}(2.2), VecElement{Float64}(2.8)))
+
+julia&gt; @benchmark SIMDMath.clenshaw_simd(x, P2) setup=(x=rand())
+BenchmarkTools.Trial: 10000 samples with 1000 evaluations.
+ Range (min … max):  4.291 ns … 24.000 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     4.416 ns              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.415 ns ±  0.368 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+             ▂           █          █           ▃          ▂ ▂
+  ▅▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁█ █
+  4.29 ns      Histogram: log(frequency) by time      4.5 ns &lt;
+
+ Memory estimate: 0 bytes, allocs estimate: 0."><pre><span class="pl-c"><span class="pl-c">#</span> define scalar version</span>
+<span class="pl-k">function</span> <span class="pl-en">clenshaw_chebyshev</span>(x, c)
+    x2 <span class="pl-k">=</span> <span class="pl-c1">2</span>x
+    c0 <span class="pl-k">=</span> c[<span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>]
+    c1 <span class="pl-k">=</span> c[<span class="pl-c1">end</span>]
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">length</span>(c)<span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>
+        c0, c1 <span class="pl-k">=</span> c[i] <span class="pl-k">-</span> c1, c0 <span class="pl-k">+</span> c1 <span class="pl-k">*</span> x2
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> c0 <span class="pl-k">+</span> c1 <span class="pl-k">*</span> x
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> scalar version evaluating single polynomial</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> <span class="pl-c1">clenshaw_chebyshev</span>(x, (<span class="pl-c1">1.2</span>, <span class="pl-c1">1.2</span>, <span class="pl-c1">1.3</span>, <span class="pl-c1">1.5</span>, <span class="pl-c1">1.6</span>, <span class="pl-c1">1.8</span>, <span class="pl-c1">1.9</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.2</span>, <span class="pl-c1">2.3</span>, <span class="pl-c1">2.5</span>, <span class="pl-c1">1.3</span>, <span class="pl-c1">1.5</span>, <span class="pl-c1">1.6</span>, <span class="pl-c1">1.8</span>, <span class="pl-c1">1.9</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.2</span>)) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1000</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">7.041</span> ns … <span class="pl-c1">24.583</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">7.166</span> ns              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">7.173</span> ns ±  <span class="pl-c1">0.384</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+                         ▂          █                         
+  ▂▁▁▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▁▃ ▂
+  <span class="pl-c1">7.04</span> ns        Histogram<span class="pl-k">:</span> frequency by time        <span class="pl-c1">7.25</span> ns <span class="pl-k">&lt;</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span>
+
+<span class="pl-c"><span class="pl-c">#</span> SIMD version evaluating two polynomials...</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-k">const</span> P2 <span class="pl-k">=</span>  SIMDMath<span class="pl-k">.</span><span class="pl-c1">pack_horner</span>(((<span class="pl-c1">1.2</span>, <span class="pl-c1">1.2</span>, <span class="pl-c1">1.3</span>, <span class="pl-c1">1.5</span>, <span class="pl-c1">1.6</span>, <span class="pl-c1">1.8</span>, <span class="pl-c1">1.9</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.2</span>, <span class="pl-c1">2.3</span>, <span class="pl-c1">2.5</span>, <span class="pl-c1">1.3</span>, <span class="pl-c1">1.5</span>, <span class="pl-c1">1.6</span>, <span class="pl-c1">1.8</span>, <span class="pl-c1">1.9</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.2</span>), (<span class="pl-c1">2.4</span>, <span class="pl-c1">1.3</span>, <span class="pl-c1">1.5</span>, <span class="pl-c1">1.6</span>, <span class="pl-c1">1.8</span>, <span class="pl-c1">1.9</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.2</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.6</span>, <span class="pl-c1">2.1</span>, <span class="pl-c1">2.2</span>, <span class="pl-c1">2.3</span>, <span class="pl-c1">2.4</span>, <span class="pl-c1">2.5</span>, <span class="pl-c1">2.6</span>, <span class="pl-c1">2.7</span>, <span class="pl-c1">2.8</span>)))
+((<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.2</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.4</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.2</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.3</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.3</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.5</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.5</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.6</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.6</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.8</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.8</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.9</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.9</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.1</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.1</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.2</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.2</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.1</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.3</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.6</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.5</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.1</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.3</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.2</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.5</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.3</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.6</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.4</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.8</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.5</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">1.9</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.6</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.1</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.7</span>)), (<span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.2</span>), <span class="pl-c1">VecElement</span><span class="pl-c1">{Float64}</span>(<span class="pl-c1">2.8</span>)))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@benchmark</span> SIMDMath<span class="pl-k">.</span><span class="pl-c1">clenshaw_simd</span>(x, P2) setup<span class="pl-k">=</span>(x<span class="pl-k">=</span><span class="pl-c1">rand</span>())
+BenchmarkTools<span class="pl-k">.</span>Trial<span class="pl-k">:</span> <span class="pl-c1">10000</span> samples with <span class="pl-c1">1000</span> evaluations.
+ Range (min … max)<span class="pl-k">:</span>  <span class="pl-c1">4.291</span> ns … <span class="pl-c1">24.000</span> ns  ┊ GC (min … max)<span class="pl-k">:</span> <span class="pl-c1">0.00</span><span class="pl-k">%</span> … <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (median)<span class="pl-k">:</span>     <span class="pl-c1">4.416</span> ns              ┊ GC (median)<span class="pl-k">:</span>    <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+ Time  (mean ± σ)<span class="pl-k">:</span>   <span class="pl-c1">4.415</span> ns ±  <span class="pl-c1">0.368</span> ns  ┊ GC (mean ± σ)<span class="pl-k">:</span>  <span class="pl-c1">0.00</span><span class="pl-k">%</span> ± <span class="pl-c1">0.00</span><span class="pl-k">%</span>
+
+             ▂           █          █           ▃          ▂ ▂
+  ▅▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁█ █
+  <span class="pl-c1">4.29</span> ns      Histogram<span class="pl-k">:</span> <span class="pl-c1">log</span>(frequency) by time      <span class="pl-c1">4.5</span> ns <span class="pl-k">&lt;</span>
+
+ Memory estimate<span class="pl-k">:</span> <span class="pl-c1">0</span> bytes, allocs estimate<span class="pl-k">:</span> <span class="pl-c1">0.</span></pre></div>
+<p dir="auto">Computing two Chebyshev polynomials is actually faster than the single polynomial case. The coefficients are packed more efficiently and the operations are not done in the same order. This leads to a speed up, however, because of the non-associativity of floating point arithmetic they will slightly differ. One is not neccessarily more accurate and should be tested for your use case.</p>
+</article></div>
