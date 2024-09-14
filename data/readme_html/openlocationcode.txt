@@ -1,0 +1,244 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">OpenLocationCode</h1><a id="user-content-openlocationcode" class="anchor" aria-label="Permalink: OpenLocationCode" href="#openlocationcode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A package for Open Location Codes aka Plus Codes to represent geographical coordinates</p>
+<p dir="auto"><a href="https://github.com/KlausC/OpenLocationCode.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/KlausC/OpenLocationCode.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>    <a href="https://codecov.io/gh/KlausC/OpenLocationCode.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/411df7a6340d4ff8876b7e0fc466b7f642b1278153e47f8f1ae7fcde9d1a4146/68747470733a2f2f636f6465636f762e696f2f67682f4b6c617573432f4f70656e4c6f636174696f6e436f64652e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage Status" data-canonical-src="https://codecov.io/gh/KlausC/OpenLocationCode.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">Encode and decode, shorten and recover relative to a position.</p>
+<p dir="auto">This <code>Julia</code> implementation originates from the <code>Python</code> sources and test data
+in <a href="https://github.com/google/open-location-code">google/open-location-code</a> v1.0.4
+with this <a href="https://github.com/google/open-location-code/blob/main/docs/specification.md">specification</a>.
+A concise description is found here <a href="https://en.wikipedia.org/wiki/Open_Location_Code" rel="nofollow">OLC</a>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Description</h2><a id="user-content-description" class="anchor" aria-label="Permalink: Description" href="#description"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Open Location Codes or "Plus Codes" are short, 10-15 character codes that can be used instead
+of street addresses. The codes can be generated and decoded offline, and use
+a reduced character set that minimises the chance of codes including words.</p>
+<p dir="auto">Codes are able to be shortened relative to a nearby location. This means that
+in many cases, only four to seven characters of the code are needed.
+To recover the original code, the same location is not required, as long as
+a nearby location is provided.</p>
+<p dir="auto">Codes represent rectangular areas rather than points, and the longer the
+code, the smaller the area. A 10 character code represents a 13.9x13.9
+meter area (at the equator). An 11 character code represents approximately
+a 2.8x3.5 meter area, while a 15 character code is 4.5x13.6 mm.</p>
+<p dir="auto">Two encoding algorithms are used. The first 10 characters are pairs of
+characters, one for latitude and one for longitude, using base 20. Each pair
+reduces the area of the code by a factor of 400. Only even code lengths are
+sensible, since an odd-numbered length would have sides in a ratio of 20:1.</p>
+<p dir="auto">At positions 11-15, the algorithm changes so that each character selects one
+position from a 4x5 grid. This allows refinements by one to five characters.</p>
+<p dir="auto">All degrees are integer or floating point numbers. The created output degrees are <code>Float64</code>.
+The latitude and longitude should be <a href="https://en.wikipedia.org/wiki/World_Geodetic_System#WGS84" rel="nofollow">WGS84</a> values.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">API</h2><a id="user-content-api" class="anchor" aria-label="Permalink: API" href="#api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="       encode(latitude, longitude[, codelength])
+
+  Encode a location into an Open Location Code. Produces a code of the specified length, or the default length
+  if no length is provided.
+
+  The length determines the accuracy of the code. The default length is 10 characters, returning a code of
+  approximately 13.9x13.9 meters. Longer codes represent smaller areas, but lengths &gt; 15 are sub-centimetre and
+  so 11 or 12 are probably the limit of useful codes.
+
+  Arguments:
+    •  latitude: A latitude in signed degrees. Will be clipped to the range -90 to 90.
+    •  longitude: A longitude in signed degrees. Will be normalised to the range -180 to 180.
+    •  codelength: The number of significant digits in the output code, not including any separator
+       characters.
+
+  Examples:
+
+  julia&gt; encode(50.173168, 8.338086, 11)
+  &quot;9F2C58FQ+768&quot;"><pre lang="doc" class="notranslate"><code>       encode(latitude, longitude[, codelength])
+
+  Encode a location into an Open Location Code. Produces a code of the specified length, or the default length
+  if no length is provided.
+
+  The length determines the accuracy of the code. The default length is 10 characters, returning a code of
+  approximately 13.9x13.9 meters. Longer codes represent smaller areas, but lengths &gt; 15 are sub-centimetre and
+  so 11 or 12 are probably the limit of useful codes.
+
+  Arguments:
+    •  latitude: A latitude in signed degrees. Will be clipped to the range -90 to 90.
+    •  longitude: A longitude in signed degrees. Will be normalised to the range -180 to 180.
+    •  codelength: The number of significant digits in the output code, not including any separator
+       characters.
+
+  Examples:
+
+  julia&gt; encode(50.173168, 8.338086, 11)
+  "9F2C58FQ+768"
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="
+       decode(code)
+
+  Decode an Open Location Code into the location coordinates.
+
+  Arguments:
+    •  code: The Open Location Code to decode.
+
+  Returns:
+  A CodeArea object that provides the latitude and longitude of two of the corners of the area, the center, and the length of the original code."><pre lang="doc" class="notranslate"><code>
+       decode(code)
+
+  Decode an Open Location Code into the location coordinates.
+
+  Arguments:
+    •  code: The Open Location Code to decode.
+
+  Returns:
+  A CodeArea object that provides the latitude and longitude of two of the corners of the area, the center, and the length of the original code.
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="       shorten(code, latitude, longitude)
+
+  Remove characters from the start of an OLC code. This uses a reference location to determine how many initial characters can be removed from the OLC code. The
+  number of characters that can be removed depends on the distance between the code center and the reference location.
+
+  The minimum number of characters that will be removed is four. If more than four characters can be removed, the additional characters will be replaced with the
+  padding character. At most eight characters will be removed. The reference location must be within 50% of the maximum range. This ensures that the shortened code
+  will be able to be recovered using slightly different locations.
+
+  Arguments
+    •  code: A full, valid code to shorten.
+    •  latitude: A latitude, in signed degrees, to use as the reference point.
+    •  longitude: A longitude, in signed degrees, to use as the reference point.
+
+  Returns:
+  Either the original code, if the reference location was not close enough, or the shortest code which can be used to recover from the reference location."><pre lang="doc" class="notranslate"><code>       shorten(code, latitude, longitude)
+
+  Remove characters from the start of an OLC code. This uses a reference location to determine how many initial characters can be removed from the OLC code. The
+  number of characters that can be removed depends on the distance between the code center and the reference location.
+
+  The minimum number of characters that will be removed is four. If more than four characters can be removed, the additional characters will be replaced with the
+  padding character. At most eight characters will be removed. The reference location must be within 50% of the maximum range. This ensures that the shortened code
+  will be able to be recovered using slightly different locations.
+
+  Arguments
+    •  code: A full, valid code to shorten.
+    •  latitude: A latitude, in signed degrees, to use as the reference point.
+    •  longitude: A longitude, in signed degrees, to use as the reference point.
+
+  Returns:
+  Either the original code, if the reference location was not close enough, or the shortest code which can be used to recover from the reference location.
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="       recover_nearest(code, latitude, longitude)
+
+  Recover the nearest matching code to a specified location. Given a short code of between four and seven characters, this recovers the nearest matching full code
+  to the specified location.
+
+  Arguments:
+    •  code: A valid OLC character sequence.
+    •  latitude: The latitude (in signed degrees) to use to find the nearest matching full code.
+    •  longitude`: The longitude (in signed degrees) to use to find the nearest matching full code.
+
+  Returns:
+  The nearest full Open Location Code to the reference location that matches the short code. If the passed code was not a valid short code, but was a valid full code, it is returned with proper capitalization but otherwise unchanged."><pre lang="doc" class="notranslate"><code>       recover_nearest(code, latitude, longitude)
+
+  Recover the nearest matching code to a specified location. Given a short code of between four and seven characters, this recovers the nearest matching full code
+  to the specified location.
+
+  Arguments:
+    •  code: A valid OLC character sequence.
+    •  latitude: The latitude (in signed degrees) to use to find the nearest matching full code.
+    •  longitude`: The longitude (in signed degrees) to use to find the nearest matching full code.
+
+  Returns:
+  The nearest full Open Location Code to the reference location that matches the short code. If the passed code was not a valid short code, but was a valid full code, it is returned with proper capitalization but otherwise unchanged.
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Examples</h2><a id="user-content-examples" class="anchor" aria-label="Permalink: Examples" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using OpenLocationCode
+
+julia&gt; # Encode a location, default accuracy:
+       encode(47.365590, 8.524997)
+&quot;8FVC9G8F+6X&quot;
+
+julia&gt; ca = CodeArea(47.365590, 8.524997, 6)
+CodeArea(&quot;8FVC9G00+&quot;, 47.36559+0.05, 8.524997+0.05, 6)
+
+julia&gt; # Encode a location using five digits of additional refinement:
+       encode(47.365590, 8.524997, 15)
+&quot;8FVC9G8F+6XQQ435&quot;
+
+julia&gt; # Decode a full code:
+       code  
+&quot;8FVCCJ8F+6X&quot;
+
+julia&gt; ca = CodeArea(code)
+CodeArea(&quot;8FVCCJ8F+6X&quot;, 47.4155+0.000125, 8.624875+0.000125, 10)
+
+julia&gt; ca = decode(code)
+CodeArea(&quot;8FVCCJ8F+6X&quot;, 47.4155+0.000125, 8.624875+0.000125, 10)
+
+julia&gt; println(&quot;# Center is lat=$(latitude_center(ca)), lon=$(longitude_center(ca))&quot;)
+# Center is lat=47.4155625, lon=8.6249375
+
+julia&gt; println(&quot;# extension of area is $(latitude_precision(ca) * 111321)x$(longitude_precision(ca) * 111321 * cosd(latitude_low(ca))) m&quot;)
+# extension of area is 13.915125x9.416042416499675 m
+
+julia&gt; # Attempt to trim the first characters from a code:
+       shorten(&quot;8FVC9G8F+6X&quot;, 47.5, 8.5)
+&quot;9G8F+6X&quot;
+
+julia&gt; # Recover the full code from a short code:
+       recover_nearest(&quot;9G8F+6X&quot;, 47.4, 8.6)
+&quot;8FVC9G8F+6X&quot;
+
+julia&gt; recover_nearest(&quot;8F+6X&quot;, 47.4, 8.6)
+&quot;8FVCCJ8F+6X&quot;
+
+julia&gt; area(ca) # area  in m^2
+131.03201149353194
+
+julia&gt; distance(ca, CodeArea(&quot;8FVC0000+&quot;)) # distance in meters
+13296.381156694346
+
+julia&gt; latlong(CodeArea(&quot;9F000000+&quot;)) # center coordinates
+(60.0, 10.0)
+"><pre lang="jldoctest" class="notranslate"><code>julia&gt; using OpenLocationCode
+
+julia&gt; # Encode a location, default accuracy:
+       encode(47.365590, 8.524997)
+"8FVC9G8F+6X"
+
+julia&gt; ca = CodeArea(47.365590, 8.524997, 6)
+CodeArea("8FVC9G00+", 47.36559+0.05, 8.524997+0.05, 6)
+
+julia&gt; # Encode a location using five digits of additional refinement:
+       encode(47.365590, 8.524997, 15)
+"8FVC9G8F+6XQQ435"
+
+julia&gt; # Decode a full code:
+       code  
+"8FVCCJ8F+6X"
+
+julia&gt; ca = CodeArea(code)
+CodeArea("8FVCCJ8F+6X", 47.4155+0.000125, 8.624875+0.000125, 10)
+
+julia&gt; ca = decode(code)
+CodeArea("8FVCCJ8F+6X", 47.4155+0.000125, 8.624875+0.000125, 10)
+
+julia&gt; println("# Center is lat=$(latitude_center(ca)), lon=$(longitude_center(ca))")
+# Center is lat=47.4155625, lon=8.6249375
+
+julia&gt; println("# extension of area is $(latitude_precision(ca) * 111321)x$(longitude_precision(ca) * 111321 * cosd(latitude_low(ca))) m")
+# extension of area is 13.915125x9.416042416499675 m
+
+julia&gt; # Attempt to trim the first characters from a code:
+       shorten("8FVC9G8F+6X", 47.5, 8.5)
+"9G8F+6X"
+
+julia&gt; # Recover the full code from a short code:
+       recover_nearest("9G8F+6X", 47.4, 8.6)
+"8FVC9G8F+6X"
+
+julia&gt; recover_nearest("8F+6X", 47.4, 8.6)
+"8FVCCJ8F+6X"
+
+julia&gt; area(ca) # area  in m^2
+131.03201149353194
+
+julia&gt; distance(ca, CodeArea("8FVC0000+")) # distance in meters
+13296.381156694346
+
+julia&gt; latlong(CodeArea("9F000000+")) # center coordinates
+(60.0, 10.0)
+
+</code></pre></div>
+<p dir="auto">© 2023 Klaus Crusius</p>
+</article></div>

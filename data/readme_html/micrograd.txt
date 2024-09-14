@@ -1,0 +1,173 @@
+<div id="readme" class="md" data-path="readme.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">MicroGrad.jl: Julia Automatic Differentiation</h1><a id="user-content-microgradjl-julia-automatic-differentiation" class="anchor" aria-label="Permalink: MicroGrad.jl: Julia Automatic Differentiation" href="#microgradjl-julia-automatic-differentiation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A minimal implementation of automatic differentation (AD) based on <a href="https://fluxml.ai/Zygote.jl/" rel="nofollow">Zygote.jl</a> and <a href="https://juliadiff.org/ChainRulesCore.jl/" rel="nofollow">ChainRules.jl</a>.
+See <a href="#limitations">limitations</a> below.</p>
+<p dir="auto">This package is built on 3 of Julia's main principles: functional programming, multiple dispatch and metaprogramming.</p>
+<p dir="auto">It is inspired by Andrej Karpathy's <a href="https://github.com/karpathy/micrograd">micrograd</a> package.
+However the internal workings of this package are very different.
+Micrograd creates an object (<code>Value</code>) which implements custom versions of mathematical operations that also calculate the derivative.
+All operations are only done with those objects.
+In this package existing functions and their arguments are dispatched to a derivative function (<code>rrule</code>). Metaprogamming is used to generate code and dispatch it following the rules of differentiation.</p>
+<p dir="auto">The two functions exposed are <code>rrule</code> and <code>pullback</code>.</p>
+<p dir="auto">Example using <code>rrule</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x = 0.6
+y1, back1 = rrule(cos, x) # (0.82533, cos_back(...))
+y2, back2 = rrule(sin, y1) # (0.73477, sin_back(...))
+Δy2 = 1.0
+Δsin, Δy1 = back2(Δy2) # (nothing,  0.67831)
+Δcos, Δx = back1(Δy1) # (nothing, -0.38300)"><pre>x <span class="pl-k">=</span> <span class="pl-c1">0.6</span>
+y1, back1 <span class="pl-k">=</span> <span class="pl-c1">rrule</span>(cos, x) <span class="pl-c"><span class="pl-c">#</span> (0.82533, cos_back(...))</span>
+y2, back2 <span class="pl-k">=</span> <span class="pl-c1">rrule</span>(sin, y1) <span class="pl-c"><span class="pl-c">#</span> (0.73477, sin_back(...))</span>
+Δy2 <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+Δsin, Δy1 <span class="pl-k">=</span> <span class="pl-c1">back2</span>(Δy2) <span class="pl-c"><span class="pl-c">#</span> (nothing,  0.67831)</span>
+Δcos, Δx <span class="pl-k">=</span> <span class="pl-c1">back1</span>(Δy1) <span class="pl-c"><span class="pl-c">#</span> (nothing, -0.38300)</span></pre></div>
+<p dir="auto">The <code>pullback</code> function will automatically transform the forward pass and return a <code>Pullback</code> struct that can generate the backward pass:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="foo(x) = sin(cos(x))
+z, back = pullback(foo, 0.6) # (0.73477, ∂(foo))
+Δfoo, Δx = back(1.0) # (nothing, -0.38300)"><pre><span class="pl-en">foo</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sin</span>(<span class="pl-c1">cos</span>(x))
+z, back <span class="pl-k">=</span> <span class="pl-c1">pullback</span>(foo, <span class="pl-c1">0.6</span>) <span class="pl-c"><span class="pl-c">#</span> (0.73477, ∂(foo))</span>
+Δfoo, Δx <span class="pl-k">=</span> <span class="pl-c1">back</span>(<span class="pl-c1">1.0</span>) <span class="pl-c"><span class="pl-c">#</span> (nothing, -0.38300)</span></pre></div>
+<p dir="auto">Note that <code>pullback</code> returns derivatives for both the function and the arguments and so it is a mimic of <code>Zygote._pullback</code> and not <code>Zygote.pullback</code>.</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/moons_decision_boundary.png"><img src="images/moons_decision_boundary.png" alt="Decision boundary for moon dataset." style="max-width: 100%;"></a></p>
+<p dir="auto">This code can be used to train a simple model.
+The above shows the boundary region after training a small multi-layer perceptron model to differentiate between to two half-circles.</p>
+<p dir="auto">The model is defined as:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="model = Chain(
+    Dense(2 =&gt; 16, activation=relu),
+    Dense(16 =&gt; 16, activation=relu),
+    Dense(16 =&gt; 2, activation=relu),
+)"><pre>model <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(
+    <span class="pl-c1">Dense</span>(<span class="pl-c1">2</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">16</span>, activation<span class="pl-k">=</span>relu),
+    <span class="pl-c1">Dense</span>(<span class="pl-c1">16</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">16</span>, activation<span class="pl-k">=</span>relu),
+    <span class="pl-c1">Dense</span>(<span class="pl-c1">16</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">2</span>, activation<span class="pl-k">=</span>relu),
+)</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Loss and activation functions</h2><a id="user-content-loss-and-activation-functions" class="anchor" aria-label="Permalink: Loss and activation functions" href="#loss-and-activation-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Because this AD is limited (especially with regards to control flow and broadcasting), explicit activation and loss functions and their <code>rrule</code>s are also provided.
+They are based on functions in <a href="https://fluxml.ai/NNlib.jl" rel="nofollow">NNlib.jl</a>.</p>
+<p dir="auto">These are:</p>
+<ul dir="auto">
+<li><code>sigmoid</code></li>
+<li><code>tanh_act</code></li>
+<li><code>relu</code></li>
+<li><code>softmax</code></li>
+<li><code>logsoftmax</code></li>
+<li><code>mse</code></li>
+<li><code>cross_entropy</code></li>
+<li><code>logit_cross_entropy</code></li>
+<li><code>hinge_loss</code> (max-margin loss)</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Debug</h2><a id="user-content-debug" class="anchor" aria-label="Permalink: Debug" href="#debug"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Try a pullback:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="z, back = pullback(f, args...)
+Δ = similar(z) # Flux.jl calls this sensitivity
+grads = back(Δ)"><pre>z, back <span class="pl-k">=</span> <span class="pl-c1">pullback</span>(f, args<span class="pl-k">...</span>)
+Δ <span class="pl-k">=</span> <span class="pl-c1">similar</span>(z) <span class="pl-c"><span class="pl-c">#</span> Flux.jl calls this sensitivity</span>
+grads <span class="pl-k">=</span> <span class="pl-c1">back</span>(Δ)</pre></div>
+<p dir="auto">Debug the IR pullback code:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using IRTools: @code_ir
+using MicroGrad: instrument, primal, reverse_differentiate
+foo(x) = sin(cos(x))
+ir = @code_ir foo(1.0)
+ir = instrument(ir)
+T = Tuple{typeof(foo), Float64}
+pr, calls = primal(ir, T)
+back_ir = reverse_differentiate(ir)"><pre><span class="pl-k">using</span> IRTools<span class="pl-k">:</span> <span class="pl-c1">@code_ir</span>
+<span class="pl-k">using</span> MicroGrad<span class="pl-k">:</span> instrument, primal, reverse_differentiate
+<span class="pl-en">foo</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sin</span>(<span class="pl-c1">cos</span>(x))
+ir <span class="pl-k">=</span> <span class="pl-c1">@code_ir</span> <span class="pl-c1">foo</span>(<span class="pl-c1">1.0</span>)
+ir <span class="pl-k">=</span> <span class="pl-c1">instrument</span>(ir)
+T <span class="pl-k">=</span> Tuple{<span class="pl-c1">typeof</span>(foo), Float64}
+pr, calls <span class="pl-k">=</span> <span class="pl-c1">primal</span>(ir, T)
+back_ir <span class="pl-k">=</span> <span class="pl-c1">reverse_differentiate</span>(ir)</pre></div>
+<p dir="auto">Alternatively, the <code>ir</code> struct can be created with:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using IRTools: IR, meta
+m = meta(T, world=Base.get_world_counter())
+ir = IR(m)"><pre><span class="pl-k">using</span> IRTools<span class="pl-k">:</span> IR, meta
+m <span class="pl-k">=</span> <span class="pl-c1">meta</span>(T, world<span class="pl-k">=</span>Base<span class="pl-k">.</span><span class="pl-c1">get_world_counter</span>())
+ir <span class="pl-k">=</span> <span class="pl-c1">IR</span>(m)</pre></div>
+<p dir="auto">When using the expression pullback code, do the following:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using MicroGrad: primal, reverse_differentiate
+ci = @code_lowered foo(1.0)
+T = Tuple{typeof(foo), Float64}
+pr, calls = primal(ci, T)
+back_ci = reverse_differentiate(ci, :methodinstance, :Δ)"><pre><span class="pl-k">using</span> MicroGrad<span class="pl-k">:</span> primal, reverse_differentiate
+ci <span class="pl-k">=</span> <span class="pl-c1">@code_lowered</span> <span class="pl-c1">foo</span>(<span class="pl-c1">1.0</span>)
+T <span class="pl-k">=</span> Tuple{<span class="pl-c1">typeof</span>(foo), Float64}
+pr, calls <span class="pl-k">=</span> <span class="pl-c1">primal</span>(ci, T)
+back_ci <span class="pl-k">=</span> <span class="pl-c1">reverse_differentiate</span>(ci, <span class="pl-c1">:methodinstance</span>, <span class="pl-c1">:Δ</span>)</pre></div>
+<p dir="auto">Alternatively, the <code>ci</code> struct can be created with:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="m = meta(T; world=Base.get_world_counter())
+type_signature, sps, method_ = m
+ci = Base.uncompressed_ast(method_)"><pre>m <span class="pl-k">=</span> <span class="pl-c1">meta</span>(T; world<span class="pl-k">=</span>Base<span class="pl-k">.</span><span class="pl-c1">get_world_counter</span>())
+type_signature, sps, method_ <span class="pl-k">=</span> m
+ci <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">uncompressed_ast</span>(method_)</pre></div>
+<p dir="auto">The <code>pullback</code> function is recursive and so <code>pullback</code> calls in the above <code>IR</code>/<code>CodeInfo</code> blocks should be inspected as well.
+The type <code>T</code> is the first parameter in <code>back::Pullback{T, S...}</code>.</p>
+<p dir="auto">Also inspect the output of:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="world = Base.get_world_counter()
+MicroGrad._generate_pullback(world, typeof(f), typeof.(args)...)
+MicroGrad._generate_callable_pullback(typeof(back), world, typeof(Δ))"><pre>world <span class="pl-k">=</span> Base<span class="pl-k">.</span><span class="pl-c1">get_world_counter</span>()
+MicroGrad<span class="pl-k">.</span><span class="pl-c1">_generate_pullback</span>(world, <span class="pl-c1">typeof</span>(f), <span class="pl-c1">typeof</span>.(args)<span class="pl-k">...</span>)
+MicroGrad<span class="pl-k">.</span><span class="pl-c1">_generate_callable_pullback</span>(<span class="pl-c1">typeof</span>(back), world, <span class="pl-c1">typeof</span>(Δ))</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Limitations</h2><a id="user-content-limitations" class="anchor" aria-label="Permalink: Limitations" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This package has the following limitations.</p>
+<ul dir="auto">
+<li>Keyword arguments are not supported.</li>
+<li>Control flow is not supported.</li>
+<li>Like with Zygote.jl, mutating operations and try-catch statements are not supported.</li>
+<li>Minimal set of <code>rrule</code>s are implemented. Many core functions from <code>Base</code> are not implemented e.g. generic broadcasting, <code>Base.iterate</code> etc.</li>
+<li>The generated reverse code is only tested in limited scenarios and is not guaranteed to be correct in general.</li>
+<li>Cannot handle code with superfluous calls. This will result in <code>nothing</code> being passed to callbacks. Zygote overcomes this issue by wrapping the pullbacks with <code>ZBack</code> which returns <code>nothing</code> if the input is <code>nothing</code>. See the "confused" test.</li>
+</ul>
+<p dir="auto">Further, the <code>reverse_expr</code> code cannot handle:</p>
+<ul dir="auto">
+<li>Creation of new variables e.g. with <code>map</code>.</li>
+<li>Generated code e.g. in the <code>Chain</code> layer in the examples.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Install</h2><a id="user-content-install" class="anchor" aria-label="Permalink: Install" href="#install"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Download the GitHub repository (it is not registered). Then in the Julia REPL:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ] # enter package mode
+(@v1.x) pkg&gt; dev path\\to\\MicroGrad.jl
+julia&gt; using Revise # for dynamic editing of code. Note: will not always recompile generated functions.
+julia&gt; using MicroGrad"><pre class="notranslate"><code>julia&gt; ] # enter package mode
+(@v1.x) pkg&gt; dev path\\to\\MicroGrad.jl
+julia&gt; using Revise # for dynamic editing of code. Note: will not always recompile generated functions.
+julia&gt; using MicroGrad
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Resources</h2><a id="user-content-resources" class="anchor" aria-label="Permalink: Resources" href="#resources"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Differentiation:</p>
+<ul dir="auto">
+<li>Zygote.jl:
+<ul dir="auto">
+<li>Documentation: <a href="https://fluxml.ai/Zygote.jl" rel="nofollow">https://fluxml.ai/Zygote.jl</a></li>
+<li>Repository: <a href="https://github.com/FluxML/Zygote.jl">https://github.com/FluxML/Zygote.jl</a></li>
+<li>ZygoteRules.jl: <a href="https://github.com/FluxML/ZygoteRules.jl">https://github.com/FluxML/ZygoteRules.jl</a></li>
+</ul>
+</li>
+<li>ChainRules.jl
+<ul dir="auto">
+<li>Documentation: <a href="https://juliadiff.org/ChainRulesCore.jl/" rel="nofollow">https://juliadiff.org/ChainRulesCore.jl/</a></li>
+<li>Repository: <a href="https://github.com/JuliaDiff/ChainRules.jl">https://github.com/JuliaDiff/ChainRules.jl</a></li>
+<li>ChainRulesCore.jl: <a href="https://github.com/JuliaDiff/ChainRulesCore.jl">https://github.com/JuliaDiff/ChainRulesCore.jl</a></li>
+</ul>
+</li>
+</ul>
+<p dir="auto">Code inspection and modificaiton:</p>
+<ul dir="auto">
+<li>IRTools.jl
+<ul dir="auto">
+<li>Documentation: <a href="https://github.com/FluxML/IRTools.jl">https://github.com/FluxML/IRTools.jl</a></li>
+<li>Repository: <a href="https://github.com/FluxML/IRTools.jl">https://github.com/FluxML/IRTools.jl</a></li>
+</ul>
+</li>
+<li>CodeInfoTools.jl: <a href="https://github.com/JuliaCompilerPlugins/CodeInfoTools.jl">https://github.com/JuliaCompilerPlugins/CodeInfoTools.jl</a></li>
+</ul>
+<p dir="auto">Struct inspection:</p>
+<ul dir="auto">
+<li>Functors.jl:
+<ul dir="auto">
+<li>Documentation: <a href="https://fluxml.ai/Functors.jl/stable/" rel="nofollow">https://fluxml.ai/Functors.jl/stable/</a></li>
+<li>Resources: <a href="https://github.com/FluxML/Functors.jl">https://github.com/FluxML/Functors.jl</a></li>
+</ul>
+</li>
+</ul>
+</article></div>

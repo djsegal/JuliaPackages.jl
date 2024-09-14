@@ -1,0 +1,208 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://stellaorg.github.io/ImplicitBVH.jl/" rel="nofollow"><img src="https://github.com/StellaOrg/ImplicitBVH.jl/raw/main/docs/src/static/bunny.png?raw=true" alt="ImplicitBVH" style="max-width: 100%;"></a></p>
+<p dir="auto"><a href="https://stellaorg.github.io/ImplicitBVH.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/31126cd56c42376320c59ea685a7ca65ff3a83d09a66363ed7115f882be1222c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://stellaorg.github.io/ImplicitBVH.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ImplicitBVH.jl</h1><a id="user-content-implicitbvhjl" class="anchor" aria-label="Permalink: ImplicitBVH.jl" href="#implicitbvhjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><em>High-Performance Parallel Bounding Volume Hierarchy for Collision Detection</em></p>
+<p dir="auto">It uses an implicit bounding volume hierarchy constructed from an iterable of some geometric
+primitives' (e.g. triangles in a mesh) bounding volumes forming the <code>ImplicitTree</code> leaves. The leaves
+and merged nodes above them can have different types - e.g. <code>BSphere{Float64}</code> leaves merged into
+larger <code>BBox{Float64}</code>.</p>
+<p dir="auto">The initial geometric primitives are sorted according to their Morton-encoded coordinates; the
+unsigned integer type used for the Morton encoding can be chosen between <code>UInt16</code>, <code>UInt32</code> and <code>UInt64</code>.</p>
+<p dir="auto">Finally, the tree can be incompletely-built up to a given <code>built_level</code> and later start contact
+detection downwards from this level.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Examples</h2><a id="user-content-examples" class="anchor" aria-label="Permalink: Examples" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Simple usage with bounding spheres and default 64-bit types:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ImplicitBVH
+using ImplicitBVH: BBox, BSphere
+
+# Generate some simple bounding spheres
+bounding_spheres = [
+    BSphere([0., 0., 0.], 0.5),
+    BSphere([0., 0., 1.], 0.6),
+    BSphere([0., 0., 2.], 0.5),
+    BSphere([0., 0., 3.], 0.4),
+    BSphere([0., 0., 4.], 0.6),
+]
+
+# Build BVH
+bvh = BVH(bounding_spheres)
+
+# Traverse BVH for contact detection
+traversal = traverse(bvh)
+@show traversal.contacts
+
+# output
+traversal.contacts = [(1, 2), (2, 3), (4, 5)]"><pre><span class="pl-k">using</span> ImplicitBVH
+<span class="pl-k">using</span> ImplicitBVH<span class="pl-k">:</span> BBox, BSphere
+
+<span class="pl-c"><span class="pl-c">#</span> Generate some simple bounding spheres</span>
+bounding_spheres <span class="pl-k">=</span> [
+    <span class="pl-c1">BSphere</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>], <span class="pl-c1">0.5</span>),
+    <span class="pl-c1">BSphere</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">1.</span>], <span class="pl-c1">0.6</span>),
+    <span class="pl-c1">BSphere</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">2.</span>], <span class="pl-c1">0.5</span>),
+    <span class="pl-c1">BSphere</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">3.</span>], <span class="pl-c1">0.4</span>),
+    <span class="pl-c1">BSphere</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">4.</span>], <span class="pl-c1">0.6</span>),
+]
+
+<span class="pl-c"><span class="pl-c">#</span> Build BVH</span>
+bvh <span class="pl-k">=</span> <span class="pl-c1">BVH</span>(bounding_spheres)
+
+<span class="pl-c"><span class="pl-c">#</span> Traverse BVH for contact detection</span>
+traversal <span class="pl-k">=</span> <span class="pl-c1">traverse</span>(bvh)
+<span class="pl-c1">@show</span> traversal<span class="pl-k">.</span>contacts
+
+<span class="pl-c"><span class="pl-c">#</span> output</span>
+traversal<span class="pl-k">.</span>contacts <span class="pl-k">=</span> [(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>), (<span class="pl-c1">2</span>, <span class="pl-c1">3</span>), (<span class="pl-c1">4</span>, <span class="pl-c1">5</span>)]</pre></div>
+<p dir="auto">Using <code>Float32</code> bounding spheres for leaves, <code>Float32</code> bounding boxes for nodes above, and <code>UInt32</code>
+Morton codes:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ImplicitBVH
+using ImplicitBVH: BBox, BSphere
+
+# Generate some simple bounding spheres
+bounding_spheres = [
+    BSphere{Float32}([0., 0., 0.], 0.5),
+    BSphere{Float32}([0., 0., 1.], 0.6),
+    BSphere{Float32}([0., 0., 2.], 0.5),
+    BSphere{Float32}([0., 0., 3.], 0.4),
+    BSphere{Float32}([0., 0., 4.], 0.6),
+]
+
+# Build BVH
+bvh = BVH(bounding_spheres, BBox{Float32}, UInt32)
+
+# Traverse BVH for contact detection
+traversal = traverse(bvh)
+@show traversal.contacts
+
+# output
+traversal.contacts = [(1, 2), (2, 3), (4, 5)]"><pre><span class="pl-k">using</span> ImplicitBVH
+<span class="pl-k">using</span> ImplicitBVH<span class="pl-k">:</span> BBox, BSphere
+
+<span class="pl-c"><span class="pl-c">#</span> Generate some simple bounding spheres</span>
+bounding_spheres <span class="pl-k">=</span> [
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>], <span class="pl-c1">0.5</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">1.</span>], <span class="pl-c1">0.6</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">2.</span>], <span class="pl-c1">0.5</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">3.</span>], <span class="pl-c1">0.4</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">4.</span>], <span class="pl-c1">0.6</span>),
+]
+
+<span class="pl-c"><span class="pl-c">#</span> Build BVH</span>
+bvh <span class="pl-k">=</span> <span class="pl-c1">BVH</span>(bounding_spheres, BBox{Float32}, UInt32)
+
+<span class="pl-c"><span class="pl-c">#</span> Traverse BVH for contact detection</span>
+traversal <span class="pl-k">=</span> <span class="pl-c1">traverse</span>(bvh)
+<span class="pl-c1">@show</span> traversal<span class="pl-k">.</span>contacts
+
+<span class="pl-c"><span class="pl-c">#</span> output</span>
+traversal<span class="pl-k">.</span>contacts <span class="pl-k">=</span> [(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>), (<span class="pl-c1">2</span>, <span class="pl-c1">3</span>), (<span class="pl-c1">4</span>, <span class="pl-c1">5</span>)]</pre></div>
+<p dir="auto">Build BVH up to level 2 and start traversing down from level 3, reusing the previous traversal
+cache:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="bvh = BVH(bounding_spheres, BBox{Float32}, UInt32, 2)
+traversal = traverse(bvh, 3, traversal)"><pre>bvh <span class="pl-k">=</span> <span class="pl-c1">BVH</span>(bounding_spheres, BBox{Float32}, UInt32, <span class="pl-c1">2</span>)
+traversal <span class="pl-k">=</span> <span class="pl-c1">traverse</span>(bvh, <span class="pl-c1">3</span>, traversal)</pre></div>
+<p dir="auto">Update previous BVH bounding volumes' positions and rebuild BVH <em>reusing previous memory</em>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="new_positions = rand(3, 5)
+bvh_rebuilt = BVH(bvh, new_positions)"><pre>new_positions <span class="pl-k">=</span> <span class="pl-c1">rand</span>(<span class="pl-c1">3</span>, <span class="pl-c1">5</span>)
+bvh_rebuilt <span class="pl-k">=</span> <span class="pl-c1">BVH</span>(bvh, new_positions)</pre></div>
+<p dir="auto">Compute contacts between two different BVH trees (e.g. two different robotic parts):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ImplicitBVH
+using ImplicitBVH: BBox, BSphere
+
+# Generate some simple bounding spheres (will be BVH leaves)
+bounding_spheres1 = [
+    BSphere{Float32}([0., 0., 0.], 0.5),
+    BSphere{Float32}([0., 0., 3.], 0.4),
+]
+
+bounding_spheres2 = [
+    BSphere{Float32}([0., 0., 1.], 0.6),
+    BSphere{Float32}([0., 0., 2.], 0.5),
+    BSphere{Float32}([0., 0., 4.], 0.6),
+]
+
+# Build BVHs using bounding boxes for nodes
+bvh1 = BVH(bounding_spheres1, BBox{Float32}, UInt32)
+bvh2 = BVH(bounding_spheres2, BBox{Float32}, UInt32)
+
+# Traverse BVH for contact detection
+traversal = traverse(
+    bvh1,
+    bvh2,
+    default_start_level(bvh1),
+    default_start_level(bvh2),
+    # previous_traversal_cache,
+    # num_threads=4,
+)"><pre><span class="pl-k">using</span> ImplicitBVH
+<span class="pl-k">using</span> ImplicitBVH<span class="pl-k">:</span> BBox, BSphere
+
+<span class="pl-c"><span class="pl-c">#</span> Generate some simple bounding spheres (will be BVH leaves)</span>
+bounding_spheres1 <span class="pl-k">=</span> [
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>], <span class="pl-c1">0.5</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">3.</span>], <span class="pl-c1">0.4</span>),
+]
+
+bounding_spheres2 <span class="pl-k">=</span> [
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">1.</span>], <span class="pl-c1">0.6</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">2.</span>], <span class="pl-c1">0.5</span>),
+    <span class="pl-c1">BSphere</span><span class="pl-c1">{Float32}</span>([<span class="pl-c1">0.</span>, <span class="pl-c1">0.</span>, <span class="pl-c1">4.</span>], <span class="pl-c1">0.6</span>),
+]
+
+<span class="pl-c"><span class="pl-c">#</span> Build BVHs using bounding boxes for nodes</span>
+bvh1 <span class="pl-k">=</span> <span class="pl-c1">BVH</span>(bounding_spheres1, BBox{Float32}, UInt32)
+bvh2 <span class="pl-k">=</span> <span class="pl-c1">BVH</span>(bounding_spheres2, BBox{Float32}, UInt32)
+
+<span class="pl-c"><span class="pl-c">#</span> Traverse BVH for contact detection</span>
+traversal <span class="pl-k">=</span> <span class="pl-c1">traverse</span>(
+    bvh1,
+    bvh2,
+    <span class="pl-c1">default_start_level</span>(bvh1),
+    <span class="pl-c1">default_start_level</span>(bvh2),
+    <span class="pl-c"><span class="pl-c">#</span> previous_traversal_cache,</span>
+    <span class="pl-c"><span class="pl-c">#</span> num_threads=4,</span>
+)</pre></div>
+<p dir="auto">Check out the <code>benchmark</code> folder for an example traversing an STL model.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Implicit Bounding Volume Hierarchy</h1><a id="user-content-implicit-bounding-volume-hierarchy" class="anchor" aria-label="Permalink: Implicit Bounding Volume Hierarchy" href="#implicit-bounding-volume-hierarchy"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The main idea behind the ImplicitBVH is the use of an implicit perfect binary tree constructed from some
+bounding volumes. If we had, say, 5 objects to construct the BVH from, it would form an incomplete
+binary tree as below:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Implicit tree from 5 bounding volumes - i.e. the real leaves:
+
+Tree Level          Nodes &amp; Leaves               Build Up    Traverse Down
+    1                     1                         Ʌ              |
+    2             2               3                 |              |
+    3         4       5       6        7v           |              |
+    4       8   9   10 11   12 13v  14v  15v        |              V
+            -------Real------- ---Virtual---"><pre class="notranslate"><code>Implicit tree from 5 bounding volumes - i.e. the real leaves:
+
+Tree Level          Nodes &amp; Leaves               Build Up    Traverse Down
+    1                     1                         Ʌ              |
+    2             2               3                 |              |
+    3         4       5       6        7v           |              |
+    4       8   9   10 11   12 13v  14v  15v        |              V
+            -------Real------- ---Virtual---
+</code></pre></div>
+<p dir="auto">We do not need to store the "virtual" nodes in memory; rather, we can compute the number of virtual
+nodes we need to skip to get to a given node index, following the fantastic ideas from [1].</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Performance</h1><a id="user-content-performance" class="anchor" aria-label="Permalink: Performance" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">As contact detection is one of the most computationally-intensive parts of physical simulation and computer
+vision applications, this implementation has been optimised for maximum performance and scalability:</p>
+<ul dir="auto">
+<li>Computing bounding volumes is optimised for triangles, e.g. constructing 249,882 <code>BSphere{Float64}</code> on a single thread takes 4.47 ms on my Mac M1. The construction itself has zero allocations; all computation can be done in parallel in user code.</li>
+<li>Building a complete bounding volume hierarchy from the 249,882 triangles of <a href="https://github.com/alecjacobson/common-3d-test-models/blob/master/data/xyzrgb_dragon.obj"><code>xyzrgb_dragon.obj</code></a> takes 11.83 ms single-threaded. The sorting step is the bottleneck, so multi-threading the Morton encoding and BVH up-building does not significantly improve the runtime; waiting on a multi-threaded sorter.</li>
+<li>Traversing the same 249,882 <code>BSphere{Float64}</code> for the triangles (aggregated into <code>BBox{Float64}</code> parents) takes 136.38 ms single-threaded and 43.16 ms with 4 threads, at 79% strong scaling.</li>
+</ul>
+<p dir="auto">Only fundamental Julia types are used - e.g. <code>struct</code>, <code>Tuple</code>, <code>UInt</code>, <code>Float64</code> - which can be straightforwardly inlined, unrolled and fused by the compiler. These types are also straightforward to transpile to accelerators via <a href="https://github.com/JuliaGPU/KernelAbstractions.jl"><code>KernelAbstractions.jl</code></a> such as <code>CUDA</code>, <code>AMDGPU</code>, <code>oneAPI</code>, <code>Apple Metal</code>.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Roadmap</h1><a id="user-content-roadmap" class="anchor" aria-label="Permalink: Roadmap" href="#roadmap"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>Use <code>KernelAbstractions.jl</code> kernels to build and traverse the BVH; I think we just need a performant KA <code>sort!</code> function, the rest is straightforward.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">References</h1><a id="user-content-references" class="anchor" aria-label="Permalink: References" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The implicit tree formulation (genius idea!) which forms the core of the BVH structure originally appeared in the following paper:</p>
+<blockquote>
+<p dir="auto">[1] Chitalu FM, Dubach C, Komura T. Binary Ostensibly‐Implicit Trees for Fast Collision Detection. InComputer Graphics Forum 2020 May (Vol. 39, No. 2, pp. 509-521).</p>
+</blockquote>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">License</h1><a id="user-content-license" class="anchor" aria-label="Permalink: License" href="#license"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>ImplicitBVH.jl</code> is MIT-licensed. Enjoy.</p>
+</article></div>

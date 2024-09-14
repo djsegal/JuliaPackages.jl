@@ -1,0 +1,206 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">MacroUtilities</h1><a id="user-content-macroutilities" class="anchor" aria-label="Permalink: MacroUtilities" href="#macroutilities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://curtd.github.io/MacroUtilities.jl/stable/" rel="nofollow"><img src="https://camo.githubusercontent.com/31126cd56c42376320c59ea685a7ca65ff3a83d09a66363ed7115f882be1222c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://curtd.github.io/MacroUtilities.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/curtd/MacroUtilities.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/curtd/MacroUtilities.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto"><code>MacroUtilities.jl</code> provides semantically meaningful decomposition of Julia syntax. The goal of this package is to help you, the package author, focus on implementing the logic of your macros, rather than the low-level details of manipulating expression syntax.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Keyword Arguments From Expressions</h2><a id="user-content-keyword-arguments-from-expressions" class="anchor" aria-label="Permalink: Keyword Arguments From Expressions" href="#keyword-arguments-from-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Although macros operate at an expression level and don't have access to the types of their arguments, it is sometimes useful to access named values with expected literal types such as <code>String</code>, <code>Bool</code>, <code>Int</code>, or <code>Nothing</code>.</p>
+<p dir="auto">This package provides the <code>@parse_kwargs</code> macro, which can be used in your own macro definitions to specify type / default value information for keyword arguments parsed from expressions. An <code>ArgumentError</code> is thrown if either the required keyword arguments (i.e., those without a default value) are missing or the provided argument does not have the expected type.</p>
+<p dir="auto">E.g.,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using MacroUtilities 
+
+julia&gt; macro ex_macro(args...)
+       @parse_kwargs args... begin 
+           key1::Int 
+           key2::Union{Bool,Symbol,Vector{Symbol}} = false
+       end
+       return quote 
+           (key1 = $key1, key2 = $key2) 
+       end |&gt; esc
+   end
+
+julia&gt; @ex_macro key2 = true
+
+ERROR: ArgumentError: No value provided for key `key1`
+...
+
+julia&gt; @ex_macro key1=false key2=a
+ERROR: ArgumentError: In `key1 = rhs` expression, rhs (= false) has type Bool, which is not one of the expected types (Int64)
+...
+
+julia&gt; @ex_macro key1=1 key2=(a,b,c)
+(key1 = 1, key2 = [:a, :b, :c])"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> MacroUtilities 
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">macro</span> <span class="pl-en">ex_macro</span>(args<span class="pl-k">...</span>)
+       <span class="pl-c1">@parse_kwargs</span> args<span class="pl-k">...</span> <span class="pl-k">begin</span> 
+           key1<span class="pl-k">::</span><span class="pl-c1">Int</span> 
+           key2<span class="pl-k">::</span><span class="pl-c1">Union{Bool,Symbol,Vector{Symbol}}</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>
+       <span class="pl-k">end</span>
+       <span class="pl-k">return</span> <span class="pl-k">quote</span> 
+           (key1 <span class="pl-k">=</span> <span class="pl-k">$</span>key1, key2 <span class="pl-k">=</span> <span class="pl-k">$</span>key2) 
+       <span class="pl-k">end</span> <span class="pl-k">|&gt;</span> esc
+   <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@ex_macro</span> key2 <span class="pl-k">=</span> <span class="pl-c1">true</span>
+
+ERROR<span class="pl-k">:</span> ArgumentError<span class="pl-k">:</span> No value provided <span class="pl-k">for</span> key <span class="pl-s"><span class="pl-pds">`</span>key1<span class="pl-pds">`</span></span>
+<span class="pl-k">...</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@ex_macro</span> key1<span class="pl-k">=</span><span class="pl-c1">false</span> key2<span class="pl-k">=</span>a
+ERROR<span class="pl-k">:</span> ArgumentError<span class="pl-k">:</span> In <span class="pl-s"><span class="pl-pds">`</span>key1 = rhs<span class="pl-pds">`</span></span> expression, rhs (<span class="pl-k">=</span> <span class="pl-c1">false</span>) has type Bool, which is not one of the expected types (Int64)
+<span class="pl-k">...</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@ex_macro</span> key1<span class="pl-k">=</span><span class="pl-c1">1</span> key2<span class="pl-k">=</span>(a,b,c)
+(key1 <span class="pl-k">=</span> <span class="pl-c1">1</span>, key2 <span class="pl-k">=</span> [<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>, <span class="pl-c1">:c</span>])</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Expression Parsing</h2><a id="user-content-expression-parsing" class="anchor" aria-label="Permalink: Expression Parsing" href="#expression-parsing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Depending on the structure and purpose of your macro, you may also need to parse expressions involving various types of expressions, such as function calls or function definitions, in order to transform or extract information from them.</p>
+<p dir="auto">This package provides various high-level syntactical constructs such as the <code>FuncDef</code>, <code>FuncCall</code>, and <code>FuncArg</code> types, along with the <code>from_expr</code> and <code>to_expr</code> functions, for extracting information from function expressions.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; ex = quote 
+            &quot;&quot;&quot;
+                f(a, b; key1, kwargs...)
+            &quot;&quot;&quot;
+            function f(a::T, b::Int; key1=&quot;abc&quot;, kwargs...) where {T}
+                return nothing
+            end
+        end
+julia&gt; f = from_expr(FuncDef, ex)
+       FuncDef - begin
+           #= REPL[2]:2 =#
+           #= REPL[2]:2 =# Core.@doc &quot;    f(a, b; key1, kwargs...)\n&quot; function f(a::T, b::Int; key1 = &quot;abc&quot;, kwargs...) where T
+                   #= REPL[2]:5 =#
+                   #= REPL[2]:6 =#
+                   return nothing
+                end
+       end
+
+julia&gt; f.args
+       2-element Vector{FuncArg}:
+       FuncArg - a::T
+       FuncArg - b::Int
+
+julia&gt; f.kwargs
+       OrderedCollections.OrderedDict{Symbol, FuncArg} with 2 entries:
+       :key1   =&gt; FuncArg - key1 = abc
+       :kwargs =&gt; FuncArg - kwargs...
+
+julia&gt; f.line
+       :(#= REPL[2]:2 =#)
+
+julia&gt; f.whereparams
+       1-element view(::Vector{Any}, 2:2) with eltype Any:
+       :T
+
+julia&gt; to_expr(f)
+       quote
+       #= REPL[2]:2 =#
+       #= REPL[2]:2 =# Core.@doc &quot;    f(a, b; key1, kwargs...)\n&quot; function f(a::T, b::Int; key1 = &quot;abc&quot;, kwargs...) where T
+            #= REPL[2]:5 =#
+            #= REPL[2]:6 =#
+            return nothing
+       end
+       end"><pre>julia<span class="pl-k">&gt;</span> ex <span class="pl-k">=</span> <span class="pl-k">quote</span> 
+            <span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">                f(a, b; key1, kwargs...)</span>
+<span class="pl-s">            <span class="pl-pds">"""</span></span>
+            <span class="pl-k">function</span> <span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Int</span>; key1<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>abc<span class="pl-pds">"</span></span>, kwargs<span class="pl-k">...</span>) <span class="pl-k">where</span> {T}
+                <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+            <span class="pl-k">end</span>
+        <span class="pl-k">end</span>
+julia<span class="pl-k">&gt;</span> f <span class="pl-k">=</span> <span class="pl-c1">from_expr</span>(FuncDef, ex)
+       FuncDef <span class="pl-k">-</span> <span class="pl-k">begin</span>
+           <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span>
+           <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span> Core<span class="pl-k">.</span><span class="pl-c1">@doc</span> <span class="pl-s"><span class="pl-pds">"</span>    f(a, b; key1, kwargs...)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> <span class="pl-k">function</span> <span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Int</span>; key1 <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>abc<span class="pl-pds">"</span></span>, kwargs<span class="pl-k">...</span>) <span class="pl-k">where</span> T
+                   <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:5 <span class="pl-c">=#</span></span>
+                   <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:6 <span class="pl-c">=#</span></span>
+                   <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+                <span class="pl-k">end</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> f<span class="pl-k">.</span>args
+       <span class="pl-c1">2</span><span class="pl-k">-</span>element Vector{FuncArg}<span class="pl-k">:</span>
+       FuncArg <span class="pl-k">-</span> a<span class="pl-k">::</span><span class="pl-c1">T</span>
+       FuncArg <span class="pl-k">-</span> b<span class="pl-k">::</span><span class="pl-c1">Int</span>
+
+julia<span class="pl-k">&gt;</span> f<span class="pl-k">.</span>kwargs
+       OrderedCollections<span class="pl-k">.</span>OrderedDict{Symbol, FuncArg} with <span class="pl-c1">2</span> entries<span class="pl-k">:</span>
+       <span class="pl-c1">:key1</span>   <span class="pl-k">=&gt;</span> FuncArg <span class="pl-k">-</span> key1 <span class="pl-k">=</span> abc
+       <span class="pl-c1">:kwargs</span> <span class="pl-k">=&gt;</span> FuncArg <span class="pl-k">-</span> kwargs<span class="pl-k">...</span>
+
+julia<span class="pl-k">&gt;</span> f<span class="pl-k">.</span>line
+       :(<span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span>)
+
+julia<span class="pl-k">&gt;</span> f<span class="pl-k">.</span>whereparams
+       <span class="pl-c1">1</span><span class="pl-k">-</span>element <span class="pl-c1">view</span>(<span class="pl-k">::</span><span class="pl-c1">Vector{Any}</span>, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">2</span>) with eltype Any<span class="pl-k">:</span>
+       <span class="pl-c1">:T</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">to_expr</span>(f)
+       <span class="pl-k">quote</span>
+       <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span>
+       <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span> Core<span class="pl-k">.</span><span class="pl-c1">@doc</span> <span class="pl-s"><span class="pl-pds">"</span>    f(a, b; key1, kwargs...)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> <span class="pl-k">function</span> <span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Int</span>; key1 <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>abc<span class="pl-pds">"</span></span>, kwargs<span class="pl-k">...</span>) <span class="pl-k">where</span> T
+            <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:5 <span class="pl-c">=#</span></span>
+            <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:6 <span class="pl-c">=#</span></span>
+            <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+       <span class="pl-k">end</span>
+       <span class="pl-k">end</span></pre></div>
+<p dir="auto">You can also apply transformations to the arguments or keyword arguments of <code>f</code> with the <code>map_args</code> and <code>map_kwargs</code> functions, respectively.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; map_args(t-&gt;FuncArg(t; name=Symbol(uppercase(string(t.name)))), f) |&gt; to_expr
+       quote
+       #= REPL[2]:2 =#
+       #= REPL[2]:2 =# Core.@doc &quot;    f(a, b; key1, kwargs...)\n&quot; function f(a::T, b::Int; key1 = &quot;abc&quot;, kwargs...) where T
+            #= REPL[2]:5 =#
+            #= REPL[2]:6 =#
+            return nothing
+       end
+       end
+
+julia&gt; map_kwargs(t-&gt;FuncArg(t; name=Symbol(uppercase(string(t.name)))), f) |&gt; to_expr
+      quote
+      #= REPL[2]:2 =#
+      #= REPL[2]:2 =# Core.@doc &quot;    f(a, b; key1, kwargs...)\n&quot; function f(a::T, b::Int; KEY1 = &quot;abc&quot;, KWARGS...) where T
+              #= REPL[2]:5 =#
+              #= REPL[2]:6 =#
+              return nothing
+          end
+      end"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">map_args</span>(t<span class="pl-k">-&gt;</span><span class="pl-c1">FuncArg</span>(t; name<span class="pl-k">=</span><span class="pl-c1">Symbol</span>(<span class="pl-c1">uppercase</span>(<span class="pl-c1">string</span>(t<span class="pl-k">.</span>name)))), f) <span class="pl-k">|&gt;</span> to_expr
+       <span class="pl-k">quote</span>
+       <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span>
+       <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span> Core<span class="pl-k">.</span><span class="pl-c1">@doc</span> <span class="pl-s"><span class="pl-pds">"</span>    f(a, b; key1, kwargs...)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> <span class="pl-k">function</span> <span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Int</span>; key1 <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>abc<span class="pl-pds">"</span></span>, kwargs<span class="pl-k">...</span>) <span class="pl-k">where</span> T
+            <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:5 <span class="pl-c">=#</span></span>
+            <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:6 <span class="pl-c">=#</span></span>
+            <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+       <span class="pl-k">end</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">map_kwargs</span>(t<span class="pl-k">-&gt;</span><span class="pl-c1">FuncArg</span>(t; name<span class="pl-k">=</span><span class="pl-c1">Symbol</span>(<span class="pl-c1">uppercase</span>(<span class="pl-c1">string</span>(t<span class="pl-k">.</span>name)))), f) <span class="pl-k">|&gt;</span> to_expr
+      <span class="pl-k">quote</span>
+      <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span>
+      <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:2 <span class="pl-c">=#</span></span> Core<span class="pl-k">.</span><span class="pl-c1">@doc</span> <span class="pl-s"><span class="pl-pds">"</span>    f(a, b; key1, kwargs...)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> <span class="pl-k">function</span> <span class="pl-en">f</span>(a<span class="pl-k">::</span><span class="pl-c1">T</span>, b<span class="pl-k">::</span><span class="pl-c1">Int</span>; KEY1 <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>abc<span class="pl-pds">"</span></span>, KWARGS<span class="pl-k">...</span>) <span class="pl-k">where</span> T
+              <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:5 <span class="pl-c">=#</span></span>
+              <span class="pl-c"><span class="pl-c">#=</span> REPL[2]:6 <span class="pl-c">=#</span></span>
+              <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+          <span class="pl-k">end</span>
+      <span class="pl-k">end</span></pre></div>
+<p dir="auto">There are additional types for parsing specific, more estoteric syntaxes (such as nested dotted expressions <code>A.b.c.d.e</code>) into a more manageable form.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Macro calls</h2><a id="user-content-macro-calls" class="anchor" aria-label="Permalink: Macro calls" href="#macro-calls"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">You can use the <code>MacroCall</code> type to parse macro call expressions, as well as apply the parsed expression to a set of arguments, yielding another <code>MacroCall</code>, i.e.,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; m = MacroCall(; name=Symbol(&quot;@a&quot;))
+       MacroCall - @a
+
+julia&gt; m_applied = m(:(key=1), :(f(x)))
+       MacroCall - @a key = 1 f(x)
+
+julia&gt; to_expr(m_applied)
+       :(@a key = 1 f(x)) "><pre>julia<span class="pl-k">&gt;</span> m <span class="pl-k">=</span> <span class="pl-c1">MacroCall</span>(; name<span class="pl-k">=</span><span class="pl-c1">Symbol</span>(<span class="pl-s"><span class="pl-pds">"</span>@a<span class="pl-pds">"</span></span>))
+       MacroCall <span class="pl-k">-</span> <span class="pl-c1">@a</span>
+
+julia<span class="pl-k">&gt;</span> m_applied <span class="pl-k">=</span> <span class="pl-c1">m</span>(:(key<span class="pl-k">=</span><span class="pl-c1">1</span>), :(<span class="pl-c1">f</span>(x)))
+       MacroCall <span class="pl-k">-</span> <span class="pl-c1">@a</span> key <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-c1">f</span>(x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">to_expr</span>(m_applied)
+       :(<span class="pl-c1">@a</span> key <span class="pl-k">=</span> <span class="pl-c1">1</span> <span class="pl-c1">f</span>(x)) </pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Similar Packages</h2><a id="user-content-similar-packages" class="anchor" aria-label="Permalink: Similar Packages" href="#similar-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><a href="https://github.com/FluxML/MacroTools.jl"><code>MacroTools.jl</code></a></li>
+<li><a href="https://github.com/Roger-luo/Expronicon.jl/tree/main"><code>Expronicon.jl</code></a></li>
+</ul>
+</article></div>

@@ -1,0 +1,248 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ChunkedCSV.jl</h1><a id="user-content-chunkedcsvjl" class="anchor" aria-label="Permalink: ChunkedCSV.jl" href="#chunkedcsvjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The main goal of this package is to offer a parser for CSV files that can be used for streaming purposes.
+This means that it can work with data that is too large to fit into memory or in situations where we only need to process parts of the input data at a time.
+The parser reads the data in chunks, and it can parse each chunk in parallel while simultaneously prefetching the next one to increase throughput.
+Additionally, the parsed data is passed to a user-defined function that can consume it in any way required.</p>
+<p dir="auto">Moreover, the package can automatically handle <a href="https://github.com/JuliaData/Parsers.jl"><code>Parsers.jl</code></a>-compatible types without dynamic dispatch overhead and with a low compilation overhead.
+This is done without specializing on input schema, and the memory usage is upper bound by the user, who can control the chunk size.
+All internally allocated buffers are reused, so if the number of values per MiB of input is roughly constant, allocations should be minimal.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Overview</h2><a id="user-content-overview" class="anchor" aria-label="Permalink: Overview" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The package builds on <a href="https://github.com/JuliaData/ChunkedBase.jl"><code>ChunkedBase.jl</code></a>, which provides a framework for parser packages, enabling them to customize three main aspects of the parsing process: how the data is parsed into a result buffer, what is the layout of the result buffer, and how the result buffer is consumed. <code>ChunkedBase.jl</code> itself handles IO, splitting chunks by newlines and distributing them among multiple workers in parallel, where they are parsed by this package and consumed.</p>
+<p dir="auto">For the parsing part, this package uses the <code>Parsers.jl</code> package, and special care is taken to avoid dynamic dispatch overhead when parsing user-provided schemas without specializing on them.
+See the <code>src/populate_result_buffer.jl</code> file for more details about how this is done.</p>
+<p dir="auto">We currently only expose one result buffer type, <code>TaskResultBuffer</code>, where parsed data are stored by column and missing values are encoded in a densely packed bit matrix.
+We also store a <code>RowStatus</code> bitset for each row, so we know if a row had any parsing errors or missing values.
+See the <code>src/result_buffer.jl</code> file for more details.</p>
+<p dir="auto">How the result buffer is consumed is up to the user, who can provide custom callback function that will be called in parallel for each chunk of data that is parsed. More on this in the "How to use" section below.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">How to use</h2><a id="user-content-how-to-use" class="anchor" aria-label="Permalink: How to use" href="#how-to-use"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The main entry point is the <code>parse_file</code> function, which accepts a path or an <code>IO</code> as the input, a <code>schema</code> which describes the types of the columns in the CSV, and a user-defined "consume context" type.</p>
+<p dir="auto">Once the user provides this context, a subtype of <code>AbstractConsumeContext</code>, it will be used internally to dispatch on a custom <code>consume!(::AbstractConsumeContext,::ParsedPayload)</code> method.
+This method will be called in parallel for each chunk of data that is parsed, and it will receive a <code>ParsedPayload</code> object that contains the parsed result buffer in the <code>results</code> field and other relevant metadata for the corresponding chunk.</p>
+<p dir="auto">When no schema is provided, all columns are assumed to be <code>String</code>s and when no consume context is given, the <code>DebugContext</code> will be used.
+This context will print a short summary for each chunk and will also print the first couple of rows with errors in each chunk.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ChunkedCSV
+
+parse_file(
+    IOBuffer(&quot;&quot;&quot;
+        a,b
+        1,2
+        3,4
+        5,6
+        7,8
+        9,10
+        &quot;&quot;&quot;
+    )
+)
+# [ Info: Start row: 1, nrows: 5, Task (runnable) @0x00007fd36f5fc010 ❚"><pre><span class="pl-k">using</span> ChunkedCSV
+
+<span class="pl-c1">parse_file</span>(
+    <span class="pl-c1">IOBuffer</span>(<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        a,b</span>
+<span class="pl-s">        1,2</span>
+<span class="pl-s">        3,4</span>
+<span class="pl-s">        5,6</span>
+<span class="pl-s">        7,8</span>
+<span class="pl-s">        9,10</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>
+    )
+)
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Start row: 1, nrows: 5, Task (runnable) @0x00007fd36f5fc010 ❚</span></pre></div>
+<p dir="auto">The user can provide a schema for the columns, and the parser will try to parse the data into the provided types.
+There are many options to tweak the behavior of the parser, e.g. <code>buffersize</code> tells the parser to operate on 8 byte chunks of input at a time.
+It is important that the largest row in the file you want to ingest is smaller than <code>buffersize</code> otherwise you'll get an error.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# the input is very small, we force the parser to use parallelism even if it is not needed
+parse_file(
+    IOBuffer(&quot;&quot;&quot;
+        a,b
+        1,2
+        3,4
+        5,6
+        7,8
+        9,10
+        &quot;&quot;&quot;
+    ), 
+    [Int, Int], 
+    buffersize=8, 
+    force=:parallel,
+)
+# [ Info: Start row: 1, nrows: 1, Task (runnable) @0x00007f6806c41f50 ❚
+# [ Info: Start row: 4, nrows: 1, Task (runnable) @0x00007f6806c41f50 ❚
+# [ Info: Start row: 2, nrows: 2, Task (runnable) @0x00007f6806f58650 ❚
+# [ Info: Start row: 5, nrows: 1, Task (runnable) @0x00007f6806e8e400 ❚
+
+# Rows 1 and 3 will fail to parse as `Int`s as they have a decimal point
+parse_file(
+    IOBuffer(&quot;&quot;&quot;
+        a,b
+        1,2.0
+        3,4
+        5.0,6
+        7,8
+        9,10
+        &quot;&quot;&quot;
+    ),
+    [Int, Int]
+)
+# ┌ Info: Start row: 1, nrows: 5, Task (runnable) @0x00007fd36f5fc010 ❚
+# │ Row count by status: ('✓', 3) | ('?', 2) | ('&lt;', 0) | ('&gt;', 0) | ('!', 2) | ('T', 0) | ('#', 0)
+# │ Example rows with errors:
+# │       (1): &quot;1,2.0&quot;
+# └       (3): &quot;5.0,6&quot;"><pre><span class="pl-c"><span class="pl-c">#</span> the input is very small, we force the parser to use parallelism even if it is not needed</span>
+<span class="pl-c1">parse_file</span>(
+    <span class="pl-c1">IOBuffer</span>(<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        a,b</span>
+<span class="pl-s">        1,2</span>
+<span class="pl-s">        3,4</span>
+<span class="pl-s">        5,6</span>
+<span class="pl-s">        7,8</span>
+<span class="pl-s">        9,10</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>
+    ), 
+    [Int, Int], 
+    buffersize<span class="pl-k">=</span><span class="pl-c1">8</span>, 
+    force<span class="pl-k">=</span><span class="pl-c1">:parallel</span>,
+)
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Start row: 1, nrows: 1, Task (runnable) @0x00007f6806c41f50 ❚</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Start row: 4, nrows: 1, Task (runnable) @0x00007f6806c41f50 ❚</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Start row: 2, nrows: 2, Task (runnable) @0x00007f6806f58650 ❚</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Start row: 5, nrows: 1, Task (runnable) @0x00007f6806e8e400 ❚</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Rows 1 and 3 will fail to parse as `Int`s as they have a decimal point</span>
+<span class="pl-c1">parse_file</span>(
+    <span class="pl-c1">IOBuffer</span>(<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        a,b</span>
+<span class="pl-s">        1,2.0</span>
+<span class="pl-s">        3,4</span>
+<span class="pl-s">        5.0,6</span>
+<span class="pl-s">        7,8</span>
+<span class="pl-s">        9,10</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>
+    ),
+    [Int, Int]
+)
+<span class="pl-c"><span class="pl-c">#</span> ┌ Info: Start row: 1, nrows: 5, Task (runnable) @0x00007fd36f5fc010 ❚</span>
+<span class="pl-c"><span class="pl-c">#</span> │ Row count by status: ('✓', 3) | ('?', 2) | ('&lt;', 0) | ('&gt;', 0) | ('!', 2) | ('T', 0) | ('#', 0)</span>
+<span class="pl-c"><span class="pl-c">#</span> │ Example rows with errors:</span>
+<span class="pl-c"><span class="pl-c">#</span> │       (1): "1,2.0"</span>
+<span class="pl-c"><span class="pl-c">#</span> └       (3): "5.0,6"</span></pre></div>
+<p dir="auto">Note that the "Row count by status" uses the <code>RowStatus</code> information we store in <code>TaskResultBuffer</code>s to show that there were 3 (<code>✓</code>) rows that were parsed successfully, 2 rows have missing values for at least one field (<code>?</code>) and 2 rows had at least one parsing error (<code>!</code>).
+See the docstring for <code>TaskResultBuffer</code> for more information.</p>
+<p dir="auto"><code>parse_file</code> also accepts a number of keyword arguments that can be used to tweak the behavior of the parser by customizing how <code>Parsers.jl</code> is used internally.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="parse_file(
+    IOBuffer(&quot;&quot;&quot;
+        # a comment
+        i;f;s
+        1_000;2,99;&quot;A string&quot;
+        2_000;4,99;&quot;A string with an \\\&quot;escaped\\\&quot; quote&quot;
+        3_000_000;6,99;&quot;Usually, you'd use \\\&quot; for the escapechar&quot;
+        40;8,99;&quot;But not in this example&quot;
+        5_000_000;10,99;&quot;No sir&quot;
+        &quot;&quot;&quot;
+    ),
+    [Int, Float64, String],
+    delim=';',
+    decimal=',',
+    groupmark='_',
+    escapechar='\\',
+    comment='#',
+)
+# [ Info: Start row: 1, nrows: 5, Task (runnable) @0x000000010931c010 ❚"><pre><span class="pl-c1">parse_file</span>(
+    <span class="pl-c1">IOBuffer</span>(<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        # a comment</span>
+<span class="pl-s">        i;f;s</span>
+<span class="pl-s">        1_000;2,99;"A string"</span>
+<span class="pl-s">        2_000;4,99;"A string with an <span class="pl-cce">\\\"</span>escaped<span class="pl-cce">\\\"</span> quote"</span>
+<span class="pl-s">        3_000_000;6,99;"Usually, you'd use <span class="pl-cce">\\\"</span> for the escapechar"</span>
+<span class="pl-s">        40;8,99;"But not in this example"</span>
+<span class="pl-s">        5_000_000;10,99;"No sir"</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>
+    ),
+    [Int, Float64, String],
+    delim<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>;<span class="pl-pds">'</span></span>,
+    decimal<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>,<span class="pl-pds">'</span></span>,
+    groupmark<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>_<span class="pl-pds">'</span></span>,
+    escapechar<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span><span class="pl-cce">\\</span><span class="pl-pds">'</span></span>,
+    comment<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>#<span class="pl-pds">'</span></span>,
+)
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Start row: 1, nrows: 5, Task (runnable) @0x000000010931c010 ❚</span></pre></div>
+<p dir="auto">See the docstring for more details.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Example: Custom <code>AbstractConsumeContext</code> for interactive use</h3><a id="user-content-example-custom-abstractconsumecontext-for-interactive-use" class="anchor" aria-label="Permalink: Example: Custom AbstractConsumeContext for interactive use" href="#example-custom-abstractconsumecontext-for-interactive-use"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">It could be handy to have the option to provide an anonymous function to be called on each chunk.
+We can do that by creating a custom <code>AbstractConsumeContext</code> subtype that stores a function and dispatching on it in the <code>consume!</code> method.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ChunkedCSV
+
+struct ClosureContext{F} &lt;: AbstractConsumeContext
+    f::F
+end
+ChunkedCSV.consume!(ctx::ClosureContext, payload::ParsedPayload) = ctx.f(payload)"><pre><span class="pl-k">using</span> ChunkedCSV
+
+<span class="pl-k">struct</span> ClosureContext{F} <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractConsumeContext</span>
+    f<span class="pl-k">::</span><span class="pl-c1">F</span>
+<span class="pl-k">end</span>
+ChunkedCSV<span class="pl-k">.</span><span class="pl-en">consume!</span>(ctx<span class="pl-k">::</span><span class="pl-c1">ClosureContext</span>, payload<span class="pl-k">::</span><span class="pl-c1">ParsedPayload</span>) <span class="pl-k">=</span> ctx<span class="pl-k">.</span><span class="pl-c1">f</span>(payload)</pre></div>
+<p dir="auto">For increased ergonomics, we can also define a convenience method that calls <code>parse_file</code> with the custom context using the <code>do</code> syntax.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="ChunkedCSV.parse_file(f::Function, input, schema; kwargs...) = parse_file(input, schema, ClosureContext(f); kwargs...)
+
+io = IOBuffer(&quot;&quot;&quot;
+    a,b
+    1,2
+    3,4
+    5,6
+    7,8
+    9,10
+    &quot;&quot;&quot;
+)
+
+parse_file(io, [Int, Int], buffersize=8) do payload
+    println(&quot;Hi there! We're at start row: $(payload.row_num), nrows: $(payload.len) in this chunk&quot;)
+end
+# Hi there! We're at start row: 1, nrows: 1 in this chunk
+# Hi there! We're at start row: 2, nrows: 2 in this chunk
+# Hi there! We're at start row: 4, nrows: 1 in this chunk
+# Hi there! We're at start row: 5, nrows: 1 in this chunk"><pre>ChunkedCSV<span class="pl-k">.</span><span class="pl-en">parse_file</span>(f<span class="pl-k">::</span><span class="pl-c1">Function</span>, input, schema; kwargs<span class="pl-k">...</span>) <span class="pl-k">=</span> <span class="pl-c1">parse_file</span>(input, schema, <span class="pl-c1">ClosureContext</span>(f); kwargs<span class="pl-k">...</span>)
+
+io <span class="pl-k">=</span> <span class="pl-c1">IOBuffer</span>(<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    a,b</span>
+<span class="pl-s">    1,2</span>
+<span class="pl-s">    3,4</span>
+<span class="pl-s">    5,6</span>
+<span class="pl-s">    7,8</span>
+<span class="pl-s">    9,10</span>
+<span class="pl-s">    <span class="pl-pds">"""</span></span>
+)
+
+<span class="pl-c1">parse_file</span>(io, [Int, Int], buffersize<span class="pl-k">=</span><span class="pl-c1">8</span>) <span class="pl-k">do</span> payload
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Hi there! We're at start row: <span class="pl-v">$(payload<span class="pl-k">.</span>row_num)</span>, nrows: <span class="pl-v">$(payload<span class="pl-k">.</span>len)</span> in this chunk<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> Hi there! We're at start row: 1, nrows: 1 in this chunk</span>
+<span class="pl-c"><span class="pl-c">#</span> Hi there! We're at start row: 2, nrows: 2 in this chunk</span>
+<span class="pl-c"><span class="pl-c">#</span> Hi there! We're at start row: 4, nrows: 1 in this chunk</span>
+<span class="pl-c"><span class="pl-c">#</span> Hi there! We're at start row: 5, nrows: 1 in this chunk</span></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Notable differences to other CSV parsers</h2><a id="user-content-notable-differences-to-other-csv-parsers" class="anchor" aria-label="Permalink: Notable differences to other CSV parsers" href="#notable-differences-to-other-csv-parsers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">When compared to established packages like <a href="https://github.com/JuliaData/CSV.jl"><code>CSV.jl</code></a>, our package has a few notable differences:</p>
+<ul dir="auto">
+<li>We don't do any type inference for column types, so the user has to provide a schema. Otherwise, all columns will be parsed as <code>String</code>s.</li>
+<li>We don't give the user back any table-like object. Instead all, results are only temporarily available in the <code>consume!</code> method of the <code>AbstractConsumeContext</code> provided. One could use this package to build a table-like object inside of the context object, but this is not provided out out of the box.</li>
+<li>We pre-lex the chunks of data so that parallel parsing can be safe. <code>CSV.jl</code> does the often faster and riskier thing, where parser tasks jump directly in the file at various offsets, without knowing the record boundaries, and try to recover.</li>
+<li>At the time of writing, <code>CSV.jl</code> doesn't support multithreaded parsing of <em>chunks</em>, while we do.</li>
+<li>The package plays nicely with <code>PrefetchedDownloadStream.jl</code> from <a href="https://github.com/JuliaServices/CloudStore.jl"><code>CloudStore.jl</code></a>, which is an IO stream that prefetches chunks of data from Amazon S3/Azure Blob Storage. This is useful for parsing large files from the cloud without having to download the whole file first, even if it is compressed.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Advanced usage</h2><a id="user-content-advanced-usage" class="anchor" aria-label="Permalink: Advanced usage" href="#advanced-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Learning the schema before creating an <code>AbstractConsumeContext</code></h3><a id="user-content-learning-the-schema-before-creating-an-abstractconsumecontext" class="anchor" aria-label="Permalink: Learning the schema before creating an AbstractConsumeContext" href="#learning-the-schema-before-creating-an-abstractconsumecontext"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Sometimes, one needs to know the schema that will used to parse the file before creating a consume context. For this reason we split the <code>parse_file</code> function into two parts.
+First, we provide a <code>setup_parser</code> function which has similar interface as <code>parse_file</code> above, but doesn't require any consume context and doesn't do any parsing.
+It will validate user input, ingest enough data chunks to reach the first valid row in the input, and then examine the first row to ensure we have a valid header and schema.
+It will then return multiple objects:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="(should_close, parsing_ctx, chunking_ctx, lexer) = setup_parser(input, schema; kwargs...)"><pre>(should_close, parsing_ctx, chunking_ctx, lexer) <span class="pl-k">=</span> <span class="pl-c1">setup_parser</span>(input, schema; kwargs<span class="pl-k">...</span>)</pre></div>
+<ul dir="auto">
+<li><code>should_close</code> is a <code>Bool</code> which is <code>true</code> if we opened an <code>IO</code> object we need to close later</li>
+<li><code>parsing_ctx</code> is a <code>ChunkedCSV.ParsingContext</code> which contains the header, schema, and settings needed for <code>Parsers.jl</code></li>
+<li><code>chunking_ctx</code> is a <code>ChunkedBase.ChunkingContext</code> which holds the ingested data, newline positions and other things required by <code>ChunkedBase.jl</code> internally</li>
+<li><code>lexer</code> is a <code>NewlineLexers.Lexer</code> which is used to find newlines in the ingested chunks and which is also needed by <code>ChunkedBase.jl</code></li>
+</ul>
+<p dir="auto">Since the parsing context contains both the schema and the header, you can use this information to create a custom consume context.
+Once you have your <code>consume_ctx</code>, you can call <code>parse_file</code> with the state returned by <code>setup_parser</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="consume_ctx = MyCustomContext(parsing_ctx.schema, parsing_ctx.header)
+parse_file(parsing_ctx, consume_ctx, chunking_ctx, lexer)"><pre>consume_ctx <span class="pl-k">=</span> <span class="pl-c1">MyCustomContext</span>(parsing_ctx<span class="pl-k">.</span>schema, parsing_ctx<span class="pl-k">.</span>header)
+<span class="pl-c1">parse_file</span>(parsing_ctx, consume_ctx, chunking_ctx, lexer)</pre></div>
+</article></div>

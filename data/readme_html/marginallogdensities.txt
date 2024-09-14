@@ -1,0 +1,113 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">MarginalLogDensities.jl</h1><a id="user-content-marginallogdensitiesjl" class="anchor" aria-label="Permalink: MarginalLogDensities.jl" href="#marginallogdensitiesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/ElOceanografo/MarginalLogDensities.jl"><img src="https://camo.githubusercontent.com/5c957329176b05fc2578664271e94c1db702b5c7dcd2394190cec1a6686d65a2/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f4c6966656379636c652d4578706572696d656e74616c2d333339393939" alt="Lifecycle:Experimental" data-canonical-src="https://img.shields.io/badge/Lifecycle-Experimental-339999" style="max-width: 100%;"></a></p>
+<p dir="auto"><a href="https://github.com/ElOceanografo/MarginalLogDensities.jl/actions?query=workflow%CI+branch%3Amaster"><img src="https://github.com/ElOceanografo/MarginalLogDensities.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">This package implements tools for integrating out (marginalizing) parameters
+from log-probability functions, such as likelihoods and posteriors of statistical
+models. This approach is useful for fitting models that incorporate random effects or
+latent variables that are important for structuring the model, but whose exact
+values may not be of interest in and of themselves. In the language of regression,
+these are known as "random effects," and in other contexts, they may be called "nuisance
+parameters." Whatever they are called, we hope that our log-density function can be
+optimized faster and/or more reliably if we focus on the parameters we
+are <em>actually</em> interested in, averaging the log-density over all possible values of
+the ones we are not.</p>
+<p dir="auto">A basic example is shown below. We start out by writing a function for our target log-
+density. This function must have the signature <code>f(u, data)</code>, where <code>u</code> is a numeric vector
+of parameters and <code>data</code> contains any data, or fixed parameters, needed by the function.
+The <code>data</code> argument can be anything you'd like, such as a <code>Vector</code>, <code>NamedTuple</code>,
+<code>DataFrame</code>, or some other <code>struct</code>. (If your function does not depend on any external data,
+just ignore that argument in the function body)</p>
+<blockquote>
+<p dir="auto"><g-emoji class="g-emoji" alias="warning">⚠️</g-emoji> Note that the convention for this package is to write the function as a <strong>positive</strong> log-density.</p>
+</blockquote>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using MarginalLogDensities, Distributions, LinearAlgebra
+
+N = 3
+σ = 1.5
+dist = MvNormal(σ^2 * I(3))
+data = (N=N, dist=dist)
+
+function logdensity(u, data)
+   return logpdf(data.dist, u) 
+end"><pre><span class="pl-k">using</span> MarginalLogDensities, Distributions, LinearAlgebra
+
+N <span class="pl-k">=</span> <span class="pl-c1">3</span>
+σ <span class="pl-k">=</span> <span class="pl-c1">1.5</span>
+dist <span class="pl-k">=</span> <span class="pl-c1">MvNormal</span>(σ<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">I</span>(<span class="pl-c1">3</span>))
+data <span class="pl-k">=</span> (N<span class="pl-k">=</span>N, dist<span class="pl-k">=</span>dist)
+
+<span class="pl-k">function</span> <span class="pl-en">logdensity</span>(u, data)
+   <span class="pl-k">return</span> <span class="pl-c1">logpdf</span>(data<span class="pl-k">.</span>dist, u) 
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">We then set up a marginalized version of this function. First, we set an initial
+value for our parameter vector <code>u</code>, as well as a set of indices <code>iw</code> indicating
+the subset of <code>u</code> that we want to integrate out.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="u = [1.1, -0.3, 0.1] # arbitrary initial values
+iw = [1, 3]"><pre>u <span class="pl-k">=</span> [<span class="pl-c1">1.1</span>, <span class="pl-k">-</span><span class="pl-c1">0.3</span>, <span class="pl-c1">0.1</span>] <span class="pl-c"><span class="pl-c">#</span> arbitrary initial values</span>
+iw <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">3</span>]</pre></div>
+<p dir="auto">We create the marginalized version of the function by calling the <code>MarginalLogDensity</code>
+constructor with the original function <code>logdensity</code>, the full parameter vector <code>u</code>, the
+indices of the marginalized values <code>iw</code>, and the <code>data</code>. (If your function does not depend on
+the <code>data</code> argument, it can be omitted here.)</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="marginal_logdensity = MarginalLogDensity(logdensity, u, iw, data)"><pre>marginal_logdensity <span class="pl-k">=</span> <span class="pl-c1">MarginalLogDensity</span>(logdensity, u, iw, data)</pre></div>
+<p dir="auto">Here, we are saying that we want to calculate <code>logdensity</code> as a function of <code>u[2]</code> only,
+while integrating over all possible values of <code>u[1]</code> and <code>u[3]</code>. In the laguage of
+mathematics, if we write <code>u -&gt; logdensity(u, data)</code> as <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="664dfaf58861e1cccbf17498bac90707">$f(u)$</math-renderer>, then the marginalized
+function <code>v -&gt; marginal_logdensity(v, data)</code> is calculating</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="664dfaf58861e1cccbf17498bac90707">$$
+f_m(u_2) = \int \int f(u) ; du_1 du_2.
+$$</math-renderer></p>
+<p dir="auto">By default, this package uses Laplace's method to approximate this integral. The Laplace approximation
+is fast in high dimensions, and works well for log-densities that are approximately Gaussian. The
+marginalization can also be done via numerical integration, a.k.a. cubature, which may be more accurate
+but will not scale well for higher dimensional problems. You can choose which marginalizer to use by passing the
+appropriate <code>AbstractMarginalizer</code> to <code>MarginalLogDensity</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="MarginalLogDensity(logdensity, u, iw, data, Cubature())
+MarginalLogDensity(logdensity, u, iw, data, LaplaceApprox())"><pre><span class="pl-c1">MarginalLogDensity</span>(logdensity, u, iw, data, <span class="pl-c1">Cubature</span>())
+<span class="pl-c1">MarginalLogDensity</span>(logdensity, u, iw, data, <span class="pl-c1">LaplaceApprox</span>())</pre></div>
+<p dir="auto">Both <code>Cubature()</code> and <code>LaplaceApprox()</code> can be specified with various options; refer to their
+docstrings for details.</p>
+<p dir="auto">After defining <code>marginal_logdensity</code>, you can call it just like the original function,
+with the difference that you only need to supply <code>v</code>, the subset of parameters you're
+interested in, rather than the entire set <code>u</code>. You also can re-run the same
+<code>MarginalLogDensity</code> with different <code>data</code> if you want (though if you're depending on
+the sparsity of your changing the <code>data</code>
+causes the sparsity).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="initial_v = [1.0] # another arbitrary starting value
+length(initial_v) == N - length(iw) # true
+marginal_logdensity(initial_v, data)
+# -1.5466258635350596"><pre>initial_v <span class="pl-k">=</span> [<span class="pl-c1">1.0</span>] <span class="pl-c"><span class="pl-c">#</span> another arbitrary starting value</span>
+<span class="pl-c1">length</span>(initial_v) <span class="pl-k">==</span> N <span class="pl-k">-</span> <span class="pl-c1">length</span>(iw) <span class="pl-c"><span class="pl-c">#</span> true</span>
+<span class="pl-c1">marginal_logdensity</span>(initial_v, data)
+<span class="pl-c"><span class="pl-c">#</span> -1.5466258635350596</span></pre></div>
+<p dir="auto">Compare this value to the analytic marginal density, i.e. the log-probability of
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="664dfaf58861e1cccbf17498bac90707">$N(0, 1.5)$</math-renderer> at 1.0:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="logpdf(Normal(0, 1.5), 1.0)
+# -1.5466258635350594"><pre><span class="pl-c1">logpdf</span>(<span class="pl-c1">Normal</span>(<span class="pl-c1">0</span>, <span class="pl-c1">1.5</span>), <span class="pl-c1">1.0</span>)
+<span class="pl-c"><span class="pl-c">#</span> -1.5466258635350594</span></pre></div>
+<p dir="auto">The point of doing all this was to find an optimal set of parameters <code>v</code> for
+your data. This package includes an interface to Optimization.jl that
+works directly with a <code>MarginalLogDensity</code> object, making  optimization easy. The simplest
+way is to construct an <code>OptimizationProblem</code> directly from the <code>MarginalLogDensity</code> and
+<code>solve</code> it:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Optimization, OptimizationOptimJL
+
+opt_problem = OptimizationProblem(marginal_logdensity, v0)
+opt_solution = solve(opt_problem, NelderMead())"><pre><span class="pl-k">using</span> Optimization, OptimizationOptimJL
+
+opt_problem <span class="pl-k">=</span> <span class="pl-c1">OptimizationProblem</span>(marginal_logdensity, v0)
+opt_solution <span class="pl-k">=</span> <span class="pl-c1">solve</span>(opt_problem, <span class="pl-c1">NelderMead</span>())</pre></div>
+<p dir="auto">If you want more control over options, for instance setting an AD backend, you can
+construct an <code>OptimizationFunction</code> explicitly:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="opt_function = OptimizationFunction(marginal_logdensity, AutoFiniteDiff())
+opt_problem = OptimizationProblem(opt_function, v0)
+opt_solution = solve(opt_problem, LBFGS())"><pre>opt_function <span class="pl-k">=</span> <span class="pl-c1">OptimizationFunction</span>(marginal_logdensity, <span class="pl-c1">AutoFiniteDiff</span>())
+opt_problem <span class="pl-k">=</span> <span class="pl-c1">OptimizationProblem</span>(opt_function, v0)
+opt_solution <span class="pl-k">=</span> <span class="pl-c1">solve</span>(opt_problem, <span class="pl-c1">LBFGS</span>())</pre></div>
+<p dir="auto">Note that at present we can't differentiate through the Laplace approximation, so outer
+optimizations like this need to either use a gradient-free solver (like <code>NelderMead()</code>),
+or a finite-difference backend (like <code>AutoFiniteDiff()</code>). This is on the list of planned
+improvements.</p>
+<p dir="auto">A more realistic application to a mixed-effects regression can be found in this
+<a href="https://github.com/ElOceanografo/MarginalLogDensities.jl/blob/master/examples/example.jl">example script</a>.</p>
+</article></div>

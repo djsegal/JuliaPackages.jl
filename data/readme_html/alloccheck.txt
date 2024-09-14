@@ -1,0 +1,99 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">AllocCheck.jl</h1><a id="user-content-alloccheckjl" class="anchor" aria-label="Permalink: AllocCheck.jl" href="#alloccheckjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+
+<p dir="auto"><a href="https://julialang.github.io/AllocCheck.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a></p>
+<p dir="auto"><a href="https://github.com/JuliaLang/AllocCheck.jl">AllocCheck.jl</a> is a Julia package that statically checks if a function call may allocate by analyzing the generated LLVM IR of it and its callees using LLVM.jl and GPUCompiler.jl</p>
+<p dir="auto">AllocCheck operates on <em>functions</em>, attempting to determine statically whether a function <em>may</em> allocate memory, and if so, <em>where</em> that allocation appears. This is different from measuring allocations using, e.g., <code>@time</code> or <code>@allocated</code>, which measures the allocations that actually happened during the execution of a function.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Getting started</h2><a id="user-content-getting-started" class="anchor" aria-label="Permalink: Getting started" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The primary entry point to check allocations is the macro <a href="@ref"><code>@check_allocs</code></a> which is used to annotate a function definition that you'd like to enforce allocation checks for:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using AllocCheck
+
+julia&gt; @check_allocs multiply(x, y) = x * y
+multiply (generic function with 1 method)
+
+julia&gt; multiply(1.5, 2.5) # call automatically checked for allocations
+3.75
+
+julia&gt; multiply(rand(3, 3), rand(3, 3)) # result matrix requires an allocation
+ERROR: @check_allocs function encountered 1 errors (1 allocations / 0 dynamic dispatches)."><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> AllocCheck
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@check_allocs</span> <span class="pl-en">multiply</span>(x, y) <span class="pl-k">=</span> x <span class="pl-k">*</span> y
+multiply (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">multiply</span>(<span class="pl-c1">1.5</span>, <span class="pl-c1">2.5</span>) <span class="pl-c"><span class="pl-c">#</span> call automatically checked for allocations</span>
+<span class="pl-c1">3.75</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">multiply</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>), <span class="pl-c1">rand</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>)) <span class="pl-c"><span class="pl-c">#</span> result matrix requires an allocation</span>
+ERROR<span class="pl-k">:</span> <span class="pl-c1">@check_allocs</span> <span class="pl-k">function</span> encountered <span class="pl-c1">1</span> errors (<span class="pl-c1">1</span> allocations <span class="pl-k">/</span> <span class="pl-c1">0</span> dynamic dispatches)<span class="pl-k">.</span></pre></div>
+<p dir="auto">The <code>multiply(::Float64, ::Float64)</code> call happened without error, indicating that the function was proven not to allocate. On the other hand, the <code>multiply(::Matrix{Float64}, ::Matrix{Float64})</code> call raised an <code>AllocCheckFailure</code> due to one internal allocation.</p>
+<p dir="auto">The <code>errors</code> field can be used to inspect the individual errors:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; try
+           multiply(rand(3, 3), rand(3, 3))
+       catch err
+           err.errors[1]
+       end
+Allocation of Matrix{Float64} in ./boot.jl:477
+  | Array{T,2}(::UndefInitializer, m::Int, n::Int) where {T} =
+
+Stacktrace:
+ [1] Array
+   @ ./boot.jl:477 [inlined]
+ [2] Array
+   @ ./boot.jl:485 [inlined]
+ [3] similar
+   @ ./array.jl:418 [inlined]
+ [4] *(A::Matrix{Float64}, B::Matrix{Float64})
+   @ LinearAlgebra ~/.julia/juliaup/julia-1.10.0-rc1+0.x64.linux.gnu/share/julia/stdlib/v1.10/LinearAlgebra/src/matmul.jl:113
+ [5] var&quot;##multiply#235&quot;(x::Matrix{Float64}, y::Matrix{Float64})
+   @ Main ./REPL[13]:1"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">try</span>
+           <span class="pl-c1">multiply</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>), <span class="pl-c1">rand</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>))
+       <span class="pl-k">catch</span> err
+           err<span class="pl-k">.</span>errors[<span class="pl-c1">1</span>]
+       <span class="pl-k">end</span>
+Allocation of Matrix{Float64} <span class="pl-k">in</span> <span class="pl-k">./</span>boot<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">477</span>
+  <span class="pl-k">|</span> <span class="pl-en">Array</span><span class="pl-c1">{T,2}</span>(<span class="pl-k">::</span><span class="pl-c1">UndefInitializer</span>, m<span class="pl-k">::</span><span class="pl-c1">Int</span>, n<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">where</span> {T} <span class="pl-k">=</span>
+
+Stacktrace<span class="pl-k">:</span>
+ [<span class="pl-c1">1</span>] Array
+   @ <span class="pl-k">./</span>boot<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">477</span> [inlined]
+ [<span class="pl-c1">2</span>] Array
+   @ <span class="pl-k">./</span>boot<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">485</span> [inlined]
+ [<span class="pl-c1">3</span>] similar
+   @ <span class="pl-k">./</span>array<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">418</span> [inlined]
+ [<span class="pl-c1">4</span>] <span class="pl-k">*</span>(A<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>, B<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>)
+   @ LinearAlgebra <span class="pl-k">~</span><span class="pl-k">/</span><span class="pl-k">.</span>julia<span class="pl-k">/</span>juliaup<span class="pl-k">/</span>julia<span class="pl-k">-</span><span class="pl-c1">1.10</span>.<span class="pl-c1">0</span><span class="pl-k">-</span>rc1<span class="pl-k">+</span><span class="pl-c1">0.</span>x64<span class="pl-k">.</span>linux<span class="pl-k">.</span>gnu<span class="pl-k">/</span>share<span class="pl-k">/</span>julia<span class="pl-k">/</span>stdlib<span class="pl-k">/</span>v1.<span class="pl-c1">10</span><span class="pl-k">/</span>LinearAlgebra<span class="pl-k">/</span>src<span class="pl-k">/</span>matmul<span class="pl-k">.</span>jl<span class="pl-k">:</span><span class="pl-c1">113</span>
+ [<span class="pl-c1">5</span>] <span class="pl-c1">var"##multiply#235"</span>(x<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>, y<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span>)
+   @ Main <span class="pl-k">./</span>REPL[<span class="pl-c1">13</span>]<span class="pl-k">:</span><span class="pl-c1">1</span></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Functions that throw exceptions</h3><a id="user-content-functions-that-throw-exceptions" class="anchor" aria-label="Permalink: Functions that throw exceptions" href="#functions-that-throw-exceptions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Some functions that we do not expect may allocate memory, like <code>sin</code>, actually may:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @allocated try
+           sin(Inf)
+       catch
+       end
+48"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@allocated</span> <span class="pl-k">try</span>
+           <span class="pl-c1">sin</span>(<span class="pl-c1">Inf</span>)
+       <span class="pl-k">catch</span>
+       <span class="pl-k">end</span>
+<span class="pl-c1">48</span></pre></div>
+<p dir="auto">The reason for this is that <code>sin</code> needs to allocate if it <strong>throws an error</strong>.</p>
+<p dir="auto">By default, <code>@check_allocs</code> ignores all such allocations and assumes that no exceptions are thrown. If you care about detecting these allocations anyway, you can use <code>ignore_throw=false</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @check_allocs mysin1(x) = sin(x)
+
+julia&gt; @check_allocs ignore_throw = false mysin2(x) = sin(x)
+
+julia&gt; mysin1(1.5)
+0.9974949866040544
+
+julia&gt; mysin2(1.5)
+ERROR: @check_allocs function encountered 2 errors (1 allocations / 1 dynamic dispatches)."><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@check_allocs</span> <span class="pl-en">mysin1</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sin</span>(x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@check_allocs</span> ignore_throw <span class="pl-k">=</span> <span class="pl-c1">false</span> <span class="pl-en">mysin2</span>(x) <span class="pl-k">=</span> <span class="pl-c1">sin</span>(x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">mysin1</span>(<span class="pl-c1">1.5</span>)
+<span class="pl-c1">0.9974949866040544</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">mysin2</span>(<span class="pl-c1">1.5</span>)
+ERROR<span class="pl-k">:</span> <span class="pl-c1">@check_allocs</span> <span class="pl-k">function</span> encountered <span class="pl-c1">2</span> errors (<span class="pl-c1">1</span> allocations <span class="pl-k">/</span> <span class="pl-c1">1</span> dynamic dispatches)<span class="pl-k">.</span></pre></div>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Limitations</h4><a id="user-content-limitations" class="anchor" aria-label="Permalink: Limitations" href="#limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Every call into a <code>@check_allocs</code> function behaves like a dynamic dispatch. This means that it can trigger compilation dynamically (involving lots of allocation), and even when the function has already been compiled, a small amount of allocation is still expected on the function entry.</p>
+<p dir="auto">For most applications, the solution is to use <code>@check_allocs</code> to wrap your top-level entry point or your main application loop, in which case those allocations are only incurred once. <code>@check_allocs</code> will guarantee that no dynamic compilation or allocation occurs once your function has started running.</p>
+</article></div>

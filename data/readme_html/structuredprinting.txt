@@ -1,0 +1,125 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">StructuredPrinting.jl</h1><a id="user-content-structuredprintingjl" class="anchor" aria-label="Permalink: StructuredPrinting.jl" href="#structuredprintingjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A simple Julia package for printing structs in a structured way, while offering a way to filter and highlight specified information. This package was developed for debugging.</p>
+<details>
+  <summary>The story of how this started</summary>
+<p dir="auto">One day, I was trying to find out if <code>UnionAll</code> objects existed in a very large OrdinaryDiffEq integrator. I ended up writing:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Crayons
+function getpropertyviz(obj, pc = (), indent = &quot;&quot;)
+    for pn in propertynames(obj)
+        prop = getproperty(obj, pn)
+        pc_full = (pc..., &quot;.&quot;, pn)
+        pc_string = string(join(pc_full))
+        if prop isa UnionAll || prop isa DataType
+            pc_colored = Crayons.Box.RED_FG(pc_string)
+            println(&quot;$indent $pc_colored :: $(typeof(prop)), FLAGME!&quot;)
+        else
+            println(&quot;$indent $pc_string :: $(typeof(prop))&quot;)
+            getpropertyviz(prop, pc_full, indent*&quot;  &quot;)
+        end
+    end
+end
+
+getpropertyviz(integrator)"><pre><span class="pl-k">import</span> Crayons
+<span class="pl-k">function</span> <span class="pl-en">getpropertyviz</span>(obj, pc <span class="pl-k">=</span> (), indent <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>)
+    <span class="pl-k">for</span> pn <span class="pl-k">in</span> <span class="pl-c1">propertynames</span>(obj)
+        prop <span class="pl-k">=</span> <span class="pl-c1">getproperty</span>(obj, pn)
+        pc_full <span class="pl-k">=</span> (pc<span class="pl-k">...</span>, <span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-pds">"</span></span>, pn)
+        pc_string <span class="pl-k">=</span> <span class="pl-c1">string</span>(<span class="pl-c1">join</span>(pc_full))
+        <span class="pl-k">if</span> prop <span class="pl-k">isa</span> UnionAll <span class="pl-k">||</span> prop <span class="pl-k">isa</span> DataType
+            pc_colored <span class="pl-k">=</span> Crayons<span class="pl-k">.</span>Box<span class="pl-k">.</span><span class="pl-c1">RED_FG</span>(pc_string)
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$indent</span> <span class="pl-v">$pc_colored</span> :: <span class="pl-v">$(<span class="pl-c1">typeof</span>(prop))</span>, FLAGME!<span class="pl-pds">"</span></span>)
+        <span class="pl-k">else</span>
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span><span class="pl-v">$indent</span> <span class="pl-v">$pc_string</span> :: <span class="pl-v">$(<span class="pl-c1">typeof</span>(prop))</span><span class="pl-pds">"</span></span>)
+            <span class="pl-c1">getpropertyviz</span>(prop, pc_full, indent<span class="pl-k">*</span><span class="pl-s"><span class="pl-pds">"</span>  <span class="pl-pds">"</span></span>)
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c1">getpropertyviz</span>(integrator)</pre></div>
+<p dir="auto">Which ended up highlighting 3 (of the thousands of) structs that were either <code>UnionAll</code>, or <code>DataType</code>, and this helped me to identify which structs were responsible for hurting compiler inference in a large codebase.</p>
+<p dir="auto">Since this code was so generic, I thought it might be useful to write a small tool for it and add some bells and whistles. Enter StructuredPrinting.jl.</p>
+</details>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Demo</h2><a id="user-content-demo" class="anchor" aria-label="Permalink: Demo" href="#demo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Here's a demo of this package in action (directly from the test suite):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct Leaf{T} end
+
+struct Branch{A,B,C}
+    leafA::A
+    leafB::B
+    leafC::C
+end
+
+struct Tree{A,B,C}
+    branchA::A
+    branchB::B
+    branchC::C
+end
+
+t = Tree(
+    Branch(Leaf{(:A1, :L1)}(), Leaf{(:B1, :L2)}(), Leaf{(:C1, :L3)}()),
+    Branch(Leaf{(:A2, :L1)}(), Leaf{(:B2, :L2)}(), Leaf{(:C2, :L3)}()),
+    Branch(Leaf{(:A3, :L1)}(), Leaf{(:B3, :L2)}(), Leaf{(:C3, :L3)}()),
+)
+
+using StructuredPrinting
+# Print struct alone
+@structured_print t
+
+# Print struct with type highlighted
+@structured_print t Options(typeof(t.branchB))
+
+# Print struct with Tuple of types highlighted
+@structured_print t Options((typeof(t.branchB), typeof(t.branchA)))"><pre><span class="pl-k">struct</span> Leaf{T} <span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> Branch{A,B,C}
+    leafA<span class="pl-k">::</span><span class="pl-c1">A</span>
+    leafB<span class="pl-k">::</span><span class="pl-c1">B</span>
+    leafC<span class="pl-k">::</span><span class="pl-c1">C</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> Tree{A,B,C}
+    branchA<span class="pl-k">::</span><span class="pl-c1">A</span>
+    branchB<span class="pl-k">::</span><span class="pl-c1">B</span>
+    branchC<span class="pl-k">::</span><span class="pl-c1">C</span>
+<span class="pl-k">end</span>
+
+t <span class="pl-k">=</span> <span class="pl-c1">Tree</span>(
+    <span class="pl-c1">Branch</span>(<span class="pl-c1">Leaf</span><span class="pl-c1">{(:A1, :L1)}</span>(), <span class="pl-c1">Leaf</span><span class="pl-c1">{(:B1, :L2)}</span>(), <span class="pl-c1">Leaf</span><span class="pl-c1">{(:C1, :L3)}</span>()),
+    <span class="pl-c1">Branch</span>(<span class="pl-c1">Leaf</span><span class="pl-c1">{(:A2, :L1)}</span>(), <span class="pl-c1">Leaf</span><span class="pl-c1">{(:B2, :L2)}</span>(), <span class="pl-c1">Leaf</span><span class="pl-c1">{(:C2, :L3)}</span>()),
+    <span class="pl-c1">Branch</span>(<span class="pl-c1">Leaf</span><span class="pl-c1">{(:A3, :L1)}</span>(), <span class="pl-c1">Leaf</span><span class="pl-c1">{(:B3, :L2)}</span>(), <span class="pl-c1">Leaf</span><span class="pl-c1">{(:C3, :L3)}</span>()),
+)
+
+<span class="pl-k">using</span> StructuredPrinting
+<span class="pl-c"><span class="pl-c">#</span> Print struct alone</span>
+<span class="pl-c1">@structured_print</span> t
+
+<span class="pl-c"><span class="pl-c">#</span> Print struct with type highlighted</span>
+<span class="pl-c1">@structured_print</span> t <span class="pl-c1">Options</span>(<span class="pl-c1">typeof</span>(t<span class="pl-k">.</span>branchB))
+
+<span class="pl-c"><span class="pl-c">#</span> Print struct with Tuple of types highlighted</span>
+<span class="pl-c1">@structured_print</span> t <span class="pl-c1">Options</span>((<span class="pl-c1">typeof</span>(t<span class="pl-k">.</span>branchB), <span class="pl-c1">typeof</span>(t<span class="pl-k">.</span>branchA)))</pre></div>
+<p dir="auto">StructuredPrinting can be useful to find which object match certain types, which can be helpful to identify potential inference issues:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct Foo{A}
+a::A
+end
+bar(obj, i::Int) = obj.type(i)
+obj = (; type = Foo, x = 1, y = 2) # using a (&lt;:Type)::DataType is a performance issue
+bar(obj, 3) # make sure this is callable
+@code_warntype bar(obj, 3) # demo performance issue
+
+using StructuredPrinting
+@structured_print obj Options((UnionAll, DataType)) # highlight `UnionAll` and `DataType`s
+# Or, print types directly:
+@structured_print obj Options((UnionAll, DataType); print_types=true)"><pre><span class="pl-k">struct</span> Foo{A}
+a<span class="pl-k">::</span><span class="pl-c1">A</span>
+<span class="pl-k">end</span>
+<span class="pl-en">bar</span>(obj, i<span class="pl-k">::</span><span class="pl-c1">Int</span>) <span class="pl-k">=</span> obj<span class="pl-k">.</span><span class="pl-c1">type</span>(i)
+obj <span class="pl-k">=</span> (; type <span class="pl-k">=</span> Foo, x <span class="pl-k">=</span> <span class="pl-c1">1</span>, y <span class="pl-k">=</span> <span class="pl-c1">2</span>) <span class="pl-c"><span class="pl-c">#</span> using a (&lt;:Type)::DataType is a performance issue</span>
+<span class="pl-c1">bar</span>(obj, <span class="pl-c1">3</span>) <span class="pl-c"><span class="pl-c">#</span> make sure this is callable</span>
+<span class="pl-c1">@code_warntype</span> <span class="pl-c1">bar</span>(obj, <span class="pl-c1">3</span>) <span class="pl-c"><span class="pl-c">#</span> demo performance issue</span>
+
+<span class="pl-k">using</span> StructuredPrinting
+<span class="pl-c1">@structured_print</span> obj <span class="pl-c1">Options</span>((UnionAll, DataType)) <span class="pl-c"><span class="pl-c">#</span> highlight `UnionAll` and `DataType`s</span>
+<span class="pl-c"><span class="pl-c">#</span> Or, print types directly:</span>
+<span class="pl-c1">@structured_print</span> obj <span class="pl-c1">Options</span>((UnionAll, DataType); print_types<span class="pl-k">=</span><span class="pl-c1">true</span>)</pre></div>
+</article></div>

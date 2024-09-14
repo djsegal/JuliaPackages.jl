@@ -1,0 +1,169 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Smooth local projections (SLP)</h1><a id="user-content-smooth-local-projections-slp" class="anchor" aria-label="Permalink: Smooth local projections (SLP)" href="#smooth-local-projections-slp"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">If you find my work to be useful, please star this repository!</p>
+<p dir="auto"><a href="https://github.com/justinjjlee/SmoothLocalProjections" title="Go to GitHub repo"><img src="https://camo.githubusercontent.com/25be19c8f9a6844feee57ef9e5204b7c79ad889667add388ae35d5a6963cba4e/68747470733a2f2f696d672e736869656c64732e696f2f7374617469632f76313f6c6162656c3d6a757374696e6a6a6c6565266d6573736167653d536d6f6f74684c6f63616c50726f6a656374696f6e7326636f6c6f723d626c7565266c6f676f3d676974687562" alt="justinjjlee - SmoothLocalProjections" data-canonical-src="https://img.shields.io/static/v1?label=justinjjlee&amp;message=SmoothLocalProjections&amp;color=blue&amp;logo=github" style="max-width: 100%;"></a>
+<a href="https://github.com/justinjjlee/SmoothLocalProjections"><img src="https://camo.githubusercontent.com/dadce52c0ef0507fbdbef934ecdf4ed12b27ae014eef6b4cba9212ccb6c5ea3c/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f73746172732f6a757374696e6a6a6c65652f536d6f6f74684c6f63616c50726f6a656374696f6e733f7374796c653d736f6369616c" alt="stars - SmoothLocalProjections" data-canonical-src="https://img.shields.io/github/stars/justinjjlee/SmoothLocalProjections?style=social" style="max-width: 100%;"></a>
+<a href="https://github.com/justinjjlee/SmoothLocalProjections"><img src="https://camo.githubusercontent.com/d00bde3d7df5659848fc71691aa785c1d1829c276dabbc00ea725b402575f28f/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f666f726b732f6a757374696e6a6a6c65652f536d6f6f74684c6f63616c50726f6a656374696f6e733f7374796c653d736f6369616c" alt="forks - SmoothLocalProjections" data-canonical-src="https://img.shields.io/github/forks/justinjjlee/SmoothLocalProjections?style=social" style="max-width: 100%;"></a></p>
+<p dir="auto">Implementation of Smooth Local Projections (SLP) based on <a href="https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778" rel="nofollow">Barnichon and Brownlees (2019)</a> - "Impulse Response Estimation by Smooth Local Projections." Original method of Local Projections is first introduced by <a href="https://www.aeaweb.org/articles?id=10.1257/0002828053828518" rel="nofollow">Òscar Jordà (2005)</a></p>
+<p dir="auto">The code was translated from MATLAB code published from the replication file made available by <a href="https://github.com/ctbrownlees/MATLAB-package-lproj">C. Brownlees</a>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Pkg;
+Pkg.update();
+
+using CSV, Statistics, LinearAlgebra: I;
+cd(@__DIR__) #src location
+
+include(&quot;functions.jl&quot;)"><pre><span class="pl-k">import</span> Pkg;
+Pkg<span class="pl-k">.</span><span class="pl-c1">update</span>();
+
+<span class="pl-k">using</span> CSV, Statistics, LinearAlgebra<span class="pl-k">:</span> I;
+<span class="pl-c1">cd</span>(<span class="pl-c1">@__DIR__</span>) <span class="pl-c"><span class="pl-c">#</span>src location</span>
+
+<span class="pl-c1">include</span>(<span class="pl-s"><span class="pl-pds">"</span>functions.jl<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">Input argument is constructed using a mutable object of following,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="df = CSV.read(&quot;data.csv&quot;, DataFrame);
+df = convert(Array{Float16}, df[:, 2:4]);
+# Or
+#df = Matrix(df[:, 2:4]);
+T, k = size(df);
+
+## Parameterization
+P = 4; # Number of lags used in LP - controlled variable
+
+# start LP at H_min=0 or 1 (H_min=1 if impose no contemporanous impact)
+H_max = 20;
+ind_response = 1; # Endogenous variable - response
+ind_shock    = 3; # Endogenous variable related to the shock
+
+# Packaing everything as input
+r = 2; #(r-1)=order of the limit polynomial
+# NOTE: (so r=2 implies the IR is shrunk towards a line )
+λ = 100; 
+
+indx     = [ind_response ind_shock H_max P];
+
+inicjał₀ = initalz(df, indx, &quot;reg&quot;, [r 0]);
+inicjał₁ = initalz(df, indx, &quot;smooth&quot;, [r λ]);
+# Obliczanie projekcja lokalna, in order of,
+#  (1) Local projection a la Jordá (2005)
+#  (2) Local projection with basic parameteri tested
+#  (3) Local projection with optimal parameter validated
+lp₀, lp₁ = slp(inicjał₀), slp(inicjał₁);
+
+# Cross-valudation for value of optimal value of λ → λₒ
+λₒ, resvec = slpᵥ(lp₁);
+
+# Optimal parameter
+inicjał₂ = initalz(df, indx, &quot;smooth&quot;, [r λₒ]);
+lp₂ = slp(inicjał₂);
+lp₂_ci = slp_ci(lp₂);"><pre>df <span class="pl-k">=</span> CSV<span class="pl-k">.</span><span class="pl-c1">read</span>(<span class="pl-s"><span class="pl-pds">"</span>data.csv<span class="pl-pds">"</span></span>, DataFrame);
+df <span class="pl-k">=</span> <span class="pl-c1">convert</span>(Array{Float16}, df[:, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">4</span>]);
+<span class="pl-c"><span class="pl-c">#</span> Or</span>
+<span class="pl-c"><span class="pl-c">#</span>df = Matrix(df[:, 2:4]);</span>
+T, k <span class="pl-k">=</span> <span class="pl-c1">size</span>(df);
+
+<span class="pl-c"><span class="pl-c">#</span># Parameterization</span>
+P <span class="pl-k">=</span> <span class="pl-c1">4</span>; <span class="pl-c"><span class="pl-c">#</span> Number of lags used in LP - controlled variable</span>
+
+<span class="pl-c"><span class="pl-c">#</span> start LP at H_min=0 or 1 (H_min=1 if impose no contemporanous impact)</span>
+H_max <span class="pl-k">=</span> <span class="pl-c1">20</span>;
+ind_response <span class="pl-k">=</span> <span class="pl-c1">1</span>; <span class="pl-c"><span class="pl-c">#</span> Endogenous variable - response</span>
+ind_shock    <span class="pl-k">=</span> <span class="pl-c1">3</span>; <span class="pl-c"><span class="pl-c">#</span> Endogenous variable related to the shock</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Packaing everything as input</span>
+r <span class="pl-k">=</span> <span class="pl-c1">2</span>; <span class="pl-c"><span class="pl-c">#</span>(r-1)=order of the limit polynomial</span>
+<span class="pl-c"><span class="pl-c">#</span> NOTE: (so r=2 implies the IR is shrunk towards a line )</span>
+λ <span class="pl-k">=</span> <span class="pl-c1">100</span>; 
+
+indx     <span class="pl-k">=</span> [ind_response ind_shock H_max P];
+
+inicjał₀ <span class="pl-k">=</span> <span class="pl-c1">initalz</span>(df, indx, <span class="pl-s"><span class="pl-pds">"</span>reg<span class="pl-pds">"</span></span>, [r <span class="pl-c1">0</span>]);
+inicjał₁ <span class="pl-k">=</span> <span class="pl-c1">initalz</span>(df, indx, <span class="pl-s"><span class="pl-pds">"</span>smooth<span class="pl-pds">"</span></span>, [r λ]);
+<span class="pl-c"><span class="pl-c">#</span> Obliczanie projekcja lokalna, in order of,</span>
+<span class="pl-c"><span class="pl-c">#</span>  (1) Local projection a la Jordá (2005)</span>
+<span class="pl-c"><span class="pl-c">#</span>  (2) Local projection with basic parameteri tested</span>
+<span class="pl-c"><span class="pl-c">#</span>  (3) Local projection with optimal parameter validated</span>
+lp₀, lp₁ <span class="pl-k">=</span> <span class="pl-c1">slp</span>(inicjał₀), <span class="pl-c1">slp</span>(inicjał₁);
+
+<span class="pl-c"><span class="pl-c">#</span> Cross-valudation for value of optimal value of λ → λₒ</span>
+λₒ, resvec <span class="pl-k">=</span> <span class="pl-c1">slpᵥ</span>(lp₁);
+
+<span class="pl-c"><span class="pl-c">#</span> Optimal parameter</span>
+inicjał₂ <span class="pl-k">=</span> <span class="pl-c1">initalz</span>(df, indx, <span class="pl-s"><span class="pl-pds">"</span>smooth<span class="pl-pds">"</span></span>, [r λₒ]);
+lp₂ <span class="pl-k">=</span> <span class="pl-c1">slp</span>(inicjał₂);
+lp₂_ci <span class="pl-k">=</span> <span class="pl-c1">slp_ci</span>(lp₂);</pre></div>
+<p dir="auto">Each stripped sub/co-routine is a plot of impulse response functions, (1 - blue line) local projection using <a href="https://www.aeaweb.org/articles?id=10.1257/0002828053828518" rel="nofollow">Òscar Jordà (2005)</a>; (2 - purple line) smoothed local projection using (λ = 100, for example presented below); (3 - red lines) smoothed local projection using optimal λ estimated using cross-validation method as shown in <a href="https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778" rel="nofollow">Barnichon and Brownlees (2019)</a> (red solid line is a point estimate, dashed red lines are estimated 90% confidence set).</p>
+<p dir="auto">Following example is a replication of <a href="https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778" rel="nofollow">Barnichon and Brownlees (2019)</a> estimation of the impulse response of Gross Domestic Product (GDP) to identified positive monetary policy shock.</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="example.gif"><img src="example.gif" alt="" data-animated-image="" style="max-width: 100%;"></a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="
+# rezultat 
+plot(lp₀.IR, xlabel = &quot;Time since stimulus/impact&quot;, ylabel = &quot;Response&quot;, label = &quot;Jordà (2005)&quot;)
+plot!(lp₁.IR, label = &quot;SLP: λ = $(λ)&quot;, color = &quot;purple&quot;)
+plot!(zeros(length(lp₁.IR)), label = false, color = &quot;black&quot;, line = :dot)
+plot!(lp₂.IR, label = &quot;SLP: λ optymalny = $(λₒ)&quot;, color = &quot;red&quot;)
+plot!(lp₂_ci, line = :dash, color = &quot;red&quot;, legend = false)
+
+# fantazyjny 
+function plt_anime(ir₁, ir₂, iter)
+    plot!(ir₁.IR[1:iter], label = &quot;SLP: λ = $(λ)&quot;, color = &quot;purple&quot;)
+    plot!(ir₂.IR[1:iter], label = &quot;SLP: λ optymalny = $(λₒ)&quot;, color = &quot;red&quot;)
+end
+
+plot(lp₀.IR, xlabel = &quot;Time since stimulus/impact&quot;, ylabel = &quot;Response&quot;, label = &quot;Jordà (2005)&quot;)
+plot!(zeros(length(lp₁.IR)), label = false, color = &quot;black&quot;, line = :dot)
+plot!(lp₂_ci, line = :dash, color = &quot;red&quot;, legend = false)
+fantazyjny = @animate for iter ∈ 1:length(lp₁.IR)
+    plt_anime(lp₁, lp₂, iter)
+end
+
+gif(fantazyjny, &quot;example.gif&quot;, fps = 5)"><pre><span class="pl-c"><span class="pl-c">#</span> rezultat </span>
+<span class="pl-c1">plot</span>(lp₀<span class="pl-k">.</span>IR, xlabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Time since stimulus/impact<span class="pl-pds">"</span></span>, ylabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Response<span class="pl-pds">"</span></span>, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Jordà (2005)<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(lp₁<span class="pl-k">.</span>IR, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>SLP: λ = <span class="pl-v">$(λ)</span><span class="pl-pds">"</span></span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>purple<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(<span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(lp₁<span class="pl-k">.</span>IR)), label <span class="pl-k">=</span> <span class="pl-c1">false</span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>black<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">:dot</span>)
+<span class="pl-c1">plot!</span>(lp₂<span class="pl-k">.</span>IR, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>SLP: λ optymalny = <span class="pl-v">$(λₒ)</span><span class="pl-pds">"</span></span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(lp₂_ci, line <span class="pl-k">=</span> <span class="pl-c1">:dash</span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>, legend <span class="pl-k">=</span> <span class="pl-c1">false</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> fantazyjny </span>
+<span class="pl-k">function</span> <span class="pl-en">plt_anime</span>(ir₁, ir₂, iter)
+    <span class="pl-c1">plot!</span>(ir₁<span class="pl-k">.</span>IR[<span class="pl-c1">1</span><span class="pl-k">:</span>iter], label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>SLP: λ = <span class="pl-v">$(λ)</span><span class="pl-pds">"</span></span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>purple<span class="pl-pds">"</span></span>)
+    <span class="pl-c1">plot!</span>(ir₂<span class="pl-k">.</span>IR[<span class="pl-c1">1</span><span class="pl-k">:</span>iter], label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>SLP: λ optymalny = <span class="pl-v">$(λₒ)</span><span class="pl-pds">"</span></span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">plot</span>(lp₀<span class="pl-k">.</span>IR, xlabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Time since stimulus/impact<span class="pl-pds">"</span></span>, ylabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Response<span class="pl-pds">"</span></span>, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Jordà (2005)<span class="pl-pds">"</span></span>)
+<span class="pl-c1">plot!</span>(<span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(lp₁<span class="pl-k">.</span>IR)), label <span class="pl-k">=</span> <span class="pl-c1">false</span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>black<span class="pl-pds">"</span></span>, line <span class="pl-k">=</span> <span class="pl-c1">:dot</span>)
+<span class="pl-c1">plot!</span>(lp₂_ci, line <span class="pl-k">=</span> <span class="pl-c1">:dash</span>, color <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>, legend <span class="pl-k">=</span> <span class="pl-c1">false</span>)
+fantazyjny <span class="pl-k">=</span> <span class="pl-c1">@animate</span> <span class="pl-k">for</span> iter <span class="pl-k">∈</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">length</span>(lp₁<span class="pl-k">.</span>IR)
+    <span class="pl-c1">plt_anime</span>(lp₁, lp₂, iter)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">gif</span>(fantazyjny, <span class="pl-s"><span class="pl-pds">"</span>example.gif<span class="pl-pds">"</span></span>, fps <span class="pl-k">=</span> <span class="pl-c1">5</span>)</pre></div>
+<p dir="auto">To estimate the optimal parameter,
+<a target="_blank" rel="noopener noreferrer" href="example_param.png"><img src="example_param.png" alt="" style="max-width: 100%;"></a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Optimal parameter evaluation
+# walidacja krzyżowa dla optymalny
+plt = plot(resvec[:,1], resvec[:,2],
+    title = &quot;Cross-validation for optimal λ&quot;,
+    xlabel = &quot;λ&quot;,
+    ylabel = &quot;MSE&quot;,
+    label = &quot;oszacowanie&quot;, dpi=500)
+param_min = minimum(resvec[:,2]) 
+param_bound = minimum(resvec[:,2]) + 
+  ((maximum(resvec[:,2])-minimum(resvec[:,2]))/2)
+plot!((λₒ .* ones(2, 1)),
+      [param_min param_bound]',
+      label = &quot;optymalny&quot;
+      )
+savefig(&quot;param_optimal.png&quot;)"><pre><span class="pl-c"><span class="pl-c">#</span> Optimal parameter evaluation</span>
+<span class="pl-c"><span class="pl-c">#</span> walidacja krzyżowa dla optymalny</span>
+plt <span class="pl-k">=</span> <span class="pl-c1">plot</span>(resvec[:,<span class="pl-c1">1</span>], resvec[:,<span class="pl-c1">2</span>],
+    title <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Cross-validation for optimal λ<span class="pl-pds">"</span></span>,
+    xlabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>λ<span class="pl-pds">"</span></span>,
+    ylabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>MSE<span class="pl-pds">"</span></span>,
+    label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>oszacowanie<span class="pl-pds">"</span></span>, dpi<span class="pl-k">=</span><span class="pl-c1">500</span>)
+param_min <span class="pl-k">=</span> <span class="pl-c1">minimum</span>(resvec[:,<span class="pl-c1">2</span>]) 
+param_bound <span class="pl-k">=</span> <span class="pl-c1">minimum</span>(resvec[:,<span class="pl-c1">2</span>]) <span class="pl-k">+</span> 
+  ((<span class="pl-c1">maximum</span>(resvec[:,<span class="pl-c1">2</span>])<span class="pl-k">-</span><span class="pl-c1">minimum</span>(resvec[:,<span class="pl-c1">2</span>]))<span class="pl-k">/</span><span class="pl-c1">2</span>)
+<span class="pl-c1">plot!</span>((λₒ <span class="pl-k">.*</span> <span class="pl-c1">ones</span>(<span class="pl-c1">2</span>, <span class="pl-c1">1</span>)),
+      [param_min param_bound]<span class="pl-k">'</span>,
+      label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>optymalny<span class="pl-pds">"</span></span>
+      )
+<span class="pl-c1">savefig</span>(<span class="pl-s"><span class="pl-pds">"</span>param_optimal.png<span class="pl-pds">"</span></span>)</pre></div>
+</article></div>

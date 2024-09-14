@@ -1,0 +1,178 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://github.com/plasmo-dev/GraphOptInterface.jl/actions"><img src="https://github.com/plasmo-dev/GraphOptInterface.jl/workflows/CI/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://app.codecov.io/github/plasmo-dev/GraphOptInterface.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/77339e10dc5449febff07e58e8dbc60ef7050cad90d674d89b258fa41f6072ce/68747470733a2f2f636f6465636f762e696f2f67682f706c61736d6f2d6465762f47726170684f7074496e746572666163652e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="codecov" data-canonical-src="https://codecov.io/gh/plasmo-dev/GraphOptInterface.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a>
+<a href="https://plasmo-dev.github.io/GraphOptInterface.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/c21574baf34c81b3651a5274c8b074471bc1e142a9516c0cfa75dea9223d93fe/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6c61746573742d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-latest-blue.svg" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">GraphOptInterface.jl</h1><a id="user-content-graphoptinterfacejl" class="anchor" aria-label="Permalink: GraphOptInterface.jl" href="#graphoptinterfacejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A graph data structure for communicating to optimization solvers.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Simple Example</h2><a id="user-content-simple-example" class="anchor" aria-label="Permalink: Simple Example" href="#simple-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using MathOptInterface
+const MOI = MathOptInterface
+
+using GraphOptInterface
+const GOI = GraphOptInterface
+
+##################################################
+# node 1
+##################################################
+graph = GOI.OptiGraph()
+
+node1 = GOI.add_node(graph)
+x1 = MOI.add_variables(node1, 3)
+
+# constraints/bounds on variables
+for x_i in x1
+   MOI.add_constraint(node1, x_i, MOI.GreaterThan(0.0))
+   MOI.add_constraint(node1, x_i, MOI.LessThan(5.0))
+end
+
+c1 = [1.0, 2.0, 3.0]
+w1 = [0.3, 0.5, 1.0]
+C1 = 3.2
+
+# set node1 objective
+MOI.set(
+	node1,
+	MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+	MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(c1, x1), 0.0)
+)
+MOI.set(node1, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+
+# add node1 constraint
+ci = MOI.add_constraint(
+    node1,
+    MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(w1, x1), 0.0),
+    MOI.LessThan(C1)
+)
+
+# add node1 nonlinear constraint
+MOI.Nonlinear.add_constraint(node1, :(1.0 + sqrt($(x1[1]))), MOI.LessThan(5.0))
+
+
+##################################################
+# node 2
+##################################################
+node2 = GOI.add_node(graph)
+x2 = MOI.add_variables(node2, 3)
+for x_i in x2
+   MOI.add_constraint(node2, x_i, MOI.GreaterThan(0.0))
+   MOI.add_constraint(node2, x_i, MOI.LessThan(5.0))
+end
+
+c2 = [2.0, 3.0, 4.0]
+w2 = [0.2, 0.1, 1.2]
+C2 = 2.0
+MOI.set(
+	node2,
+	MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+	MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(c2, x2), 0.0),
+)
+MOI.set(node2, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+MOI.add_constraint(
+    node2,
+    MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(w2, x2), 0.0),
+    MOI.LessThan(C2)
+)
+MOI.Nonlinear.add_constraint(node2, :(1.0 + sqrt($(x2[2]))), MOI.LessThan(3.0))
+
+##################################################
+# edge 3 - couple node1 and node2
+##################################################
+edge3 = GOI.add_edge(graph, (node1, node2))
+
+# add coupling variables to the edge and map to associated node variables
+x1 = MOI.add_variable(edge3, node1, MOI.VariableIndex(1))
+x2 = MOI.add_variable(edge3, node2, MOI.VariableIndex(1))
+x3 = MOI.add_variable(edge3, node2, MOI.VariableIndex(3))
+
+MOI.add_constraint(
+    edge3,
+    MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0,-1.0], [x1,x2]), 0.0),
+    MOI.EqualTo(0.0)
+)
+MOI.Nonlinear.add_constraint(edge3, :(1.0 + sqrt($(x1)) + $(x3)^3), MOI.LessThan(5.0))
+MOI.set(edge3, MOI.ObjectiveSense(), MOI.MAX_SENSE)"><pre><span class="pl-k">using</span> MathOptInterface
+<span class="pl-k">const</span> MOI <span class="pl-k">=</span> MathOptInterface
+
+<span class="pl-k">using</span> GraphOptInterface
+<span class="pl-k">const</span> GOI <span class="pl-k">=</span> GraphOptInterface
+
+<span class="pl-c"><span class="pl-c">#</span>#################################################</span>
+<span class="pl-c"><span class="pl-c">#</span> node 1</span>
+<span class="pl-c"><span class="pl-c">#</span>#################################################</span>
+graph <span class="pl-k">=</span> GOI<span class="pl-k">.</span><span class="pl-c1">OptiGraph</span>()
+
+node1 <span class="pl-k">=</span> GOI<span class="pl-k">.</span><span class="pl-c1">add_node</span>(graph)
+x1 <span class="pl-k">=</span> MOI<span class="pl-k">.</span><span class="pl-c1">add_variables</span>(node1, <span class="pl-c1">3</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> constraints/bounds on variables</span>
+<span class="pl-k">for</span> x_i <span class="pl-k">in</span> x1
+   MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(node1, x_i, MOI<span class="pl-k">.</span><span class="pl-c1">GreaterThan</span>(<span class="pl-c1">0.0</span>))
+   MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(node1, x_i, MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(<span class="pl-c1">5.0</span>))
+<span class="pl-k">end</span>
+
+c1 <span class="pl-k">=</span> [<span class="pl-c1">1.0</span>, <span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>]
+w1 <span class="pl-k">=</span> [<span class="pl-c1">0.3</span>, <span class="pl-c1">0.5</span>, <span class="pl-c1">1.0</span>]
+C1 <span class="pl-k">=</span> <span class="pl-c1">3.2</span>
+
+<span class="pl-c"><span class="pl-c">#</span> set node1 objective</span>
+MOI<span class="pl-k">.</span><span class="pl-c1">set</span>(
+	node1,
+	MOI<span class="pl-k">.</span><span class="pl-c1">ObjectiveFunction</span><span class="pl-c1">{MOI.ScalarAffineFunction{Float64}}</span>(),
+	MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineFunction</span>(MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineTerm</span>.(c1, x1), <span class="pl-c1">0.0</span>)
+)
+MOI<span class="pl-k">.</span><span class="pl-c1">set</span>(node1, MOI<span class="pl-k">.</span><span class="pl-c1">ObjectiveSense</span>(), MOI<span class="pl-k">.</span>MAX_SENSE)
+
+<span class="pl-c"><span class="pl-c">#</span> add node1 constraint</span>
+ci <span class="pl-k">=</span> MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(
+    node1,
+    MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineFunction</span>(MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineTerm</span>.(w1, x1), <span class="pl-c1">0.0</span>),
+    MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(C1)
+)
+
+<span class="pl-c"><span class="pl-c">#</span> add node1 nonlinear constraint</span>
+MOI<span class="pl-k">.</span>Nonlinear<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(node1, :(<span class="pl-c1">1.0</span> <span class="pl-k">+</span> <span class="pl-c1">sqrt</span>(<span class="pl-k">$</span>(x1[<span class="pl-c1">1</span>]))), MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(<span class="pl-c1">5.0</span>))
+
+
+<span class="pl-c"><span class="pl-c">#</span>#################################################</span>
+<span class="pl-c"><span class="pl-c">#</span> node 2</span>
+<span class="pl-c"><span class="pl-c">#</span>#################################################</span>
+node2 <span class="pl-k">=</span> GOI<span class="pl-k">.</span><span class="pl-c1">add_node</span>(graph)
+x2 <span class="pl-k">=</span> MOI<span class="pl-k">.</span><span class="pl-c1">add_variables</span>(node2, <span class="pl-c1">3</span>)
+<span class="pl-k">for</span> x_i <span class="pl-k">in</span> x2
+   MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(node2, x_i, MOI<span class="pl-k">.</span><span class="pl-c1">GreaterThan</span>(<span class="pl-c1">0.0</span>))
+   MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(node2, x_i, MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(<span class="pl-c1">5.0</span>))
+<span class="pl-k">end</span>
+
+c2 <span class="pl-k">=</span> [<span class="pl-c1">2.0</span>, <span class="pl-c1">3.0</span>, <span class="pl-c1">4.0</span>]
+w2 <span class="pl-k">=</span> [<span class="pl-c1">0.2</span>, <span class="pl-c1">0.1</span>, <span class="pl-c1">1.2</span>]
+C2 <span class="pl-k">=</span> <span class="pl-c1">2.0</span>
+MOI<span class="pl-k">.</span><span class="pl-c1">set</span>(
+	node2,
+	MOI<span class="pl-k">.</span><span class="pl-c1">ObjectiveFunction</span><span class="pl-c1">{MOI.ScalarAffineFunction{Float64}}</span>(),
+	MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineFunction</span>(MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineTerm</span>.(c2, x2), <span class="pl-c1">0.0</span>),
+)
+MOI<span class="pl-k">.</span><span class="pl-c1">set</span>(node2, MOI<span class="pl-k">.</span><span class="pl-c1">ObjectiveSense</span>(), MOI<span class="pl-k">.</span>MAX_SENSE)
+MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(
+    node2,
+    MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineFunction</span>(MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineTerm</span>.(w2, x2), <span class="pl-c1">0.0</span>),
+    MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(C2)
+)
+MOI<span class="pl-k">.</span>Nonlinear<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(node2, :(<span class="pl-c1">1.0</span> <span class="pl-k">+</span> <span class="pl-c1">sqrt</span>(<span class="pl-k">$</span>(x2[<span class="pl-c1">2</span>]))), MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(<span class="pl-c1">3.0</span>))
+
+<span class="pl-c"><span class="pl-c">#</span>#################################################</span>
+<span class="pl-c"><span class="pl-c">#</span> edge 3 - couple node1 and node2</span>
+<span class="pl-c"><span class="pl-c">#</span>#################################################</span>
+edge3 <span class="pl-k">=</span> GOI<span class="pl-k">.</span><span class="pl-c1">add_edge</span>(graph, (node1, node2))
+
+<span class="pl-c"><span class="pl-c">#</span> add coupling variables to the edge and map to associated node variables</span>
+x1 <span class="pl-k">=</span> MOI<span class="pl-k">.</span><span class="pl-c1">add_variable</span>(edge3, node1, MOI<span class="pl-k">.</span><span class="pl-c1">VariableIndex</span>(<span class="pl-c1">1</span>))
+x2 <span class="pl-k">=</span> MOI<span class="pl-k">.</span><span class="pl-c1">add_variable</span>(edge3, node2, MOI<span class="pl-k">.</span><span class="pl-c1">VariableIndex</span>(<span class="pl-c1">1</span>))
+x3 <span class="pl-k">=</span> MOI<span class="pl-k">.</span><span class="pl-c1">add_variable</span>(edge3, node2, MOI<span class="pl-k">.</span><span class="pl-c1">VariableIndex</span>(<span class="pl-c1">3</span>))
+
+MOI<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(
+    edge3,
+    MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineFunction</span>(MOI<span class="pl-k">.</span><span class="pl-c1">ScalarAffineTerm</span>.([<span class="pl-c1">1.0</span>,<span class="pl-k">-</span><span class="pl-c1">1.0</span>], [x1,x2]), <span class="pl-c1">0.0</span>),
+    MOI<span class="pl-k">.</span><span class="pl-c1">EqualTo</span>(<span class="pl-c1">0.0</span>)
+)
+MOI<span class="pl-k">.</span>Nonlinear<span class="pl-k">.</span><span class="pl-c1">add_constraint</span>(edge3, :(<span class="pl-c1">1.0</span> <span class="pl-k">+</span> <span class="pl-c1">sqrt</span>(<span class="pl-k">$</span>(x1)) <span class="pl-k">+</span> <span class="pl-k">$</span>(x3)<span class="pl-k">^</span><span class="pl-c1">3</span>), MOI<span class="pl-k">.</span><span class="pl-c1">LessThan</span>(<span class="pl-c1">5.0</span>))
+MOI<span class="pl-k">.</span><span class="pl-c1">set</span>(edge3, MOI<span class="pl-k">.</span><span class="pl-c1">ObjectiveSense</span>(), MOI<span class="pl-k">.</span>MAX_SENSE)</pre></div>
+</article></div>

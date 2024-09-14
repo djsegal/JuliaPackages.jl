@@ -1,0 +1,112 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">FileJockey</h1><a id="user-content-filejockey" class="anchor" aria-label="Permalink: FileJockey" href="#filejockey"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">FileJockey is a light-weight wrapper around file system entries and paths. It provides primitives to facilitate batch operations on large numbers of them.</p>
+<p dir="auto">Essentially, it uses dedicated types for the various kinds of entries:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; entry(&quot;.&quot;)
+DirEntry(&quot;/home/martin&quot;, drwxr-xr-x)
+
+julia&gt; entry(&quot;A.txt&quot;)
+FileEntry(&quot;/home/martin/A.txt&quot;, -rw-r--r--, 4 bytes)
+
+julia&gt; entry(&quot;syml2A.txt&quot;)  #this is a symbolic link
+Symlink{FileEntry}(&quot;/home/martin/syml2A.txt&quot; -&gt; &quot;/home/martin/A.txt&quot;)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">entry</span>(<span class="pl-s"><span class="pl-pds">"</span>.<span class="pl-pds">"</span></span>)
+<span class="pl-c1">DirEntry</span>(<span class="pl-s"><span class="pl-pds">"</span>/home/martin<span class="pl-pds">"</span></span>, drwxr<span class="pl-k">-</span>xr<span class="pl-k">-</span>x)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">entry</span>(<span class="pl-s"><span class="pl-pds">"</span>A.txt<span class="pl-pds">"</span></span>)
+<span class="pl-c1">FileEntry</span>(<span class="pl-s"><span class="pl-pds">"</span>/home/martin/A.txt<span class="pl-pds">"</span></span>, <span class="pl-k">-</span>rw<span class="pl-k">-</span>r<span class="pl-k">--</span>r<span class="pl-k">--</span>, <span class="pl-c1">4</span> bytes)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">entry</span>(<span class="pl-s"><span class="pl-pds">"</span>syml2A.txt<span class="pl-pds">"</span></span>)  <span class="pl-c"><span class="pl-c">#</span>this is a symbolic link</span>
+<span class="pl-c1">Symlink</span><span class="pl-c1">{FileEntry}</span>(<span class="pl-s"><span class="pl-pds">"</span>/home/martin/syml2A.txt<span class="pl-pds">"</span></span> <span class="pl-k">-&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>/home/martin/A.txt<span class="pl-pds">"</span></span>)</pre></div>
+<br>
+<br>
+<p dir="auto">Some problem areas FileJockey tries to help you with:</p>
+<ul dir="auto">
+<li>
+<p dir="auto">Unix natively provides support for batch file system ops, e.g., via <code>find . | xargs ...</code>. One has to be careful, though, and cope with errors during processing, properly handle spaces in filenames, account for or skip symlinks, etc. FileJockey wraps the path strings into dedicated file entry types to make this smoother.</p>
+</li>
+<li>
+<p dir="auto">Traversing large directories that contain symlinks (especially symlinks to directories inside the very same hierarchy) can easily lead to duplicate file paths in our pipeline. On the other hand, skipping symlinks could "lose" files if the symlinks refer to dirs outside the original hierarchy. FileJockey explicitly tracks symlinks and can check for those pitfalls.</p>
+</li>
+<li>
+<p dir="auto">Using raw strings as paths can be error-prone. Say, for example, you want to remove duplicate files (i.e., different file entries whose file contents are identical). Yet the paths "A.txt" and "../mydir/A.txt" could easily actually be the same file entry--deleting one of them could delete <em>that one</em> file. While it would be tempting to just <code>realpath</code> everything, this would also destroy valuable symlink information. FileJockey treats paths in a canonical way so you don't have to worry about <code>normpath</code>-/<code>abspath</code>-/<code>realpath</code>-ing anything. (For example, a <code>Symlink</code>'s file entry path consists of its "real" (symlink-free) dirname combined with the symlink's own basename.) Paths are thus identical <em>if and only if</em> the underlying entries are.</p>
+</li>
+<li>
+<p dir="auto">We often don't thing about liberally using functions like <code>isfile</code> or <code>isdir</code>--but those can be surprisingly costly operations, especially when working with many files on slow network drives. FileJockey caches a file system entry's <code>StatStruct</code>; those operation become basically free (or unnecessary, as we can dispatch on the FileJockey types).</p>
+</li>
+</ul>
+<br>
+<br>
+<p dir="auto">This should help us tackle higher-level issues in a more hassle-free way:</p>
+<ul dir="auto">
+<li>
+<p dir="auto">Safely detect and remove duplicate files.</p>
+</li>
+<li>
+<p dir="auto">Easily traverse dir hierarchies and filter the results by type, extension, etc.</p>
+</li>
+<li>
+<p dir="auto">Apply arbitrary operations to such file batches, e.g., create hardlinks to each input file for a new, zero-diskspace view on your photo library.</p>
+</li>
+<li>
+<p dir="auto">Process EXIF data from files, by calling outside EXIF tools in sub-batches (i.e., partitions of 100 files at a time) to largely sidestep costly startup time.</p>
+</li>
+<li>
+<p dir="auto">Aaaand.. backups, dir-diffs, customizable recursive grepping,...</p>
+</li>
+</ul>
+<br>
+<br>
+<p dir="auto"><em>(Some examples below use curries versions of <code>filter</code> and <code>map</code> for clarity; they are available via <code>CommandLiner.jl</code>.)</em></p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Basic Operations</h3><a id="user-content-basic-operations" class="anchor" aria-label="Permalink: Basic Operations" href="#basic-operations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>ls(path)</code> -- list files; returns vector of file system entries (<code>AbstractEntry</code>s).</p>
+</li>
+<li>
+<p dir="auto"><code>find(path)</code> -- akin to Unix <code>find</code>, returns all file system entries of a dir hierarchy.</p>
+</li>
+<li>
+<p dir="auto"><code>eachentry(path)</code> -- same as <code>find()</code>, but returns iterator. Compose with <code>eachentry(.) |&gt; filter(hasext("jpg")) |&gt; first</code></p>
+</li>
+<li>
+<p dir="auto"><code>getfiles(X)</code> -- called on file system entries, returns only regular files and targets of symlinks-to-files (resulting in a <code>Vector{FileEntry}</code>).</p>
+</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Sanity Checks and Summary Info</h3><a id="user-content-sanity-checks-and-summary-info" class="anchor" aria-label="Permalink: Sanity Checks and Summary Info" href="#sanity-checks-and-summary-info"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>info(X)</code> -- in progress.</p>
+</li>
+<li>
+<p dir="auto"><code>checkpaths</code> -- in progress.</p>
+</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Duplicates</h3><a id="user-content-duplicates" class="anchor" aria-label="Permalink: Duplicates" href="#duplicates"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>finddupl(X)</code> -- in progress.</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">EXIF Metadata</h3><a id="user-content-exif-metadata" class="anchor" aria-label="Permalink: EXIF Metadata" href="#exif-metadata"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>exify(path)</code> -- in progress.</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Hardlinker</h3><a id="user-content-hardlinker" class="anchor" aria-label="Permalink: Hardlinker" href="#hardlinker"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>hardlinker(paths, newpaths)</code> -- in progress.</li>
+</ul>
+
+<br>
+<br>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Version History</h4><a id="user-content-version-history" class="anchor" aria-label="Permalink: Version History" href="#version-history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">0.1 Initial version.</p>
+</article></div>

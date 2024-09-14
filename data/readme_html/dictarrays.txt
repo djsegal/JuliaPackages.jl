@@ -1,0 +1,118 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">DictArrays.jl</h1><a id="user-content-dictarraysjl" class="anchor" aria-label="Permalink: DictArrays.jl" href="#dictarraysjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Dictionary-based arrays, useful to represent wide heterogeneous tables while enjoying the familiar Julia collection and <code>Tables</code> interfaces.</p>
+<p dir="auto">Use <code>DictArrays</code> when you need a lean table type, but the compilation overhead of type-stable solutions (<code>Vector{NamedTuple}</code>, <code>NamedTuple{Vector}</code>, <code>StructArray</code>) is too much.</p>
+<p dir="auto"><code>DictArray</code>s are similar to <code>StructArrays</code> and have the same interface where possible, with the defining difference that <code>DictArray</code>s do not encode columns in the table type. This get rids of the prohibitive compilation overhead for wide tables with 100s of columns or more.
+Despite the inherent type instability, regular Julia data manipulation functions such as <code>map</code> and <code>filter</code> are fast for <code>DictArray</code>s: almost no overhead compared to <code>StructArray</code>s, orders of magnitude faster than plain <code>Vector</code>s of <code>Dict</code>s.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Examples</h1><a id="user-content-examples" class="anchor" aria-label="Permalink: Examples" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>DictArray</code>s are fast even for tables with hundreds of thousands of columns:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# 1000 columns - almost instant
+julia&gt; da = @time DictArray(Dictionary(Symbol.(:a, 1:10^3), fill(1:1, 10^3)))
+  0.001211 seconds (5.50 k allocations: 313.422 KiB)
+
+# StructArrays struggle:
+julia&gt; @time StructArray(da);
+  7.496190 seconds (626.85 k allocations: 37.730 MiB, 0.30% gc time, 99.52% compilation time)
+
+# DictArray compilation doesn't depend on the number of columns
+# even absurd hundreds of thousands of columns are fine:
+julia&gt; @time DictArray(Dictionary(Symbol.(:a, 1:10^5), [fill(1:1, 2*10^4); fill([1.], 2*10^4); fill([:a], 2*10^4); fill([&quot;a&quot;], 2*10^4); fill([false], 2*10^4)]))
+  0.228542 seconds (878.81 k allocations: 39.484 MiB, 11.63% gc time, 52.54% compilation time)"><pre><span class="pl-c"><span class="pl-c">#</span> 1000 columns - almost instant</span>
+julia<span class="pl-k">&gt;</span> da <span class="pl-k">=</span> <span class="pl-c1">@time</span> <span class="pl-c1">DictArray</span>(<span class="pl-c1">Dictionary</span>(<span class="pl-c1">Symbol</span>.(<span class="pl-c1">:a</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">3</span>), <span class="pl-c1">fill</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">3</span>)))
+  <span class="pl-c1">0.001211</span> seconds (<span class="pl-c1">5.50</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">313.422</span> KiB)
+
+<span class="pl-c"><span class="pl-c">#</span> StructArrays struggle:</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> <span class="pl-c1">StructArray</span>(da);
+  <span class="pl-c1">7.496190</span> seconds (<span class="pl-c1">626.85</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">37.730</span> MiB, <span class="pl-c1">0.30</span><span class="pl-k">%</span> gc time, <span class="pl-c1">99.52</span><span class="pl-k">%</span> compilation time)
+
+<span class="pl-c"><span class="pl-c">#</span> DictArray compilation doesn't depend on the number of columns</span>
+<span class="pl-c"><span class="pl-c">#</span> even absurd hundreds of thousands of columns are fine:</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@time</span> <span class="pl-c1">DictArray</span>(<span class="pl-c1">Dictionary</span>(<span class="pl-c1">Symbol</span>.(<span class="pl-c1">:a</span>, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">5</span>), [<span class="pl-c1">fill</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">1</span>, <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">4</span>); <span class="pl-c1">fill</span>([<span class="pl-c1">1.</span>], <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">4</span>); <span class="pl-c1">fill</span>([<span class="pl-c1">:a</span>], <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">4</span>); <span class="pl-c1">fill</span>([<span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>], <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">4</span>); <span class="pl-c1">fill</span>([<span class="pl-c1">false</span>], <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">4</span>)]))
+  <span class="pl-c1">0.228542</span> seconds (<span class="pl-c1">878.81</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">39.484</span> MiB, <span class="pl-c1">11.63</span><span class="pl-k">%</span> gc time, <span class="pl-c1">52.54</span><span class="pl-k">%</span> compilation time)</pre></div>
+<p dir="auto">At the same time, common Julia functions such as <code>map</code> and <code>filter</code> work, and are performant for long and wide tables despite the inherent type-instability:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; da = DictArray(a=1:10^6, b=collect(1.0:10^6), c=fill(&quot;hello&quot;, 10^6));
+
+# DictArray
+julia&gt; @btime map(x -&gt; x.a + x.b, $da)
+  1.430 ms (300 allocations: 7.65 MiB)
+
+# baseline: StructArray
+# basically the same timings
+julia&gt; @btime map(x -&gt; x.a + x.b, $(StructArray(da)))
+  1.314 ms (2 allocations: 7.63 MiB)
+
+# baseline: plain Vector of Dictionaries
+# orders of magnitude slower, many allocations
+julia&gt; @btime map(x -&gt; x.a + x.b, $(collect(da)))
+  100.512 ms (1000022 allocations: 22.89 MiB)"><pre>julia<span class="pl-k">&gt;</span> da <span class="pl-k">=</span> <span class="pl-c1">DictArray</span>(a<span class="pl-k">=</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">6</span>, b<span class="pl-k">=</span><span class="pl-c1">collect</span>(<span class="pl-c1">1.0</span><span class="pl-k">:</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">6</span>), c<span class="pl-k">=</span><span class="pl-c1">fill</span>(<span class="pl-s"><span class="pl-pds">"</span>hello<span class="pl-pds">"</span></span>, <span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">6</span>));
+
+<span class="pl-c"><span class="pl-c">#</span> DictArray</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">.</span>a <span class="pl-k">+</span> x<span class="pl-k">.</span>b, <span class="pl-k">$</span>da)
+  <span class="pl-c1">1.430</span> ms (<span class="pl-c1">300</span> allocations<span class="pl-k">:</span> <span class="pl-c1">7.65</span> MiB)
+
+<span class="pl-c"><span class="pl-c">#</span> baseline: StructArray</span>
+<span class="pl-c"><span class="pl-c">#</span> basically the same timings</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">.</span>a <span class="pl-k">+</span> x<span class="pl-k">.</span>b, <span class="pl-k">$</span>(<span class="pl-c1">StructArray</span>(da)))
+  <span class="pl-c1">1.314</span> ms (<span class="pl-c1">2</span> allocations<span class="pl-k">:</span> <span class="pl-c1">7.63</span> MiB)
+
+<span class="pl-c"><span class="pl-c">#</span> baseline: plain Vector of Dictionaries</span>
+<span class="pl-c"><span class="pl-c">#</span> orders of magnitude slower, many allocations</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">.</span>a <span class="pl-k">+</span> x<span class="pl-k">.</span>b, <span class="pl-k">$</span>(<span class="pl-c1">collect</span>(da)))
+  <span class="pl-c1">100.512</span> ms (<span class="pl-c1">1000022</span> allocations<span class="pl-k">:</span> <span class="pl-c1">22.89</span> MiB)</pre></div>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Usage</h1><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Array-like</h2><a id="user-content-array-like" class="anchor" aria-label="Permalink: Array-like" href="#array-like"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>DictArrays</code> follow array-like collection interfaces. They are not <code>AbstractArrays</code> though: this is a deliberate decision so that not to trigger generic <code>AbstractArray</code> fallbacks anywhere. Type instability is fundamental to the design, and requires explicit function barriers for performance.</p>
+<p dir="auto">Still, lots of common functionality works as you would expect for an array of <code>NamedTuple</code>s: <code>length(da)</code>, <code>da[5]</code>, <code>da[5].colname</code>, <code>keys(da)</code>, <code>map</code>, <code>filter</code>, and others. <code>StructArray</code>-like behavior is also available with the same semantics: most notably, <code>da.colname</code> to retrieve the whole column.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Tables</h2><a id="user-content-tables" class="anchor" aria-label="Permalink: Tables" href="#tables"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>DictArray</code> is a <code>Tables.jl</code>-compatible table type. It can be constructed from a table, or passed anywhere a table is expected.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; da = CSV.read(IOBuffer(&quot;a,b,c\n1,2,3\n4,5,6\n7,8,9\n&quot;), DictArray)
+DictArray({:a = [1, 4, 7], :b = [2, 5, 8], :c = [3, 6, 9]})
+
+julia&gt; da.a
+3-element Vector{Int64}:
+ 1
+ 4
+ 7
+
+julia&gt; Tables.rowtable(da)
+3-element Vector{NamedTuple{(:a, :b, :c), Tuple{Int64, Int64, Int64}}}:
+ (a = 1, b = 2, c = 3)
+ (a = 4, b = 5, c = 6)
+ (a = 7, b = 8, c = 9)"><pre>julia<span class="pl-k">&gt;</span> da <span class="pl-k">=</span> CSV<span class="pl-k">.</span><span class="pl-c1">read</span>(<span class="pl-c1">IOBuffer</span>(<span class="pl-s"><span class="pl-pds">"</span>a,b,c<span class="pl-cce">\n</span>1,2,3<span class="pl-cce">\n</span>4,5,6<span class="pl-cce">\n</span>7,8,9<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>), DictArray)
+<span class="pl-c1">DictArray</span>({<span class="pl-c1">:a</span> <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">4</span>, <span class="pl-c1">7</span>], <span class="pl-c1">:b</span> <span class="pl-k">=</span> [<span class="pl-c1">2</span>, <span class="pl-c1">5</span>, <span class="pl-c1">8</span>], <span class="pl-c1">:c</span> <span class="pl-k">=</span> [<span class="pl-c1">3</span>, <span class="pl-c1">6</span>, <span class="pl-c1">9</span>]})
+
+julia<span class="pl-k">&gt;</span> da<span class="pl-k">.</span>a
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Vector{Int64}<span class="pl-k">:</span>
+ <span class="pl-c1">1</span>
+ <span class="pl-c1">4</span>
+ <span class="pl-c1">7</span>
+
+julia<span class="pl-k">&gt;</span> Tables<span class="pl-k">.</span><span class="pl-c1">rowtable</span>(da)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Vector{NamedTuple{(<span class="pl-c1">:a</span>, <span class="pl-c1">:b</span>, <span class="pl-c1">:c</span>), Tuple{Int64, Int64, Int64}}}<span class="pl-k">:</span>
+ (a <span class="pl-k">=</span> <span class="pl-c1">1</span>, b <span class="pl-k">=</span> <span class="pl-c1">2</span>, c <span class="pl-k">=</span> <span class="pl-c1">3</span>)
+ (a <span class="pl-k">=</span> <span class="pl-c1">4</span>, b <span class="pl-k">=</span> <span class="pl-c1">5</span>, c <span class="pl-k">=</span> <span class="pl-c1">6</span>)
+ (a <span class="pl-k">=</span> <span class="pl-c1">7</span>, b <span class="pl-k">=</span> <span class="pl-c1">8</span>, c <span class="pl-k">=</span> <span class="pl-c1">9</span>)</pre></div>
+<p dir="auto">Column selection:</p>
+<ul dir="auto">
+<li><code>da[Cols(:a, :b, :c)]::StructArray</code> <em>(varargs or tuple of columns)</em> selects these columns and converts to a <code>StructArray</code> of <code>NamedTuple</code>s</li>
+<li><code>da[Cols([:a, :b, :c])]::DictArray</code> <em>(array of columns)</em> selects these columns and keeps it a <code>DictArray</code></li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">More</h2><a id="user-content-more" class="anchor" aria-label="Permalink: More" href="#more"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Conversion:</p>
+<ul dir="auto">
+<li><code>Dictionary(da)</code> retrieves the underlying dictionary of columns</li>
+<li><code>Dict(da)</code>, <code>NamedTuple(da)</code> convert to the corresponding type</li>
+<li><code>StructArray(da)</code> converts to a <code>StructArray</code> of <code>NamedTuples</code> without copying columns</li>
+</ul>
+<p dir="auto">Modification: uses <code>Accessors</code>, same interface as <code>StructArray</code>.</p>
+<ul dir="auto">
+<li><code>@set da.colname = 1:length(da)</code> replace a column</li>
+<li><code>@insert da.colname = ...</code> insert a new column</li>
+<li><code>@delete da.colname</code> delete a column</li>
+<li><code>Properties()</code> are supported. Eg, normalize all numeric columns:</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@modify(da |&gt; Properties() |&gt; If(c -&gt; eltype(c) &lt;: Number)) do col
+    col .- mean(col)
+end"><pre><span class="pl-c1">@modify</span>(da <span class="pl-k">|&gt;</span> <span class="pl-c1">Properties</span>() <span class="pl-k">|&gt;</span> <span class="pl-c1">If</span>(c <span class="pl-k">-&gt;</span> <span class="pl-c1">eltype</span>(c) <span class="pl-k">&lt;:</span> <span class="pl-c1">Number</span>)) <span class="pl-k">do</span> col
+    col <span class="pl-k">.-</span> <span class="pl-c1">mean</span>(col)
+<span class="pl-k">end</span></pre></div>
+</article></div>

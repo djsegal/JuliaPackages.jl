@@ -1,0 +1,71 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://github.com/org-arl/ProtocolDataUnits.jl/actions"><img src="https://github.com/org-arl/ProtocolDataUnits.jl/workflows/CI/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://org-arl.github.io/ProtocolDataUnits.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/31126cd56c42376320c59ea685a7ca65ff3a83d09a66363ed7115f882be1222c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="doc-stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://org-arl.github.io/ProtocolDataUnits.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/c21574baf34c81b3651a5274c8b074471bc1e142a9516c0cfa75dea9223d93fe/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6c61746573742d626c75652e737667" alt="doc-dev" data-canonical-src="https://img.shields.io/badge/docs-latest-blue.svg" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ProtocolDataUnits.jl</h1><a id="user-content-protocoldataunitsjl" class="anchor" aria-label="Permalink: ProtocolDataUnits.jl" href="#protocoldataunitsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><strong>Encoders and decoders for Protocol Data Units (PDUs)</strong></p>
+<p dir="auto"><a href="https://en.wikipedia.org/wiki/Protocol_data_unit" rel="nofollow">PDUs</a> encode information as byte streams that can be transmitted across a network or stored. <code>ProtocolDataUnits.jl</code> simplifies the process of encoding and decoding information as PDUs in a declarative way.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Illustrative Example</h2><a id="user-content-illustrative-example" class="anchor" aria-label="Permalink: Illustrative Example" href="#illustrative-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The usage of the package is best illustrated with a simple example:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ProtocolDataUnits
+
+# define PDU format
+Base.@kwdef struct EthernetFrame &lt;: AbstractPDU
+  dstaddr::NTuple{6,UInt8}    # fixed length
+  srcaddr::NTuple{6,UInt8}    # fixed length
+  ethtype::UInt16             # fixed length
+  payload::Vector{UInt8}      # variable length
+  crc::UInt32 = 0             # fixed length
+end
+
+# declare that the variable length of the payload can be computed
+Base.length(::Type{EthernetFrame}, ::Val{:payload}, info) = info.length - 18
+
+# create an Ethernet frame
+frame = EthernetFrame(
+  dstaddr = (0x01, 0x02, 0x03, 0x04, 0x05, 0x06),
+  srcaddr = (0x11, 0x12, 0x13, 0x14, 0x15, 0x16),
+  ethtype = 0x0800,
+  payload = [0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14]
+)
+
+# convert to a byte array
+bytes = PDU.encode(frame)
+
+# convert back to Ethernet frame
+decoded = PDU.decode(bytes, EthernetFrame)
+
+# check that they are the same
+@assert frame == decoded"><pre><span class="pl-k">using</span> ProtocolDataUnits
+
+<span class="pl-c"><span class="pl-c">#</span> define PDU format</span>
+Base<span class="pl-k">.</span><span class="pl-c1">@kwdef</span> <span class="pl-k">struct</span> EthernetFrame <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractPDU</span>
+  dstaddr<span class="pl-k">::</span><span class="pl-c1">NTuple{6,UInt8}</span>    <span class="pl-c"><span class="pl-c">#</span> fixed length</span>
+  srcaddr<span class="pl-k">::</span><span class="pl-c1">NTuple{6,UInt8}</span>    <span class="pl-c"><span class="pl-c">#</span> fixed length</span>
+  ethtype<span class="pl-k">::</span><span class="pl-c1">UInt16</span>             <span class="pl-c"><span class="pl-c">#</span> fixed length</span>
+  payload<span class="pl-k">::</span><span class="pl-c1">Vector{UInt8}</span>      <span class="pl-c"><span class="pl-c">#</span> variable length</span>
+  crc<span class="pl-k">::</span><span class="pl-c1">UInt32</span> <span class="pl-k">=</span> <span class="pl-c1">0</span>             <span class="pl-c"><span class="pl-c">#</span> fixed length</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> declare that the variable length of the payload can be computed</span>
+Base<span class="pl-k">.</span><span class="pl-en">length</span>(<span class="pl-k">::</span><span class="pl-c1">Type{EthernetFrame}</span>, <span class="pl-k">::</span><span class="pl-c1">Val{:payload}</span>, info) <span class="pl-k">=</span> info<span class="pl-k">.</span>length <span class="pl-k">-</span> <span class="pl-c1">18</span>
+
+<span class="pl-c"><span class="pl-c">#</span> create an Ethernet frame</span>
+frame <span class="pl-k">=</span> <span class="pl-c1">EthernetFrame</span>(
+  dstaddr <span class="pl-k">=</span> (<span class="pl-c1">0x01</span>, <span class="pl-c1">0x02</span>, <span class="pl-c1">0x03</span>, <span class="pl-c1">0x04</span>, <span class="pl-c1">0x05</span>, <span class="pl-c1">0x06</span>),
+  srcaddr <span class="pl-k">=</span> (<span class="pl-c1">0x11</span>, <span class="pl-c1">0x12</span>, <span class="pl-c1">0x13</span>, <span class="pl-c1">0x14</span>, <span class="pl-c1">0x15</span>, <span class="pl-c1">0x16</span>),
+  ethtype <span class="pl-k">=</span> <span class="pl-c1">0x0800</span>,
+  payload <span class="pl-k">=</span> [<span class="pl-c1">0x01</span>, <span class="pl-c1">0x02</span>, <span class="pl-c1">0x03</span>, <span class="pl-c1">0x04</span>, <span class="pl-c1">0x11</span>, <span class="pl-c1">0x12</span>, <span class="pl-c1">0x13</span>, <span class="pl-c1">0x14</span>]
+)
+
+<span class="pl-c"><span class="pl-c">#</span> convert to a byte array</span>
+bytes <span class="pl-k">=</span> PDU<span class="pl-k">.</span><span class="pl-c1">encode</span>(frame)
+
+<span class="pl-c"><span class="pl-c">#</span> convert back to Ethernet frame</span>
+decoded <span class="pl-k">=</span> PDU<span class="pl-k">.</span><span class="pl-c1">decode</span>(bytes, EthernetFrame)
+
+<span class="pl-c"><span class="pl-c">#</span> check that they are the same</span>
+<span class="pl-c1">@assert</span> frame <span class="pl-k">==</span> decoded</pre></div>
+<p dir="auto">The package can do much more, including nested PDUs, wire-encoding, CRC computation, etc. For more information, read the <a href="https://org-arl.github.io/ProtocolDataUnits.jl/stable" rel="nofollow">documentation</a>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Relationship with Other Packages</h2><a id="user-content-relationship-with-other-packages" class="anchor" aria-label="Permalink: Relationship with Other Packages" href="#relationship-with-other-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/JuliaIO/ProtoBuf.jl">ProtoBuf.jl</a> implements the <a href="https://protobuf.dev" rel="nofollow">Protocol Buffers</a> specification for encoding/decoding data structures into byte streams. While the functionality sounds similar with <code>ProtocolDataUnits.jl</code>, both serve very different needs. Protocol Buffers provide a great way to encode information in a well-defined way but do not provide the flexibility to declare the format of the encoded information. On the other hand, <code>ProtocolDataUnits.jl</code> allows the developer to declare the byte stream format (typically based on networking specifications), and encode/decode the byte streams into structures.</p>
+</article></div>

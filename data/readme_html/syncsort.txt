@@ -1,0 +1,92 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">SyncSort: Cross-Architecture Synchronised Sorting of Multiple Arrays</h1><a id="user-content-syncsort-cross-architecture-synchronised-sorting-of-multiple-arrays" class="anchor" aria-label="Permalink: SyncSort: Cross-Architecture Synchronised Sorting of Multiple Arrays" href="#syncsort-cross-architecture-synchronised-sorting-of-multiple-arrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">While key-value pairs are standard in sorting, oftentimes these keys and values are kept in separate arrays (see Explanation below); we can sort multiple secondary vectors following the values of a primary key vector using a new sorting interface:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="syncsort!(v, rest...)
+
+# Example interface usage
+num_particles = 100_000
+ids = rand(Int64, num_particles)
+xcoords = rand(num_particles)
+ycoords = rand(num_particles)
+
+# Reordering applied to `ids` will be done in sync with `xcoords` and `ycoords`
+syncsort!(ids, xcoords, ycoords)"><pre><span class="pl-c1">syncsort!</span>(v, rest<span class="pl-k">...</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Example interface usage</span>
+num_particles <span class="pl-k">=</span> <span class="pl-c1">100_000</span>
+ids <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Int64, num_particles)
+xcoords <span class="pl-k">=</span> <span class="pl-c1">rand</span>(num_particles)
+ycoords <span class="pl-k">=</span> <span class="pl-c1">rand</span>(num_particles)
+
+<span class="pl-c"><span class="pl-c">#</span> Reordering applied to `ids` will be done in sync with `xcoords` and `ycoords`</span>
+<span class="pl-c1">syncsort!</span>(ids, xcoords, ycoords)</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Explanation</h2><a id="user-content-explanation" class="anchor" aria-label="Permalink: Explanation" href="#explanation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Key-value pair sorting assumes an <em>Array of Structures</em> (AoS) format - e.g., a <code>Vector{Particle}</code> where <code>struct Particle</code> contains some fields <code>coord::Float64</code> and <code>id::Int64</code>. However, in many applications, it is more performant to store these fields as a <em>Structure of Arrays</em> (SoA), i.e. separate <code>coords::Vector{Float64</code> and <code>ids::Vector{Int64}</code>.</p>
+<p dir="auto">If we had an Array of Structures, using standard sorting interfaces - as is the case in virtually all programming languages - we'd do something like:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# One primary key and two secondary values
+struct Particle
+    id::Int64
+    xcoord::Float64
+    ycoord::Float64
+end
+
+# Array of structures
+particles = [Particle(rand(Int64), rand(Float64)) for i in 1:10_000]
+
+# Sort by the field `id`
+sort!(particles; by=p-&gt;p.id)"><pre><span class="pl-c"><span class="pl-c">#</span> One primary key and two secondary values</span>
+<span class="pl-k">struct</span> Particle
+    id<span class="pl-k">::</span><span class="pl-c1">Int64</span>
+    xcoord<span class="pl-k">::</span><span class="pl-c1">Float64</span>
+    ycoord<span class="pl-k">::</span><span class="pl-c1">Float64</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Array of structures</span>
+particles <span class="pl-k">=</span> [<span class="pl-c1">Particle</span>(<span class="pl-c1">rand</span>(Int64), <span class="pl-c1">rand</span>(Float64)) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">10_000</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Sort by the field `id`</span>
+<span class="pl-c1">sort!</span>(particles; by<span class="pl-k">=</span>p<span class="pl-k">-&gt;</span>p<span class="pl-k">.</span>id)</pre></div>
+<p dir="auto">In high-performance applications, we'd use a Structure of Arrays, where we have separate arrays for our keys and values; the typical solution would involve creating a mask of indices sorting the primary array, in Julia named <code>sortperm</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Keys and values held in separate vectors
+ids = rand(Int64, 10_000)
+xcoords = rand(Float64, 10_000)
+ycoords = rand(Float64, 10_000)
+
+# Get indices permutation that sorts the primary array
+sorted_indices = sortperm(ids)
+
+# Use indices mask to permute arrays
+ids = ids[sorted_indices]
+xcoords = xcoords[sorted_indices]
+ycoords = ycoords[sorted_indices]"><pre><span class="pl-c"><span class="pl-c">#</span> Keys and values held in separate vectors</span>
+ids <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Int64, <span class="pl-c1">10_000</span>)
+xcoords <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Float64, <span class="pl-c1">10_000</span>)
+ycoords <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Float64, <span class="pl-c1">10_000</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Get indices permutation that sorts the primary array</span>
+sorted_indices <span class="pl-k">=</span> <span class="pl-c1">sortperm</span>(ids)
+
+<span class="pl-c"><span class="pl-c">#</span> Use indices mask to permute arrays</span>
+ids <span class="pl-k">=</span> ids[sorted_indices]
+xcoords <span class="pl-k">=</span> xcoords[sorted_indices]
+ycoords <span class="pl-k">=</span> ycoords[sorted_indices]</pre></div>
+<p dir="auto">An easier and much more performant solution - in terms of time, space, and especially program (re-)design - would be <code>syncsort</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using SyncSort
+
+# Keys and values held in separate vectors
+ids = rand(Int64, 10_000)
+xcoords = rand(Float64, 10_000)
+ycoords = rand(Float64, 10_000)
+
+syncsort!(ids, xcoords, ycoords)"><pre><span class="pl-k">using</span> SyncSort
+
+<span class="pl-c"><span class="pl-c">#</span> Keys and values held in separate vectors</span>
+ids <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Int64, <span class="pl-c1">10_000</span>)
+xcoords <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Float64, <span class="pl-c1">10_000</span>)
+ycoords <span class="pl-k">=</span> <span class="pl-c1">rand</span>(Float64, <span class="pl-c1">10_000</span>)
+
+<span class="pl-c1">syncsort!</span>(ids, xcoords, ycoords)</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">CPU Sorting Credits</h2><a id="user-content-cpu-sorting-credits" class="anchor" aria-label="Permalink: CPU Sorting Credits" href="#cpu-sorting-credits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The CPU sorting routines in <code>src/cpu_sort.jl</code> are copied verbatim from the Julia standard library, with some changes to propagate the secondary arrays and follow the swaps done by the standard sorting routines. All credits go to the Julia contributors, with special thanks to @LilithHafner for writing one of the most performant sorting algorithms of <a href="https://github.com/LilithHafner/InterLanguageSortingComparisons">any programming language</a> - thank you! The Julia license text is included within the file.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">License</h2><a id="user-content-license" class="anchor" aria-label="Permalink: License" href="#license"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This package is shared under the same license as the Julia standard library, MIT.</p>
+</article></div>

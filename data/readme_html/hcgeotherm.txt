@@ -1,0 +1,81 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">HCGeoTherm.jl package</h1><a id="user-content-hcgeothermjl-package" class="anchor" aria-label="Permalink: HCGeoTherm.jl package" href="#hcgeothermjl-package"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Geotherm calculation routines according to Dr. Derrek Hasterok and Dr. David Chapman</p>
+<p dir="auto"><a href="https://github.com/eugeneai/HCGeoTherm.jl/actions/workflows/CI.yml?query=branch%3Amaster"><img src="https://github.com/eugeneai/HCGeoTherm.jl/actions/workflows/CI.yml/badge.svg?branch=master" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">At present it is a routines used in an application at <a href="https://gtherm.ru" rel="nofollow">https://gtherm.ru</a> . Fill free improve package structure</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">A basic considerations of usage</h3><a id="user-content-a-basic-considerations-of-usage" class="anchor" aria-label="Permalink: A basic considerations of usage" href="#a-basic-considerations-of-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Here some examples of the library usage (actually taken from tests).  Data used in a test is published in a scientific journal and is subject of <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.en" rel="nofollow">CC BY-NC 4.0 DEED</a> license (c) <a href="https://www.researchgate.net/profile/Anna-Dymshits" rel="nofollow">Anna Dymshits</a></p>
+<p dir="auto">First, install the package (it pulls a lot of other):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Pkg.add(&quot;HCGeoTherm&quot;)"><pre>Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>HCGeoTherm<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">Then run example</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using HCGeoTherm
+using CSV
+using DataFrames
+
+# The CSV is expected to have columns T_C or T_K,   D_km or D_m or P_GPa, or P_kbar
+# &quot;P_GPa&quot;;&quot;D_km&quot;;&quot;T_C&quot;
+# 5,01351657010213;158,710903731105;1053,09689717222
+# 6,27799615553237;197,151083128184;1189,07435289063
+# 6,2812869402397;197,251122983287;1197,13815898029
+# . . . . . . . . . . . . . . . . . . . . . . . . .
+#
+
+function loadCSV(fileName :: String, canonify::Bool = false) :: DataFrame
+    pt = CSV.read(fileName, DataFrame, delim=';', decimal=',')
+    if canonify
+        pt |&gt; canonifyDF    # Try to compute required columns
+    end
+    pt
+end
+
+
+
+q0 = 33:0.2:40                      # [mW/m^2] surface heat flow
+GP = defaultGTInit(q0, true)        # true - switch on optimization
+                                    # after the &quot;true&quot; You can add a folder, where put
+                                    # output graphics, by default it is &quot;/var/tmp&quot;
+df = loadCSV(&quot;data/PTdata.csv&quot;)     # Place here reference to CSV data file, see format below
+                                    # The package should contain demo data,
+                                    # or take it from github repo at
+                                    # https://github.com/eugeneai/HCGTherm.jl/tree/master/test/data
+println(&quot;Initial data frame&quot;)
+println(df)
+df.T_K = df.T_C .+ 273
+answer = computeGeotherm(GP, df)
+# print or plot results.            # We removed plotting to make the package cleaner and faster to start."><pre><span class="pl-k">using</span> HCGeoTherm
+<span class="pl-k">using</span> CSV
+<span class="pl-k">using</span> DataFrames
+
+<span class="pl-c"><span class="pl-c">#</span> The CSV is expected to have columns T_C or T_K,   D_km or D_m or P_GPa, or P_kbar</span>
+<span class="pl-c"><span class="pl-c">#</span> "P_GPa";"D_km";"T_C"</span>
+<span class="pl-c"><span class="pl-c">#</span> 5,01351657010213;158,710903731105;1053,09689717222</span>
+<span class="pl-c"><span class="pl-c">#</span> 6,27799615553237;197,151083128184;1189,07435289063</span>
+<span class="pl-c"><span class="pl-c">#</span> 6,2812869402397;197,251122983287;1197,13815898029</span>
+<span class="pl-c"><span class="pl-c">#</span> . . . . . . . . . . . . . . . . . . . . . . . . .</span>
+<span class="pl-c"><span class="pl-c">#</span></span>
+
+<span class="pl-k">function</span> <span class="pl-en">loadCSV</span>(fileName <span class="pl-k">::</span> <span class="pl-c1">String</span>, canonify<span class="pl-k">::</span><span class="pl-c1">Bool</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>) <span class="pl-k">::</span> <span class="pl-c1">DataFrame</span>
+    pt <span class="pl-k">=</span> CSV<span class="pl-k">.</span><span class="pl-c1">read</span>(fileName, DataFrame, delim<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>;<span class="pl-pds">'</span></span>, decimal<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>,<span class="pl-pds">'</span></span>)
+    <span class="pl-k">if</span> canonify
+        pt <span class="pl-k">|&gt;</span> canonifyDF    <span class="pl-c"><span class="pl-c">#</span> Try to compute required columns</span>
+    <span class="pl-k">end</span>
+    pt
+<span class="pl-k">end</span>
+
+
+
+q0 <span class="pl-k">=</span> <span class="pl-c1">33</span><span class="pl-k">:</span><span class="pl-c1">0.2</span><span class="pl-k">:</span><span class="pl-c1">40</span>                      <span class="pl-c"><span class="pl-c">#</span> [mW/m^2] surface heat flow</span>
+GP <span class="pl-k">=</span> <span class="pl-c1">defaultGTInit</span>(q0, <span class="pl-c1">true</span>)        <span class="pl-c"><span class="pl-c">#</span> true - switch on optimization</span>
+                                    <span class="pl-c"><span class="pl-c">#</span> after the "true" You can add a folder, where put</span>
+                                    <span class="pl-c"><span class="pl-c">#</span> output graphics, by default it is "/var/tmp"</span>
+df <span class="pl-k">=</span> <span class="pl-c1">loadCSV</span>(<span class="pl-s"><span class="pl-pds">"</span>data/PTdata.csv<span class="pl-pds">"</span></span>)     <span class="pl-c"><span class="pl-c">#</span> Place here reference to CSV data file, see format below</span>
+                                    <span class="pl-c"><span class="pl-c">#</span> The package should contain demo data,</span>
+                                    <span class="pl-c"><span class="pl-c">#</span> or take it from github repo at</span>
+                                    <span class="pl-c"><span class="pl-c">#</span> https://github.com/eugeneai/HCGTherm.jl/tree/master/test/data</span>
+<span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Initial data frame<span class="pl-pds">"</span></span>)
+<span class="pl-c1">println</span>(df)
+df<span class="pl-k">.</span>T_K <span class="pl-k">=</span> df<span class="pl-k">.</span>T_C <span class="pl-k">.+</span> <span class="pl-c1">273</span>
+answer <span class="pl-k">=</span> <span class="pl-c1">computeGeotherm</span>(GP, df)
+<span class="pl-c"><span class="pl-c">#</span> print or plot results.            # We removed plotting to make the package cleaner and faster to start.</span></pre></div>
+<p dir="auto">After probable successful run three SVG file will appear in <code>/var/tmp</code></p>
+<p dir="auto">(Here will go paper DOI's of corresponding publications)</p>
+</article></div>

@@ -1,0 +1,155 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">CommandLiner.jl -- Julia Command Line UX</h1><a id="user-content-commandlinerjl----julia-command-line-ux" class="anchor" aria-label="Permalink: CommandLiner.jl -- Julia Command Line UX" href="#commandlinerjl----julia-command-line-ux"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Julia is well-suited for interactive, REPL-like applications, as well as a viable replacement for many <code>bash</code> scripting workflows. This package aims to streamline and help customize the end user experience (UX) of such Julia command line applications.</p>
+<p dir="auto"><em>Scripting UX:</em></p>
+<ul dir="auto">
+<li>
+<p dir="auto">Maximally-local and flexible <strong>option parsing</strong>.</p>
+</li>
+<li>
+<p dir="auto">Custom file extension groups like (as in <code>:jpeg</code> == "jpg" or "JPG" or "Jpeg")</p>
+</li>
+<li>
+<p dir="auto">Terse and <strong>deferred color output</strong></p>
+</li>
+<li>
+<p dir="auto"><strong>Interrupt</strong> and <strong>SIGPIPE</strong> handling.</p>
+</li>
+<li>
+<p dir="auto">Tweaks to specific <strong>error message formats</strong> aimed not at developers but at application end users.</p>
+</li>
+</ul>
+<p dir="auto"><em>REPL UX:</em></p>
+<ul dir="auto">
+<li>
+<p dir="auto">Aliases for commonly used REPL <strong>pipe workflows</strong>.</p>
+</li>
+<li>
+<p dir="auto"><strong>Reverse assignment</strong> in pipes (experimental).</p>
+</li>
+<li>
+<p dir="auto"><strong>Shortcut shell commands</strong> in the Julia REPL mode (in progress).</p>
+</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">"Local" Option Parsing</h3><a id="user-content-local-option-parsing" class="anchor" aria-label="Permalink: &quot;Local&quot; Option Parsing" href="#local-option-parsing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Good option parsers for Julia exist, see <a href="https://github.com/carlobaldassi/ArgParse.jl">ArgParse.jl</a> or <a href="https://github.com/zachmatson/ArgMacros.jl">ArgMacros.jl</a> or <a href="https://github.com/attractivechaos/Getopt.jl">Getopt.jl</a>. CommandLiner's <code>getopt</code>/<code>getargs</code> use a C/GNU/<a href="https://www.gnu.org/software/libc/manual/html_node/Getopt.html" rel="nofollow">getopt</a>-inspired approach. It</p>
+<ul dir="auto">
+<li>supports <strong>in-order</strong> processing/parsing -- one can always randomly permute the option input later after all;</li>
+<li>is maximally <strong>local</strong> -- options are defined where the are being <code>if</code>-ed upon;</li>
+<li>checks and <strong>converts</strong> int/float types, and a string like <code>-8</code> is treated as an <em>argument</em> instead of an <em>option</em>.</li>
+</ul>
+<p dir="auto">In a script, you alternately call <code>getopt</code> to get an option like <code>-x</code>, and <code>getargs</code> to get its arguments:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function main()  # your main function
+    while length(ARGS) &gt; 0
+        opt = getopt()
+        if opt == &quot;-x&quot;
+            args = getargs()
+            ..
+        elseif opt === nothing  # &quot;naked&quot; arguments without preceding option
+            args = getargs()
+            ..
+        else
+            error(&quot;unknown option&quot;)
+        end
+    end
+end"><pre><span class="pl-k">function</span> <span class="pl-en">main</span>()  <span class="pl-c"><span class="pl-c">#</span> your main function</span>
+    <span class="pl-k">while</span> <span class="pl-c1">length</span>(<span class="pl-c1">ARGS</span>) <span class="pl-k">&gt;</span> <span class="pl-c1">0</span>
+        opt <span class="pl-k">=</span> <span class="pl-c1">getopt</span>()
+        <span class="pl-k">if</span> opt <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>-x<span class="pl-pds">"</span></span>
+            args <span class="pl-k">=</span> <span class="pl-c1">getargs</span>()
+            <span class="pl-k">..</span>
+        <span class="pl-k">elseif</span> opt <span class="pl-k">===</span> <span class="pl-c1">nothing</span>  <span class="pl-c"><span class="pl-c">#</span> "naked" arguments without preceding option</span>
+            args <span class="pl-k">=</span> <span class="pl-c1">getargs</span>()
+            <span class="pl-k">..</span>
+        <span class="pl-k">else</span>
+            <span class="pl-c1">error</span>(<span class="pl-s"><span class="pl-pds">"</span>unknown option<span class="pl-pds">"</span></span>)
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<ul dir="auto">
+<li><code>getopt()</code> pops and returns the next option from ARGS; if no option is found (i.e., string not starting with "--" or "-"), returns <code>nothing</code> (the arguments that would possibly follow are "naked").</li>
+<li><code>getargs()</code> returns all arguments up to the next option; must find at least 1.</li>
+<li><code>getargs0()</code> returns all arguments up to the next option (0 or more).</li>
+<li><code>getarg()</code> returns one argument (not as vector).</li>
+<li><code>getargs("sfii")</code> returns a vector of 4 arguments, a string, a float and two integers. Fails if more or fewer arguments are encountered, or if types do not match.</li>
+<li><code>getargs("si*")</code> return a vector with a string argument and 0+ ints.</li>
+</ul>
+<p dir="auto">if <code>stopatopt</code> is <code>false</code>, all command line strings are treated as arguments (default distinguishes between options and arguments).</p>
+<p dir="auto">if <code>mustexhaust</code> is <code>false</code>, you can read n arguments, and leave additional, "naked arguments" for later parsing (default fails if there are valid arguments left, i.e., if the next string in <code>ARGS</code> is not an option).</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">File Extension Groups</h3><a id="user-content-file-extension-groups" class="anchor" aria-label="Permalink: File Extension Groups" href="#file-extension-groups"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>hasext(path, "jpeg")</code> and <code>hasext(path, :jpeg)</code> check for file extensions. The first (with a string) checks for identity; the latter checks whether a file extension belongs to a group like {"jpg", "jpeg", "jpe"}. You can define your own groups.</p>
+<p dir="auto">It supports piping (and thus <code>filter(hasext(..))</code>):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; &quot;mypic.jpg&quot; |&gt; hasext(:jpeg)
+true"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>mypic.jpg<span class="pl-pds">"</span></span> <span class="pl-k">|&gt;</span> <span class="pl-c1">hasext</span>(<span class="pl-c1">:jpeg</span>)
+<span class="pl-c1">true</span></pre></div>
+<p dir="auto">[in progress]</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Terse and Deferred Color Output</h3><a id="user-content-terse-and-deferred-color-output" class="anchor" aria-label="Permalink: Terse and Deferred Color Output" href="#terse-and-deferred-color-output"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Wrapper type with custom <code>print</code> (calling <code>printstyled</code>) that lets you defer coloring outputs. Terse syntax to make coloring less intrusive.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; x = Cbx(&quot;Hello&quot;, &quot;r!&quot;)
+Cbx(&quot;Hello&quot;, Base.Pairs{Symbol, Any, Tuple{Symbol, Symbol}, NamedTuple{(:color, :reverse), Tuple{Symbol, Bool}}}(:color =&gt; :light_red, :reverse =&gt; true))
+
+julia&gt; print(x)  # no printstyled needed!"><pre>julia<span class="pl-k">&gt;</span> x <span class="pl-k">=</span> <span class="pl-c1">Cbx</span>(<span class="pl-s"><span class="pl-pds">"</span>Hello<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>r!<span class="pl-pds">"</span></span>)
+<span class="pl-c1">Cbx</span>(<span class="pl-s"><span class="pl-pds">"</span>Hello<span class="pl-pds">"</span></span>, Base<span class="pl-k">.</span><span class="pl-c1">Pairs</span><span class="pl-c1">{Symbol, Any, Tuple{Symbol, Symbol}, NamedTuple{(:color, :reverse), Tuple{Symbol, Bool}}}</span>(<span class="pl-c1">:color</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">:light_red</span>, <span class="pl-c1">:reverse</span> <span class="pl-k">=&gt;</span> <span class="pl-c1">true</span>))
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">print</span>(x)  <span class="pl-c"><span class="pl-c">#</span> no printstyled needed!</span></pre></div>
+<p dir="auto">..will output in red &amp; inverted.</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Erroruser and @main Guard</h3><a id="user-content-erroruser-and-main-guard" class="anchor" aria-label="Permalink: Erroruser and @main Guard" href="#erroruser-and-main-guard"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>EnduserError</code> is an exception type meant to signal that the end user would not benefit from a full backtrace, e.g., with errors such as "file not found". Thrown with <code>erroruser(msg)</code>.</p>
+<p dir="auto">The function <code>hushexit(f::Function)</code> calls <code>f</code>, and suppresses SIGPIPE exceptions gracefully, handles &lt;Ctrl+C&gt;..</p>
+<p dir="auto">The macro <code>@main</code> is a shortcut for the file guard in a script; it calls <strong>your</strong> <code>main</code> function via <code>hushexit(main)</code>.</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Curry Hack</h3><a id="user-content-curry-hack" class="anchor" aria-label="Permalink: Curry Hack" href="#curry-hack"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; import CommandLiner.Iter.Hack: map, filter
+
+julia&gt; [1,2,3] |&gt; map(sqrt)
+...
+julia&gt; [1,2,3] |&gt; filter(isodd)
+..."><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> CommandLiner<span class="pl-k">.</span>Iter<span class="pl-k">.</span>Hack<span class="pl-k">:</span> map, filter
+
+julia<span class="pl-k">&gt;</span> [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>] <span class="pl-k">|&gt;</span> <span class="pl-c1">map</span>(sqrt)
+<span class="pl-k">...</span>
+julia<span class="pl-k">&gt;</span> [<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>] <span class="pl-k">|&gt;</span> <span class="pl-c1">filter</span>(isodd)
+<span class="pl-k">...</span></pre></div>
+<p dir="auto">[Thanks to @mkitti on <a href="https://discourse.julialang.org/t/enlistment-for-corsairing-the-map-function-in-repl-main-only/96768" rel="nofollow">Discourse</a> for this idea!]</p>
+<p dir="auto">CommandLiner also exports the names <code>filter_</code>, <code>map_</code> etc. as synonyms for the <code>Base.Iterators</code> variants; the underscore should resemble to-be-continued dots <code>...</code></p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Reverse-Assign Hack</h3><a id="user-content-reverse-assign-hack" class="anchor" aria-label="Permalink: Reverse-Assign Hack" href="#reverse-assign-hack"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; x
+ERROR: UndefVarError: `x` not defined
+
+julia&gt; ReverseAssign.enable()
+
+julia&gt; 1.0 |&gt; sin |&gt; cos |&gt; sin |&gt; :x
+0.6181340709529279
+
+julia&gt; x
+0.6181340709529279"><pre>julia<span class="pl-k">&gt;</span> x
+ERROR<span class="pl-k">:</span> UndefVarError<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">`</span>x<span class="pl-pds">`</span></span> not defined
+
+julia<span class="pl-k">&gt;</span> ReverseAssign<span class="pl-k">.</span><span class="pl-c1">enable</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">1.0</span> <span class="pl-k">|&gt;</span> sin <span class="pl-k">|&gt;</span> cos <span class="pl-k">|&gt;</span> sin <span class="pl-k">|&gt;</span> <span class="pl-c1">:x</span>
+<span class="pl-c1">0.6181340709529279</span>
+
+julia<span class="pl-k">&gt;</span> x
+<span class="pl-c1">0.6181340709529279</span></pre></div>
+<p dir="auto">It works by overwriting the function call operator for <code>Symbol</code>. We put our worries if this is safe into the laps of the gods.</p>
+<br>
+<br>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Version History</h4><a id="user-content-version-history" class="anchor" aria-label="Permalink: Version History" href="#version-history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>0.3 Colors; extensions</li>
+<li>0.2 Initial version: command line options; enduser error; curry and reverse-assign hacks; tests</li>
+</ul>
+</article></div>

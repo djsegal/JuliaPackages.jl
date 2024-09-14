@@ -1,0 +1,256 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">QuasiEwald.jl</h1><a id="user-content-quasiewaldjl" class="anchor" aria-label="Permalink: QuasiEwald.jl" href="#quasiewaldjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/ArrogantGao/QuasiEwald.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/ArrogantGao/QuasiEwald.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto"><code>QuasiEwald.jl</code> is a package written in <code>Julia</code>.
+It is an implementation of the algorithm Quasi Ewald Method, which used to calculate the electrostatic interaction in dielectric confined Quasi-2D charged systems for MD simulations, which has a linear complexity to the number of particles.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Getting Started</h2><a id="user-content-getting-started" class="anchor" aria-label="Permalink: Getting Started" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This package has to be used as an extentation of the author's previous package <a href="https://github.com/ArrogantGao/ExTinyMD.jl"><code>ExTinyMD.jl</code></a>, which is a small but fast MD package written in <code>Julia</code> language.
+To use this package, you only need to type</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; add ExTinyMD, QuasiEwald"><pre>pkg<span class="pl-k">&gt;</span> add ExTinyMD, QuasiEwald</pre></div>
+<p dir="auto">in your command lines.</p>
+<p dir="auto">Here is an simple example, which will calculate the interaction between two paricle confined by dielectric substrate of different dielectric permittivity.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Plots, ExTinyMD, QuasiEwald
+
+begin
+    n_atoms = 2
+    L = 180.0
+    boundary = ExTinyMD.Q2dBoundary(L, L, 10.0) 
+
+    atoms = [Atom(type = 1, mass = 1.0, charge = 1.0), Atom(type = 2, mass = 1.0, charge = -1.0)]
+
+    sys = MDSys(
+                n_atoms = n_atoms,
+                atoms = atoms,
+                boundary = boundary,
+                interactions = [(NoInteraction(), NoNeighborFinder(n_atoms))],
+                loggers = [TrajectionLogger(step = 100, output = false)],
+                simulator = VerletProcess(dt = 0.001, thermostat = AndersenThermoStat(1.0, 0.05))
+            )
+
+    Force_x = Vector{Vector{Float64}}()
+    coord_1 = Point(50.0, 50.0, 1.0)
+    X = 0.1:0.1:40.0
+
+    for (γ_1, γ_2) in [(0.0, 0.0), (0.95, 0.95), (-0.95, -0.95), (10.0, 10.0), (-10.0, -10.0)]
+        ϵ_0 = 1.0
+        n_t = 30
+
+        accuracy = 1e-4
+        α = 1.0
+        r_c = 15.0
+        k_c = sqrt(-4 * α * log(accuracy))
+
+        force_x = Vector{Float64}()
+
+        for x_2 in X
+            info = SimulationInfo(n_atoms, atoms, (0.0, L, 0.0, L, 0.0, 10.0), boundary; min_r = 1.0, temp = 1.0)
+            coord_2 = Point(50.0 + x_2, 50.0, 1.01)
+
+            info.particle_info[1].position = coord_1
+            info.particle_info[2].position = coord_2
+
+            sortz = SortingFinder(info)
+            cellq2d = CellListQ2D(info, r_c, boundary, 1)
+            interaction_short = QuasiEwaldShortInteraction(γ_1, γ_2, ϵ_0, (L, L, 10.0), false, accuracy, α, n_atoms, r_c, n_t)
+            interaction_long = QuasiEwaldLongInteraction(γ_1, γ_2, ϵ_0, (L, L, 10.0), false, accuracy, α, n_atoms, k_c, 0)
+    
+            force_qem = [Point(0.0, 0.0, 0.0) for i in 1:n_atoms]
+            QuasiEwald_Fs!(interaction_short, cellq2d, sys, info)
+            QuasiEwald_Fl!(interaction_long, sortz, sys, info)
+            push!(force_x, info.particle_info[1].acceleration[1])
+        end
+        push!(Force_x, force_x)
+    end
+
+    plot(dpi = 300, size = (800, 600), legend = :topright, xlabel = &quot;x&quot;, ylabel = &quot;force_x&quot;)
+    for (γ, force_x) in zip([0.0, 0.95, -0.95, 10.0, -10.0], Force_x)
+        plot!(X, force_x, label = &quot;γ = &quot; * string(γ), ylim = [-0.06, 0.06])
+    end
+    savefig(&quot;force_x.png&quot;)
+end"><pre><span class="pl-k">using</span> Plots, ExTinyMD, QuasiEwald
+
+<span class="pl-k">begin</span>
+    n_atoms <span class="pl-k">=</span> <span class="pl-c1">2</span>
+    L <span class="pl-k">=</span> <span class="pl-c1">180.0</span>
+    boundary <span class="pl-k">=</span> ExTinyMD<span class="pl-k">.</span><span class="pl-c1">Q2dBoundary</span>(L, L, <span class="pl-c1">10.0</span>) 
+
+    atoms <span class="pl-k">=</span> [<span class="pl-c1">Atom</span>(type <span class="pl-k">=</span> <span class="pl-c1">1</span>, mass <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, charge <span class="pl-k">=</span> <span class="pl-c1">1.0</span>), <span class="pl-c1">Atom</span>(type <span class="pl-k">=</span> <span class="pl-c1">2</span>, mass <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, charge <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">1.0</span>)]
+
+    sys <span class="pl-k">=</span> <span class="pl-c1">MDSys</span>(
+                n_atoms <span class="pl-k">=</span> n_atoms,
+                atoms <span class="pl-k">=</span> atoms,
+                boundary <span class="pl-k">=</span> boundary,
+                interactions <span class="pl-k">=</span> [(<span class="pl-c1">NoInteraction</span>(), <span class="pl-c1">NoNeighborFinder</span>(n_atoms))],
+                loggers <span class="pl-k">=</span> [<span class="pl-c1">TrajectionLogger</span>(step <span class="pl-k">=</span> <span class="pl-c1">100</span>, output <span class="pl-k">=</span> <span class="pl-c1">false</span>)],
+                simulator <span class="pl-k">=</span> <span class="pl-c1">VerletProcess</span>(dt <span class="pl-k">=</span> <span class="pl-c1">0.001</span>, thermostat <span class="pl-k">=</span> <span class="pl-c1">AndersenThermoStat</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">0.05</span>))
+            )
+
+    Force_x <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Vector{Float64}}</span>()
+    coord_1 <span class="pl-k">=</span> <span class="pl-c1">Point</span>(<span class="pl-c1">50.0</span>, <span class="pl-c1">50.0</span>, <span class="pl-c1">1.0</span>)
+    X <span class="pl-k">=</span> <span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">40.0</span>
+
+    <span class="pl-k">for</span> (γ_1, γ_2) <span class="pl-k">in</span> [(<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>), (<span class="pl-c1">0.95</span>, <span class="pl-c1">0.95</span>), (<span class="pl-k">-</span><span class="pl-c1">0.95</span>, <span class="pl-k">-</span><span class="pl-c1">0.95</span>), (<span class="pl-c1">10.0</span>, <span class="pl-c1">10.0</span>), (<span class="pl-k">-</span><span class="pl-c1">10.0</span>, <span class="pl-k">-</span><span class="pl-c1">10.0</span>)]
+        ϵ_0 <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+        n_t <span class="pl-k">=</span> <span class="pl-c1">30</span>
+
+        accuracy <span class="pl-k">=</span> <span class="pl-c1">1e-4</span>
+        α <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+        r_c <span class="pl-k">=</span> <span class="pl-c1">15.0</span>
+        k_c <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(<span class="pl-k">-</span><span class="pl-c1">4</span> <span class="pl-k">*</span> α <span class="pl-k">*</span> <span class="pl-c1">log</span>(accuracy))
+
+        force_x <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Float64}</span>()
+
+        <span class="pl-k">for</span> x_2 <span class="pl-k">in</span> X
+            info <span class="pl-k">=</span> <span class="pl-c1">SimulationInfo</span>(n_atoms, atoms, (<span class="pl-c1">0.0</span>, L, <span class="pl-c1">0.0</span>, L, <span class="pl-c1">0.0</span>, <span class="pl-c1">10.0</span>), boundary; min_r <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, temp <span class="pl-k">=</span> <span class="pl-c1">1.0</span>)
+            coord_2 <span class="pl-k">=</span> <span class="pl-c1">Point</span>(<span class="pl-c1">50.0</span> <span class="pl-k">+</span> x_2, <span class="pl-c1">50.0</span>, <span class="pl-c1">1.01</span>)
+
+            info<span class="pl-k">.</span>particle_info[<span class="pl-c1">1</span>]<span class="pl-k">.</span>position <span class="pl-k">=</span> coord_1
+            info<span class="pl-k">.</span>particle_info[<span class="pl-c1">2</span>]<span class="pl-k">.</span>position <span class="pl-k">=</span> coord_2
+
+            sortz <span class="pl-k">=</span> <span class="pl-c1">SortingFinder</span>(info)
+            cellq2d <span class="pl-k">=</span> <span class="pl-c1">CellListQ2D</span>(info, r_c, boundary, <span class="pl-c1">1</span>)
+            interaction_short <span class="pl-k">=</span> <span class="pl-c1">QuasiEwaldShortInteraction</span>(γ_1, γ_2, ϵ_0, (L, L, <span class="pl-c1">10.0</span>), <span class="pl-c1">false</span>, accuracy, α, n_atoms, r_c, n_t)
+            interaction_long <span class="pl-k">=</span> <span class="pl-c1">QuasiEwaldLongInteraction</span>(γ_1, γ_2, ϵ_0, (L, L, <span class="pl-c1">10.0</span>), <span class="pl-c1">false</span>, accuracy, α, n_atoms, k_c, <span class="pl-c1">0</span>)
+    
+            force_qem <span class="pl-k">=</span> [<span class="pl-c1">Point</span>(<span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>, <span class="pl-c1">0.0</span>) <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n_atoms]
+            <span class="pl-c1">QuasiEwald_Fs!</span>(interaction_short, cellq2d, sys, info)
+            <span class="pl-c1">QuasiEwald_Fl!</span>(interaction_long, sortz, sys, info)
+            <span class="pl-c1">push!</span>(force_x, info<span class="pl-k">.</span>particle_info[<span class="pl-c1">1</span>]<span class="pl-k">.</span>acceleration[<span class="pl-c1">1</span>])
+        <span class="pl-k">end</span>
+        <span class="pl-c1">push!</span>(Force_x, force_x)
+    <span class="pl-k">end</span>
+
+    <span class="pl-c1">plot</span>(dpi <span class="pl-k">=</span> <span class="pl-c1">300</span>, size <span class="pl-k">=</span> (<span class="pl-c1">800</span>, <span class="pl-c1">600</span>), legend <span class="pl-k">=</span> <span class="pl-c1">:topright</span>, xlabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>, ylabel <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>force_x<span class="pl-pds">"</span></span>)
+    <span class="pl-k">for</span> (γ, force_x) <span class="pl-k">in</span> <span class="pl-c1">zip</span>([<span class="pl-c1">0.0</span>, <span class="pl-c1">0.95</span>, <span class="pl-k">-</span><span class="pl-c1">0.95</span>, <span class="pl-c1">10.0</span>, <span class="pl-k">-</span><span class="pl-c1">10.0</span>], Force_x)
+        <span class="pl-c1">plot!</span>(X, force_x, label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>γ = <span class="pl-pds">"</span></span> <span class="pl-k">*</span> <span class="pl-c1">string</span>(γ), ylim <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">0.06</span>, <span class="pl-c1">0.06</span>])
+    <span class="pl-k">end</span>
+    <span class="pl-c1">savefig</span>(<span class="pl-s"><span class="pl-pds">"</span>force_x.png<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">To run this script, you can simple type:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia ./example/force/force_pair.jl"><pre class="notranslate"><code>julia ./example/force/force_pair.jl
+</code></pre></div>
+<p dir="auto">The result is shown below:</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="./examples/force/force_x.png"><img src="./examples/force/force_x.png" alt="Force in x direction" style="max-width: 100%;"></a></p>
+<p dir="auto">Here is another example, which shows how to simulate a dielectric confined charged system via <code>ExTinyMD.jl</code> and <code>QuasiEwald.jl</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ExTinyMD, QuasiEwald
+
+begin
+    n_atoms = 436
+    n_atoms = Int64(round(n_atoms))
+    L_x = 100.0
+    L_y = 100.0
+    L_z = 50.0
+    L = (L_x, L_y, L_z)
+    boundary = Q2dBoundary(L_x, L_y, L_z)
+    atoms = Vector{Atom{Float64}}()
+
+    for i in 1:218
+        push!(atoms, Atom(type = 1, mass = 1.0, charge = 1.0))
+    end
+
+    for i in 219:436
+        push!(atoms, Atom(type = 2, mass = 1.0, charge = - 1.0))
+    end
+
+    (γ_1, γ_2) = (0.95, -0.95)
+
+    info = SimulationInfo(n_atoms, atoms, (0.0, L_x, 0.0, L_y, 0.5, L_z - 0.5), boundary; min_r = 2.0, temp = 1.0)
+
+    ϵ_0 = 1.0
+
+    accuracy = 1e-4
+    α = 1.0
+    k_c = sqrt(- 4 * α * log(accuracy))
+    r_c = (α * accuracy)^(-1/3) / 2
+    n_t = 30
+    rbe_p = 50
+
+    intershort = QuasiEwaldShortInteraction(γ_1, γ_2, ϵ_0, L, true, accuracy, α, n_atoms, r_c, n_t)
+    short_finder = CellListQ2D(info, r_c + 1.0, boundary, 100)
+    interlong = QuasiEwaldLongInteraction(γ_1, γ_2, ϵ_0, L, true, accuracy, α, n_atoms, k_c, rbe_p)
+    long_finder = SortingFinder(info)
+
+    interactions = [
+        (LennardJones(), CellList3D(info, 4.5, boundary, 100)),
+        (SubLennardJones(0.0, L_z; cutoff = 0.5, σ = 0.5), SubNeighborFinder(1.0, info, 0.0, L_z)), 
+        (intershort, short_finder),
+        (interlong, long_finder)
+        ]
+
+    loggers = [TempartureLogger(100, output = true), TrajectionLogger(step = 100, output = true)]
+    simulator = VerletProcess(dt = 0.001, thermostat = AndersenThermoStat(1.0, 0.05))
+
+    sys = MDSys(
+        n_atoms = n_atoms,
+        atoms = atoms,
+        boundary = boundary,
+        interactions = interactions,
+        loggers = loggers,
+        simulator = simulator
+    )
+
+    simulate!(simulator, sys, info, 100000)
+end"><pre><span class="pl-k">using</span> ExTinyMD, QuasiEwald
+
+<span class="pl-k">begin</span>
+    n_atoms <span class="pl-k">=</span> <span class="pl-c1">436</span>
+    n_atoms <span class="pl-k">=</span> <span class="pl-c1">Int64</span>(<span class="pl-c1">round</span>(n_atoms))
+    L_x <span class="pl-k">=</span> <span class="pl-c1">100.0</span>
+    L_y <span class="pl-k">=</span> <span class="pl-c1">100.0</span>
+    L_z <span class="pl-k">=</span> <span class="pl-c1">50.0</span>
+    L <span class="pl-k">=</span> (L_x, L_y, L_z)
+    boundary <span class="pl-k">=</span> <span class="pl-c1">Q2dBoundary</span>(L_x, L_y, L_z)
+    atoms <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Atom{Float64}}</span>()
+
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">218</span>
+        <span class="pl-c1">push!</span>(atoms, <span class="pl-c1">Atom</span>(type <span class="pl-k">=</span> <span class="pl-c1">1</span>, mass <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, charge <span class="pl-k">=</span> <span class="pl-c1">1.0</span>))
+    <span class="pl-k">end</span>
+
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">219</span><span class="pl-k">:</span><span class="pl-c1">436</span>
+        <span class="pl-c1">push!</span>(atoms, <span class="pl-c1">Atom</span>(type <span class="pl-k">=</span> <span class="pl-c1">2</span>, mass <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, charge <span class="pl-k">=</span> <span class="pl-k">-</span> <span class="pl-c1">1.0</span>))
+    <span class="pl-k">end</span>
+
+    (γ_1, γ_2) <span class="pl-k">=</span> (<span class="pl-c1">0.95</span>, <span class="pl-k">-</span><span class="pl-c1">0.95</span>)
+
+    info <span class="pl-k">=</span> <span class="pl-c1">SimulationInfo</span>(n_atoms, atoms, (<span class="pl-c1">0.0</span>, L_x, <span class="pl-c1">0.0</span>, L_y, <span class="pl-c1">0.5</span>, L_z <span class="pl-k">-</span> <span class="pl-c1">0.5</span>), boundary; min_r <span class="pl-k">=</span> <span class="pl-c1">2.0</span>, temp <span class="pl-k">=</span> <span class="pl-c1">1.0</span>)
+
+    ϵ_0 <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+
+    accuracy <span class="pl-k">=</span> <span class="pl-c1">1e-4</span>
+    α <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+    k_c <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(<span class="pl-k">-</span> <span class="pl-c1">4</span> <span class="pl-k">*</span> α <span class="pl-k">*</span> <span class="pl-c1">log</span>(accuracy))
+    r_c <span class="pl-k">=</span> (α <span class="pl-k">*</span> accuracy)<span class="pl-k">^</span>(<span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">3</span>) <span class="pl-k">/</span> <span class="pl-c1">2</span>
+    n_t <span class="pl-k">=</span> <span class="pl-c1">30</span>
+    rbe_p <span class="pl-k">=</span> <span class="pl-c1">50</span>
+
+    intershort <span class="pl-k">=</span> <span class="pl-c1">QuasiEwaldShortInteraction</span>(γ_1, γ_2, ϵ_0, L, <span class="pl-c1">true</span>, accuracy, α, n_atoms, r_c, n_t)
+    short_finder <span class="pl-k">=</span> <span class="pl-c1">CellListQ2D</span>(info, r_c <span class="pl-k">+</span> <span class="pl-c1">1.0</span>, boundary, <span class="pl-c1">100</span>)
+    interlong <span class="pl-k">=</span> <span class="pl-c1">QuasiEwaldLongInteraction</span>(γ_1, γ_2, ϵ_0, L, <span class="pl-c1">true</span>, accuracy, α, n_atoms, k_c, rbe_p)
+    long_finder <span class="pl-k">=</span> <span class="pl-c1">SortingFinder</span>(info)
+
+    interactions <span class="pl-k">=</span> [
+        (<span class="pl-c1">LennardJones</span>(), <span class="pl-c1">CellList3D</span>(info, <span class="pl-c1">4.5</span>, boundary, <span class="pl-c1">100</span>)),
+        (<span class="pl-c1">SubLennardJones</span>(<span class="pl-c1">0.0</span>, L_z; cutoff <span class="pl-k">=</span> <span class="pl-c1">0.5</span>, σ <span class="pl-k">=</span> <span class="pl-c1">0.5</span>), <span class="pl-c1">SubNeighborFinder</span>(<span class="pl-c1">1.0</span>, info, <span class="pl-c1">0.0</span>, L_z)), 
+        (intershort, short_finder),
+        (interlong, long_finder)
+        ]
+
+    loggers <span class="pl-k">=</span> [<span class="pl-c1">TempartureLogger</span>(<span class="pl-c1">100</span>, output <span class="pl-k">=</span> <span class="pl-c1">true</span>), <span class="pl-c1">TrajectionLogger</span>(step <span class="pl-k">=</span> <span class="pl-c1">100</span>, output <span class="pl-k">=</span> <span class="pl-c1">true</span>)]
+    simulator <span class="pl-k">=</span> <span class="pl-c1">VerletProcess</span>(dt <span class="pl-k">=</span> <span class="pl-c1">0.001</span>, thermostat <span class="pl-k">=</span> <span class="pl-c1">AndersenThermoStat</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">0.05</span>))
+
+    sys <span class="pl-k">=</span> <span class="pl-c1">MDSys</span>(
+        n_atoms <span class="pl-k">=</span> n_atoms,
+        atoms <span class="pl-k">=</span> atoms,
+        boundary <span class="pl-k">=</span> boundary,
+        interactions <span class="pl-k">=</span> interactions,
+        loggers <span class="pl-k">=</span> loggers,
+        simulator <span class="pl-k">=</span> simulator
+    )
+
+    <span class="pl-c1">simulate!</span>(simulator, sys, info, <span class="pl-c1">100000</span>)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">which will simulate 436 changed particle confined by substrates with <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="b3028deb3ce3c9843dfb4fdd520e4a33">$\gamma = 0.95$</math-renderer> for <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="b3028deb3ce3c9843dfb4fdd520e4a33">$10^6$</math-renderer> steps, and the trajection will be recorded.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Questions and Contributions</h2><a id="user-content-questions-and-contributions" class="anchor" aria-label="Permalink: Questions and Contributions" href="#questions-and-contributions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Please open an <a href="https://github.com/ArrogantGao/QuasiEwald.jl/issues">issue</a>
+if you encounter any problems, or have any feature requests.</p>
+<p dir="auto">It is also welcomed for any suggestions about the issues marked as <code>enhancement</code>, please let us know if you have any idea about them.</p>
+</article></div>

@@ -1,0 +1,87 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">PortMidi.jl</h1><a id="user-content-portmidijl" class="anchor" aria-label="Permalink: PortMidi.jl" href="#portmidijl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://JuliaMusic.github.io/PortMidi.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a></p>
+
+<p dir="auto">A Julia wrapper for the C library <a href="https://github.com/PortMidi/portmidi">PortMidi</a>.
+See the <a href="https://portmidi.github.io/portmidi_docs/" rel="nofollow">C documentation</a> for a list of functions.</p>
+<p dir="auto"><em>This wrapper is work in progress.</em></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Example</h2><a id="user-content-example" class="anchor" aria-label="Permalink: Example" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">See the <code>examples</code> folder for a test case.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using PortMidi 
+
+Pm_Initialize()
+
+# 0. Get info about devices
+for i in 0:Pm_CountDevices()-1
+    info = unsafe_load(Pm_GetDeviceInfo(i))
+    println(i, &quot;: &quot;, info.output &gt; 0 ? &quot;[Output ] &quot; : &quot;[Input] &quot;, unsafe_string(info.name), &quot; (&quot;, unsafe_string(info.interf), &quot;)&quot;)
+end
+
+# 1. Select device
+id = 0  # change this number if needed
+print(&quot;Use: &quot;, unsafe_string(unsafe_load(Pm_GetDeviceInfo(id)).name))
+
+# 2. Open device 
+stream = Ref{Ptr{PortMidi.PortMidiStream}}(C_NULL)
+Pm_OpenOutput(stream, id, C_NULL, 0, C_NULL, C_NULL, 0)
+# don't forget to call later: Pm_Close(stream[])
+
+# 3. Send MIDI messages 
+Note_ON = 0x90
+Note_OFF = 0x80
+C4 = 60
+
+function play_note(stream, note, velocity, duration)
+    Pm_WriteShort(stream[], 0, Pm_Message(Note_ON, note, velocity))
+    sleep(duration)
+    Pm_WriteShort(stream[], 0, Pm_Message(Note_OFF, note, velocity))
+end
+
+# make a random tune...
+for i in 1:12
+    @async play_note(stream, C4 + rand([-5,-2,0,2,5]), rand(80:120), 0.4 + 0.05*rand())
+    sleep(0.5 + 0.05*rand())
+end
+
+# 4. Close device
+Pm_Close(stream[])"><pre><span class="pl-k">using</span> PortMidi 
+
+<span class="pl-c1">Pm_Initialize</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> 0. Get info about devices</span>
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">Pm_CountDevices</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>
+    info <span class="pl-k">=</span> <span class="pl-c1">unsafe_load</span>(<span class="pl-c1">Pm_GetDeviceInfo</span>(i))
+    <span class="pl-c1">println</span>(i, <span class="pl-s"><span class="pl-pds">"</span>: <span class="pl-pds">"</span></span>, info<span class="pl-k">.</span>output <span class="pl-k">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">?</span> <span class="pl-s"><span class="pl-pds">"</span>[Output ] <span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>[Input] <span class="pl-pds">"</span></span>, <span class="pl-c1">unsafe_string</span>(info<span class="pl-k">.</span>name), <span class="pl-s"><span class="pl-pds">"</span> (<span class="pl-pds">"</span></span>, <span class="pl-c1">unsafe_string</span>(info<span class="pl-k">.</span>interf), <span class="pl-s"><span class="pl-pds">"</span>)<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> 1. Select device</span>
+id <span class="pl-k">=</span> <span class="pl-c1">0</span>  <span class="pl-c"><span class="pl-c">#</span> change this number if needed</span>
+<span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds">"</span>Use: <span class="pl-pds">"</span></span>, <span class="pl-c1">unsafe_string</span>(<span class="pl-c1">unsafe_load</span>(<span class="pl-c1">Pm_GetDeviceInfo</span>(id))<span class="pl-k">.</span>name))
+
+<span class="pl-c"><span class="pl-c">#</span> 2. Open device </span>
+stream <span class="pl-k">=</span> <span class="pl-c1">Ref</span><span class="pl-c1">{Ptr{PortMidi.PortMidiStream}}</span>(<span class="pl-c1">C_NULL</span>)
+<span class="pl-c1">Pm_OpenOutput</span>(stream, id, <span class="pl-c1">C_NULL</span>, <span class="pl-c1">0</span>, <span class="pl-c1">C_NULL</span>, <span class="pl-c1">C_NULL</span>, <span class="pl-c1">0</span>)
+<span class="pl-c"><span class="pl-c">#</span> don't forget to call later: Pm_Close(stream[])</span>
+
+<span class="pl-c"><span class="pl-c">#</span> 3. Send MIDI messages </span>
+Note_ON <span class="pl-k">=</span> <span class="pl-c1">0x90</span>
+Note_OFF <span class="pl-k">=</span> <span class="pl-c1">0x80</span>
+C4 <span class="pl-k">=</span> <span class="pl-c1">60</span>
+
+<span class="pl-k">function</span> <span class="pl-en">play_note</span>(stream, note, velocity, duration)
+    <span class="pl-c1">Pm_WriteShort</span>(stream[], <span class="pl-c1">0</span>, <span class="pl-c1">Pm_Message</span>(Note_ON, note, velocity))
+    <span class="pl-c1">sleep</span>(duration)
+    <span class="pl-c1">Pm_WriteShort</span>(stream[], <span class="pl-c1">0</span>, <span class="pl-c1">Pm_Message</span>(Note_OFF, note, velocity))
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> make a random tune...</span>
+<span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">12</span>
+    <span class="pl-c1">@async</span> <span class="pl-c1">play_note</span>(stream, C4 <span class="pl-k">+</span> <span class="pl-c1">rand</span>([<span class="pl-k">-</span><span class="pl-c1">5</span>,<span class="pl-k">-</span><span class="pl-c1">2</span>,<span class="pl-c1">0</span>,<span class="pl-c1">2</span>,<span class="pl-c1">5</span>]), <span class="pl-c1">rand</span>(<span class="pl-c1">80</span><span class="pl-k">:</span><span class="pl-c1">120</span>), <span class="pl-c1">0.4</span> <span class="pl-k">+</span> <span class="pl-c1">0.05</span><span class="pl-k">*</span><span class="pl-c1">rand</span>())
+    <span class="pl-c1">sleep</span>(<span class="pl-c1">0.5</span> <span class="pl-k">+</span> <span class="pl-c1">0.05</span><span class="pl-k">*</span><span class="pl-c1">rand</span>())
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> 4. Close device</span>
+<span class="pl-c1">Pm_Close</span>(stream[])</pre></div>
+<p dir="auto">On Windows, one could use the program <a href="https://www.tobias-erichsen.de/software/loopmidi.html" rel="nofollow">loopMIDI</a> to create a virtual MIDI device
+and in combination with some virtual instruments (e.g. DAWs, VCV Rack, ...) one can also then listen to the notes in realtime. But this
+is only one out of many possible ways to use the <code>PortMidi</code> library.</p>
+</article></div>

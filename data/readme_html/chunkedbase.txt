@@ -1,0 +1,196 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ChunkedBase.jl</h1><a id="user-content-chunkedbasejl" class="anchor" aria-label="Permalink: ChunkedBase.jl" href="#chunkedbasejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The package handles the ingestion of data chunks and the distribution &amp; synchronization of work that happens on these chunks in parallel. It came into existence while refactoring the <a href="https://github.com/RelationalAI/ChunkedCSV.jl"><code>ChunkedCSV.jl</code></a> and <a href="https://github.com/RelationalAI/ChunkedJSONL.jl"><code>ChunkedJSONL.jl</code></a> packages and was designed to be extended by packages like these. It is a package used to write parser packages.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Overview</h2><a id="user-content-overview" class="anchor" aria-label="Permalink: Overview" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The purpose of the package is to provide a framework for creating parsers for textual formats, where each record is separated by a newline character. Examples of such formats include CSV and JSONLines. The package is designed to operate on data chunks and to reuse preallocated buffers for each of these chunks. It simplifies the process of ingesting data, locating newlines, distributing work among multiple tasks, and synchronizing them. To implement a parsing package, one only needs to define how to <em>parse</em> the records and how to <em>consume</em> the parsed results.</p>
+<p dir="auto">Parsing refers to taking the raw input bytes and the position of newlines that will be available to the user, and using a package like <code>Parsers.jl</code> or <code>JSON3.jl</code>, or some custom parsing code to produce records of Julia types that could be stored in user-defined result buffers, which can be customized e.g for row-oriented or column-oriented storage.</p>
+<p dir="auto">Consuming refers to taking the parsed results and doing something with them, such as inserting them into a database, appending them to a <code>DataFrame</code>, or writing them to a file.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">How it works</h2><a id="user-content-how-it-works" class="anchor" aria-label="Permalink: How it works" href="#how-it-works"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Internally, <code>ChunkedBase.jl</code> uses a coordinator task and a set number of worker tasks to process data. The coordinator task is responsible for handling IO operations and acts as a coordinator for the worker tasks. It reads bytes from an input buffer and uses the <a href="https://github.com/JuliaData/NewlineLexers.jl"><code>NewlineLexers.jl</code></a> package to identify newlines in the data. Since the data is delimited by newlines, these newlines are used to split up the work among the worker tasks.</p>
+<p dir="auto">The coordinator task alternates between two buffers, processing one while the workers process the other. This ensures that there is always data available for the workers to consume, which maximizes throughput across all tasks. We call this technique double-buffering.</p>
+<p dir="auto">The process looks something like this, with the coordinator task at the bottom:</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th align="center"><a target="_blank" rel="noopener noreferrer" href="/docs/diagrams/chunked_base.png"><img src="/docs/diagrams/chunked_base.png" alt="Diagram" style="max-width: 100%;"></a></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><em>The coordinator uses a counter behind a mutex to synchronize with the workers. There is one such counter per buffer, and the counter is incremented by N after the coordinator splits the newlines into N segments and distributes them. After distributing the work, the coordinator starts to process the second chunk of data while the first buffer is still being worked on. A handoff occurs between the two buffers, where the bytes after the last newline from the first buffer are copied to the second. Each worker decrements the counter after completing the <code>consume!</code> operation, and the coordinator waits for the counter to reach 0 before overwriting the buffer with new data.</em></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto">Packages like <code>ChunkedCSV.jl</code> and <code>ChunkedJSONL.jl</code> hook into this structure by defining their own <code>populate_result_buffer!</code> methods that parse the records they were assigned into their custom <code>Result</code> buffers which are then handed to the <code>consume!</code> method (e.g. to be inserted into a database).</p>
+<p dir="auto">The main entry point of this package is the <code>parse_file_parallel</code> function, which accepts several "context" arguments, each controlling a different aspect of the process:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function parse_file_parallel(
+    lexer::Lexer,
+    parsing_ctx::AbstractParsingContext, # user-defined
+    consume_ctx::AbstractConsumeContext, # user-defined
+    chunking_ctx::ChunkingContext,
+    result_buffers::Vector{&lt;:AbstractResultBuffer}, # user-defined
+    ::Type{CT}=Tuple{} # ignore this for now
+) where {CT}"><pre><span class="pl-k">function</span> <span class="pl-en">parse_file_parallel</span>(
+    lexer<span class="pl-k">::</span><span class="pl-c1">Lexer</span>,
+    parsing_ctx<span class="pl-k">::</span><span class="pl-c1">AbstractParsingContext</span>, <span class="pl-c"><span class="pl-c">#</span> user-defined</span>
+    consume_ctx<span class="pl-k">::</span><span class="pl-c1">AbstractConsumeContext</span>, <span class="pl-c"><span class="pl-c">#</span> user-defined</span>
+    chunking_ctx<span class="pl-k">::</span><span class="pl-c1">ChunkingContext</span>,
+    result_buffers<span class="pl-k">::</span><span class="pl-c1">Vector{&lt;:AbstractResultBuffer}</span>, <span class="pl-c"><span class="pl-c">#</span> user-defined</span>
+    <span class="pl-k">::</span><span class="pl-c1">Type{CT}</span><span class="pl-k">=</span>Tuple{} <span class="pl-c"><span class="pl-c">#</span> ignore this for now</span>
+) <span class="pl-k">where</span> {CT}</pre></div>
+<p dir="auto">Let's break it down:</p>
+<ul dir="auto">
+<li><code>lexer</code> controls how we find newlines in the ingested chunks of data. Newlines serve as record delimiters and knowing their positions allows us to split work safely among multiple workers, which are spawned internally. <code>Lexer</code>s are defined in the <code>NewlineLexers.jl</code> package.</li>
+<li><code>parsing_ctx</code> controls how we parse the data. It allows the user to dispatch on custom <code>populate_result_buffer!</code> overload and to forward configurations to it. <code>populate_result_buffer!</code> is where we take the records identified by the <code>lexer</code> and parse them into <code>result_buffers</code>.</li>
+<li><code>consume_ctx</code> controls how the parsed results are consumed (e.g. inserted into a database, appended to a <code>DataFrame</code>...). <code>consume_ctx</code> allows the user to dispatch on their <code>consume!</code> method and hold any state necessary for consumption. This happens immediately after <code>populate_result_buffer!</code>.</li>
+<li><code>chunking_ctx</code> controls how the work on individual chunks of data is scheduled. It contains buffers for input bytes and found newlines. Through this struct the user controls the size of the chunks and the number of spawned tasks that carry out the parsing and consuming. If there is enough data in the input, a secondary <code>chunking_ctx</code> is created internally to facilitate the double-buffering described above.</li>
+<li><code>result_buffers</code> controls in which format the results are stored. These result buffers hold results from <code>populate_result_buffer!</code> and are passed to <code>consume!</code>. This allows the user to have multiple result formats for the same <code>parsing_ctx</code> e.g. row-oriented vs column-oriented buffers.</li>
+</ul>
+<p dir="auto">There is also <code>parse_file_serial</code> which doesn't spawn any tasks and just calls <code>populate_result_buffer!</code> and <code>consume!</code> sequentially without double-buffering. This can be useful for debugging or for small files.</p>
+<p dir="auto">See the docstring of <code>populate_result_buffer!</code> and <code>consume!</code> for more information about how to integrate with them.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Example: Examining the results of the Lexer</h2><a id="user-content-example-examining-the-results-of-the-lexer" class="anchor" aria-label="Permalink: Example: Examining the results of the Lexer" href="#example-examining-the-results-of-the-lexer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Since <code>ChunkedBase.jl</code> handles newline detection automatically, a very simple chunked processor could just show the newline positions to the user. Of course, this is not very useful apart from demonstrating how to use this package.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ChunkedBase
+
+# Our chunked processor doesn't require any settings nor does it need to maintain
+# any additional state, so we'll define our `ParsingContext` and `ConsumeContext` only
+# for dispatch reasons.
+struct ParsingContext &lt;: AbstractParsingContext end
+struct ConsumeContext &lt;: AbstractConsumeContext end
+# Our buffer will hold the newline positions in the current chunk
+struct ResultBuffer &lt;: AbstractResultBuffer
+    newlines_in_chunk::Vector{Int}
+end
+
+# Our overload copies `newlines_segment` to our result buffer
+function ChunkedBase.populate_result_buffer!(
+    result_buf::ResultBuffer,
+    newlines_segment::AbstractVector{Int32},
+    ::ParsingContext,
+    ::Vector{UInt8},
+    ::Union{Nothing,Vector{UInt8}}=nothing,
+    ::Type=Tuple{}
+)
+    resize!(result_buf.newlines_in_chunk, length(newlines_segment))
+    result_buf.newlines_in_chunk .= newlines_segment
+    return nothing
+end
+
+# We consume result buffer by simply printing it
+function ChunkedBase.consume!(::ConsumeContext, payload::ParsedPayload)
+    # The ParsedPayload wraps the result buffer and the other contexts
+    chunking_ctx = payload.chunking_ctx
+    result_buffer = payload.results
+
+    # To demonstrate how double-buffering works, print the buffer id and the refill number
+    chunk_info = (chunking_ctx.id, chunking_ctx.buffer_refills[])
+    @info &quot;Newlines in chunk (id:$chunk_info): $(result_buffer.newlines_in_chunk)&quot;
+    return nothing
+end"><pre><span class="pl-k">using</span> ChunkedBase
+
+<span class="pl-c"><span class="pl-c">#</span> Our chunked processor doesn't require any settings nor does it need to maintain</span>
+<span class="pl-c"><span class="pl-c">#</span> any additional state, so we'll define our `ParsingContext` and `ConsumeContext` only</span>
+<span class="pl-c"><span class="pl-c">#</span> for dispatch reasons.</span>
+<span class="pl-k">struct</span> ParsingContext <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractParsingContext</span> <span class="pl-k">end</span>
+<span class="pl-k">struct</span> ConsumeContext <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractConsumeContext</span> <span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> Our buffer will hold the newline positions in the current chunk</span>
+<span class="pl-k">struct</span> ResultBuffer <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractResultBuffer</span>
+    newlines_in_chunk<span class="pl-k">::</span><span class="pl-c1">Vector{Int}</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Our overload copies `newlines_segment` to our result buffer</span>
+<span class="pl-k">function</span> ChunkedBase<span class="pl-k">.</span><span class="pl-en">populate_result_buffer!</span>(
+    result_buf<span class="pl-k">::</span><span class="pl-c1">ResultBuffer</span>,
+    newlines_segment<span class="pl-k">::</span><span class="pl-c1">AbstractVector{Int32}</span>,
+    <span class="pl-k">::</span><span class="pl-c1">ParsingContext</span>,
+    <span class="pl-k">::</span><span class="pl-c1">Vector{UInt8}</span>,
+    <span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Vector{UInt8}}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    <span class="pl-k">::</span><span class="pl-c1">Type</span><span class="pl-k">=</span>Tuple{}
+)
+    <span class="pl-c1">resize!</span>(result_buf<span class="pl-k">.</span>newlines_in_chunk, <span class="pl-c1">length</span>(newlines_segment))
+    result_buf<span class="pl-k">.</span>newlines_in_chunk .<span class="pl-k">=</span> newlines_segment
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> We consume result buffer by simply printing it</span>
+<span class="pl-k">function</span> ChunkedBase<span class="pl-k">.</span><span class="pl-en">consume!</span>(<span class="pl-k">::</span><span class="pl-c1">ConsumeContext</span>, payload<span class="pl-k">::</span><span class="pl-c1">ParsedPayload</span>)
+    <span class="pl-c"><span class="pl-c">#</span> The ParsedPayload wraps the result buffer and the other contexts</span>
+    chunking_ctx <span class="pl-k">=</span> payload<span class="pl-k">.</span>chunking_ctx
+    result_buffer <span class="pl-k">=</span> payload<span class="pl-k">.</span>results
+
+    <span class="pl-c"><span class="pl-c">#</span> To demonstrate how double-buffering works, print the buffer id and the refill number</span>
+    chunk_info <span class="pl-k">=</span> (chunking_ctx<span class="pl-k">.</span>id, chunking_ctx<span class="pl-k">.</span>buffer_refills[])
+    <span class="pl-c1">@info</span> <span class="pl-s"><span class="pl-pds">"</span>Newlines in chunk (id:<span class="pl-v">$chunk_info</span>): <span class="pl-v">$(result_buffer<span class="pl-k">.</span>newlines_in_chunk)</span><span class="pl-pds">"</span></span>
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Now that we defined all overloads and contexts we can define our user-facing function:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Prints relative positions of `\n` in each ingested chunk of size `buffersize`,
+# using `nworkers` spawned tasks.
+function print_newlines(io, buffersize, nworkers)
+    lexer = Lexer(io, nothing, '\n')
+    parsing_ctx = ParsingContext()
+    consume_ctx = ConsumeContext()
+    chunking_ctx = ChunkingContext(buffersize, nworkers)
+    # ChunkedBase.jl requires 2 result buffers per worker task, we'd get an error otherwise
+    result_buffers = [ResultBuffer(Int[]) for _ in 1:2nworkers]
+
+    parse_file_parallel(lexer, parsing_ctx, consume_ctx, chunking_ctx, result_buffers)
+    return nothing
+end"><pre><span class="pl-c"><span class="pl-c">#</span> Prints relative positions of `\n` in each ingested chunk of size `buffersize`,</span>
+<span class="pl-c"><span class="pl-c">#</span> using `nworkers` spawned tasks.</span>
+<span class="pl-k">function</span> <span class="pl-en">print_newlines</span>(io, buffersize, nworkers)
+    lexer <span class="pl-k">=</span> <span class="pl-c1">Lexer</span>(io, <span class="pl-c1">nothing</span>, <span class="pl-s"><span class="pl-pds">'</span><span class="pl-cce">\n</span><span class="pl-pds">'</span></span>)
+    parsing_ctx <span class="pl-k">=</span> <span class="pl-c1">ParsingContext</span>()
+    consume_ctx <span class="pl-k">=</span> <span class="pl-c1">ConsumeContext</span>()
+    chunking_ctx <span class="pl-k">=</span> <span class="pl-c1">ChunkingContext</span>(buffersize, nworkers)
+    <span class="pl-c"><span class="pl-c">#</span> ChunkedBase.jl requires 2 result buffers per worker task, we'd get an error otherwise</span>
+    result_buffers <span class="pl-k">=</span> [<span class="pl-c1">ResultBuffer</span>(Int[]) <span class="pl-k">for</span> _ <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">2</span>nworkers]
+
+    <span class="pl-c1">parse_file_parallel</span>(lexer, parsing_ctx, consume_ctx, chunking_ctx, result_buffers)
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Let's run it on some data:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; io = IOBuffer(((&quot;x&quot; ^ 4095) * &quot;\n&quot;) ^ 64); # 256KiB
+julia&gt; print_newlines(io, 64 * 1024, 4);
+# [ Info: Newlines in chunk (id:(1, 1)): [16384, 20480, 24576, 28672, 32768, 36864]
+# [ Info: Newlines in chunk (id:(1, 1)): [0, 4096, 8192, 12288, 16384]
+# [ Info: Newlines in chunk (id:(1, 1)): [36864, 40960, 45056, 49152, 53248, 57344]
+# [ Info: Newlines in chunk (id:(1, 1)): [57344, 61440, 65536]
+# [ Info: Newlines in chunk (id:(2, 1)): [16384, 20480, 24576, 28672, 32768, 36864]
+# [ Info: Newlines in chunk (id:(2, 1)): [0, 4096, 8192, 12288, 16384]
+# [ Info: Newlines in chunk (id:(2, 1)): [36864, 40960, 45056, 49152, 53248, 57344]
+# [ Info: Newlines in chunk (id:(2, 1)): [57344, 61440, 65536]
+# [ Info: Newlines in chunk (id:(1, 2)): [0, 4096, 8192, 12288, 16384]
+# [ Info: Newlines in chunk (id:(1, 2)): [36864, 40960, 45056, 49152, 53248, 57344]
+# [ Info: Newlines in chunk (id:(1, 2)): [16384, 20480, 24576, 28672, 32768, 36864]
+# [ Info: Newlines in chunk (id:(1, 2)): [57344, 61440, 65536]
+# [ Info: Newlines in chunk (id:(2, 2)): [0, 4096, 8192, 12288, 16384]
+# [ Info: Newlines in chunk (id:(2, 2)): [16384, 20480, 24576, 28672, 32768, 36864]
+# [ Info: Newlines in chunk (id:(2, 2)): [36864, 40960, 45056, 49152, 53248, 57344]
+# [ Info: Newlines in chunk (id:(2, 2)): [57344, 61440, 65536]"><pre>julia<span class="pl-k">&gt;</span> io <span class="pl-k">=</span> <span class="pl-c1">IOBuffer</span>(((<span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span> <span class="pl-k">^</span> <span class="pl-c1">4095</span>) <span class="pl-k">*</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\n</span><span class="pl-pds">"</span></span>) <span class="pl-k">^</span> <span class="pl-c1">64</span>); <span class="pl-c"><span class="pl-c">#</span> 256KiB</span>
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">print_newlines</span>(io, <span class="pl-c1">64</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>, <span class="pl-c1">4</span>);
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 1)): [16384, 20480, 24576, 28672, 32768, 36864]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 1)): [0, 4096, 8192, 12288, 16384]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 1)): [36864, 40960, 45056, 49152, 53248, 57344]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 1)): [57344, 61440, 65536]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 1)): [16384, 20480, 24576, 28672, 32768, 36864]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 1)): [0, 4096, 8192, 12288, 16384]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 1)): [36864, 40960, 45056, 49152, 53248, 57344]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 1)): [57344, 61440, 65536]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 2)): [0, 4096, 8192, 12288, 16384]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 2)): [36864, 40960, 45056, 49152, 53248, 57344]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 2)): [16384, 20480, 24576, 28672, 32768, 36864]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(1, 2)): [57344, 61440, 65536]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 2)): [0, 4096, 8192, 12288, 16384]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 2)): [16384, 20480, 24576, 28672, 32768, 36864]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 2)): [36864, 40960, 45056, 49152, 53248, 57344]</span>
+<span class="pl-c"><span class="pl-c">#</span> [ Info: Newlines in chunk (id:(2, 2)): [57344, 61440, 65536]</span></pre></div>
+<p dir="auto">Behind the scenes, <code>ChunkedBase.jl</code> was using two 64KiB buffers, finding newlines in them, and splitting the found newlines among 4 tasks. We can see that each of the buffers (identified by the first number in the <code>id</code> tuple) was refilled two times (the refill number is the second element of the tuple).
+The way we set up our data, there should be one newline every 4KiB of input, so we'd expect 16 newlines per chunk, but we could see that there are 20 numbers reported per chunk -- this is because each newline segment we send to the tasks starts with the last newline position from the previous segment or 0 for the first segment, so we get 4 duplicated elements in this case.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Advanced usage</h2><a id="user-content-advanced-usage" class="anchor" aria-label="Permalink: Advanced usage" href="#advanced-usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Customizing work coordination</h3><a id="user-content-customizing-work-coordination" class="anchor" aria-label="Permalink: Customizing work coordination" href="#customizing-work-coordination"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Internally, the coordination of work happens through <code>setup_tasks!</code>, <code>task_done!</code> and <code>sync_tasks</code> functions which are defined in the <code>ConsumeContexts.jl</code> file. <code>setup_tasks!</code> sets the counter for the number of units of work that are expected to happen on the current chunk. <code>task_done!</code> is called by the worker tasks when they are done with their work, which will decrement the counter. <code>sync_tasks</code> is called by the coordinator task to wait for all workers to finish their work, i.e. for the counter to be 0. These functions are exposed to the user through the <code>AbstractConsumeContext</code> interface, so they can be overloaded to implement custom synchronization strategies. For example, if the user wants to send the parsed result buffers to external tasks from their <code>consume!</code> method and wait for <em>them</em> to be done with their work, they can overload <code>setup_tasks!</code> to increase the expected number of units of work and then call <code>task_done!</code> from the external tasks when they are done. This way, the coordinator task will wait for the external tasks to finish their work before refilling the buffer with new data. See the docstrings of these functions for more information.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Sniffing the beginning of the file</h3><a id="user-content-sniffing-the-beginning-of-the-file" class="anchor" aria-label="Permalink: Sniffing the beginning of the file" href="#sniffing-the-beginning-of-the-file"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Sometimes we want to skip over the first couple of lines of a file, e.g. when they contain comments or metadata, or we might want to set up our <code>AbstractParsingContext</code> with some information that is available at the beginning of the file (like the header names of a CSV).</p>
+<p dir="auto">To do this, we can use fill our <code>ChunkingContext</code> with <code>read_and_lex!</code> which will read the first <code>buffersize</code> bytes from the input and lex them so that we can inspect the newlines and decide what to do with the file. We can use <code>skip_rows_init!</code> to skip over rows that we don't want to parse, and then use <code>parse_file_parallel</code> to parse the rest of the file, so our <code>populate_result_buffers!</code> method can focus on the "cleaner" part of the file.</p>
+<p dir="auto">Instead of <code>read_and_lex!</code>, one could also call <code>initial_read!</code> and <code>initial_lex!</code> separately. This gives you the opportunity to detect which newline type is used in the file and set up your lexer accordingly.</p>
+</article></div>

@@ -1,0 +1,231 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">VectorPrisms</h1><a id="user-content-vectorprisms" class="anchor" aria-label="Permalink: VectorPrisms" href="#vectorprisms"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/JuliaComputing/VectorPrisms.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/JuliaComputing/VectorPrisms.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/JuliaComputing/VectorPrisms.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/d962299fdded8083e4b9898752b3ea453eeddd8ff58560e1c57f306d7c8fc51d/68747470733a2f2f636f6465636f762e696f2f67682f4a756c6961436f6d707574696e672f566563746f72507269736d732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/JuliaComputing/VectorPrisms.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/JuliaTesting/Aqua.jl"><img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg" alt="Aqua" style="max-width: 100%;"></a></p>
+<p dir="auto">VectorPrisms.jl exposes the ability to view a (potentially nested) <code>struct</code> as a <code>AbstractVector</code>.
+It exposes this both through composition with the <code>VectorPrism</code> wrapper type, and through inheritance with the <code>AbstractRecordVector</code> type.
+These conceptually work by recursively (depth first) searching all fields looking for elements that subtype the declared eltype (which may be concrete, abstract, or a union).</p>
+<p dir="auto">Throughout these documentation we will refer to the example of:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="mutable struct Foo
+    a::Int
+    b::String
+end
+struct Bar &lt;: AbstractRecordVector{Int}
+    x::Int
+    foo::Foo
+    y::Int
+end
+
+bar = Bar(10, Foo(20, &quot;a&quot;), 30)"><pre><span class="pl-k">mutable struct</span> Foo
+    a<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    b<span class="pl-k">::</span><span class="pl-c1">String</span>
+<span class="pl-k">end</span>
+<span class="pl-k">struct</span> Bar <span class="pl-k">&lt;:</span> <span class="pl-c1">AbstractRecordVector{Int}</span>
+    x<span class="pl-k">::</span><span class="pl-c1">Int</span>
+    foo<span class="pl-k">::</span><span class="pl-c1">Foo</span>
+    y<span class="pl-k">::</span><span class="pl-c1">Int</span>
+<span class="pl-k">end</span>
+
+bar <span class="pl-k">=</span> <span class="pl-c1">Bar</span>(<span class="pl-c1">10</span>, <span class="pl-c1">Foo</span>(<span class="pl-c1">20</span>, <span class="pl-s"><span class="pl-pds">"</span>a<span class="pl-pds">"</span></span>), <span class="pl-c1">30</span>)</pre></div>
+<p dir="auto">All the usual operations expected of an <code>AbstractVector</code> work on <code>Bar</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; size(bar)
+(3,)
+
+julia&gt; using LinearAlgebra
+
+julia&gt; LinearAlgebra.norm(bar)
+37.416573867739416
+
+julia&gt; LinearAlgebra.dot(bar, bar)
+1400
+
+julia&gt; bar'
+1×3 adjoint(::Bar) with eltype Int64:
+ 10  20  30
+
+julia&gt; view(bar, 1:2)
+2-element view(::Bar, 1:2) with eltype Int64:
+ 10
+ 20"><pre class="notranslate"><code>julia&gt; size(bar)
+(3,)
+
+julia&gt; using LinearAlgebra
+
+julia&gt; LinearAlgebra.norm(bar)
+37.416573867739416
+
+julia&gt; LinearAlgebra.dot(bar, bar)
+1400
+
+julia&gt; bar'
+1×3 adjoint(::Bar) with eltype Int64:
+ 10  20  30
+
+julia&gt; view(bar, 1:2)
+2-element view(::Bar, 1:2) with eltype Int64:
+ 10
+ 20
+</code></pre></div>
+<p dir="auto"><code>setindex!</code> works on indexes matching to mutable fields and not on ones that do not.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; bar[2] = 200
+200
+
+julia&gt; bar
+3-element Bar:
+  10
+ 200
+  30
+
+julia&gt; bar[1]=100
+ERROR: setfield!: immutable struct of type Bar cannot be changed"><pre class="notranslate"><code>julia&gt; bar[2] = 200
+200
+
+julia&gt; bar
+3-element Bar:
+  10
+ 200
+  30
+
+julia&gt; bar[1]=100
+ERROR: setfield!: immutable struct of type Bar cannot be changed
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Extra operations only for <code>AbstractRecordVector</code>/<code>VectorPrisms</code>: <code>paths</code>, <code>indexof</code></h3><a id="user-content-extra-operations-only-for-abstractrecordvectorvectorprisms-paths-indexof" class="anchor" aria-label="Permalink: Extra operations only for AbstractRecordVector/VectorPrisms: paths, indexof" href="#extra-operations-only-for-abstractrecordvectorvectorprisms-paths-indexof"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">By and large the operations on our types are characterized by the <code>AbstractVector</code> API -- that is the whole point.
+But we do provide a couple of operations that only make sense for these types/</p>
+<p dir="auto"><code>paths</code> returns a vector of all the paths within the object, in the order of their index.
+It takes an optional first argument that specifies if it should return <code>String</code>s (default), or <code>Expr</code>s.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; paths(Bar)
+3-element Vector{String}:
+ &quot;x&quot;
+ &quot;foo.a&quot;
+ &quot;y&quot;
+
+julia&gt; paths(Expr, Bar)
+3-element Vector{Expr}:
+ :(_.x)
+ :(_.foo.a)
+ :(_.y)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">paths</span>(Bar)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Vector{String}<span class="pl-k">:</span>
+ <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>foo.a<span class="pl-pds">"</span></span>
+ <span class="pl-s"><span class="pl-pds">"</span>y<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">paths</span>(Expr, Bar)
+<span class="pl-c1">3</span><span class="pl-k">-</span>element Vector{Expr}<span class="pl-k">:</span>
+ :(_<span class="pl-k">.</span>x)
+ :(_<span class="pl-k">.</span>foo<span class="pl-k">.</span>a)
+ :(_<span class="pl-k">.</span>y)</pre></div>
+<p dir="auto"><code>indexof</code> takes a path (given as a series of <code>Symbol</code>s) into the object and returns the matching index:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; indexof(Bar, :foo, :a)
+2
+
+julia&gt; indexof(Bar, :y)
+3"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">indexof</span>(Bar, <span class="pl-c1">:foo</span>, <span class="pl-c1">:a</span>)
+<span class="pl-c1">2</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">indexof</span>(Bar, <span class="pl-c1">:y</span>)
+<span class="pl-c1">3</span></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">How do I use VectorPrism?</h3><a id="user-content-how-do-i-use-vectorprism" class="anchor" aria-label="Permalink: How do I use VectorPrism?" href="#how-do-i-use-vectorprism"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">In implementation, there is little more to <code>VectorPrism</code> than simply being a single field struct that subtypes <code>AbstractRecordVector</code>.
+A simple wrapper type.</p>
+<p dir="auto">For example we could take a VectorPrism of a <code>ComplexF64</code> as follows:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; cvp = VectorPrism(10.0 + 20im)
+VectorPrism{Float64} view of 10.0 + 20.0im
+
+julia&gt; cvp[1]
+10.0
+
+julia&gt; cvp[2]
+20.0"><pre>julia<span class="pl-k">&gt;</span> cvp <span class="pl-k">=</span> <span class="pl-c1">VectorPrism</span>(<span class="pl-c1">10.0</span> <span class="pl-k">+</span> <span class="pl-c1">20im</span>)
+VectorPrism{Float64} view of <span class="pl-c1">10.0</span> <span class="pl-k">+</span> <span class="pl-c1">20.0im</span>
+
+julia<span class="pl-k">&gt;</span> cvp[<span class="pl-c1">1</span>]
+<span class="pl-c1">10.0</span>
+
+julia<span class="pl-k">&gt;</span> cvp[<span class="pl-c1">2</span>]
+<span class="pl-c1">20.0</span></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">How do I control what types are ignored by VectorPrism?</h3><a id="user-content-how-do-i-control-what-types-are-ignored-by-vectorprism" class="anchor" aria-label="Permalink: How do I control what types are ignored by VectorPrism?" href="#how-do-i-control-what-types-are-ignored-by-vectorprism"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">By default <code>VectorPrism</code> determines the element type as the union of all the leaf types in your object.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; vp = VectorPrism((;a=1.0, b=(1f0, 2)))
+VectorPrism{Union{Float32, Float64, Int64}} view of (a = 1.0, b = (1.0f0, 2))
+
+julia&gt; length(vp)
+3"><pre class="notranslate"><code>julia&gt; vp = VectorPrism((;a=1.0, b=(1f0, 2)))
+VectorPrism{Union{Float32, Float64, Int64}} view of (a = 1.0, b = (1.0f0, 2))
+
+julia&gt; length(vp)
+3
+</code></pre></div>
+<p dir="auto">However, if you specify the <code>eltype</code> in the constructor it will ignore anything that doesn't match it.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; vp2 = VectorPrism{AbstractFloat}((;a=1.0, b=(1f0, 2)))
+VectorPrism{AbstractFloat} view of (a = 1.0, b = (1.0f0, 2))
+
+julia&gt; length(vp2)
+2"><pre class="notranslate"><code>julia&gt; vp2 = VectorPrism{AbstractFloat}((;a=1.0, b=(1f0, 2)))
+VectorPrism{AbstractFloat} view of (a = 1.0, b = (1.0f0, 2))
+
+julia&gt; length(vp2)
+2
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Should I use <code>AbstractRecordVector</code> or <code>VectorPrism</code>?</h3><a id="user-content-should-i-use-abstractrecordvector-or-vectorprism" class="anchor" aria-label="Permalink: Should I use AbstractRecordVector or VectorPrism?" href="#should-i-use-abstractrecordvector-or-vectorprism"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">In general it is a bit nicer to use <code>AbstractRecordVector</code> if you can slot it nicely into your existing type hierarchy,
+since this means your type is always exposed as itself to methods.
+However, this is not always possible since Julia does not have multiple inheritance.</p>
+<p dir="auto">This is where <code>VectorPrism</code> enters.
+You can wrap your type in it to get the <code>AbstractVector</code> view.
+However, now you do not get your methods anymore.
+Some things like <code>getproperty</code> and function invocation are delegated to the original object, but by no means all possible operations.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Limitations: no dynamically sized memory</h3><a id="user-content-limitations-no-dynamically-sized-memory" class="anchor" aria-label="Permalink: Limitations: no dynamically sized memory" href="#limitations-no-dynamically-sized-memory"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The size of types with the structs must be compile-time known.
+They can be <code>struct</code>s or<code>Tuples</code>, they can not be <code>Vector</code>s.
+This also means it can not contain types like <code>Dict</code>s which are built on type of <code>Vector</code>s.
+However, if you know the size of your <code>Array</code>s, wrapping them in <code>StaticArrays.SizedArray</code>
+allows them to be used inside a <code>VectorPrism</code>/<code>AbstractRecordVector</code>.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">How does it work under the hood and is it fast?</h3><a id="user-content-how-does-it-work-under-the-hood-and-is-it-fast" class="anchor" aria-label="Permalink: How does it work under the hood and is it fast?" href="#how-does-it-work-under-the-hood-and-is-it-fast"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The core functionality is that <code>getindex</code> is an <code>@generated</code> function which basically generates a chain of <code>if</code>-<code>else</code>s for all the fields of the eltype.
+So for our example it would rounghly look like:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function getindex(bar::Bar, ii::Int)
+    if ii==1
+        return bar.x
+    elseif ii==2
+        return bar.foo.a
+    elseif ii==3
+        return bar.y
+    else
+        throw(BoundsError(bar, ii))
+    end
+end"><pre><span class="pl-k">function</span> <span class="pl-en">getindex</span>(bar<span class="pl-k">::</span><span class="pl-c1">Bar</span>, ii<span class="pl-k">::</span><span class="pl-c1">Int</span>)
+    <span class="pl-k">if</span> ii<span class="pl-k">==</span><span class="pl-c1">1</span>
+        <span class="pl-k">return</span> bar<span class="pl-k">.</span>x
+    <span class="pl-k">elseif</span> ii<span class="pl-k">==</span><span class="pl-c1">2</span>
+        <span class="pl-k">return</span> bar<span class="pl-k">.</span>foo<span class="pl-k">.</span>a
+    <span class="pl-k">elseif</span> ii<span class="pl-k">==</span><span class="pl-c1">3</span>
+        <span class="pl-k">return</span> bar<span class="pl-k">.</span>y
+    <span class="pl-k">else</span>
+        <span class="pl-c1">throw</span>(<span class="pl-c1">BoundsError</span>(bar, ii))
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">This is indeed fast.
+If the index is compile-time known (like a literal) then all the branches are eliminated and <code>bar[2]</code> directly compiles into <code>bar.foo.a</code>.
+If not, this gets analysed this as a switch statement for which it has many options for how to compile including to a jump statement or a series of conditionals depending which is faster. You can check it isn't actually running the series of conditions for large structs because the timing remands constant not changing with index.
+<code>getindex</code> on a <code>AbstractRecordVector</code>/<code>VectorPrism</code> of any size remains on the order of a couple of CPU instructions, similar to <code>getindex</code> on <code>Vector</code>.</p>
+<p dir="auto">Wrapping things in <code>VectorPrism</code> is also very cheap since it does not allocate.
+Further more, it will often be removed entirely the compiler during SROA optimiation (Scalar Replacement of Aggregates).</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Differences from <code>StaticArrays.FieldVector</code></h3><a id="user-content-differences-from-staticarraysfieldvector" class="anchor" aria-label="Permalink: Differences from StaticArrays.FieldVector" href="#differences-from-staticarraysfieldvector"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>AbstractRecordVector</code> is conceptually very similar to <a href="https://juliaarrays.github.io/StaticArrays.jl/stable/pages/api/#FieldVector" rel="nofollow">StaticArrays.FieldVector</a>.
+The primary difference is that <code>AbstractRecordVector</code> works recursively on all structs contained within your struct.
+So for</p>
+<p dir="auto">we would have that <code>bar[2]</code> would return <code>bar.foo.a</code> (which was 2). (as well as <code>bar[1]</code> returning (which was <code>10</code>)).
+In contrast had <code>Bar&lt;:FieldVector{2, Int}</code> when <code>bar[2]</code> would have returned <code>Bar.foo</code> (and violated the declared element type).</p>
+<p dir="auto">A second (related) difference is that leaf types that do not subtype the declared <code>eltype</code> are simply ignored.
+So, continuing our previous example <code>bar[3]</code> would return <code>bar.y</code> (which was <code>30</code>).</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">What is a prism?</h3><a id="user-content-what-is-a-prism" class="anchor" aria-label="Permalink: What is a prism?" href="#what-is-a-prism"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A prism is a type of optic, like a lens.
+This concept is relatively well established in Closure and Haskell.
+Julia programmers may be familar with <a href="https://github.com/JuliaObjects/Accessors.jl">Accessors.jl</a> uses lenses.</p>
+<p dir="auto">A lens is about fields, it encodes a <em>has-a</em> relationship.
+A prism on the other-hand encodes a <em>is-a</em> relationship.
+So the <code>VectorPrism</code> allows us to view a struct as if it was an <code>AbstractVector</code>.</p>
+<p dir="auto">We do not do this though a standard optic construction of a forward-function which returns both the new object and a back-function (closure) that returns the object to the original, but rather though exposing that API fully and without new memory allocation, thus no need for a back function.</p>
+<p dir="auto">We do note that there are many implementation of the standard vector prism construction in julia, with various tweaks to meet various needs, for example <a href="https://github.com/JuliaDiff/FiniteDifferences.jl/blob/0766bbc7b81381b134835d31145ad4822fd7e65f/src/to_vec.jl"><code>FiniteDifferences.to_vec</code></a>, <a href="https://docs.sciml.ai/Flux/stable/destructure/#Optimisers.destructure" rel="nofollow"><code>Optimizers.destructure</code></a> and others.``</p>
+</article></div>

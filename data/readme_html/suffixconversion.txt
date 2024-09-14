@@ -1,0 +1,133 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">SuffixConversion.jl</h1><a id="user-content-suffixconversionjl" class="anchor" aria-label="Permalink: SuffixConversion.jl" href="#suffixconversionjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/simonbyrne/SuffixConversion.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/simonbyrne/SuffixConversion.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">SuffixConversion.jl makes it easier to write type-generic code supporting different floating point types.</p>
+<p dir="auto">The principle interface is the <code>@suffix &lt;typename&gt;</code> macro which defines a special variable of the same name prefixed with an underscore (<code>_</code>). When pre-multiplied by a number, it will convert the number to the specified type:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using SuffixConversion
+
+julia&gt; @suffix Float64
+SuffixConversion.SuffixConverter{Float64}()
+
+julia&gt; @suffix Float32
+SuffixConversion.SuffixConverter{Float32}()
+
+julia&gt; 0.2_Float32
+0.2f0"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> SuffixConversion
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@suffix</span> Float64
+SuffixConversion<span class="pl-k">.</span><span class="pl-c1">SuffixConverter</span><span class="pl-c1">{Float64}</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@suffix</span> Float32
+SuffixConversion<span class="pl-k">.</span><span class="pl-c1">SuffixConverter</span><span class="pl-c1">{Float32}</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">0.2_</span>Float32
+<span class="pl-c1">0.2f0</span></pre></div>
+<p dir="auto">This takes advantage of Julia's <a href="https://docs.julialang.org/en/v1/manual/integers-and-floating-point-numbers/#man-numeric-literal-coefficients" rel="nofollow">implicit multiplication of numerical literal coefficients</a>.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Why?</h1><a id="user-content-why" class="anchor" aria-label="Permalink: Why?" href="#why"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">One of the benefits of Julia is that you can write generic code: a single method definition will work efficiently for multiple datatypes, by generating specialized code for each type signature. One difficulty is working with numeric literals: by default, a literal with a decimal point (e.g. <code>7.3</code>) is treated as a <code>Float64</code>, which may cause unexpected promotion:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; addhalf_naive(x) = x + 0.5
+addhalf_naive (generic function with 1 method)
+
+julia&gt; addhalf_naive(Float32(1)) # returns a Float64
+1.5"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-en">addhalf_naive</span>(x) <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">0.5</span>
+addhalf_naive (generic <span class="pl-k">function</span> with <span class="pl-c1">1</span> method)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">addhalf_naive</span>(<span class="pl-c1">Float32</span>(<span class="pl-c1">1</span>)) <span class="pl-c"><span class="pl-c">#</span> returns a Float64</span>
+<span class="pl-c1">1.5</span></pre></div>
+<p dir="auto">The intended way to use this package is to use <code>@suffix</code> inside your function definition to define the corresponding suffix variable. Typically the type will be either determined by a parameter in the type signature:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function addhalf(x::FT) where {FT}
+    @suffix FT
+    return x + 0.5_FT
+end    "><pre><span class="pl-k">function</span> <span class="pl-en">addhalf</span>(x<span class="pl-k">::</span><span class="pl-c1">FT</span>) <span class="pl-k">where</span> {FT}
+    <span class="pl-c1">@suffix</span> FT
+    <span class="pl-k">return</span> x <span class="pl-k">+</span> <span class="pl-c1">0.5_</span>FT
+<span class="pl-k">end</span>    </pre></div>
+<p dir="auto">or it can also be computed as part of the expression:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function addhalf(x)
+    @suffix FT = typeof(x)
+    return x + 0.5_FT
+end    "><pre><span class="pl-k">function</span> <span class="pl-en">addhalf</span>(x)
+    <span class="pl-c1">@suffix</span> FT <span class="pl-k">=</span> <span class="pl-c1">typeof</span>(x)
+    <span class="pl-k">return</span> x <span class="pl-k">+</span> <span class="pl-c1">0.5_</span>FT
+<span class="pl-k">end</span>    </pre></div>
+<p dir="auto">Another common cause of unexpected type promotion are integer values: while arithmetic operations which combine floating point and integer values will be converted to the floating point type:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; 2 * 1.2f0 # returns a Float32
+2.4f0"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">1.2f0</span> <span class="pl-c"><span class="pl-c">#</span> returns a Float32</span>
+<span class="pl-c1">2.4f0</span></pre></div>
+<p dir="auto">some intermediate integer-only operations such as division (<code>/</code>) or square root (<code>sqrt</code>) can be converted to a <code>Float64</code>, which may result in an unexpectd conversion:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; 1/2 * 1.2f0 # returns a Float64
+0.6000000238418579"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">2</span> <span class="pl-k">*</span> <span class="pl-c1">1.2f0</span> <span class="pl-c"><span class="pl-c">#</span> returns a Float64</span>
+<span class="pl-c1">0.6000000238418579</span></pre></div>
+<p dir="auto">This can be addressed by appending the suffix to the integer literals</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function mulhalf(x::FT) where {FT}
+    @suffix FT
+    return 1_FT/2_FT * x
+end"><pre><span class="pl-k">function</span> <span class="pl-en">mulhalf</span>(x<span class="pl-k">::</span><span class="pl-c1">FT</span>) <span class="pl-k">where</span> {FT}
+    <span class="pl-c1">@suffix</span> FT
+    <span class="pl-k">return</span> <span class="pl-c1">1_</span>FT<span class="pl-k">/</span><span class="pl-c1">2_</span>FT <span class="pl-k">*</span> x
+<span class="pl-k">end</span></pre></div>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">How does it work?</h1><a id="user-content-how-does-it-work" class="anchor" aria-label="Permalink: How does it work?" href="#how-does-it-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The macro</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@suffix FT"><pre><span class="pl-c1">@suffix</span> FT</pre></div>
+<p dir="auto">expands to</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="_FT = SuffixConversion.SuffixConverter{FT}()"><pre>_FT <span class="pl-k">=</span> SuffixConversion<span class="pl-k">.</span><span class="pl-c1">SuffixConverter</span><span class="pl-c1">{FT}</span>()</pre></div>
+<p dir="auto">and the <code>SuffixConverter</code> type defines methods for pre-multiplication by a <code>Number</code></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Base.:*(x::Number, ::SuffixConverter{FT}) where {FT} = convert(FT, x)"><pre>Base.:<span class="pl-k">*</span>(x<span class="pl-k">::</span><span class="pl-c1">Number</span>, <span class="pl-k">::</span><span class="pl-c1">SuffixConverter{FT}</span>) <span class="pl-k">where</span> {FT} <span class="pl-k">=</span> <span class="pl-c1">convert</span>(FT, x)</pre></div>
+<p dir="auto">which performs the actual conversion.</p>
+<p dir="auto">It also relies on the fact that implicit multiplication has higher precedence than regular multiplication, so</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x * 0.2_FT"><pre>x <span class="pl-k">*</span> <span class="pl-c1">0.2_</span>FT</pre></div>
+<p dir="auto">will parse as</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x * (0.2 * _FT)"><pre>x <span class="pl-k">*</span> (<span class="pl-c1">0.2</span> <span class="pl-k">*</span> _FT)</pre></div>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">What are the performance impacts?</h1><a id="user-content-what-are-the-performance-impacts" class="anchor" aria-label="Permalink: What are the performance impacts?" href="#what-are-the-performance-impacts"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For most floating point types (other than <code>BigFloat</code>, see below) this should generally work with no runtime overhead, as the Julia compiler is able to determine that the conversion is pure (i.e. has no side effects), and so <a href="https://en.wikipedia.org/wiki/Constant_folding" rel="nofollow">constant fold</a> the conversion at compile time.</p>
+<p dir="auto">For example, the <code>addhalf</code> function defined above is able to convert this to a single <code>Float32</code> multiply:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @code_llvm addhalf(1f0)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_llvm</span> <span class="pl-c1">addhalf</span>(<span class="pl-c1">1f0</span>)</pre></div>
+<div class="highlight highlight-source-llvm notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content=";  @ REPL[2]:1 within `addhalf`
+define float @julia_addhalf_115(float %0) #0 {
+top:
+;  @ REPL[2]:3 within `addhalf`
+; ┌ @ float.jl:408 within `+`
+   %1 = fadd float %0, 5.000000e-01
+; └
+  ret float %1
+}"><pre><span class="pl-c">;  @ REPL[2]:1 within `addhalf`</span>
+<span class="pl-k">define</span> <span class="pl-k">float</span> <span class="pl-c1">@julia_addhalf_115</span>(<span class="pl-k">float</span> <span class="pl-c1">%0</span>) #<span class="pl-c1">0</span> {
+top:
+<span class="pl-c">;  @ REPL[2]:3 within `addhalf`</span>
+<span class="pl-c">; ┌ @ float.jl:408 within `+`</span>
+   <span class="pl-c1">%1</span> = <span class="pl-k">fadd</span> <span class="pl-k">float</span> <span class="pl-c1">%0</span>, <span class="pl-c1">5.000000e-01</span>
+<span class="pl-c">; └</span>
+  <span class="pl-k">ret</span> <span class="pl-k">float</span> <span class="pl-c1">%1</span>
+}</pre></div>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">What about <code>BigFloat</code>s?</h1><a id="user-content-what-about-bigfloats" class="anchor" aria-label="Permalink: What about BigFloats?" href="#what-about-bigfloats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>BigFloat</code>s are handled specially by first converting to a decimal string representation, then converting back. This allows things like</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @suffix BigFloat
+SuffixConversion.SuffixConverter{BigFloat}()
+
+julia&gt; 0.2_BigFloat
+0.2000000000000000000000000000000000000000000000000000000000000000000000000000004"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">@suffix</span> BigFloat
+SuffixConversion<span class="pl-k">.</span><span class="pl-c1">SuffixConverter</span><span class="pl-c1">{BigFloat}</span>()
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">0.2_</span>BigFloat
+<span class="pl-c1">0.2000000000000000000000000000000000000000000000000000000000000000000000000000004</span></pre></div>
+<p dir="auto">whereas regular conversion will give the <code>Float64</code> value in <code>BigFloat</code> precision</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; BigFloat(0.2)
+0.200000000000000011102230246251565404236316680908203125"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">BigFloat</span>(<span class="pl-c1">0.2</span>)
+<span class="pl-c1">0.200000000000000011102230246251565404236316680908203125</span></pre></div>
+<p dir="auto">Note that the literal still goes through the Julia parser, which first converts literals to <code>Float64</code>, so this may not work as intended if there are more than 15 significant figures:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; 0.1000000000000000000007_BigFloat
+0.1000000000000000000000000000000000000000000000000000000000000000000000000000002
+
+julia&gt; big&quot;0.1000000000000000000007&quot;
+0.1000000000000000000007000000000000000000000000000000000000000000000000000000003"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">0.1000000000000000000007_</span>BigFloat
+<span class="pl-c1">0.1000000000000000000000000000000000000000000000000000000000000000000000000000002</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">big</span>"</span>0.1000000000000000000007<span class="pl-pds">"</span></span>
+<span class="pl-c1">0.1000000000000000000007000000000000000000000000000000000000000000000000000000003</span></pre></div>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Alternatives</h1><a id="user-content-alternatives" class="anchor" aria-label="Permalink: Alternatives" href="#alternatives"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Manual conversion</h2><a id="user-content-manual-conversion" class="anchor" aria-label="Permalink: Manual conversion" href="#manual-conversion"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The typical alternative is to manually convert everything to literals</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="addhalf(x::FT) where {FT} = x + FT(0.5)"><pre><span class="pl-en">addhalf</span>(x<span class="pl-k">::</span><span class="pl-c1">FT</span>) <span class="pl-k">where</span> {FT} <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">FT</span>(<span class="pl-c1">0.5</span>)</pre></div>
+<p dir="auto">This is mostly equivalent to our approach (other than the <code>BigFloat</code> handling), however it does require more parentheses, which can get confusing with larger expressions.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">ChangePrecision.jl</h2><a id="user-content-changeprecisionjl" class="anchor" aria-label="Permalink: ChangePrecision.jl" href="#changeprecisionjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Another package which tries to address this problem is <a href="https://github.com/JuliaMath/ChangePrecision.jl">ChangePrecision.jl</a>: it defines a macro <code>@changeprecision</code> which performs conversion syntactically. It includes the disclaimer <a href="https://github.com/JuliaMath/ChangePrecision.jl#this-package-is-for-quick-experiments-not-production-code">"This package is for quick experiments, not production code"</a>, and appears to be intended for use at the top-level, rather than inside function definitions.</p>
+</article></div>

@@ -1,0 +1,132 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">AllocArrays</h1><a id="user-content-allocarrays" class="anchor" aria-label="Permalink: AllocArrays" href="#allocarrays"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/ericphanson/AllocArrays.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/ericphanson/AllocArrays.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/ericphanson/AllocArrays.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/bd9dd38934f48f941f6482b5725533d952ffeba9624c3f680e3a5d52c18a71d9/68747470733a2f2f636f6465636f762e696f2f67682f657269637068616e736f6e2f416c6c6f634172726179732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/ericphanson/AllocArrays.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a>
+<a href="https://ericphanson.github.io/AllocArrays.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">Prototype that attempts to allow usage of <a href="https://github.com/MasonProtter/Bumper.jl">Bumper.jl</a> (or potentially other allocation strategies) through code that doesn't know about Bumper.</p>
+<p dir="auto">This is accomplished by creating a wrapper type <code>AllocArray</code> which dispatches <code>similar</code> dynamically to an allocator depending on the contextual scope (using <a href="https://github.com/vchuravy/ScopedValues.jl">ScopedValues.jl</a>).</p>
+<p dir="auto">This package also provides a much safer <code>CheckedAllocArray</code> which keeps track of the validity
+of each allocated array, to provide an error in case of access to an invalid array. This
+can be used to test and develop code, before switching to <code>AllocArray</code> in case the overhead
+of these checks is prohibitive.</p>
+<p dir="auto">Demo:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using AllocArrays
+
+# Some function, possibly in some package,
+# that doesn't know about bumper, but happens to only use `similar`
+# to allocate memory
+function some_allocating_function(a)
+    b = similar(a)
+    b .= a
+    c = similar(a)
+    c .= a
+    return (; b, c)
+end
+
+function basic_reduction(a)
+    (; b, c) = some_allocating_function(a)
+    return sum(b .+ c)
+end
+
+arr = ones(Float64, 100_000)
+@time basic_reduction(arr) #  0.057540 seconds (209.39 k allocations: 16.487 MiB, 99.48% compilation time)
+@time basic_reduction(arr) #  0.000265 seconds (7 allocations: 2.289 MiB)
+
+
+function bumper_reduction!(b, a)
+    with_allocator(b) do
+        ret = basic_reduction(a)
+        reset!(b)
+        return ret
+    end
+end
+
+b = BumperAllocator(2^24) # 16 MiB
+a = AllocArray(arr);
+
+@time bumper_reduction!(b, a) #  0.223121 seconds (748.98 k allocations: 2.045 GiB, 4.32% gc time, 97.59% compilation time)
+@time bumper_reduction!(b, a) #  0.000311 seconds (36 allocations: 1.172 KiB)"><pre><span class="pl-k">using</span> AllocArrays
+
+<span class="pl-c"><span class="pl-c">#</span> Some function, possibly in some package,</span>
+<span class="pl-c"><span class="pl-c">#</span> that doesn't know about bumper, but happens to only use `similar`</span>
+<span class="pl-c"><span class="pl-c">#</span> to allocate memory</span>
+<span class="pl-k">function</span> <span class="pl-en">some_allocating_function</span>(a)
+    b <span class="pl-k">=</span> <span class="pl-c1">similar</span>(a)
+    b .<span class="pl-k">=</span> a
+    c <span class="pl-k">=</span> <span class="pl-c1">similar</span>(a)
+    c .<span class="pl-k">=</span> a
+    <span class="pl-k">return</span> (; b, c)
+<span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">basic_reduction</span>(a)
+    (; b, c) <span class="pl-k">=</span> <span class="pl-c1">some_allocating_function</span>(a)
+    <span class="pl-k">return</span> <span class="pl-c1">sum</span>(b <span class="pl-k">.+</span> c)
+<span class="pl-k">end</span>
+
+arr <span class="pl-k">=</span> <span class="pl-c1">ones</span>(Float64, <span class="pl-c1">100_000</span>)
+<span class="pl-c1">@time</span> <span class="pl-c1">basic_reduction</span>(arr) <span class="pl-c"><span class="pl-c">#</span>  0.057540 seconds (209.39 k allocations: 16.487 MiB, 99.48% compilation time)</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">basic_reduction</span>(arr) <span class="pl-c"><span class="pl-c">#</span>  0.000265 seconds (7 allocations: 2.289 MiB)</span>
+
+
+<span class="pl-k">function</span> <span class="pl-en">bumper_reduction!</span>(b, a)
+    <span class="pl-c1">with_allocator</span>(b) <span class="pl-k">do</span>
+        ret <span class="pl-k">=</span> <span class="pl-c1">basic_reduction</span>(a)
+        <span class="pl-c1">reset!</span>(b)
+        <span class="pl-k">return</span> ret
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+b <span class="pl-k">=</span> <span class="pl-c1">BumperAllocator</span>(<span class="pl-c1">2</span><span class="pl-k">^</span><span class="pl-c1">24</span>) <span class="pl-c"><span class="pl-c">#</span> 16 MiB</span>
+a <span class="pl-k">=</span> <span class="pl-c1">AllocArray</span>(arr);
+
+<span class="pl-c1">@time</span> <span class="pl-c1">bumper_reduction!</span>(b, a) <span class="pl-c"><span class="pl-c">#</span>  0.223121 seconds (748.98 k allocations: 2.045 GiB, 4.32% gc time, 97.59% compilation time)</span>
+<span class="pl-c1">@time</span> <span class="pl-c1">bumper_reduction!</span>(b, a) <span class="pl-c"><span class="pl-c">#</span>  0.000311 seconds (36 allocations: 1.172 KiB)</span></pre></div>
+<p dir="auto">We can see we brought allocations down from 2.289 MiB to ~1 KiB.</p>
+<p dir="auto">For a less-toy example, in <code>test/flux.jl</code> we test inference over a Flux model:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Baseline: Array
+infer!(b, predictions, model, data): 0.499735 seconds (8.05 k allocations: 306.796 MiB, 6.47% gc time)
+# Baseline: StrideArray
+stride_data = StrideArray.(data)
+infer!(b, predictions, model, stride_data): 0.364180 seconds (8.05 k allocations: 306.796 MiB, 8.32% gc time)
+# Using AllocArray:
+alloc_data = AllocArray.(data)
+infer!(b, predictions, model, alloc_data): 0.351953 seconds (13.60 k allocations: 3.221 MiB)
+checked_alloc_data = CheckedAllocArray.(data)
+infer!(b, predictions, model, checked_alloc_data): 15.522897 seconds (25.54 k allocations: 3.742 MiB)"><pre><span class="pl-c"><span class="pl-c">#</span> Baseline: Array</span>
+<span class="pl-c1">infer!</span>(b, predictions, model, data)<span class="pl-k">:</span> <span class="pl-c1">0.499735</span> seconds (<span class="pl-c1">8.05</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">306.796</span> MiB, <span class="pl-c1">6.47</span><span class="pl-k">%</span> gc time)
+<span class="pl-c"><span class="pl-c">#</span> Baseline: StrideArray</span>
+stride_data <span class="pl-k">=</span> <span class="pl-c1">StrideArray</span>.(data)
+<span class="pl-c1">infer!</span>(b, predictions, model, stride_data)<span class="pl-k">:</span> <span class="pl-c1">0.364180</span> seconds (<span class="pl-c1">8.05</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">306.796</span> MiB, <span class="pl-c1">8.32</span><span class="pl-k">%</span> gc time)
+<span class="pl-c"><span class="pl-c">#</span> Using AllocArray:</span>
+alloc_data <span class="pl-k">=</span> <span class="pl-c1">AllocArray</span>.(data)
+<span class="pl-c1">infer!</span>(b, predictions, model, alloc_data)<span class="pl-k">:</span> <span class="pl-c1">0.351953</span> seconds (<span class="pl-c1">13.60</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">3.221</span> MiB)
+checked_alloc_data <span class="pl-k">=</span> <span class="pl-c1">CheckedAllocArray</span>.(data)
+<span class="pl-c1">infer!</span>(b, predictions, model, checked_alloc_data)<span class="pl-k">:</span> <span class="pl-c1">15.522897</span> seconds (<span class="pl-c1">25.54</span> k allocations<span class="pl-k">:</span> <span class="pl-c1">3.742</span> MiB)</pre></div>
+<p dir="auto">We can see in this example, we got 100x less allocation (and no GC time), and similar runtime, for <code>AllocArray</code>s. We can see <code>CheckedAllocArrays</code> are far slower here.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Design notes</h2><a id="user-content-design-notes" class="anchor" aria-label="Permalink: Design notes" href="#design-notes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The user is responsible for constructing buffers (via <code>AllocBuffer</code> or the constructors <code>BumperAllocator</code> and <code>UncheckedBumperAllocator</code>) and for resetting them (<code>reset!</code>).
+No implicit buffers are used, and <code>reset!</code> is never called in the package. These choices are deliberate: the caller must construct the buffer, pass it to AllocArrays.jl to be used when appropriate, and reset it when they are done.</p>
+<p dir="auto">In particular, the caller must:</p>
+<ul dir="auto">
+<li>...not reset a buffer in active use. E.g., do not call <code>reset!</code> on a buffer that may be used by another task</li>
+<li>...not allow memory allocated with a buffer to be live after the underlying buffer has been reset</li>
+<li>...reset their buffers before it runs out of memory</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Safety</h2><a id="user-content-safety" class="anchor" aria-label="Permalink: Safety" href="#safety"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Before using a bump allocator (<code>BumperAllocator</code>, or <code>UncheckedBumperAllocator</code>) it is recommended the user read the <a href="https://github.com/MasonProtter/Bumper.jl#bumperjl">Bumper.jl README</a> to understand how it works and what the limitations are.</p>
+<p dir="auto">It is also recommended to start with <code>CheckedAllocArray</code> (with <code>BumperAllocator</code>)
+and move to using <code>AllocArray</code> only when necessary on well-tested code.</p>
+<p dir="auto">Note also:</p>
+<ul dir="auto">
+<li>Just as with all usage of Bumper.jl, the user is responsible for only using <code>reset!</code> when newly allocated arrays truly will not escape
+<ul dir="auto">
+<li>with AllocArrays this can be slightly more subtle, because within a <code>with_allocator</code> with a bump allocator  block, <code>similar</code> calls on <code>AllocArray</code> or <code>CheckedAllocArray</code>s will allocate using the bump allocator. Thus, one must be sure that none of those allocations leak past a <code>reset!</code>. The simplest way to do so is to be sure no allocations of any kind escape from a <code>reset!</code> block. You can pass in pre-allocated memory and fill that.</li>
+</ul>
+</li>
+<li>Using an <code>UncheckedBumpAllocator</code> is not safe if allocations may occur concurrently. Since you may not know all the <code>similar</code> calls present in the code, this is a-priori dangerous to use.</li>
+<li>Using <code>BumpAllocator</code> provides a semi-safe alternative simply by using a lock to control access to <code>buf</code>. In this way, the single buffer <code>buf</code> will be used to allocate for all <code>similar</code> calls (even across threads/tasks).
+<ul dir="auto">
+<li>However, <code>reset!</code> must be called outside of the threaded region, since deallocation in the bump allocator (via <code>reset!</code>) on one task will interfere with allocations on others.</li>
+</ul>
+</li>
+</ul>
+</article></div>

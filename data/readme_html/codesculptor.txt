@@ -1,0 +1,92 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">CodeSculptor</h1><a id="user-content-codesculptor" class="anchor" aria-label="Permalink: CodeSculptor" href="#codesculptor"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Split many kinds of expressions into detailed parts, play with them, and put them back together again.
+Think of it as a really souped-up version of <code>splitdef()</code> and <code>splitarg()</code> from <strong>MacroTools.jl</strong>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using CodeSculptor
+
+expr = :( f(i::Int) = i )
+def = SplitFunction(expr)
+
+# Make the function generic
+def.args[1].type = :I
+push!(def.where_params, SplitType(:( I&lt;:Integer )))
+
+# Modify metadata
+def.doc_string = &quot;Does something with any integer&quot;
+def.inline = true
+
+# Put it back together and evaluate
+eval(combine_expr(def))
+
+# Generate a function call of f
+def.body = nothing
+def.args[1] = SplitArg(5, false)
+@assert eval(combine_expr(def)) === 5
+
+# Check syntax by looking for a null result
+is_type_expr(e) = (SplitType(e) !== nothing)
+@assert is_type_expr(:( C &lt;: Integer ))
+@assert is_type_expr(:D)
+@assert !is_type_expr(:( 3 + 8 ))"><pre class="notranslate"><code>using CodeSculptor
+
+expr = :( f(i::Int) = i )
+def = SplitFunction(expr)
+
+# Make the function generic
+def.args[1].type = :I
+push!(def.where_params, SplitType(:( I&lt;:Integer )))
+
+# Modify metadata
+def.doc_string = "Does something with any integer"
+def.inline = true
+
+# Put it back together and evaluate
+eval(combine_expr(def))
+
+# Generate a function call of f
+def.body = nothing
+def.args[1] = SplitArg(5, false)
+@assert eval(combine_expr(def)) === 5
+
+# Check syntax by looking for a null result
+is_type_expr(e) = (SplitType(e) !== nothing)
+@assert is_type_expr(:( C &lt;: Integer ))
+@assert is_type_expr(:D)
+@assert !is_type_expr(:( 3 + 8 ))
+</code></pre></div>
+<ul dir="auto">
+<li><code>SplitFunction</code> for function calls and definitions</li>
+<li><code>SplitMacro</code> for macro invocations</li>
+<li><code>SplitMeta</code> for metadata around a definition, such as a docstring or <code>@inline</code></li>
+<li><code>SplitType</code> for type declarations (like <code>C{R, T&lt;:Integer} &lt;: B</code>)</li>
+<li><code>SplitArg</code> for function arguments (like <code>a::Int...</code>)</li>
+</ul>
+<p dir="auto">Each field on the <code>SplitX</code> types is documented with comments.</p>
+<p dir="auto">Each split type can return <code>nothing</code> when constructed, if the expression fails to parse.
+The constructors can also run in a less strict mode by passing <code>false</code> into the constructor,
+for example to stop <code>SplitFunction</code> from verifying that a function name has valid syntax.</p>
+<p dir="auto">Each of them can be deep-copied by constructing with a source instance to copy from.
+Some of them offer extra flags to skip copying particular parts of the AST.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Helper Functions</h2><a id="user-content-helper-functions" class="anchor" aria-label="Permalink: Helper Functions" href="#helper-functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>is_scopable_name(expr)</code> checks that the expression is either a Symbol or a series of Symbols separated by a <code>.</code> expression. Optionally allows type parameters at the end, like <code>A.B{C}</code>.</li>
+<li><code>expr_deepcopy(e)</code> works like deepcopy, but without copying special literals/interpolated references (like a <code>Module</code>).</li>
+<li><code>visit_exprs(e)</code> is like <code>MacroTools.postwalk()</code>, but without modifying anything and with extra provided data that tells you exactly where you are in the original AST.</li>
+<li><code>unescape(e)</code> and <code>unescape_deep(e)</code> help remove <code>esc()</code> from expressions.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Operators</h2><a id="user-content-operators" class="anchor" aria-label="Permalink: Operators" href="#operators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">There are some tools to map between operators and assignments (e.x. <code>+</code> and <code>+=</code>).</p>
+<ul dir="auto">
+<li><code>ASSIGNMENT_INNER_OP</code> maps assignment to operator</li>
+<li><code>ASSIGNMENT_WITH_OP</code> maps operator to assignment</li>
+<li><code>compute_op(s::Union{Symbol, Val}, a, b)</code> computes an assignment as an operator
+<ul dir="auto">
+<li>For example, <code>compute_op(:+=, 3, 4)</code> returns <code>compute_op(Val(:+=), 3, 4)</code> returns <code>7</code>.</li>
+</ul>
+</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">TODO</h1><a id="user-content-todo" class="anchor" aria-label="Permalink: TODO" href="#todo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>SplitField</code> for struct fields (optionally supporting assigned initial values)</li>
+<li>Break apart <code>SplitFunction</code> into <code>SplitCall</code>, <code>SplitSignature</code>, and <code>SplitFuncDef</code>.</li>
+</ul>
+</article></div>

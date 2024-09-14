@@ -1,0 +1,263 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">BOMCP.jl</h1><a id="user-content-bomcpjl" class="anchor" aria-label="Permalink: BOMCP.jl" href="#bomcpjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">BOMCP is an online POMDP tree search solver that uses Bayesian optimization to select actions for expansion during tree progressive widening. For more information, see the paper at <a href="https://arxiv.org/abs/2010.03597" rel="nofollow">https://arxiv.org/abs/2010.03597</a>.</p>
+<p dir="auto">BOMCP solves problems defined using the <a href="https://github.com/JuliaPOMDP/POMDPs.jl">POMDPs.jl</a> interface. BOMCP requires definition of a function to vectorize the actions or action + belief pairs for use in the Gaussian process covariance kernel. More details can be found below.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Installation</h2><a id="user-content-installation" class="anchor" aria-label="Permalink: Installation" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Pkg
+Pkg.add(https://github.com/sisl/BOMCP.jl)"><pre><span class="pl-k">import</span> Pkg
+Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(https<span class="pl-k">:</span><span class="pl-k">//</span>github<span class="pl-k">.</span>com<span class="pl-k">/</span>sisl<span class="pl-k">/</span>BOMCP<span class="pl-k">.</span>jl)</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Lunar lander code can be found in this gist: <a href="https://gist.github.com/zsunberg/b42a7665f61dadc1dcd0cdb3a216e17e">https://gist.github.com/zsunberg/b42a7665f61dadc1dcd0cdb3a216e17e</a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using BOMCP
+
+using POMDPs
+using POMDPSimulators
+
+using D3Trees
+using Random
+
+lander = LunarLander() # see link to gist above
+belief_updater = EKFUpdater(lander, lander.Q.^2, lander.R.^2)
+rollout_policy = LanderPolicy(lander)
+
+function BOMCP.vectorize!(v, dims, x::MvNormal)
+    v = copy(mean(x))
+    return v
+end
+
+action_selector = BOActionSelector(3, # action dims
+                                6, #belief dims
+                                false, #discrete actions
+                                kernel_params=[log(5.0), 0.0],
+                                k_neighbors = 5,
+                                belief_λ = 0.5,
+                                lower_bounds = [-10.0, 0.0, -0.5],
+                                upper_bounds = [10.0, 15.0, 0.5],
+                                buffer_size=100,
+                                initial_action=rollout_policy
+                                )
+
+
+solver = BOMCPSolver(action_selector, belief_updater,
+                    depth=250, n_iterations=100,
+                    exploration_constant=50.0,
+                    k_belief = 2.0,
+                    alpha_belief = 0.1,
+                    k_action = 3.,
+                    alpha_action = 0.25,
+                    estimate_value=BOMCP.RolloutEstimator(rollout_policy),
+                    )
+
+planner = POMDPs.solve(solver, lander)
+
+b0 = POMDPs.initialstate_distribution(lander)
+s0 = rand(b0)
+
+hr = HistoryRecorder(max_steps=100)
+hist = simulate(hr, lander, planner)
+for (s, b, a, r, sp, o) in hist
+    @show s, a, r, sp
+end"><pre><span class="pl-k">using</span> BOMCP
+
+<span class="pl-k">using</span> POMDPs
+<span class="pl-k">using</span> POMDPSimulators
+
+<span class="pl-k">using</span> D3Trees
+<span class="pl-k">using</span> Random
+
+lander <span class="pl-k">=</span> <span class="pl-c1">LunarLander</span>() <span class="pl-c"><span class="pl-c">#</span> see link to gist above</span>
+belief_updater <span class="pl-k">=</span> <span class="pl-c1">EKFUpdater</span>(lander, lander<span class="pl-k">.</span>Q<span class="pl-k">.^</span><span class="pl-c1">2</span>, lander<span class="pl-k">.</span>R<span class="pl-k">.^</span><span class="pl-c1">2</span>)
+rollout_policy <span class="pl-k">=</span> <span class="pl-c1">LanderPolicy</span>(lander)
+
+<span class="pl-k">function</span> BOMCP<span class="pl-k">.</span><span class="pl-en">vectorize!</span>(v, dims, x<span class="pl-k">::</span><span class="pl-c1">MvNormal</span>)
+    v <span class="pl-k">=</span> <span class="pl-c1">copy</span>(<span class="pl-c1">mean</span>(x))
+    <span class="pl-k">return</span> v
+<span class="pl-k">end</span>
+
+action_selector <span class="pl-k">=</span> <span class="pl-c1">BOActionSelector</span>(<span class="pl-c1">3</span>, <span class="pl-c"><span class="pl-c">#</span> action dims</span>
+                                <span class="pl-c1">6</span>, <span class="pl-c"><span class="pl-c">#</span>belief dims</span>
+                                <span class="pl-c1">false</span>, <span class="pl-c"><span class="pl-c">#</span>discrete actions</span>
+                                kernel_params<span class="pl-k">=</span>[<span class="pl-c1">log</span>(<span class="pl-c1">5.0</span>), <span class="pl-c1">0.0</span>],
+                                k_neighbors <span class="pl-k">=</span> <span class="pl-c1">5</span>,
+                                belief_λ <span class="pl-k">=</span> <span class="pl-c1">0.5</span>,
+                                lower_bounds <span class="pl-k">=</span> [<span class="pl-k">-</span><span class="pl-c1">10.0</span>, <span class="pl-c1">0.0</span>, <span class="pl-k">-</span><span class="pl-c1">0.5</span>],
+                                upper_bounds <span class="pl-k">=</span> [<span class="pl-c1">10.0</span>, <span class="pl-c1">15.0</span>, <span class="pl-c1">0.5</span>],
+                                buffer_size<span class="pl-k">=</span><span class="pl-c1">100</span>,
+                                initial_action<span class="pl-k">=</span>rollout_policy
+                                )
+
+
+solver <span class="pl-k">=</span> <span class="pl-c1">BOMCPSolver</span>(action_selector, belief_updater,
+                    depth<span class="pl-k">=</span><span class="pl-c1">250</span>, n_iterations<span class="pl-k">=</span><span class="pl-c1">100</span>,
+                    exploration_constant<span class="pl-k">=</span><span class="pl-c1">50.0</span>,
+                    k_belief <span class="pl-k">=</span> <span class="pl-c1">2.0</span>,
+                    alpha_belief <span class="pl-k">=</span> <span class="pl-c1">0.1</span>,
+                    k_action <span class="pl-k">=</span> <span class="pl-c1">3.</span>,
+                    alpha_action <span class="pl-k">=</span> <span class="pl-c1">0.25</span>,
+                    estimate_value<span class="pl-k">=</span>BOMCP<span class="pl-k">.</span><span class="pl-c1">RolloutEstimator</span>(rollout_policy),
+                    )
+
+planner <span class="pl-k">=</span> POMDPs<span class="pl-k">.</span><span class="pl-c1">solve</span>(solver, lander)
+
+b0 <span class="pl-k">=</span> POMDPs<span class="pl-k">.</span><span class="pl-c1">initialstate_distribution</span>(lander)
+s0 <span class="pl-k">=</span> <span class="pl-c1">rand</span>(b0)
+
+hr <span class="pl-k">=</span> <span class="pl-c1">HistoryRecorder</span>(max_steps<span class="pl-k">=</span><span class="pl-c1">100</span>)
+hist <span class="pl-k">=</span> <span class="pl-c1">simulate</span>(hr, lander, planner)
+<span class="pl-k">for</span> (s, b, a, r, sp, o) <span class="pl-k">in</span> hist
+    <span class="pl-c1">@show</span> s, a, r, sp
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The algorithm behavior is determined by the keyword argument values passed to the solver constructor. The Bayesian optimized action selection behavior is defined by the <code>BOActionSelector</code> object which is defined in more detail in the following sub-section. The solver keyword arguments are shown below.</p>
+<p dir="auto">Fields:</p>
+<ul dir="auto">
+<li><code>eps::Float64</code>:
+Rollouts and tree expansion will stop when discount^depth is less than this.
+default: <code>0.01</code></li>
+<li><code>max_depth::Int</code>:
+Rollouts and tree expension will stop when this depth is reached.
+default: <code>10</code></li>
+<li><code>criterion::Any</code>:
+Criterion to decide which action to take at each node. e.g. <code>MaxUCB(c)</code>, <code>MaxQ</code>, or <code>MaxTries</code>.
+default: <code>MaxUCB(1.0)</code></li>
+<li><code>final_criterion::Any</code>:
+Criterion for choosing the action to take after the tree is constructed.
+default: <code>MaxQ()</code></li>
+<li><code>tree_queries::Int</code>:
+Number of iterations during each action() call.
+default: <code>100</code></li>
+<li><code>max_time::Float64</code>:
+Time limit for planning at each steps (seconds).
+default: <code>Inf</code></li>
+<li><code>rng::AbstractRNG</code>:
+Random number generator.
+default: <code>Base.GLOBAL_RNG</code></li>
+<li><code>node_sr_belief_updater::Updater</code>:
+Updater for state-reward distribution at the nodes.
+default: <code>POWNodeFilter()</code></li>
+<li><code>estimate_value::Any</code>: (rollout policy can be specified by setting this to RolloutEstimator(policy))
+Function, object, or number used to estimate the value at the leaf nodes.
+If this is a function <code>f</code>, <code>f(pomdp, s, h::BeliefNode, steps)</code> will be called to estimate the value.
+If this is an object <code>o</code>, <code>estimate_value(o, pomdp, s, h::BeliefNode, steps)</code> will be called.
+If this is a number, the value will be set to that number.
+default: <code>RolloutEstimator(RandomSolver(rng))</code></li>
+<li><code>enable_action_pw::Bool</code>:
+Controls whether progressive widening is done on actions; if <code>false</code>, the entire action space is used.
+default: <code>true</code></li>
+<li><code>check_repeat_obs::Bool</code>:
+Check if an observation was sampled multiple times. This has some dictionary maintenance overhead, but prevents multiple nodes with the same observation from being created. If the observation space is discrete, this should probably be used, but can be turned off for speed.
+default: <code>true</code></li>
+<li><code>check_repeat_act::Bool</code>:
+Check if an action was sampled multiple times. This has some dictionary maintenance overhead, but prevents multiple nodes with the same action from being created. If the action space is discrete, this should probably be used, but can be turned off for speed.
+default: <code>true</code></li>
+<li><code>k_action::Float64</code>, <code>alpha_action::Float64</code>, <code>k_observation::Float64</code>, <code>alpha_observation::Float64</code>:
+These constants control the double progressive widening. A new observation
+or action will be added if the number of children is less than or equal to kN^alpha.
+defaults: k: <code>10</code>, alpha: <code>0.5</code></li>
+<li><code>init_V::Any</code>:
+Function, object, or number used to set the initial V(h,a) value at a new node.
+If this is a function <code>f</code>, <code>f(pomdp, h, a)</code> will be called to set the value.
+If this is an object <code>o</code>, <code>init_V(o, pomdp, h, a)</code> will be called.
+If this is a number, V will be set to that number
+default: <code>0.0</code></li>
+<li><code>init_N::Any</code>:
+Function, object, or number used to set the initial N(s,a) value at a new node.
+If this is a function <code>f</code>, <code>f(pomdp, h, a)</code> will be called to set the value.
+If this is an object <code>o</code>, <code>init_N(o, pomdp, h, a)</code> will be called.
+If this is a number, N will be set to that number
+default: <code>0</code></li>
+<li><code>next_action::Any</code>
+Function or object used to choose the next action to be considered for progressive widening.
+The next action is determined based on the POMDP, the belief, <code>b</code>, and the current <code>BeliefNode</code>, <code>h</code>.
+If this is a function <code>f</code>, <code>f(pomdp, b, h)</code> will be called to set the value.
+If this is an object <code>o</code>, <code>next_action(o, pomdp, b, h)</code> will be called.
+default: <code>RandomActionGenerator(rng)</code></li>
+<li><code>default_action::Any</code>:
+Function, action, or Policy used to determine the action if POMCP fails with exception <code>ex</code>.
+If this is a Function <code>f</code>, <code>f(belief, ex)</code> will be called.
+If this is a Policy <code>p</code>, <code>action(p, belief)</code> will be called.
+If it is an object <code>a</code>, <code>default_action(a, belief, ex)</code> will be called, and
+if this method is not implemented, <code>a</code> will be returned directly.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Bayesian Optimization Action Selector</h2><a id="user-content-bayesian-optimization-action-selector" class="anchor" aria-label="Permalink: Bayesian Optimization Action Selector" href="#bayesian-optimization-action-selector"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The <code>BOActionSelector</code> object requires the action vector size and the belief vector size to be specified, along with whether or not the action space is dicrete. For discrete action spaces, the expected improvement is solved for at each action in the space. For continuous action spaces, an L-BFGS solver from <a href="https://github.com/JuliaOpt/NLopt.jl">NLOpt.jl</a> is used. Additional keyword arguments control the behavior of the nearest-neighbor Gaussian process regression, defined below.</p>
+<p dir="auto">Fields:</p>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>k_neighbors::Int64</code>:
+Number of neighbors included in the local covariance kernel calculations.
+default: <code>10</code></p>
+</li>
+<li>
+<p dir="auto"><code>mean_type::Any</code>:
+Type of mean function to be used for Gaussian process prior.
+Must conform to GaussianProcess.jl standards. Defaults to a constant mean prior.
+default: <code>GaussianProcess.MeanConst</code></p>
+</li>
+<li>
+<p dir="auto"><code>mean_params::Any</code>:
+Parameters used to instantiate the <code>mean_type</code>.
+default: <code>[0.0]</code></p>
+</li>
+<li>
+<p dir="auto"><code>kernel_type::Any</code>:
+Type of kernel function to be used for Gaussian process prior.
+Must conform to GaussianProcess.jl standards.
+Defaults to a isometric squared-exponential function.
+default: <code>GaussianProcess.SEIso</code></p>
+</li>
+<li>
+<p dir="auto"><code>kernel_params::Any</code>:
+Parameters used to instantiate the <code>kernel_type</code>.
+default: <code>[0.0, 0.0]</code></p>
+</li>
+<li>
+<p dir="auto"><code>belief_λ::Float64</code>:
+Weight used for the belief-action distance function.
+Weight of 0.0 does not include belief in distance.
+In this case, only sibling action nodes are included in each GP regression.
+default: <code>1.0</code></p>
+</li>
+<li>
+<p dir="auto"><code>log_noise::Float64</code>:
+Log Gaussian process observation noise.
+default: <code>-3.0</code></p>
+</li>
+<li>
+<p dir="auto"><code>buffer_size::Int64</code>:
+Number of Gaussian process conditioning pairs to save at the end of tree search.
+Saved pairs will be used to condition the regression in subsequent tree searches.
+default: <code>0</code></p>
+</li>
+<li>
+<p dir="auto"><code>acquisition_function::Any</code>:
+Type of acquisition function to be used for Bayesian Optimization.
+Must conform to BayesianOptimization.jl standards.
+Defaults to Expected Improvment as defined in the paper.
+default: <code>BayesianOptimization.ExpectedImprovement()</code></p>
+</li>
+<li>
+<p dir="auto"><code>lower_bounds::Union{Nothing, Vector{Float64}}</code>:
+Lower bounds on the action space required by the optimizer for continuous actions.
+If the default NLOpt L-BFGS optimizer is used, this is a required parameter.
+default: <code>nothing</code></p>
+</li>
+<li>
+<p dir="auto"><code>upper_bounds::Union{Nothing, Vector{Float64}}</code>:
+Upper bounds on the action space required by the optimizer for continuous actions.
+If the default NLOpt L-BFGS optimizer is used, this is a required parameter.
+default: <code>nothing</code></p>
+</li>
+<li>
+<p dir="auto"><code>opim::Any</code>:
+Optimizer to be called for continuous action spaces.
+Must conform to the NLOpt.jl API.
+If the action space is continous and <code>nothing</code> is specified, the L-BFGS solver is used.
+default: <code>nothing</code></p>
+</li>
+<li>
+<p dir="auto"><code>initial_action::Any</code>:
+Function or object to return for the intial action node selection.
+Defaults to randomly sample an action from the action space.
+default: <code>rand_action</code></p>
+</li>
+</ul>
+</article></div>

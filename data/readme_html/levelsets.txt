@@ -1,0 +1,555 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">LevelSets</h1><a id="user-content-levelsets" class="anchor" aria-label="Permalink: LevelSets" href="#levelsets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://jehicken.github.io/LevelSets.jl/stable" rel="nofollow"><img src="https://camo.githubusercontent.com/31126cd56c42376320c59ea685a7ca65ff3a83d09a66363ed7115f882be1222c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://jehicken.github.io/LevelSets.jl/dev" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/jehicken/LevelSets.jl/actions"><img src="https://github.com/jehicken/LevelSets.jl/workflows/CI/badge.svg" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/jehicken/LevelSets.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/aa1716f487d9f9c8b72b0682b6ebecdb322562c60358f8e4235a879ab5cac428/68747470733a2f2f636f6465636f762e696f2f67682f6a656869636b656e2f4c6576656c536574732e6a6c2f6272616e63682f6d61737465722f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/jehicken/LevelSets.jl/branch/master/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="wreath.png"><img src="wreath.png" alt="" title="Level-set example" style="max-width: 100%;"></a></p>
+<p dir="auto">This package implements the level-set formula described in Hicken J. and Kaur S., "<em>An Explicit Level-Set Formula to Approximate Geometries</em>," Proceedings of the AIAA 2022 SciTech Forum.  Please see the paper and/or the <a href="https://youtu.be/sJOM-70KKQI" rel="nofollow">video</a> for further details.</p>
+<p dir="auto">This is an unregistered package, so you will need to follow <a href="https://pkgdocs.julialang.org/v1/managing-packages/#Adding-unregistered-packages" rel="nofollow">these steps</a> from the Julia documentation to add <code>LevelSets.jl</code>.</p>
+<p dir="auto">The tests in <code>test/runtestss.jl</code> offer some examples of how to use the package.  The following module provides a model application to the ellipsoid that might be helpful.  You will need the <code>WriteVTK</code> and <code>PyPlot</code> packages to run the functions in this example.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="module Ellipsoid
+
+using WriteVTK
+using LinearAlgebra
+using LevelSets
+using PyPlot
+
+export plotEllipsoid, ellipsoidConverge
+
+&quot;&quot;&quot;
+    kappa1, kappa2, lambda1, lambda2 = principals(E, F, G, L, M, N)
+
+Compute the principal curvatures, `kappa1` and `kappa2`, and principal 
+directions, `lambda1` and `lambda2`, using the first- and second-
+fundamental forms.
+&quot;&quot;&quot;
+function principals(E::Float64, F::Float64, G::Float64, L::Float64,
+                    M::Float64, N::Float64, )
+    denom_fac = 1/(E*G - F^2)
+    K = (L*N - M^2)*denom_fac 
+    H = (E*N + G*L -2*F*M)*denom_fac/2.0
+    kappa1 = H + sqrt(H^2 - K)
+    kappa2 = H - sqrt(H^2 - K)
+    lambda1 = ones(2)
+    lambda2 = ones(2)
+    tol = 1e-10
+    if abs(N - kappa1*G) &gt; tol
+        lambda1[2] = - (M - kappa1*F)/(N - kappa1*G)
+    elseif abs(M - kappa1*F) &gt; tol
+        lambda1[2] = - (L - kappa1*E)/(M - kappa1*F)
+    else 
+        lambda1[2] = 1.0
+        lambda1[1] = 0.0
+    end 
+    if abs(N - kappa2*G) &gt; tol
+        lambda2[2] = - (M - kappa2*F)/(N - kappa2*G)
+    elseif abs(M - kappa2*F) &gt; tol
+        lambda2[2] = - (L - kappa2*E)/(M - kappa2*F)
+    else 
+        lambda2[2] = 1.0
+        lambda2[1] = 0.0
+    end
+    return kappa1, kappa2, lambda1, lambda2
+end
+
+&quot;&quot;&quot;
+    plotEllipsoid(numu, numv, rhofactor[, quad=false, a=2.0, b=0.5, c=1.0])
+
+Create a LSF for the ellipsoid (with axes lengths `a`, `b`, and `c`), and save a VTK file of it for visualization. 
+&quot;&quot;&quot;
+function plotEllipsoid(numu::Int, numv::Int, rhofactor::Float64; 
+                       quad::Bool=false, a::Float64=2.0, b::Float64=0.5, 
+                       c::Float64=1.0)
+    
+    # sample the ellipsoid to get the centers and frame 
+    numbasis = numu*numv 
+    xc = zeros(3, numbasis)
+    nrm = zero(xc)
+    tang = zeros(3, 2, numbasis)
+    crv = zeros(2, numbasis)
+    min_min = 1e100
+    max_max = 0.0
+    max_ratio = 0.0
+    for i = 1:numu 
+        u = 2*pi*(i-0.5)/numu
+        for j = 1:numv 
+            v = pi*(j-0.5)/numv 
+            n = numv*(i-1) + j
+            xc[:, n] = [a*cos(u)*sin(v); b*sin(u)*sin(v); -c*cos(v)]
+            du = [-a*sin(u)*sin(v); b*cos(u)*sin(v); 0.0]
+            dv = [a*cos(u)*cos(v); b*sin(u)*cos(v); c*sin(v)]
+            du2 = [-a*cos(u)*sin(v); -b*sin(u)*sin(v); 0.0]
+            dv2 = [-a*cos(u)*sin(v); -b*sin(u)*sin(v); c*cos(v)]
+            dudv = [-a*sin(u)*cos(v); b*cos(u)*cos(v); 0.0]
+            nrm[:, n] = cross(du, dv)
+            fac = 1/norm(nrm[:,n])
+            # compute the terms for the first and second fundamental forms 
+            E = dot(du, du)
+            F = dot(du, dv) 
+            G = dot(dv, dv) 
+            L = dot(du2, nrm[:,n])*fac
+            M = dot(dudv, nrm[:,n])*fac 
+            N = dot(dv2, nrm[:,n])*fac 
+            # compute the principal curvatures/directions
+            kappa1, kappa2, lambda1, lambda2 = principals(E, F, G, L, M, N)
+            tang[:,1,n] = lambda1[1]*du + lambda1[2]*dv 
+            tang[:,2,n] = lambda2[1]*du + lambda2[2]*dv
+            println(&quot;E, F, G, L, M, N = &quot;,E,&quot;, &quot;,F,&quot;, &quot;,G,&quot;, &quot;,L,&quot;, &quot;,M,&quot;, &quot;,N)
+            println(&quot;tang1 dot tang2 = &quot;, dot(tang[:,1,n], tang[:,2,n]))
+            @assert( abs(dot(tang[:,1,n], tang[:,2,n])) &lt; 1e-9,
+            &quot;tangents are not orthogonal!&quot; )
+            if quad 
+                crv[1,n] = -kappa1 
+                crv[2,n] = -kappa2
+                global max_ratio = max(max_ratio, abs(kappa1/kappa2), abs(kappa2/kappa1))
+                global min_min = min(min_min, abs(kappa1), abs(kappa2))
+                global max_max = max(max_max, abs(kappa1), abs(kappa2))
+            else 
+                crv[1,n] = 0.0
+                crv[2,n] = 0.0
+            end
+        end 
+    end 
+    println(&quot;miniumum prin. curvature = &quot;, min_min)
+    println(&quot;maximum prin. curvature = &quot;,max_max)
+    println(&quot;max curvature ratio = &quot;,max_ratio)
+    
+    # construct the LevelSet 
+    rho = rhofactor*convert(Float64, numu)
+    levset = LevelSet{3,Float64}(xc, nrm, tang, crv, rho)
+    
+    # write the centers to a file 
+    centers = Vector{MeshCell{VTKCellType, Vector{Int64}}}(undef, levset.numbasis)
+    for i = 1:levset.numbasis 
+        centers[i] = MeshCell(VTKCellTypes.VTK_VERTEX, [i])
+    end
+    normal = view(levset.frame, :, 1, :)
+    saved_files = vtk_grid(&quot;centers.vtu&quot;, levset.xcenter, centers) do vtk
+        vtk[&quot;normal&quot;] = normal
+    end
+    
+    # Next, we make a fine mesh in (u,v) space for plotting in Paraview 
+    numu = 1200
+    numv = 1200
+    numvert = numu*numv
+    function getvertex(i, j)
+        return numv*(j-1) + i
+    end
+    
+    # get the points making up the vtk triangles
+    points = zeros(3, numvert)
+    for i = 1:numu 
+        u = 2*pi*(i-1)/(numu-1)
+        for j = 1:numv 
+            v = pi*(j-1)/(numv-1)
+            n = getvertex(i, j)
+            x0 = [a*cos(u)*sin(v); b*sin(u)*sin(v); c*cos(v)]
+            snappoint!(view(points,:,n), x0, levset, tol=1e-8, max_newton=50, 
+            silent_fail=true)
+        end
+    end
+    
+    # define the triangles 
+    numcell = 2*(numu-1)*(numv-1)
+    cells = Vector{MeshCell{VTKCellType, Vector{Int64}}}(undef, numcell)
+    for i = 1:numu-1
+        for j = 1:numv-1
+            n = (numv-1)*(j-1) + i
+            connect = [getvertex(i,j), getvertex(i+1,j), getvertex(i,j+1)]
+            cells[n] = MeshCell(VTKCellTypes.VTK_TRIANGLE, connect)
+            n += (numu-1)*(numv-1)
+            connect = [getvertex(i+1,j+1), getvertex(i,j+1), getvertex(i+1,j)]
+            cells[n] = MeshCell(VTKCellTypes.VTK_TRIANGLE, connect)
+        end
+    end
+    
+    # save the vtk unstructured grid file
+    saved_files = vtk_grid(&quot;ellipse.vtu&quot;, points, cells) do vtk
+        # add datasets here...nothing to add in this case
+    end
+    
+end
+
+&quot;&quot;&quot;
+    ellipsoidConverge([a=2.0, b=0.5, c=1.0])
+
+Run the ellipsoid convergence study from the paper.
+&quot;&quot;&quot;
+function ellipsoidConverge(;a::Float64=2.0, b::Float64=0.5, c::Float64=1.0)
+
+    # set the points used to measure error 
+    numu, numv = 1200, 1200
+    numpts = numu*numv
+    x = zeros(3, numpts)
+    ptr = 1
+    for i = 1:numu 
+        u = 2*pi*(i-0.5)/numu
+        for j = 1:numv 
+            v = pi*(j-0.5)/numv            
+            x[:,ptr] = [a*cos(u)*sin(v); b*sin(u)*sin(v); c*cos(v)]
+            ptr += 1
+        end
+    end
+    res = zeros(size(x,2))
+
+    numu = [10, 20, 40, 80, 160]
+    rhofactor = [1, 10]
+    l2err = zeros(size(numu,1), size(rhofactor,1))
+    l2err_ho = zeros(size(numu,1), size(rhofactor,1))
+    for (k, nu) in enumerate(numu)
+        # set basis centers and normals
+        numbasis = nu*nu 
+        xc = zeros(3, numbasis)
+        nrm = zeros(3, numbasis)
+        tang = zeros(3, 2, numbasis)
+        crv = zeros(2, numbasis)
+        ptr = 1
+        for i = 1:nu
+            u = 2*pi*(i-0.5)/nu
+            for j = 1:nu
+                v = pi*(j-0.5)/nu 
+                xc[:, ptr] = [a*cos(u)*sin(v); b*sin(u)*sin(v); -c*cos(v)]
+                du = [-a*sin(u)*sin(v); b*cos(u)*sin(v); 0.0]
+                dv = [a*cos(u)*cos(v); b*sin(u)*cos(v); c*sin(v)]
+                du2 = [-a*cos(u)*sin(v); -b*sin(u)*sin(v); 0.0]
+                dv2 = [-a*cos(u)*sin(v); -b*sin(u)*sin(v); c*cos(v)]
+                dudv = [-a*sin(u)*cos(v); b*cos(u)*cos(v); 0.0]
+                nrm[:,ptr] = cross(du, dv)
+                fac = 1/norm(nrm[:,ptr])
+                # compute the terms for the first and second fundamental forms 
+                E = dot(du, du)
+                F = dot(du, dv)
+                G = dot(dv, dv)
+                L = dot(du2, nrm[:,ptr])*fac
+                M = dot(dudv, nrm[:,ptr])*fac 
+                N = dot(dv2, nrm[:,ptr])*fac 
+                # compute principal curvatures/directions
+                kappa1, kappa2, lambda1, lambda2 = principals(E, F, G, L, M, N)
+                tang[:,1,ptr] = lambda1[1]*du + lambda1[2]*dv 
+                tang[:,2,ptr] = lambda2[1]*du + lambda2[2]*dv
+                crv[1,ptr] = -kappa1 
+                crv[2,ptr] = -kappa2
+                ptr += 1
+            end 
+        end
+
+        for (j, r) in enumerate(rhofactor)
+            rho = r*convert(Float64, nu)
+
+            # linear approximation 
+            levset = LevelSet{3,Float64}(xc, nrm, tang, zeros(size(crv)), rho)
+            LevelSets.residual!(res, x, levset)
+            l2err[k,j] = sqrt(dot(res,res)/numpts)
+            println(&quot;Linear: L2 integral norm = &quot;,l2err[k,j])
+
+            # quadratic approximation 
+            levset = LevelSet{3,Float64}(xc, nrm, tang, crv, rho)
+            LevelSets.residual!(res, x, levset)
+            l2err_ho[k,j] = sqrt(dot(res,res)/numpts)
+            println(&quot;Quadratic: L2 integral norm = &quot;,l2err_ho[k,j])
+        end
+    end
+
+    PyPlot.figure(figsize=[6,2.5])
+
+    linear_style = [&quot;-ro&quot;, &quot;--ro&quot;, &quot;:ro&quot;]
+    quad_style = [&quot;-ks&quot;, &quot;--ks&quot;, &quot;:ks&quot;]
+    for (j, r) in enumerate(rhofactor)
+        label = L&quot;linear: $\rho/\sqrt{n_{\Gamma}} = &quot; * string(r) * L&quot;$&quot;
+        PyPlot.plot(numu, l2err[:,j], linear_style[j], linewidth=1, 
+                    markersize=4, label=label)
+    end
+    for (j, r) in enumerate(rhofactor)
+        label = L&quot;quadratic: $\rho/\sqrt{n_{\Gamma}} = &quot; * string(r) * L&quot;$&quot;
+        PyPlot.plot(numu, l2err_ho[:,j], quad_style[j], linewidth=1, 
+                    markersize=4,label=label)
+    end
+    PyPlot.gca().axis([5, 200, 1e-7, 0.1])
+    PyPlot.gca().set_position([0.12, 0.17, 0.5, 0.8])
+    PyPlot.gca().grid(which=&quot;major&quot;, linestyle=&quot;:&quot;)
+    PyPlot.xticks(fontsize=8)
+    PyPlot.yticks(fontsize=8)
+    PyPlot.xscale(&quot;log&quot;)
+    PyPlot.yscale(&quot;log&quot;)
+    PyPlot.xlabel(L&quot;$\sqrt{n_{\Gamma}}$&quot;, labelpad=4, fontsize=10)
+    PyPlot.ylabel(&quot;RMS Error&quot;, labelpad=12, fontsize=10)
+    PyPlot.gca().legend(loc=(1.1, 0.0), handlelength=4, labelspacing=1,
+                        fontsize=8)
+
+    PyPlot.savefig(&quot;ellipsoid-converge.png&quot;, dpi=300, transparent=true)
+end
+
+end # module Ellipsoid "><pre><span class="pl-k">module</span> Ellipsoid
+
+<span class="pl-k">using</span> WriteVTK
+<span class="pl-k">using</span> LinearAlgebra
+<span class="pl-k">using</span> LevelSets
+<span class="pl-k">using</span> PyPlot
+
+<span class="pl-k">export</span> plotEllipsoid, ellipsoidConverge
+
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    kappa1, kappa2, lambda1, lambda2 = principals(E, F, G, L, M, N)</span>
+<span class="pl-s"></span>
+<span class="pl-s">Compute the principal curvatures, `kappa1` and `kappa2`, and principal </span>
+<span class="pl-s">directions, `lambda1` and `lambda2`, using the first- and second-</span>
+<span class="pl-s">fundamental forms.</span>
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-k">function</span> <span class="pl-en">principals</span>(E<span class="pl-k">::</span><span class="pl-c1">Float64</span>, F<span class="pl-k">::</span><span class="pl-c1">Float64</span>, G<span class="pl-k">::</span><span class="pl-c1">Float64</span>, L<span class="pl-k">::</span><span class="pl-c1">Float64</span>,
+                    M<span class="pl-k">::</span><span class="pl-c1">Float64</span>, N<span class="pl-k">::</span><span class="pl-c1">Float64</span>, )
+    denom_fac <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span>(E<span class="pl-k">*</span>G <span class="pl-k">-</span> F<span class="pl-k">^</span><span class="pl-c1">2</span>)
+    K <span class="pl-k">=</span> (L<span class="pl-k">*</span>N <span class="pl-k">-</span> M<span class="pl-k">^</span><span class="pl-c1">2</span>)<span class="pl-k">*</span>denom_fac 
+    H <span class="pl-k">=</span> (E<span class="pl-k">*</span>N <span class="pl-k">+</span> G<span class="pl-k">*</span>L <span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">*</span>F<span class="pl-k">*</span>M)<span class="pl-k">*</span>denom_fac<span class="pl-k">/</span><span class="pl-c1">2.0</span>
+    kappa1 <span class="pl-k">=</span> H <span class="pl-k">+</span> <span class="pl-c1">sqrt</span>(H<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> K)
+    kappa2 <span class="pl-k">=</span> H <span class="pl-k">-</span> <span class="pl-c1">sqrt</span>(H<span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> K)
+    lambda1 <span class="pl-k">=</span> <span class="pl-c1">ones</span>(<span class="pl-c1">2</span>)
+    lambda2 <span class="pl-k">=</span> <span class="pl-c1">ones</span>(<span class="pl-c1">2</span>)
+    tol <span class="pl-k">=</span> <span class="pl-c1">1e-10</span>
+    <span class="pl-k">if</span> <span class="pl-c1">abs</span>(N <span class="pl-k">-</span> kappa1<span class="pl-k">*</span>G) <span class="pl-k">&gt;</span> tol
+        lambda1[<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-k">-</span> (M <span class="pl-k">-</span> kappa1<span class="pl-k">*</span>F)<span class="pl-k">/</span>(N <span class="pl-k">-</span> kappa1<span class="pl-k">*</span>G)
+    <span class="pl-k">elseif</span> <span class="pl-c1">abs</span>(M <span class="pl-k">-</span> kappa1<span class="pl-k">*</span>F) <span class="pl-k">&gt;</span> tol
+        lambda1[<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-k">-</span> (L <span class="pl-k">-</span> kappa1<span class="pl-k">*</span>E)<span class="pl-k">/</span>(M <span class="pl-k">-</span> kappa1<span class="pl-k">*</span>F)
+    <span class="pl-k">else</span> 
+        lambda1[<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+        lambda1[<span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    <span class="pl-k">end</span> 
+    <span class="pl-k">if</span> <span class="pl-c1">abs</span>(N <span class="pl-k">-</span> kappa2<span class="pl-k">*</span>G) <span class="pl-k">&gt;</span> tol
+        lambda2[<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-k">-</span> (M <span class="pl-k">-</span> kappa2<span class="pl-k">*</span>F)<span class="pl-k">/</span>(N <span class="pl-k">-</span> kappa2<span class="pl-k">*</span>G)
+    <span class="pl-k">elseif</span> <span class="pl-c1">abs</span>(M <span class="pl-k">-</span> kappa2<span class="pl-k">*</span>F) <span class="pl-k">&gt;</span> tol
+        lambda2[<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-k">-</span> (L <span class="pl-k">-</span> kappa2<span class="pl-k">*</span>E)<span class="pl-k">/</span>(M <span class="pl-k">-</span> kappa2<span class="pl-k">*</span>F)
+    <span class="pl-k">else</span> 
+        lambda2[<span class="pl-c1">2</span>] <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+        lambda2[<span class="pl-c1">1</span>] <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> kappa1, kappa2, lambda1, lambda2
+<span class="pl-k">end</span>
+
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    plotEllipsoid(numu, numv, rhofactor[, quad=false, a=2.0, b=0.5, c=1.0])</span>
+<span class="pl-s"></span>
+<span class="pl-s">Create a LSF for the ellipsoid (with axes lengths `a`, `b`, and `c`), and save a VTK file of it for visualization. </span>
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-k">function</span> <span class="pl-en">plotEllipsoid</span>(numu<span class="pl-k">::</span><span class="pl-c1">Int</span>, numv<span class="pl-k">::</span><span class="pl-c1">Int</span>, rhofactor<span class="pl-k">::</span><span class="pl-c1">Float64</span>; 
+                       quad<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>, a<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">2.0</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">0.5</span>, 
+                       c<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">1.0</span>)
+    
+    <span class="pl-c"><span class="pl-c">#</span> sample the ellipsoid to get the centers and frame </span>
+    numbasis <span class="pl-k">=</span> numu<span class="pl-k">*</span>numv 
+    xc <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, numbasis)
+    nrm <span class="pl-k">=</span> <span class="pl-c1">zero</span>(xc)
+    tang <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, <span class="pl-c1">2</span>, numbasis)
+    crv <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">2</span>, numbasis)
+    min_min <span class="pl-k">=</span> <span class="pl-c1">1e100</span>
+    max_max <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    max_ratio <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+    <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numu 
+        u <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">pi</span><span class="pl-k">*</span>(i<span class="pl-k">-</span><span class="pl-c1">0.5</span>)<span class="pl-k">/</span>numu
+        <span class="pl-k">for</span> j <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numv 
+            v <span class="pl-k">=</span> <span class="pl-c1">pi</span><span class="pl-k">*</span>(j<span class="pl-k">-</span><span class="pl-c1">0.5</span>)<span class="pl-k">/</span>numv 
+            n <span class="pl-k">=</span> numv<span class="pl-k">*</span>(i<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> j
+            xc[:, n] <span class="pl-k">=</span> [a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-k">-</span>c<span class="pl-k">*</span><span class="pl-c1">cos</span>(v)]
+            du <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); b<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-c1">0.0</span>]
+            dv <span class="pl-k">=</span> [a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); c<span class="pl-k">*</span><span class="pl-c1">sin</span>(v)]
+            du2 <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-k">-</span>b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-c1">0.0</span>]
+            dv2 <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-k">-</span>b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); c<span class="pl-k">*</span><span class="pl-c1">cos</span>(v)]
+            dudv <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); b<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); <span class="pl-c1">0.0</span>]
+            nrm[:, n] <span class="pl-k">=</span> <span class="pl-c1">cross</span>(du, dv)
+            fac <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">norm</span>(nrm[:,n])
+            <span class="pl-c"><span class="pl-c">#</span> compute the terms for the first and second fundamental forms </span>
+            E <span class="pl-k">=</span> <span class="pl-c1">dot</span>(du, du)
+            F <span class="pl-k">=</span> <span class="pl-c1">dot</span>(du, dv) 
+            G <span class="pl-k">=</span> <span class="pl-c1">dot</span>(dv, dv) 
+            L <span class="pl-k">=</span> <span class="pl-c1">dot</span>(du2, nrm[:,n])<span class="pl-k">*</span>fac
+            M <span class="pl-k">=</span> <span class="pl-c1">dot</span>(dudv, nrm[:,n])<span class="pl-k">*</span>fac 
+            N <span class="pl-k">=</span> <span class="pl-c1">dot</span>(dv2, nrm[:,n])<span class="pl-k">*</span>fac 
+            <span class="pl-c"><span class="pl-c">#</span> compute the principal curvatures/directions</span>
+            kappa1, kappa2, lambda1, lambda2 <span class="pl-k">=</span> <span class="pl-c1">principals</span>(E, F, G, L, M, N)
+            tang[:,<span class="pl-c1">1</span>,n] <span class="pl-k">=</span> lambda1[<span class="pl-c1">1</span>]<span class="pl-k">*</span>du <span class="pl-k">+</span> lambda1[<span class="pl-c1">2</span>]<span class="pl-k">*</span>dv 
+            tang[:,<span class="pl-c1">2</span>,n] <span class="pl-k">=</span> lambda2[<span class="pl-c1">1</span>]<span class="pl-k">*</span>du <span class="pl-k">+</span> lambda2[<span class="pl-c1">2</span>]<span class="pl-k">*</span>dv
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>E, F, G, L, M, N = <span class="pl-pds">"</span></span>,E,<span class="pl-s"><span class="pl-pds">"</span>, <span class="pl-pds">"</span></span>,F,<span class="pl-s"><span class="pl-pds">"</span>, <span class="pl-pds">"</span></span>,G,<span class="pl-s"><span class="pl-pds">"</span>, <span class="pl-pds">"</span></span>,L,<span class="pl-s"><span class="pl-pds">"</span>, <span class="pl-pds">"</span></span>,M,<span class="pl-s"><span class="pl-pds">"</span>, <span class="pl-pds">"</span></span>,N)
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>tang1 dot tang2 = <span class="pl-pds">"</span></span>, <span class="pl-c1">dot</span>(tang[:,<span class="pl-c1">1</span>,n], tang[:,<span class="pl-c1">2</span>,n]))
+            <span class="pl-c1">@assert</span>( <span class="pl-c1">abs</span>(<span class="pl-c1">dot</span>(tang[:,<span class="pl-c1">1</span>,n], tang[:,<span class="pl-c1">2</span>,n])) <span class="pl-k">&lt;</span> <span class="pl-c1">1e-9</span>,
+            <span class="pl-s"><span class="pl-pds">"</span>tangents are not orthogonal!<span class="pl-pds">"</span></span> )
+            <span class="pl-k">if</span> quad 
+                crv[<span class="pl-c1">1</span>,n] <span class="pl-k">=</span> <span class="pl-k">-</span>kappa1 
+                crv[<span class="pl-c1">2</span>,n] <span class="pl-k">=</span> <span class="pl-k">-</span>kappa2
+                <span class="pl-k">global</span> max_ratio <span class="pl-k">=</span> <span class="pl-c1">max</span>(max_ratio, <span class="pl-c1">abs</span>(kappa1<span class="pl-k">/</span>kappa2), <span class="pl-c1">abs</span>(kappa2<span class="pl-k">/</span>kappa1))
+                <span class="pl-k">global</span> min_min <span class="pl-k">=</span> <span class="pl-c1">min</span>(min_min, <span class="pl-c1">abs</span>(kappa1), <span class="pl-c1">abs</span>(kappa2))
+                <span class="pl-k">global</span> max_max <span class="pl-k">=</span> <span class="pl-c1">max</span>(max_max, <span class="pl-c1">abs</span>(kappa1), <span class="pl-c1">abs</span>(kappa2))
+            <span class="pl-k">else</span> 
+                crv[<span class="pl-c1">1</span>,n] <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+                crv[<span class="pl-c1">2</span>,n] <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+            <span class="pl-k">end</span>
+        <span class="pl-k">end</span> 
+    <span class="pl-k">end</span> 
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>miniumum prin. curvature = <span class="pl-pds">"</span></span>, min_min)
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>maximum prin. curvature = <span class="pl-pds">"</span></span>,max_max)
+    <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>max curvature ratio = <span class="pl-pds">"</span></span>,max_ratio)
+    
+    <span class="pl-c"><span class="pl-c">#</span> construct the LevelSet </span>
+    rho <span class="pl-k">=</span> rhofactor<span class="pl-k">*</span><span class="pl-c1">convert</span>(Float64, numu)
+    levset <span class="pl-k">=</span> <span class="pl-c1">LevelSet</span><span class="pl-c1">{3,Float64}</span>(xc, nrm, tang, crv, rho)
+    
+    <span class="pl-c"><span class="pl-c">#</span> write the centers to a file </span>
+    centers <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{MeshCell{VTKCellType, Vector{Int64}}}</span>(undef, levset<span class="pl-k">.</span>numbasis)
+    <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>levset<span class="pl-k">.</span>numbasis 
+        centers[i] <span class="pl-k">=</span> <span class="pl-c1">MeshCell</span>(VTKCellTypes<span class="pl-k">.</span>VTK_VERTEX, [i])
+    <span class="pl-k">end</span>
+    normal <span class="pl-k">=</span> <span class="pl-c1">view</span>(levset<span class="pl-k">.</span>frame, :, <span class="pl-c1">1</span>, :)
+    saved_files <span class="pl-k">=</span> <span class="pl-c1">vtk_grid</span>(<span class="pl-s"><span class="pl-pds">"</span>centers.vtu<span class="pl-pds">"</span></span>, levset<span class="pl-k">.</span>xcenter, centers) <span class="pl-k">do</span> vtk
+        vtk[<span class="pl-s"><span class="pl-pds">"</span>normal<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> normal
+    <span class="pl-k">end</span>
+    
+    <span class="pl-c"><span class="pl-c">#</span> Next, we make a fine mesh in (u,v) space for plotting in Paraview </span>
+    numu <span class="pl-k">=</span> <span class="pl-c1">1200</span>
+    numv <span class="pl-k">=</span> <span class="pl-c1">1200</span>
+    numvert <span class="pl-k">=</span> numu<span class="pl-k">*</span>numv
+    <span class="pl-k">function</span> <span class="pl-en">getvertex</span>(i, j)
+        <span class="pl-k">return</span> numv<span class="pl-k">*</span>(j<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> i
+    <span class="pl-k">end</span>
+    
+    <span class="pl-c"><span class="pl-c">#</span> get the points making up the vtk triangles</span>
+    points <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, numvert)
+    <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numu 
+        u <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">pi</span><span class="pl-k">*</span>(i<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">/</span>(numu<span class="pl-k">-</span><span class="pl-c1">1</span>)
+        <span class="pl-k">for</span> j <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numv 
+            v <span class="pl-k">=</span> <span class="pl-c1">pi</span><span class="pl-k">*</span>(j<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">/</span>(numv<span class="pl-k">-</span><span class="pl-c1">1</span>)
+            n <span class="pl-k">=</span> <span class="pl-c1">getvertex</span>(i, j)
+            x0 <span class="pl-k">=</span> [a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); c<span class="pl-k">*</span><span class="pl-c1">cos</span>(v)]
+            <span class="pl-c1">snappoint!</span>(<span class="pl-c1">view</span>(points,:,n), x0, levset, tol<span class="pl-k">=</span><span class="pl-c1">1e-8</span>, max_newton<span class="pl-k">=</span><span class="pl-c1">50</span>, 
+            silent_fail<span class="pl-k">=</span><span class="pl-c1">true</span>)
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    
+    <span class="pl-c"><span class="pl-c">#</span> define the triangles </span>
+    numcell <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span>(numu<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>(numv<span class="pl-k">-</span><span class="pl-c1">1</span>)
+    cells <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{MeshCell{VTKCellType, Vector{Int64}}}</span>(undef, numcell)
+    <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numu<span class="pl-k">-</span><span class="pl-c1">1</span>
+        <span class="pl-k">for</span> j <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numv<span class="pl-k">-</span><span class="pl-c1">1</span>
+            n <span class="pl-k">=</span> (numv<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>(j<span class="pl-k">-</span><span class="pl-c1">1</span>) <span class="pl-k">+</span> i
+            connect <span class="pl-k">=</span> [<span class="pl-c1">getvertex</span>(i,j), <span class="pl-c1">getvertex</span>(i<span class="pl-k">+</span><span class="pl-c1">1</span>,j), <span class="pl-c1">getvertex</span>(i,j<span class="pl-k">+</span><span class="pl-c1">1</span>)]
+            cells[n] <span class="pl-k">=</span> <span class="pl-c1">MeshCell</span>(VTKCellTypes<span class="pl-k">.</span>VTK_TRIANGLE, connect)
+            n <span class="pl-k">+=</span> (numu<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">*</span>(numv<span class="pl-k">-</span><span class="pl-c1">1</span>)
+            connect <span class="pl-k">=</span> [<span class="pl-c1">getvertex</span>(i<span class="pl-k">+</span><span class="pl-c1">1</span>,j<span class="pl-k">+</span><span class="pl-c1">1</span>), <span class="pl-c1">getvertex</span>(i,j<span class="pl-k">+</span><span class="pl-c1">1</span>), <span class="pl-c1">getvertex</span>(i<span class="pl-k">+</span><span class="pl-c1">1</span>,j)]
+            cells[n] <span class="pl-k">=</span> <span class="pl-c1">MeshCell</span>(VTKCellTypes<span class="pl-k">.</span>VTK_TRIANGLE, connect)
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    
+    <span class="pl-c"><span class="pl-c">#</span> save the vtk unstructured grid file</span>
+    saved_files <span class="pl-k">=</span> <span class="pl-c1">vtk_grid</span>(<span class="pl-s"><span class="pl-pds">"</span>ellipse.vtu<span class="pl-pds">"</span></span>, points, cells) <span class="pl-k">do</span> vtk
+        <span class="pl-c"><span class="pl-c">#</span> add datasets here...nothing to add in this case</span>
+    <span class="pl-k">end</span>
+    
+<span class="pl-k">end</span>
+
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">    ellipsoidConverge([a=2.0, b=0.5, c=1.0])</span>
+<span class="pl-s"></span>
+<span class="pl-s">Run the ellipsoid convergence study from the paper.</span>
+<span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-k">function</span> <span class="pl-en">ellipsoidConverge</span>(;a<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">2.0</span>, b<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">0.5</span>, c<span class="pl-k">::</span><span class="pl-c1">Float64</span><span class="pl-k">=</span><span class="pl-c1">1.0</span>)
+
+    <span class="pl-c"><span class="pl-c">#</span> set the points used to measure error </span>
+    numu, numv <span class="pl-k">=</span> <span class="pl-c1">1200</span>, <span class="pl-c1">1200</span>
+    numpts <span class="pl-k">=</span> numu<span class="pl-k">*</span>numv
+    x <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, numpts)
+    ptr <span class="pl-k">=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numu 
+        u <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">pi</span><span class="pl-k">*</span>(i<span class="pl-k">-</span><span class="pl-c1">0.5</span>)<span class="pl-k">/</span>numu
+        <span class="pl-k">for</span> j <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>numv 
+            v <span class="pl-k">=</span> <span class="pl-c1">pi</span><span class="pl-k">*</span>(j<span class="pl-k">-</span><span class="pl-c1">0.5</span>)<span class="pl-k">/</span>numv            
+            x[:,ptr] <span class="pl-k">=</span> [a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); c<span class="pl-k">*</span><span class="pl-c1">cos</span>(v)]
+            ptr <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+    res <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">size</span>(x,<span class="pl-c1">2</span>))
+
+    numu <span class="pl-k">=</span> [<span class="pl-c1">10</span>, <span class="pl-c1">20</span>, <span class="pl-c1">40</span>, <span class="pl-c1">80</span>, <span class="pl-c1">160</span>]
+    rhofactor <span class="pl-k">=</span> [<span class="pl-c1">1</span>, <span class="pl-c1">10</span>]
+    l2err <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">size</span>(numu,<span class="pl-c1">1</span>), <span class="pl-c1">size</span>(rhofactor,<span class="pl-c1">1</span>))
+    l2err_ho <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">size</span>(numu,<span class="pl-c1">1</span>), <span class="pl-c1">size</span>(rhofactor,<span class="pl-c1">1</span>))
+    <span class="pl-k">for</span> (k, nu) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(numu)
+        <span class="pl-c"><span class="pl-c">#</span> set basis centers and normals</span>
+        numbasis <span class="pl-k">=</span> nu<span class="pl-k">*</span>nu 
+        xc <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, numbasis)
+        nrm <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, numbasis)
+        tang <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">3</span>, <span class="pl-c1">2</span>, numbasis)
+        crv <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(<span class="pl-c1">2</span>, numbasis)
+        ptr <span class="pl-k">=</span> <span class="pl-c1">1</span>
+        <span class="pl-k">for</span> i <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nu
+            u <span class="pl-k">=</span> <span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">pi</span><span class="pl-k">*</span>(i<span class="pl-k">-</span><span class="pl-c1">0.5</span>)<span class="pl-k">/</span>nu
+            <span class="pl-k">for</span> j <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">:</span>nu
+                v <span class="pl-k">=</span> <span class="pl-c1">pi</span><span class="pl-k">*</span>(j<span class="pl-k">-</span><span class="pl-c1">0.5</span>)<span class="pl-k">/</span>nu 
+                xc[:, ptr] <span class="pl-k">=</span> [a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-k">-</span>c<span class="pl-k">*</span><span class="pl-c1">cos</span>(v)]
+                du <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); b<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-c1">0.0</span>]
+                dv <span class="pl-k">=</span> [a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); c<span class="pl-k">*</span><span class="pl-c1">sin</span>(v)]
+                du2 <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-k">-</span>b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-c1">0.0</span>]
+                dv2 <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); <span class="pl-k">-</span>b<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">sin</span>(v); c<span class="pl-k">*</span><span class="pl-c1">cos</span>(v)]
+                dudv <span class="pl-k">=</span> [<span class="pl-k">-</span>a<span class="pl-k">*</span><span class="pl-c1">sin</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); b<span class="pl-k">*</span><span class="pl-c1">cos</span>(u)<span class="pl-k">*</span><span class="pl-c1">cos</span>(v); <span class="pl-c1">0.0</span>]
+                nrm[:,ptr] <span class="pl-k">=</span> <span class="pl-c1">cross</span>(du, dv)
+                fac <span class="pl-k">=</span> <span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">norm</span>(nrm[:,ptr])
+                <span class="pl-c"><span class="pl-c">#</span> compute the terms for the first and second fundamental forms </span>
+                E <span class="pl-k">=</span> <span class="pl-c1">dot</span>(du, du)
+                F <span class="pl-k">=</span> <span class="pl-c1">dot</span>(du, dv)
+                G <span class="pl-k">=</span> <span class="pl-c1">dot</span>(dv, dv)
+                L <span class="pl-k">=</span> <span class="pl-c1">dot</span>(du2, nrm[:,ptr])<span class="pl-k">*</span>fac
+                M <span class="pl-k">=</span> <span class="pl-c1">dot</span>(dudv, nrm[:,ptr])<span class="pl-k">*</span>fac 
+                N <span class="pl-k">=</span> <span class="pl-c1">dot</span>(dv2, nrm[:,ptr])<span class="pl-k">*</span>fac 
+                <span class="pl-c"><span class="pl-c">#</span> compute principal curvatures/directions</span>
+                kappa1, kappa2, lambda1, lambda2 <span class="pl-k">=</span> <span class="pl-c1">principals</span>(E, F, G, L, M, N)
+                tang[:,<span class="pl-c1">1</span>,ptr] <span class="pl-k">=</span> lambda1[<span class="pl-c1">1</span>]<span class="pl-k">*</span>du <span class="pl-k">+</span> lambda1[<span class="pl-c1">2</span>]<span class="pl-k">*</span>dv 
+                tang[:,<span class="pl-c1">2</span>,ptr] <span class="pl-k">=</span> lambda2[<span class="pl-c1">1</span>]<span class="pl-k">*</span>du <span class="pl-k">+</span> lambda2[<span class="pl-c1">2</span>]<span class="pl-k">*</span>dv
+                crv[<span class="pl-c1">1</span>,ptr] <span class="pl-k">=</span> <span class="pl-k">-</span>kappa1 
+                crv[<span class="pl-c1">2</span>,ptr] <span class="pl-k">=</span> <span class="pl-k">-</span>kappa2
+                ptr <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+            <span class="pl-k">end</span> 
+        <span class="pl-k">end</span>
+
+        <span class="pl-k">for</span> (j, r) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(rhofactor)
+            rho <span class="pl-k">=</span> r<span class="pl-k">*</span><span class="pl-c1">convert</span>(Float64, nu)
+
+            <span class="pl-c"><span class="pl-c">#</span> linear approximation </span>
+            levset <span class="pl-k">=</span> <span class="pl-c1">LevelSet</span><span class="pl-c1">{3,Float64}</span>(xc, nrm, tang, <span class="pl-c1">zeros</span>(<span class="pl-c1">size</span>(crv)), rho)
+            LevelSets<span class="pl-k">.</span><span class="pl-c1">residual!</span>(res, x, levset)
+            l2err[k,j] <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(<span class="pl-c1">dot</span>(res,res)<span class="pl-k">/</span>numpts)
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Linear: L2 integral norm = <span class="pl-pds">"</span></span>,l2err[k,j])
+
+            <span class="pl-c"><span class="pl-c">#</span> quadratic approximation </span>
+            levset <span class="pl-k">=</span> <span class="pl-c1">LevelSet</span><span class="pl-c1">{3,Float64}</span>(xc, nrm, tang, crv, rho)
+            LevelSets<span class="pl-k">.</span><span class="pl-c1">residual!</span>(res, x, levset)
+            l2err_ho[k,j] <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(<span class="pl-c1">dot</span>(res,res)<span class="pl-k">/</span>numpts)
+            <span class="pl-c1">println</span>(<span class="pl-s"><span class="pl-pds">"</span>Quadratic: L2 integral norm = <span class="pl-pds">"</span></span>,l2err_ho[k,j])
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">figure</span>(figsize<span class="pl-k">=</span>[<span class="pl-c1">6</span>,<span class="pl-c1">2.5</span>])
+
+    linear_style <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>-ro<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>--ro<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>:ro<span class="pl-pds">"</span></span>]
+    quad_style <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>-ks<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>--ks<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>:ks<span class="pl-pds">"</span></span>]
+    <span class="pl-k">for</span> (j, r) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(rhofactor)
+        label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>linear: $<span class="pl-cce">\r</span>ho/<span class="pl-cce">\s</span>qrt{n_{<span class="pl-cce">\G</span>amma}} = <span class="pl-pds">"</span></span> <span class="pl-k">*</span> <span class="pl-c1">string</span>(r) <span class="pl-k">*</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$<span class="pl-pds">"</span></span>
+        PyPlot<span class="pl-k">.</span><span class="pl-c1">plot</span>(numu, l2err[:,j], linear_style[j], linewidth<span class="pl-k">=</span><span class="pl-c1">1</span>, 
+                    markersize<span class="pl-k">=</span><span class="pl-c1">4</span>, label<span class="pl-k">=</span>label)
+    <span class="pl-k">end</span>
+    <span class="pl-k">for</span> (j, r) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>(rhofactor)
+        label <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>quadratic: $<span class="pl-cce">\r</span>ho/<span class="pl-cce">\s</span>qrt{n_{<span class="pl-cce">\G</span>amma}} = <span class="pl-pds">"</span></span> <span class="pl-k">*</span> <span class="pl-c1">string</span>(r) <span class="pl-k">*</span> <span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$<span class="pl-pds">"</span></span>
+        PyPlot<span class="pl-k">.</span><span class="pl-c1">plot</span>(numu, l2err_ho[:,j], quad_style[j], linewidth<span class="pl-k">=</span><span class="pl-c1">1</span>, 
+                    markersize<span class="pl-k">=</span><span class="pl-c1">4</span>,label<span class="pl-k">=</span>label)
+    <span class="pl-k">end</span>
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">gca</span>()<span class="pl-k">.</span><span class="pl-c1">axis</span>([<span class="pl-c1">5</span>, <span class="pl-c1">200</span>, <span class="pl-c1">1e-7</span>, <span class="pl-c1">0.1</span>])
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">gca</span>()<span class="pl-k">.</span><span class="pl-c1">set_position</span>([<span class="pl-c1">0.12</span>, <span class="pl-c1">0.17</span>, <span class="pl-c1">0.5</span>, <span class="pl-c1">0.8</span>])
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">gca</span>()<span class="pl-k">.</span><span class="pl-c1">grid</span>(which<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>major<span class="pl-pds">"</span></span>, linestyle<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>:<span class="pl-pds">"</span></span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">xticks</span>(fontsize<span class="pl-k">=</span><span class="pl-c1">8</span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">yticks</span>(fontsize<span class="pl-k">=</span><span class="pl-c1">8</span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">xscale</span>(<span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">yscale</span>(<span class="pl-s"><span class="pl-pds">"</span>log<span class="pl-pds">"</span></span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">xlabel</span>(<span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$<span class="pl-cce">\s</span>qrt{n_{<span class="pl-cce">\G</span>amma}}$<span class="pl-pds">"</span></span>, labelpad<span class="pl-k">=</span><span class="pl-c1">4</span>, fontsize<span class="pl-k">=</span><span class="pl-c1">10</span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">ylabel</span>(<span class="pl-s"><span class="pl-pds">"</span>RMS Error<span class="pl-pds">"</span></span>, labelpad<span class="pl-k">=</span><span class="pl-c1">12</span>, fontsize<span class="pl-k">=</span><span class="pl-c1">10</span>)
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">gca</span>()<span class="pl-k">.</span><span class="pl-c1">legend</span>(loc<span class="pl-k">=</span>(<span class="pl-c1">1.1</span>, <span class="pl-c1">0.0</span>), handlelength<span class="pl-k">=</span><span class="pl-c1">4</span>, labelspacing<span class="pl-k">=</span><span class="pl-c1">1</span>,
+                        fontsize<span class="pl-k">=</span><span class="pl-c1">8</span>)
+
+    PyPlot<span class="pl-k">.</span><span class="pl-c1">savefig</span>(<span class="pl-s"><span class="pl-pds">"</span>ellipsoid-converge.png<span class="pl-pds">"</span></span>, dpi<span class="pl-k">=</span><span class="pl-c1">300</span>, transparent<span class="pl-k">=</span><span class="pl-c1">true</span>)
+<span class="pl-k">end</span>
+
+<span class="pl-k">end</span> <span class="pl-c"><span class="pl-c">#</span> module Ellipsoid </span></pre></div>
+</article></div>

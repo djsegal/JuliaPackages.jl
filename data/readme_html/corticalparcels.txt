@@ -1,0 +1,101 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">CorticalParcels</h1><a id="user-content-corticalparcels" class="anchor" aria-label="Permalink: CorticalParcels" href="#corticalparcels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This Julia package supplies a set of tools for conveniently and efficiently working with parcels, or regions of interest, in the context of the surface-space representation of the cerebral cortex. It builds upon the <code>Hemisphere</code> and <code>CorticalSurface</code> types (with supertype <code>SurfaceSpace</code>) from <a href="https://github.com/myersm0/CorticalSurfaces.jl">CorticalSurfaces.jl</a> and provides the foundation for my implementation of an important parcel-generation and -evaluation method in <a href="https://github.com/myersm0/WatershedParcellation.jl">WatershedParcellation.jl</a>. The functions supplied are based on MATLAB code developed at Washington University by Tim Laumann and Evan Gordon from their 2016 paper <a href="https://pubmed.ncbi.nlm.nih.gov/25316338/" rel="nofollow">"Generation and Evaluation of a Cortical Area Parcellation from Resting-State Correlations."</a>.</p>
+<p dir="auto">A <code>Parcel</code> is a discrete region of interest on the cortical surface, and in this implementation is stored internally as a <code>BitVector</code> of vertices where each element denotes membership (<code>true</code> or <code>false</code>). The total length of that vector constitutes the surface-space representation in which the parcel is defined. The size of a parcel <code>size(p::Parcel)</code> is given as the number of non-zero elements of that vector, i.e. the number of vertices belonging to that parcel. This implementation was chosen to enable very fast performance of common operations such as getting the size, computing overlap with other parcels, dilating and eroding, etc, by reducing them internally to simple bitwise operations.</p>
+<p dir="auto">A parcellation is a collection of <code>Parcel</code>s that all share the same space. It's typically the case that the parcels within it are non-overlapping, but nothing in this implementation enforces that.</p>
+<p dir="auto">As of version 0.7, the former Parcellation type has been replaced by <code>HemisphericParcellation</code>, which is functionally equivalent. It's been reanmed to distinguish it from the new <code>BilateralParcellation</code> struct, which provides the capability of dealing with both hemispheres at the same time. Currently <code>BilateralParcellation</code> is available only as a convenient container and constructor for its left and right component <code>HemisphericParcellation</code>s; it has little functionality beyond that <em>yet</em>, so for the moment you can use it to store the hemispheres and then you'll have to manage iteration over the hemispheres yourself in order to do some work on each of them individually.</p>
+<p dir="auto">The <code>HemisphericParcellation</code> struct contains two fields:</p>
+<ul dir="auto">
+<li><code>surface</code>: a <code>Hemisphere</code> supplying details of the geometry (particularly, the size of the space) that all its component <code>Parcel</code>s must conform to
+<ul dir="auto">
+<li>(if however the geometry is not of interest in your application, then a dummy surface can be created by, for example, <code>Hemisphere(32492)</code> where the only piece of information that's strictly required is the number of vertices, 32492 in this case)</li>
+</ul>
+</li>
+<li><code>parcels</code>: a <code>Dict{T, Parcel}</code> mapping keys of type <code>T</code> to parcels, where <code>T</code> can be any type (preferably one for which a <code>zero(::T)</code> method is defined) that you want to use as keys for accessing and labeling individual parcels</li>
+</ul>
+<p dir="auto">Rather than having to create the parcel dictionaries yourself, I anticipate that a parcellation will most often be initialized via its <code>BilateralParcellation(surface::SurfaceSpace, x::Vector{T})</code> constructor, since the <code>Vector{T}</code> representation is probably the way you read in an existing parcellation from disk, e.g. from a <a href="https://github.com/myersm0/CIFTI.jl%22">CIFTI</a> file. See the Usage section below.</p>
+<p dir="auto">A parcellation (either hemispheric or bilateral) can be mapped back to a vanilla <code>Vector{T}</code> representation if desired via <code>vec(px::AbstractParcellation)</code>.</p>
+<p dir="auto">Some notation notes: in the following documentation and in demos, <code>p</code>, <code>p1</code>, <code>p2</code> will refer to individual parcels; and <code>px</code> will refer to a whole parcellation.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Performance</h2><a id="user-content-performance" class="anchor" aria-label="Permalink: Performance" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The performance is going to depend on several factors. The benchmarks below are based on using a single-hemisphere parcellation of 185 parcels, in a space of 32492 vertices, and compares the current <code>BitVector</code>-based implementation to an alternative using <code>SparseVector</code>s as well as to a naive <code>Vector{Int}</code> representation (simply a list of vertex index numbers).</p>
+<ul dir="auto">
+<li><em>Adding or removing vertices to/from a <code>Parcel</code></em>. This is where the current implementation shines most, via operations like <code>union!(p1::Parcel, p2::Parcel)</code> and analogous calls to <code>setdiff!</code> and <code>intersect!</code>.</li>
+<li><em>Computing the amount of overlap of two <code>Parcel</code>s</em>. This is fast because it reduces to just taking the dot product of their respective membership vectors.</li>
+<li><em>Checking the size of a <code>Parcel</code>.</em> This is the only case where the current implementation lags behind alternatives.</li>
+<li><em>Checking a <code>Parcellation</code> for unassigned values</em>. This is relatively "slow" compared to <code>Parcel</code>-level operations supplied. But it should be infrequent enough that it doesn't matter much; and the present <code>BitVector</code> is still faster than alternatives.</li>
+</ul>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="right"><code>intersect!(p1, p2)</code></th>
+<th align="right"><code>overlap(p1, p2</code></th>
+<th align="right"><code>size(p)</code></th>
+<th align="right"><code>unassigned(px)</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong><code>BitVector</code></strong></td>
+<td align="right"><strong>85 ns</strong></td>
+<td align="right"><strong>108 ns</strong></td>
+<td align="right">104 ns</td>
+<td align="right"><strong>22000</strong> ns</td>
+</tr>
+<tr>
+<td align="left"><code>SparseVector</code></td>
+<td align="right">3047 ns</td>
+<td align="right">812 ns</td>
+<td align="right">83 ns</td>
+<td align="right">39000 ns</td>
+</tr>
+<tr>
+<td align="left"><code>Vector</code></td>
+<td align="right">7692 ns</td>
+<td align="right">49110 ns</td>
+<td align="right"><strong>9 ns</strong></td>
+<td align="right">1024000 ns</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto">While the need to compute the size of a parcel is indeed a common operation and we'd like it to be as fast as possible, this implementation's considerable advantage in the other basic operations should still make it the clear frontrunner in most use cases.</p>
+<p dir="auto">If we assume for simplicity that the above operations occur equally often, the <code>SparseVector</code> implementation (used in this package version 0.1.0 only) achieves a 25x speedup relative to the naive case, and the present <code>BitVector</code> implementation (package version 0.2+) achieves a 48x speedup relative to the same. If we ignore the <code>unassigned(px)</code> call, the current implementation improves to a 191x speedup over baseline.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Installation</h2><a id="user-content-installation" class="anchor" aria-label="Permalink: Installation" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Within Julia:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Pkg
+Pkg.add(&quot;CorticalParcels&quot;)"><pre class="notranslate"><code>using Pkg
+Pkg.add("CorticalParcels")
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A full demo of the basic functionality can be found in <code>examples/demo.jl</code>.</p>
+<p dir="auto">The package <a href="https://github.com/myersm0/CorticalSurfaces.jl">CorticalSurfaces.jl</a> provides the definitions of <code>Hemisphere</code> and <code>CorticalSurface</code> types (and their supertype <code>SurfaceSpace</code>), on which many of the operations in this package depend. So first of all, load both packages and create a <code>Hemisphere</code> struct that will define the vertex space. At a minimum, you need to specify the number of vertices in that space, for example 32492; but see <a href="https://github.com/myersm0/CorticalSurfaces.jl">CorticalSurfaces.jl</a> for further details.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using CorticalSurfaces
+using CorticalParcels
+
+hem = Hemisphere(32492) # create a Hemisphere of 32492 vertices that will define the space"><pre class="notranslate"><code>using CorticalSurfaces
+using CorticalParcels
+
+hem = Hemisphere(32492) # create a Hemisphere of 32492 vertices that will define the space
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Constructors</h3><a id="user-content-constructors" class="anchor" aria-label="Permalink: Constructors" href="#constructors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Once a <code>Hemisphere</code> has been created (we'll call it <code>hem</code> here), the following are two basic ways in which to initialize a <code>Parcel</code>::</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Parcel(hem)                  # create an empty parcel within the same space as `hem`
+Parcel(hem, [5, 6, 7])       # create a parcel with 3 vertices within the same space as `hem`"><pre class="notranslate"><code>Parcel(hem)                  # create an empty parcel within the same space as `hem`
+Parcel(hem, [5, 6, 7])       # create a parcel with 3 vertices within the same space as `hem`
+</code></pre></div>
+<p dir="auto">A <code>HemisphericParcellation</code> can be initialized in several ways, such as:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="hem = Hemisphere(32492)            # create a Hemisphere of 39492 vertices
+HemisphericParcellation{Int}(hem)  # create an empty parcellation within that space
+
+# as above, but this time fill the space with 10 randomly assigned parcels
+HemisphericParcellation{Int}(hem, rand(1:10, 32492))"><pre class="notranslate"><code>hem = Hemisphere(32492)            # create a Hemisphere of 39492 vertices
+HemisphericParcellation{Int}(hem)  # create an empty parcellation within that space
+
+# as above, but this time fill the space with 10 randomly assigned parcels
+HemisphericParcellation{Int}(hem, rand(1:10, 32492))
+</code></pre></div>
+<p dir="auto">The above examples use <code>Int</code> as the initialization parameter, and this defines the type of key that will be assigned to each parcel. Any type should be usable, however, provided that its <code>typemax</code> can represent the largest value you anticipate needing to store. You could use <code>String</code> keys, for example, if you want to provide descriptive labels for your parcels and index them in that way.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Accessors</h3><a id="user-content-accessors" class="anchor" aria-label="Permalink: Accessors" href="#accessors"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>unassigned(px::HemisphericParcellation)</code> may be used to dynamically determine the elements in the vector space that are not assigned to any parcel.</p>
+<p dir="auto"><code>vec(px::AbstractParcellation)</code> will reduce the parcellation to a single <code>Vector{T}</code>. If you constructed <code>px</code> from a <code>Vector{T}</code> (and have not changed any of its elements), this operation should return that same vector.</p>
+<p dir="auto"><a href="https://github.com/myersm0/CorticalParcels.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/myersm0/CorticalParcels.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+</article></div>

@@ -1,0 +1,75 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">AccessibleOptimization.jl</h1><a id="user-content-accessibleoptimizationjl" class="anchor" aria-label="Permalink: AccessibleOptimization.jl" href="#accessibleoptimizationjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Combining <code>Accessors.jl</code> + <code>Optimization.jl</code> to enable function optimization with arbitrary structs. Vary struct parameters, combinations and transformations of them. Uniform and composable, zero overhead.</p>
+<p dir="auto">Defining features of <code>AccessibleOptimization</code>:</p>
+<ul dir="auto">
+<li>No need to deal with raw vectors of optimized parameters: their values are automatically put into model structs</li>
+<li>Can use arbitrary structs as model definitions, no requirements or limitations on their content, types, or methods</li>
+<li>Can flexibly specify the list of parameters to optimize, as well as their bounds and constrains - independently of the model struct/object creation</li>
+<li>Everything is type-stable and performant</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Usage</h1><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Suppose you want to fit a model to data. Here, our model is a sum of squared exponentials.</p>
+<p dir="auto">First, define your model and a way to evaluate it. Regular Julia code, no special types or functions. This is not <code>Accessors</code>/<code>Optimization</code> specific at all, you may have model definitions already!</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="struct ExpModel{A,B}
+    scale::A
+    shift::B
+end
+
+struct SumModel{T &lt;: Tuple}
+    comps::T
+end
+
+(m::ExpModel)(x) = m.scale * exp(-(x - m.shift)^2)
+(m::SumModel)(x) = sum(c -&gt; c(x), m.comps)
+
+loss(m, data) = @p data |&gt; sum(abs2(_.y - m(_.x)))"><pre><span class="pl-k">struct</span> ExpModel{A,B}
+    scale<span class="pl-k">::</span><span class="pl-c1">A</span>
+    shift<span class="pl-k">::</span><span class="pl-c1">B</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> SumModel{T <span class="pl-k">&lt;:</span> <span class="pl-c1">Tuple</span>}
+    comps<span class="pl-k">::</span><span class="pl-c1">T</span>
+<span class="pl-k">end</span>
+
+(m<span class="pl-k">::</span><span class="pl-c1">ExpModel</span>)(x) <span class="pl-k">=</span> m<span class="pl-k">.</span>scale <span class="pl-k">*</span> <span class="pl-c1">exp</span>(<span class="pl-k">-</span>(x <span class="pl-k">-</span> m<span class="pl-k">.</span>shift)<span class="pl-k">^</span><span class="pl-c1">2</span>)
+(m<span class="pl-k">::</span><span class="pl-c1">SumModel</span>)(x) <span class="pl-k">=</span> <span class="pl-c1">sum</span>(c <span class="pl-k">-&gt;</span> <span class="pl-c1">c</span>(x), m<span class="pl-k">.</span>comps)
+
+<span class="pl-en">loss</span>(m, data) <span class="pl-k">=</span> <span class="pl-c1">@p</span> data <span class="pl-k">|&gt;</span> <span class="pl-c1">sum</span>(<span class="pl-c1">abs2</span>(_<span class="pl-k">.</span>y <span class="pl-k">-</span> <span class="pl-c1">m</span>(_<span class="pl-k">.</span>x)))</pre></div>
+<p dir="auto">Then, load <code>AccessibleOptimization</code>, define optimization parameters, and perform optimization:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using AccessibleOptimization
+
+# which parameters to optimize, what are their bouds?
+vars = OptArgs(
+	(@o _.comps[∗].shift) =&gt; 0..10.,  # shifts of both components: values from 0..10
+	(@o log10(_.comps[∗].scale)) =&gt; -1..1,  # component scales: positive-only (using log10 transformation), from 10^-1 to 10^1
+)
+# create and solve the optimization problem, interface very similar to Optimization.jl
+ops = OptProblemSpec(Base.Fix2(loss, data), mod0, vars)
+sol = solve(ops, ECA(), maxiters=300)
+sol.uobj::SumModel  # the optimal model"><pre><span class="pl-k">using</span> AccessibleOptimization
+
+<span class="pl-c"><span class="pl-c">#</span> which parameters to optimize, what are their bouds?</span>
+vars <span class="pl-k">=</span> <span class="pl-c1">OptArgs</span>(
+	(<span class="pl-c1">@o</span> _<span class="pl-k">.</span>comps[<span class="pl-k">∗</span>]<span class="pl-k">.</span>shift) <span class="pl-k">=&gt;</span> <span class="pl-c1">0</span><span class="pl-k">..</span><span class="pl-c1">10.</span>,  <span class="pl-c"><span class="pl-c">#</span> shifts of both components: values from 0..10</span>
+	(<span class="pl-c1">@o</span> <span class="pl-c1">log10</span>(_<span class="pl-k">.</span>comps[<span class="pl-k">∗</span>]<span class="pl-k">.</span>scale)) <span class="pl-k">=&gt;</span> <span class="pl-k">-</span><span class="pl-c1">1</span><span class="pl-k">..</span><span class="pl-c1">1</span>,  <span class="pl-c"><span class="pl-c">#</span> component scales: positive-only (using log10 transformation), from 10^-1 to 10^1</span>
+)
+<span class="pl-c"><span class="pl-c">#</span> create and solve the optimization problem, interface very similar to Optimization.jl</span>
+ops <span class="pl-k">=</span> <span class="pl-c1">OptProblemSpec</span>(Base<span class="pl-k">.</span><span class="pl-c1">Fix2</span>(loss, data), mod0, vars)
+sol <span class="pl-k">=</span> <span class="pl-c1">solve</span>(ops, <span class="pl-c1">ECA</span>(), maxiters<span class="pl-k">=</span><span class="pl-c1">300</span>)
+sol<span class="pl-k">.</span>uobj<span class="pl-k">::</span><span class="pl-c1">SumModel</span>  <span class="pl-c"><span class="pl-c">#</span> the optimal model</span></pre></div>
+<p dir="auto">We use <a href="https://github.com/JuliaObjects/Accessors.jl">Accessors.jl</a> and <a href="https://gitlab.com/aplavin/AccessorsExtra.jl" rel="nofollow">AccessorsExtra.jl</a> optics to specify parameters to vary during optimization. Basic <code>@optic</code> syntax demonstrated in the above example includes property and index access (<code>_.prop</code>, <code>_[1]</code>) and selecting all elements of a collection with <code>_[∗]</code> (type with <code>\ast&lt;tab&gt;</code>). Refer to the <code>Accessors[Extra]</code> documentation for more details.</p>
+<p dir="auto">See a Pluto notebook with <a href="https://aplavin.github.io/AccessibleOptimization.jl/examples/notebook.html" rel="nofollow">a walkthrough, more examples and explanations</a>.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Related packages</h1><a id="user-content-related-packages" class="anchor" aria-label="Permalink: Related packages" href="#related-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>AccessibleOptimization</code> gains its composability and generality powers (and half its name!) from <code>Accessors</code> and <code>AccessorsExtra</code> packages.</p>
+<p dir="auto">The optimization part is directly delegated to <code>Optimization</code>. Other backends are possible, but best to add them as methods to <code>Optimization</code> proper and use from <code>AccessibleOptimization</code>.</p>
+<p dir="auto">These packages have generally similar goals, but neither provides all features <code>AccessibleOptimization</code> or <code>Accessors</code> do:</p>
+<ul dir="auto">
+<li><a href="https://github.com/FluxML/Functors.jl">Functors.jl</a></li>
+<li><a href="https://github.com/Metalenz/FlexibleFunctors.jl">FlexibleFunctors.jl</a></li>
+<li><a href="https://github.com/gcalderone/GModelFit.jl">GModelFit.jl</a></li>
+<li><a href="https://github.com/rafaqz/ModelParameters.jl">ModelParameters.jl</a></li>
+<li><a href="https://github.com/JuliaGaussianProcesses/ParameterHandling.jl">ParameterHandling.jl</a></li>
+<li><a href="https://github.com/tpapp/TransformVariables.jl">TransformVariables.jl</a></li>
+<li><a href="https://github.com/oschulz/ValueShapes.jl">ValueShapes.jl</a></li>
+</ul>
+</article></div>

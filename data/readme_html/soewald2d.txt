@@ -1,0 +1,107 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">SoEwald2D</h1><a id="user-content-soewald2d" class="anchor" aria-label="Permalink: SoEwald2D" href="#soewald2d"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/ArrogantGao/SoEwald2D.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/ArrogantGao/SoEwald2D.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto"><code>SoEwald2D.jl</code> is a package based on <code>Julia</code> for rapid calculation of electrostatic interaction for particles quasi-2D charged systems.
+It combined the SOE method and the Ewald2D method so that the complexity of its pairwise summation in the k space is of <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="4de9332088a0359bb0c641797aa01b08">$O(N)$</math-renderer>, much better than the original one, which is of <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="4de9332088a0359bb0c641797aa01b08">$O(N^2)$</math-renderer>.</p>
+<p dir="auto">This package can work as a force field of the MD package <code>ExTinyMD.jl</code>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Getting Started</h2><a id="user-content-getting-started" class="anchor" aria-label="Permalink: Getting Started" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Install the package in Julia REPL simply by</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; add ExTinyMD, SoEwald2D"><pre>pkg<span class="pl-k">&gt;</span> add ExTinyMD, SoEwald2D</pre></div>
+<p dir="auto">And here is an example about using it as the force field of <code>ExTinyMD.jl</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ExTinyMD, SoEwald2D
+
+begin
+    n_atoms = 100
+    L = 20.0
+    boundary = ExTinyMD.Q2dBoundary(L, L, L)
+    
+    atoms = Vector{Atom{Float64}}()
+    for i in 1:n_atoms÷2
+        push!(atoms, Atom(type = 1, mass = 1.0, charge = 1.0))
+    end
+    
+    for i in n_atoms÷2 + 1 : n_atoms
+        push!(atoms, Atom(type = 2, mass = 1.0, charge = - 1.0))
+    end
+    
+    info = SimulationInfo(n_atoms, atoms, (0.0, L, 0.0, L, 0.5, L - 0.5), boundary; min_r = 1.0, temp = 1.0)
+    
+    ϵ_0 = 1.0
+    accuracy = 1e-4
+    α = 0.5
+    r_c = 5.0
+    k_c = sqrt(- 4 * α * log(accuracy))
+    
+    no_finder = NoNeighborFinder(n_atoms);
+    celllist = CellList3D(info, r_c, boundary, 100);
+    interaction_long = SoEwald2DLongInteraction(ϵ_0, (L, L, L), accuracy, α, n_atoms, k_c, SoePara());
+    interaction_short = SoEwald2DShortInteraction(ϵ_0, (L, L, L), accuracy, α, n_atoms, r_c);
+    
+    interactions = [
+        (LennardJones(), CellList3D(info, 4.5, boundary, 100)),
+        (SubLennardJones(0.0, L; cutoff = 0.5, σ = 0.5), SubNeighborFinder(1.0, info, 0.0, L)),
+        (interaction_short, celllist),
+        (interaction_long, no_finder)
+        ]
+    loggers = [TempartureLogger(100, output = false), TrajectionLogger(step = 100, output = false)]
+    simulator = VerletProcess(dt = 0.001, thermostat = AndersenThermoStat(1.0, 0.05))
+    
+    sys = MDSys(
+        n_atoms = n_atoms,
+        atoms = atoms,
+        boundary = boundary,
+        interactions = interactions,
+        loggers = loggers,
+        simulator = simulator
+    )
+    
+    simulate!(simulator, sys, info, 100)
+end"><pre><span class="pl-k">using</span> ExTinyMD, SoEwald2D
+
+<span class="pl-k">begin</span>
+    n_atoms <span class="pl-k">=</span> <span class="pl-c1">100</span>
+    L <span class="pl-k">=</span> <span class="pl-c1">20.0</span>
+    boundary <span class="pl-k">=</span> ExTinyMD<span class="pl-k">.</span><span class="pl-c1">Q2dBoundary</span>(L, L, L)
+    
+    atoms <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{Atom{Float64}}</span>()
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>n_atoms<span class="pl-k">÷</span><span class="pl-c1">2</span>
+        <span class="pl-c1">push!</span>(atoms, <span class="pl-c1">Atom</span>(type <span class="pl-k">=</span> <span class="pl-c1">1</span>, mass <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, charge <span class="pl-k">=</span> <span class="pl-c1">1.0</span>))
+    <span class="pl-k">end</span>
+    
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> n_atoms<span class="pl-k">÷</span><span class="pl-c1">2</span> <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-k">:</span> n_atoms
+        <span class="pl-c1">push!</span>(atoms, <span class="pl-c1">Atom</span>(type <span class="pl-k">=</span> <span class="pl-c1">2</span>, mass <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, charge <span class="pl-k">=</span> <span class="pl-k">-</span> <span class="pl-c1">1.0</span>))
+    <span class="pl-k">end</span>
+    
+    info <span class="pl-k">=</span> <span class="pl-c1">SimulationInfo</span>(n_atoms, atoms, (<span class="pl-c1">0.0</span>, L, <span class="pl-c1">0.0</span>, L, <span class="pl-c1">0.5</span>, L <span class="pl-k">-</span> <span class="pl-c1">0.5</span>), boundary; min_r <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, temp <span class="pl-k">=</span> <span class="pl-c1">1.0</span>)
+    
+    ϵ_0 <span class="pl-k">=</span> <span class="pl-c1">1.0</span>
+    accuracy <span class="pl-k">=</span> <span class="pl-c1">1e-4</span>
+    α <span class="pl-k">=</span> <span class="pl-c1">0.5</span>
+    r_c <span class="pl-k">=</span> <span class="pl-c1">5.0</span>
+    k_c <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(<span class="pl-k">-</span> <span class="pl-c1">4</span> <span class="pl-k">*</span> α <span class="pl-k">*</span> <span class="pl-c1">log</span>(accuracy))
+    
+    no_finder <span class="pl-k">=</span> <span class="pl-c1">NoNeighborFinder</span>(n_atoms);
+    celllist <span class="pl-k">=</span> <span class="pl-c1">CellList3D</span>(info, r_c, boundary, <span class="pl-c1">100</span>);
+    interaction_long <span class="pl-k">=</span> <span class="pl-c1">SoEwald2DLongInteraction</span>(ϵ_0, (L, L, L), accuracy, α, n_atoms, k_c, <span class="pl-c1">SoePara</span>());
+    interaction_short <span class="pl-k">=</span> <span class="pl-c1">SoEwald2DShortInteraction</span>(ϵ_0, (L, L, L), accuracy, α, n_atoms, r_c);
+    
+    interactions <span class="pl-k">=</span> [
+        (<span class="pl-c1">LennardJones</span>(), <span class="pl-c1">CellList3D</span>(info, <span class="pl-c1">4.5</span>, boundary, <span class="pl-c1">100</span>)),
+        (<span class="pl-c1">SubLennardJones</span>(<span class="pl-c1">0.0</span>, L; cutoff <span class="pl-k">=</span> <span class="pl-c1">0.5</span>, σ <span class="pl-k">=</span> <span class="pl-c1">0.5</span>), <span class="pl-c1">SubNeighborFinder</span>(<span class="pl-c1">1.0</span>, info, <span class="pl-c1">0.0</span>, L)),
+        (interaction_short, celllist),
+        (interaction_long, no_finder)
+        ]
+    loggers <span class="pl-k">=</span> [<span class="pl-c1">TempartureLogger</span>(<span class="pl-c1">100</span>, output <span class="pl-k">=</span> <span class="pl-c1">false</span>), <span class="pl-c1">TrajectionLogger</span>(step <span class="pl-k">=</span> <span class="pl-c1">100</span>, output <span class="pl-k">=</span> <span class="pl-c1">false</span>)]
+    simulator <span class="pl-k">=</span> <span class="pl-c1">VerletProcess</span>(dt <span class="pl-k">=</span> <span class="pl-c1">0.001</span>, thermostat <span class="pl-k">=</span> <span class="pl-c1">AndersenThermoStat</span>(<span class="pl-c1">1.0</span>, <span class="pl-c1">0.05</span>))
+    
+    sys <span class="pl-k">=</span> <span class="pl-c1">MDSys</span>(
+        n_atoms <span class="pl-k">=</span> n_atoms,
+        atoms <span class="pl-k">=</span> atoms,
+        boundary <span class="pl-k">=</span> boundary,
+        interactions <span class="pl-k">=</span> interactions,
+        loggers <span class="pl-k">=</span> loggers,
+        simulator <span class="pl-k">=</span> simulator
+    )
+    
+    <span class="pl-c1">simulate!</span>(simulator, sys, info, <span class="pl-c1">100</span>)
+<span class="pl-k">end</span></pre></div>
+</article></div>

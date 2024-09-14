@@ -1,0 +1,215 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div align="center" dir="auto">
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ArguMend.jl</h1><a id="user-content-argumendjl" class="anchor" aria-label="Permalink: ArguMend.jl" href="#argumendjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://astroautomata.com/ArguMend.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/MilesCranmer/ArguMend.jl/actions/workflows/CI.yml?query=branch%3Amaster"><img src="https://github.com/MilesCranmer/ArguMend.jl/actions/workflows/CI.yml/badge.svg?branch=master" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://coveralls.io/github/MilesCranmer/ArguMend.jl?branch=master" rel="nofollow"><img src="https://camo.githubusercontent.com/dedf9cf2d54efd16c41b6b4430590f30ce1fd3e22c054e40ee64d670e967b6f2/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f4d696c65734372616e6d65722f417267754d656e642e6a6c2f62616467652e7376673f6272616e63683d6d6173746572" alt="Coverage" data-canonical-src="https://coveralls.io/repos/github/MilesCranmer/ArguMend.jl/badge.svg?branch=master" style="max-width: 100%;"></a>
+<a href="https://github.com/JuliaTesting/Aqua.jl"><img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg" alt="Aqua QA" style="max-width: 100%;"></a></p>
+</div>
+<p dir="auto">ArguMend.jl injects a function with logic
+to help with mistyped keyword arguments.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@argumend function f(a, b; niterations=10, kw2=2)
+    a + b - niterations + kw2
+end"><pre><span class="pl-c1">@argumend</span> <span class="pl-k">function</span> <span class="pl-en">f</span>(a, b; niterations<span class="pl-k">=</span><span class="pl-c1">10</span>, kw2<span class="pl-k">=</span><span class="pl-c1">2</span>)
+    a <span class="pl-k">+</span> b <span class="pl-k">-</span> niterations <span class="pl-k">+</span> kw2
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">This results in a nicer mechanism for MethodErrors:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; f(1, 2; iterations=1)
+ERROR: SuggestiveMethodError: in call to `f`, found unsupported
+       keyword argument: `iterations`, perhaps you meant `niterations`"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">f</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>; iterations<span class="pl-k">=</span><span class="pl-c1">1</span>)
+ERROR<span class="pl-k">:</span> SuggestiveMethodError<span class="pl-k">:</span> <span class="pl-k">in</span> call to <span class="pl-s"><span class="pl-pds">`</span>f<span class="pl-pds">`</span></span>, found unsupported
+       keyword argument<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">`</span>iterations<span class="pl-pds">`</span></span>, perhaps you meant <span class="pl-s"><span class="pl-pds">`</span>niterations<span class="pl-pds">`</span></span></pre></div>
+<p dir="auto">This becomes increasingly useful when calling into a
+large interface with many possible options.</p>
+<p dir="auto">This mechanism has (very likely) zero runtime cost, as it relies on adding splatted
+keyword arguments to the function call, which will re-compile the function
+if any keyword arguments change, skipping the ArguMend functions altogether.</p>
+<p dir="auto">You can also set this up manually, without a macro:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using ArguMend: suggest_alternative_kws, SuggestiveMethodError
+
+function f(; kws...)
+    valid_kws = (:kw1, :kw2, :kw3)
+    invalid_kws = filter(k -&gt; !(k in valid_kws), keys(kws))
+    if !isempty(invalid_kws)
+        msg = suggest_alternative_kws(invalid_kws, valid_kws)
+        throw(SuggestiveMethodError(f, msg))
+    end
+
+    # Do other stuff
+end"><pre><span class="pl-k">using</span> ArguMend<span class="pl-k">:</span> suggest_alternative_kws, SuggestiveMethodError
+
+<span class="pl-k">function</span> <span class="pl-en">f</span>(; kws<span class="pl-k">...</span>)
+    valid_kws <span class="pl-k">=</span> (<span class="pl-c1">:kw1</span>, <span class="pl-c1">:kw2</span>, <span class="pl-c1">:kw3</span>)
+    invalid_kws <span class="pl-k">=</span> <span class="pl-c1">filter</span>(k <span class="pl-k">-&gt;</span> <span class="pl-k">!</span>(k <span class="pl-k">in</span> valid_kws), <span class="pl-c1">keys</span>(kws))
+    <span class="pl-k">if</span> <span class="pl-k">!</span><span class="pl-c1">isempty</span>(invalid_kws)
+        msg <span class="pl-k">=</span> <span class="pl-c1">suggest_alternative_kws</span>(invalid_kws, valid_kws)
+        <span class="pl-c1">throw</span>(<span class="pl-c1">SuggestiveMethodError</span>(f, msg))
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Do other stuff</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The core function used for computing candidate keywords is <code>extract_close_matches</code>,
+which is a clean-room pure-Julia re-implementation of Python's
+difflib.get_close_matches.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Longer example</h2><a id="user-content-longer-example" class="anchor" aria-label="Permalink: Longer example" href="#longer-example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">I wrote this because <a href="https://github.com/MilesCranmer/SymbolicRegression.jl">SymbolicRegression.jl</a>
+has a massive number of options, and I wanted
+the error to tell me or a user what parameter name was mistyped.</p>
+<details>
+<summary>
+The full list of options is as follows (expand):
+</summary>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function Options(;
+    binary_operators=[+, -, /, *],
+    unary_operators=[],
+    constraints=nothing,
+    elementwise_loss::Union{Function,Nothing}=nothing,
+    loss_function::Union{Function,Nothing}=nothing,
+    tournament_selection_n::Integer=12,
+    tournament_selection_p::Real=0.86,
+    topn::Integer=12,
+    complexity_of_operators=nothing,
+    complexity_of_constants::Union{Nothing,Real}=nothing,
+    complexity_of_variables::Union{Nothing,Real}=nothing,
+    parsimony::Real=0.0032,
+    dimensional_constraint_penalty::Union{Nothing,Real}=nothing,
+    dimensionless_constants_only::Bool=false,
+    alpha::Real=0.100000,
+    maxsize::Integer=20,
+    maxdepth::Union{Nothing,Integer}=nothing,
+    turbo::Bool=false,
+    bumper::Bool=false,
+    migration::Bool=true,
+    hof_migration::Bool=true,
+    should_simplify::Union{Nothing,Bool}=nothing,
+    should_optimize_constants::Bool=true,
+    output_file::Union{Nothing,AbstractString}=nothing,
+    node_type=nothing,
+    populations::Integer=15,
+    perturbation_factor::Real=0.076,
+    annealing::Bool=false,
+    batching::Bool=false,
+    batch_size::Integer=50,
+    mutation_weights=NamedTuple(),
+    crossover_probability::Real=0.066,
+    warmup_maxsize_by::Real=0.0,
+    use_frequency::Bool=true,
+    use_frequency_in_tournament::Bool=true,
+    adaptive_parsimony_scaling::Real=20.0,
+    population_size::Integer=33,
+    ncycles_per_iteration::Integer=550,
+    fraction_replaced::Real=0.00036,
+    fraction_replaced_hof::Real=0.035,
+    verbosity::Union{Integer,Nothing}=nothing,
+    print_precision::Integer=5,
+    save_to_file::Bool=true,
+    probability_negate_constant::Real=0.01,
+    seed=nothing,
+    bin_constraints=nothing,
+    una_constraints=nothing,
+    progress::Union{Bool,Nothing}=nothing,
+    terminal_width::Union{Nothing,Integer}=nothing,
+    optimizer_algorithm::AbstractString=&quot;BFGS&quot;,
+    optimizer_nrestarts::Integer=2,
+    optimizer_probability::Real=0.14,
+    optimizer_iterations::Union{Nothing,Integer}=nothing,
+    optimizer_f_calls_limit::Union{Nothing,Integer}=nothing,
+    optimizer_options=NamedTuple(),
+    use_recorder::Bool=false,
+    recorder_file::AbstractString=&quot;pysr_recorder.json&quot;,
+    early_stop_condition::Union{Function,Real,Nothing}=nothing,
+    timeout_in_seconds::Union{Nothing,Real}=nothing,
+    max_evals::Union{Nothing,Integer}=nothing,
+    skip_mutation_failures::Bool=true,
+    nested_constraints=nothing,
+    deterministic::Bool=false,
+    # Not search options; just construction options:
+    define_helper_functions::Bool=true,
+    deprecated_return_state=nothing,
+)
+    return nothing
+end"><pre><span class="pl-k">function</span> <span class="pl-en">Options</span>(;
+    binary_operators<span class="pl-k">=</span>[<span class="pl-k">+</span>, <span class="pl-k">-</span>, <span class="pl-k">/</span>, <span class="pl-k">*</span>],
+    unary_operators<span class="pl-k">=</span>[],
+    constraints<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    elementwise_loss<span class="pl-k">::</span><span class="pl-c1">Union{Function,Nothing}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    loss_function<span class="pl-k">::</span><span class="pl-c1">Union{Function,Nothing}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    tournament_selection_n<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">12</span>,
+    tournament_selection_p<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.86</span>,
+    topn<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">12</span>,
+    complexity_of_operators<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    complexity_of_constants<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Real}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    complexity_of_variables<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Real}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    parsimony<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.0032</span>,
+    dimensional_constraint_penalty<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Real}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    dimensionless_constants_only<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    alpha<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.100000</span>,
+    maxsize<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">20</span>,
+    maxdepth<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Integer}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    turbo<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    bumper<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    migration<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    hof_migration<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    should_simplify<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Bool}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    should_optimize_constants<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    output_file<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,AbstractString}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    node_type<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    populations<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">15</span>,
+    perturbation_factor<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.076</span>,
+    annealing<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    batching<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    batch_size<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">50</span>,
+    mutation_weights<span class="pl-k">=</span><span class="pl-c1">NamedTuple</span>(),
+    crossover_probability<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.066</span>,
+    warmup_maxsize_by<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.0</span>,
+    use_frequency<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    use_frequency_in_tournament<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    adaptive_parsimony_scaling<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">20.0</span>,
+    population_size<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">33</span>,
+    ncycles_per_iteration<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">550</span>,
+    fraction_replaced<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.00036</span>,
+    fraction_replaced_hof<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.035</span>,
+    verbosity<span class="pl-k">::</span><span class="pl-c1">Union{Integer,Nothing}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    print_precision<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">5</span>,
+    save_to_file<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    probability_negate_constant<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.01</span>,
+    seed<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    bin_constraints<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    una_constraints<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    progress<span class="pl-k">::</span><span class="pl-c1">Union{Bool,Nothing}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    terminal_width<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Integer}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    optimizer_algorithm<span class="pl-k">::</span><span class="pl-c1">AbstractString</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>BFGS<span class="pl-pds">"</span></span>,
+    optimizer_nrestarts<span class="pl-k">::</span><span class="pl-c1">Integer</span><span class="pl-k">=</span><span class="pl-c1">2</span>,
+    optimizer_probability<span class="pl-k">::</span><span class="pl-c1">Real</span><span class="pl-k">=</span><span class="pl-c1">0.14</span>,
+    optimizer_iterations<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Integer}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    optimizer_f_calls_limit<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Integer}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    optimizer_options<span class="pl-k">=</span><span class="pl-c1">NamedTuple</span>(),
+    use_recorder<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    recorder_file<span class="pl-k">::</span><span class="pl-c1">AbstractString</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>pysr_recorder.json<span class="pl-pds">"</span></span>,
+    early_stop_condition<span class="pl-k">::</span><span class="pl-c1">Union{Function,Real,Nothing}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    timeout_in_seconds<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Real}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    max_evals<span class="pl-k">::</span><span class="pl-c1">Union{Nothing,Integer}</span><span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    skip_mutation_failures<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    nested_constraints<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+    deterministic<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">false</span>,
+    <span class="pl-c"><span class="pl-c">#</span> Not search options; just construction options:</span>
+    define_helper_functions<span class="pl-k">::</span><span class="pl-c1">Bool</span><span class="pl-k">=</span><span class="pl-c1">true</span>,
+    deprecated_return_state<span class="pl-k">=</span><span class="pl-c1">nothing</span>,
+)
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span></pre></div>
+</details>
+<p dir="auto">If I wrap this call with <code>@argumend</code>, I get much more useful error messages:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; Options(; npopulations=3)
+ERROR: SuggestiveMethodError: in call to `Options`, found unsupported keyword argument:
+      `npopulations`, perhaps you meant `populations` or `population_size`"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">Options</span>(; npopulations<span class="pl-k">=</span><span class="pl-c1">3</span>)
+ERROR<span class="pl-k">:</span> SuggestiveMethodError<span class="pl-k">:</span> <span class="pl-k">in</span> call to <span class="pl-s"><span class="pl-pds">`</span>Options<span class="pl-pds">`</span></span>, found unsupported keyword argument<span class="pl-k">:</span>
+      <span class="pl-s"><span class="pl-pds">`</span>npopulations<span class="pl-pds">`</span></span>, perhaps you meant <span class="pl-s"><span class="pl-pds">`</span>populations<span class="pl-pds">`</span></span> or <span class="pl-s"><span class="pl-pds">`</span>population_size<span class="pl-pds">`</span></span></pre></div>
+<p dir="auto">rather than the standard Julia output (scroll to the right):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="ERROR: MethodError: no method matching Options(; npopulations::Int64)
+
+Closest candidates are:
+  Options(; binary_operators, unary_operators, constraints, elementwise_loss, loss_function, tournament_selection_n, tournament_selection_p, topn, complexity_of_operators, complexity_of_constants, complexity_of_variables, parsimony, dimensional_constraint_penalty, dimensionless_constants_only, alpha, maxsize, maxdepth, turbo, bumper, migration, hof_migration, should_simplify, should_optimize_constants, output_file, node_type, populations, perturbation_factor, annealing, batching, batch_size, mutation_weights, crossover_probability, warmup_maxsize_by, use_frequency, use_frequency_in_tournament, adaptive_parsimony_scaling, population_size, ncycles_per_iteration, fraction_replaced, fraction_replaced_hof, verbosity, print_precision, save_to_file, probability_negate_constant, seed, bin_constraints, una_constraints, progress, terminal_width, optimizer_algorithm, optimizer_nrestarts, optimizer_probability, optimizer_iterations, optimizer_f_calls_limit, optimizer_options, use_recorder, recorder_file, early_stop_condition, timeout_in_seconds, max_evals, skip_mutation_failures, nested_constraints, deterministic, define_helper_functions, deprecated_return_state) got unsupported keyword argument &quot;npopulations&quot;"><pre>ERROR<span class="pl-k">:</span> MethodError<span class="pl-k">:</span> no method matching <span class="pl-c1">Options</span>(; npopulations<span class="pl-k">::</span><span class="pl-c1">Int64</span>)
+
+Closest candidates are<span class="pl-k">:</span>
+  Options(; binary_operators, unary_operators, constraints, elementwise_loss, loss_function, tournament_selection_n, tournament_selection_p, topn, complexity_of_operators, complexity_of_constants, complexity_of_variables, parsimony, dimensional_constraint_penalty, dimensionless_constants_only, alpha, maxsize, maxdepth, turbo, bumper, migration, hof_migration, should_simplify, should_optimize_constants, output_file, node_type, populations, perturbation_factor, annealing, batching, batch_size, mutation_weights, crossover_probability, warmup_maxsize_by, use_frequency, use_frequency_in_tournament, adaptive_parsimony_scaling, population_size, ncycles_per_iteration, fraction_replaced, fraction_replaced_hof, verbosity, print_precision, save_to_file, probability_negate_constant, seed, bin_constraints, una_constraints, progress, terminal_width, optimizer_algorithm, optimizer_nrestarts, optimizer_probability, optimizer_iterations, optimizer_f_calls_limit, optimizer_options, use_recorder, recorder_file, early_stop_condition, timeout_in_seconds, max_evals, skip_mutation_failures, nested_constraints, deterministic, define_helper_functions, deprecated_return_state) got unsupported keyword argument "npopulations"</pre></div>
+</article></div>

@@ -1,0 +1,291 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Shelly.jl: <code>cd</code>, <code>ls</code>, and <code>ll</code> in the Julia REPL Mode (and <code>dir</code> on Windows!)</h1><a id="user-content-shellyjl-cd-ls-and-ll-in-the-julia-repl-mode-and-dir-on-windows" class="anchor" aria-label="Permalink: Shelly.jl: cd, ls, and ll in the Julia REPL Mode (and dir on Windows!)" href="#shellyjl-cd-ls-and-ll-in-the-julia-repl-mode-and-dir-on-windows"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><strong>Surf your file system on Linux:</strong></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="pics/Shelly_screenshot_Linux.png"><img src="pics/Shelly_screenshot_Linux.png" alt="Linux screenshot" style="max-width: 100%;"></a></p>
+<br>
+<br>
+<p dir="auto"><strong>Dash through your file system on Windows:</strong></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="pics/Shelly_screenshot_Windows.png"><img src="pics/Shelly_screenshot_Windows.png" alt="Windows screenshot" style="max-width: 100%;"></a></p>
+<br>
+<br>
+<br>
+<br>
+<p dir="auto">Julia's REPL and its modes are superb. They also offer a variety of ways to interact with the underlying file system -- the <code>cd("somedir")</code> function, a full-blown shell mode, macro capabilities, etc. Yet all involve just a <em>tiny</em> bit more typing of (often shifted) chars, or a mode switch.</p>
+<p dir="auto">Shelly provides a modeless and minimal-keystroke way of navigating the file system with <code>cd</code>, <code>ls</code>, and <code>ll</code>, or <code>dir</code> on Windows. (Use <code>lla</code>, <code>lsa</code>, or <code>dira</code> to also show hidden files.) On Linux, some additional Unix shortcuts are available.</p>
+<p dir="auto">Shelly does not hack the REPL. Instead, it just uses <code>show</code> on custom types, and it overloads a special-case multiplication (<em>multiply and conquer</em>, if you will). Find out how it works below the examples.</p>
+<p dir="auto"><strong>Install with:</strong></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; add Shelly
+julia&gt; using Shelly"><pre>pkg<span class="pl-k">&gt;</span> add Shelly
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> Shelly</pre></div>
+<p dir="auto"><em>Or, to avoid name collisions, maybe just selectively <code>import</code> the ones you like:</em></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; import Shelly: ll, lla, ls, lsa, df, ldf, ps1, cc, °,  [Linux only-&gt;] head, tail, wc    # or any subset"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">import</span> Shelly<span class="pl-k">:</span> ll, lla, ls, lsa, df, ldf, ps1, cc, °,  [Linux only<span class="pl-k">-&gt;</span>] head, tail, wc    <span class="pl-c"><span class="pl-c">#</span> or any subset</span></pre></div>
+<p dir="auto">In particular, <code>ls</code> might clash with <a href="https://github.com/umlet/FileJockey.jl">FileJockey.jl</a>'s <code>ls()</code> function. But you can always create your own shortcut to it with <code>myls = Shelly.ls</code>.</p>
+<p dir="auto"><em>Note: There is no need to import <code>cd</code> or <code>cat</code> -- learn why below.</em>
+<br>
+<br>
+<br>
+<br></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Example: <code>ll</code>/<code>ls</code> and <code>cd</code></h3><a id="user-content-example-llls-and-cd" class="anchor" aria-label="Permalink: Example: ll/ls and cd" href="#example-llls-and-cd"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Say our current directory is the "Shelly.jl" one:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="# Note: - we are in Julia's native REPL mode
+#       - the output of 'll' here is written directly to the console
+
+julia&gt; ll
+drwxr-xr-x  4 martin martin 4096 Jul  1 12:29 .              1cd
+drwxr-xr-x 10 martin martin 4096 Jul  1 12:29 ..             2cd
+drwxr-xr-x  2 martin martin 4096 Jul  1 12:29 src            3cd
+-rw-r--r--  1 martin martin 1062 Jul  1 12:29 LICENSE        4
+-rw-r--r--  1 martin martin  138 Jul  9 11:22 Project.toml   5
+-rw-r--r--  1 martin martin 5496 Jul  1 12:29 README.md      6"><pre class="notranslate"><code># Note: - we are in Julia's native REPL mode
+#       - the output of 'll' here is written directly to the console
+
+julia&gt; ll
+drwxr-xr-x  4 martin martin 4096 Jul  1 12:29 .              1cd
+drwxr-xr-x 10 martin martin 4096 Jul  1 12:29 ..             2cd
+drwxr-xr-x  2 martin martin 4096 Jul  1 12:29 src            3cd
+-rw-r--r--  1 martin martin 1062 Jul  1 12:29 LICENSE        4
+-rw-r--r--  1 martin martin  138 Jul  9 11:22 Project.toml   5
+-rw-r--r--  1 martin martin 5496 Jul  1 12:29 README.md      6
+</code></pre></div>
+<p dir="auto">We can now, still in the Julia REPL mode, change the current dir to <code>src</code> via its index from the <code>ll</code> command:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; 3cd
+
+julia&gt; pwd()                   # the standard Julia function shows:
+&quot;/home/martin/Shelly.jl/src&quot;   # we have indeed moved!"><pre class="notranslate"><code>julia&gt; 3cd
+
+julia&gt; pwd()                   # the standard Julia function shows:
+"/home/martin/Shelly.jl/src"   # we have indeed moved!
+</code></pre></div>
+<p dir="auto">Let's look around here:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ll
+drwxr-xr-x 2 martin martin 4096 Jul  1 12:29 .                   1cd
+drwxr-xr-x 4 martin martin 4096 Jul  1 12:29 ..                  2cd
+-rw-r--r-- 1 martin martin 7488 Jul  1 12:29 Shelly.jl           3
+-rw-r--r-- 1 martin martin  426 Jul  1 12:29 Shelly.jl_base      4
+-rw-r--r-- 1 martin martin  502 Jul  9 12:50 Shelly.jl_docs      5
+-rw-r--r-- 1 martin martin  265 Jul  1 12:29 Shelly.jl_exports   6"><pre class="notranslate"><code>julia&gt; ll
+drwxr-xr-x 2 martin martin 4096 Jul  1 12:29 .                   1cd
+drwxr-xr-x 4 martin martin 4096 Jul  1 12:29 ..                  2cd
+-rw-r--r-- 1 martin martin 7488 Jul  1 12:29 Shelly.jl           3
+-rw-r--r-- 1 martin martin  426 Jul  1 12:29 Shelly.jl_base      4
+-rw-r--r-- 1 martin martin  502 Jul  9 12:50 Shelly.jl_docs      5
+-rw-r--r-- 1 martin martin  265 Jul  1 12:29 Shelly.jl_exports   6
+</code></pre></div>
+<p dir="auto">And now move back up:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; 2cd
+
+julia&gt; ll
+drwxr-xr-x  4 martin martin 4096 Jul  1 12:29 .              1cd
+drwxr-xr-x 10 martin martin 4096 Jul  1 12:29 ..             2cd
+drwxr-xr-x  2 martin martin 4096 Jul  1 12:29 src            3cd
+-rw-r--r--  1 martin martin 1062 Jul  1 12:29 LICENSE        4
+-rw-r--r--  1 martin martin  138 Jul  9 11:22 Project.toml   5
+-rw-r--r--  1 martin martin 5693 Jul  9 11:25 README.md      6"><pre class="notranslate"><code>julia&gt; 2cd
+
+julia&gt; ll
+drwxr-xr-x  4 martin martin 4096 Jul  1 12:29 .              1cd
+drwxr-xr-x 10 martin martin 4096 Jul  1 12:29 ..             2cd
+drwxr-xr-x  2 martin martin 4096 Jul  1 12:29 src            3cd
+-rw-r--r--  1 martin martin 1062 Jul  1 12:29 LICENSE        4
+-rw-r--r--  1 martin martin  138 Jul  9 11:22 Project.toml   5
+-rw-r--r--  1 martin martin 5693 Jul  9 11:25 README.md      6
+</code></pre></div>
+<br>
+<br>
+<p dir="auto">The same works with <code>ls</code>. To save space and be lighter on the eye, a <code>°</code>-suffix instead of <code>cd</code> denotes dirs. Both strings work when trying to change directory:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ls
+1° .  2° ..  3° src  4  LICENSE  5  Project.toml  6  README.md
+
+julia&gt; 3cd
+julia&gt; pwd()
+&quot;/home/martin/Shelly.jl/src&quot;
+
+julia&gt; 2cd
+julia&gt; pwd()
+&quot;/home/martin/Shelly.jl&quot;
+
+julia&gt; 3°
+julia&gt; pwd()
+&quot;/home/martin/Shelly.jl/src&quot;
+
+julia&gt; 2°
+julia&gt; pwd()
+&quot;/home/martin/Shelly.jl&quot;"><pre class="notranslate"><code>julia&gt; ls
+1° .  2° ..  3° src  4  LICENSE  5  Project.toml  6  README.md
+
+julia&gt; 3cd
+julia&gt; pwd()
+"/home/martin/Shelly.jl/src"
+
+julia&gt; 2cd
+julia&gt; pwd()
+"/home/martin/Shelly.jl"
+
+julia&gt; 3°
+julia&gt; pwd()
+"/home/martin/Shelly.jl/src"
+
+julia&gt; 2°
+julia&gt; pwd()
+"/home/martin/Shelly.jl"
+</code></pre></div>
+<br>
+<br>
+<p dir="auto">There is even a third, prefix-based way to change dir via <code>!</code>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; !2   # is same as '2cd' or '2°'"><pre class="notranslate"><code>julia&gt; !2   # is same as '2cd' or '2°'
+</code></pre></div>
+<p dir="auto">(Alas, it seems to be impossible to alias the <code>!</code> operator for now..)</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Example: <code>dir</code> on Windows</h3><a id="user-content-example-dir-on-windows" class="anchor" aria-label="Permalink: Example: dir on Windows" href="#example-dir-on-windows"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; dir
+09-Jul-23  11:44 AM    &lt;DIR&gt;          .              1cd
+09-Jul-23  11:44 AM    &lt;DIR&gt;          ..             2cd
+09-Jul-23  11:40 AM             1,062 LICENSE        3
+09-Jul-23  11:44 AM               138 Project.toml   4
+09-Jul-23  11:44 AM             5,870 README.md      5
+09-Jul-23  12:12 PM    &lt;DIR&gt;          src            6cd
+
+julia&gt; 6cd
+
+julia&gt; pwd()
+&quot;C:\\work\\Shelly.jl\\src&quot;"><pre class="notranslate"><code>julia&gt; dir
+09-Jul-23  11:44 AM    &lt;DIR&gt;          .              1cd
+09-Jul-23  11:44 AM    &lt;DIR&gt;          ..             2cd
+09-Jul-23  11:40 AM             1,062 LICENSE        3
+09-Jul-23  11:44 AM               138 Project.toml   4
+09-Jul-23  11:44 AM             5,870 README.md      5
+09-Jul-23  12:12 PM    &lt;DIR&gt;          src            6cd
+
+julia&gt; 6cd
+
+julia&gt; pwd()
+"C:\\work\\Shelly.jl\\src"
+</code></pre></div>
+<p dir="auto">(On Windows, <code>ll</code> = <code>dir</code>, while <code>ls</code> is the short variant.)</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Example: <code>cat</code>, <code>head</code>, <code>tail</code>, <code>wc</code> (Linux-/macOS-only)</h3><a id="user-content-example-cat-head-tail-wc-linux-macos-only" class="anchor" aria-label="Permalink: Example: cat, head, tail, wc (Linux-/macOS-only)" href="#example-cat-head-tail-wc-linux-macos-only"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ls
+1° .  2° ..  3  Shelly.jl  4  Shelly.jl_base  5  Shelly.jl_docs  6  Shelly.jl_exports
+
+julia&gt; 3cat
+module Shelly
+
+using Base.Iterators
+...
+..."><pre class="notranslate"><code>julia&gt; ls
+1° .  2° ..  3  Shelly.jl  4  Shelly.jl_base  5  Shelly.jl_docs  6  Shelly.jl_exports
+
+julia&gt; 3cat
+module Shelly
+
+using Base.Iterators
+...
+...
+</code></pre></div>
+<p dir="auto">These would also work:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; 3head
+..
+julia&gt; 3tail
+..
+julia&gt; 3wc
+.."><pre class="notranslate"><code>julia&gt; 3head
+..
+julia&gt; 3tail
+..
+julia&gt; 3wc
+..
+</code></pre></div>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Example: <code>ldf</code></h3><a id="user-content-example-ldf" class="anchor" aria-label="Permalink: Example: ldf" href="#example-ldf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">We can show our mounts with  <code>ldf</code> (<code>df</code> is also available, but not exported, as it can easily clash with some DataFrame variable):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ldf
+/dev/sdb        263174212    8247948 241488108   4% /                      -1cd
+tmpfs             6448660          0   6448660   0% /mnt/wsl               -2cd
+tools           498750460  172976384 325774076  35% /init                  -3cd"><pre class="notranslate"><code>julia&gt; ldf
+/dev/sdb        263174212    8247948 241488108   4% /                      -1cd
+tmpfs             6448660          0   6448660   0% /mnt/wsl               -2cd
+tools           498750460  172976384 325774076  35% /init                  -3cd
+</code></pre></div>
+<p dir="auto">To <code>cd</code> to a mount, use negative indices:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; -2cd"><pre class="notranslate"><code>julia&gt; -2cd
+</code></pre></div>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">The short-shortcut <code>cc</code>, and Some More Hints</h3><a id="user-content-the-short-shortcut-cc-and-some-more-hints" class="anchor" aria-label="Permalink: The short-shortcut cc, and Some More Hints" href="#the-short-shortcut-cc-and-some-more-hints"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>You don't have to use <code>ls</code> before running a <code>cd</code> shortcut, especially if you remember the index</li>
+<li><code>0cd</code> goes to your home directory</li>
+<li><code>2cd</code> always means <code>cd ..</code> -- but because we want a shortcut for that shortcut, you can use <code>cc</code> instead!</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Pipe It!</h3><a id="user-content-pipe-it" class="anchor" aria-label="Permalink: Pipe It!" href="#pipe-it"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The <code>ll</code>-commands just write stuff to stdout. But your can still recover this content via the pipe operator -- this will yield a string array:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ll |&gt; collect"><pre class="notranslate"><code>julia&gt; ll |&gt; collect
+</code></pre></div>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">One more thing: <code>ps1</code></h3><a id="user-content-one-more-thing-ps1" class="anchor" aria-label="Permalink: One more thing: ps1" href="#one-more-thing-ps1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">As you'll gallivant around your file system more promiscuously now, you might want to tune the REPL prompt:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; ps1
+Shelly.jl/::julia&gt;   # the new prompt shows the current dir now"><pre class="notranslate"><code>julia&gt; ps1
+Shelly.jl/::julia&gt;   # the new prompt shows the current dir now
+</code></pre></div>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">How Does it Work?</h2><a id="user-content-how-does-it-work" class="anchor" aria-label="Permalink: How Does it Work?" href="#how-does-it-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>
+<p dir="auto">Shortcuts like <code>ls</code> and <code>ll</code> are simple -- they are just values:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="struct ShortcutLs &lt;: AbstractShortcut end
+
+const ls = ShortcutLs()"><pre class="notranslate"><code>struct ShortcutLs &lt;: AbstractShortcut end
+
+const ls = ShortcutLs()
+</code></pre></div>
+<p dir="auto">The <code>Base.show</code> method calls <code>Shelly.atshow</code> for all <code>AbstractShortcut</code>s, where the actual <code>ls</code> printing takes place:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="atshow(_::ShortcutLs) = _ls()"><pre class="notranslate"><code>atshow(_::ShortcutLs) = _ls()
+</code></pre></div>
+<p dir="auto">Note: following the above logic, you can easily define your own shortcuts!</p>
+</li>
+<li>
+<p dir="auto">Shortcuts that require an argument, like <code>cd</code>, work differently.</p>
+<p dir="auto">First, Julia provides a neat way of parsing multiplication without the <code>*</code> operator:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; x = 21
+julia&gt; 2x
+42"><pre class="notranslate"><code>julia&gt; x = 21
+julia&gt; 2x
+42
+</code></pre></div>
+<p dir="auto">If x is of some new, custom type, we can override the multiplication operation:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Base.:*(i::Int64, _::SomeNewType) = ..."><pre class="notranslate"><code>Base.:*(i::Int64, _::SomeNewType) = ...
+</code></pre></div>
+<p dir="auto">But here we want to use the string <code>cd</code>, which is an already-defined Julia function. Luckily, we don't even have to dispatch on functions in general, but we can dispatch on the <code>cd</code>s singleton type as seen in:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; typeof(cd)
+typeof(cd) (singleton type of function cd, subtype of Function)"><pre class="notranslate"><code>julia&gt; typeof(cd)
+typeof(cd) (singleton type of function cd, subtype of Function)
+</code></pre></div>
+<p dir="auto">We can thus use:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Base.:*(i::Int64, _::typeof(cd)) = ShortcutCd(i)"><pre class="notranslate"><code>Base.:*(i::Int64, _::typeof(cd)) = ShortcutCd(i)
+</code></pre></div>
+<p dir="auto">And underneath, the same logic as above is then at work:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="atshow(x::ShortcutCd) = _cd(x.i)"><pre class="notranslate"><code>atshow(x::ShortcutCd) = _cd(x.i)
+</code></pre></div>
+</li>
+</ul>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Change History</h2><a id="user-content-change-history" class="anchor" aria-label="Permalink: Change History" href="#change-history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">0.9.0 list hidden files: <code>lla</code>/<code>lsa</code>==<code>ls [-l] -a</code>, and <code>dira</code> (thanks to @oheil !); <code>ldf</code>, root dir handling, and group-by-dirs on Windows; capture output via pipe; code re-org</p>
+<p dir="auto">0.8.1 Export <code>ldf</code> on Mac; minor doc update</p>
+<p dir="auto">0.8 <code>df</code> -&gt; <code>ldf</code></p>
+<p dir="auto">0.7 Doc update; dirs listed first on Linux; <code>dir</code> on Windows; exports; docstring; macOS fix</p>
+<p dir="auto">0.6 Initial version</p>
+<br>
+<br>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">TODOs</h2><a id="user-content-todos" class="anchor" aria-label="Permalink: TODOs" href="#todos"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">more commands (<code>pwd</code>?) ...</p>
+</article></div>

@@ -1,0 +1,88 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ModalDecisionLists.jl – it's synctactic sequential covering</h1><a id="user-content-modaldecisionlistsjl--its-synctactic-sequential-covering" class="anchor" aria-label="Permalink: ModalDecisionLists.jl – it's synctactic sequential covering" href="#modaldecisionlistsjl--its-synctactic-sequential-covering"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/aclai-lab/ModalDecisionLists.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/aclai-lab/ModalDecisionLists.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/giopaglia/ModalDecisionLists.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/d4371af234dd521cc3db7c26eb82396efbad9971e5a237f833b5dfdd151648f0/68747470733a2f2f636f6465636f762e696f2f67682f67696f7061676c69612f4d6f64616c4465636973696f6e4c697374732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/giopaglia/ModalDecisionLists.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+
+
+<p dir="auto">This package provides algorithms for learning decision lists based on different logics. At the moment,
+it provides a starter for a <a href="https://en.m.wikipedia.org/wiki/CN2_algorithm" rel="nofollow">CN2</a>-like,
+sequential covering algorithm. The algorithm deploys a beam search to learn conjunctions of arbitrary formulae (including propositional atoms).</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Installation &amp; Usage</h2><a id="user-content-installation--usage" class="anchor" aria-label="Permalink: Installation &amp; Usage" href="#installation--usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Simply type the following commands in Julia's REPL:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Install packages
+using Pkg; Pkg.add(&quot;MLJ&quot;);
+using Pkg; Pkg.add(&quot;ModalDecisionLists&quot;);
+
+# Import packages
+using MLJ
+using ModalDecisionLists
+using Random
+
+# Load an example dataset
+X, y = MLJ.@load_iris()
+N = length(y)
+
+# Instantiate an MLJ machine
+mach = machine(ExtendedSequentialCovering(), X, y)
+
+# Split dataset
+p = randperm(N)
+train_idxs, test_idxs = p[1:round(Int, N*.8)], p[round(Int, N*.8)+1:end]
+
+# Fit
+fit!(mach, rows=train_idxs)
+
+# Perform predictions, compute accuracy
+yhat = predict_mode(mach, rows = test_idxs)
+accuracy = MLJ.accuracy(yhat, y[test_idxs])
+
+# Access &amp; inspect model
+dlist = fitted_params(mach).fitresult.model
+printmodel(dlist; show_metrics = true, show_subtree_metrics=true)
+
+# Make test instances flow into the model
+test_dlist = deepcopy(dlist)
+apply!(test_dlist, slicedataset(PropositionalLogiset(X), test_idxs), y[test_idxs])
+
+# Extract rules that perform well in test
+interestingrules = listrules(test_dlist; min_lift = 1.0, min_coverage = 0.05, normalize = true)
+printmodel.(interestingrules; show_metrics = (; round_digits = 2));"><pre><span class="pl-c"><span class="pl-c">#</span> Install packages</span>
+<span class="pl-k">using</span> Pkg; Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>MLJ<span class="pl-pds">"</span></span>);
+<span class="pl-k">using</span> Pkg; Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>ModalDecisionLists<span class="pl-pds">"</span></span>);
+
+<span class="pl-c"><span class="pl-c">#</span> Import packages</span>
+<span class="pl-k">using</span> MLJ
+<span class="pl-k">using</span> ModalDecisionLists
+<span class="pl-k">using</span> Random
+
+<span class="pl-c"><span class="pl-c">#</span> Load an example dataset</span>
+X, y <span class="pl-k">=</span> MLJ<span class="pl-k">.</span><span class="pl-c1">@load_iris</span>()
+N <span class="pl-k">=</span> <span class="pl-c1">length</span>(y)
+
+<span class="pl-c"><span class="pl-c">#</span> Instantiate an MLJ machine</span>
+mach <span class="pl-k">=</span> <span class="pl-c1">machine</span>(<span class="pl-c1">ExtendedSequentialCovering</span>(), X, y)
+
+<span class="pl-c"><span class="pl-c">#</span> Split dataset</span>
+p <span class="pl-k">=</span> <span class="pl-c1">randperm</span>(N)
+train_idxs, test_idxs <span class="pl-k">=</span> p[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">round</span>(Int, N<span class="pl-k">*</span>.<span class="pl-c1">8</span>)], p[<span class="pl-c1">round</span>(Int, N<span class="pl-k">*</span>.<span class="pl-c1">8</span>)<span class="pl-k">+</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span>]
+
+<span class="pl-c"><span class="pl-c">#</span> Fit</span>
+<span class="pl-c1">fit!</span>(mach, rows<span class="pl-k">=</span>train_idxs)
+
+<span class="pl-c"><span class="pl-c">#</span> Perform predictions, compute accuracy</span>
+yhat <span class="pl-k">=</span> <span class="pl-c1">predict_mode</span>(mach, rows <span class="pl-k">=</span> test_idxs)
+accuracy <span class="pl-k">=</span> MLJ<span class="pl-k">.</span><span class="pl-c1">accuracy</span>(yhat, y[test_idxs])
+
+<span class="pl-c"><span class="pl-c">#</span> Access &amp; inspect model</span>
+dlist <span class="pl-k">=</span> <span class="pl-c1">fitted_params</span>(mach)<span class="pl-k">.</span>fitresult<span class="pl-k">.</span>model
+<span class="pl-c1">printmodel</span>(dlist; show_metrics <span class="pl-k">=</span> <span class="pl-c1">true</span>, show_subtree_metrics<span class="pl-k">=</span><span class="pl-c1">true</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Make test instances flow into the model</span>
+test_dlist <span class="pl-k">=</span> <span class="pl-c1">deepcopy</span>(dlist)
+<span class="pl-c1">apply!</span>(test_dlist, <span class="pl-c1">slicedataset</span>(<span class="pl-c1">PropositionalLogiset</span>(X), test_idxs), y[test_idxs])
+
+<span class="pl-c"><span class="pl-c">#</span> Extract rules that perform well in test</span>
+interestingrules <span class="pl-k">=</span> <span class="pl-c1">listrules</span>(test_dlist; min_lift <span class="pl-k">=</span> <span class="pl-c1">1.0</span>, min_coverage <span class="pl-k">=</span> <span class="pl-c1">0.05</span>, normalize <span class="pl-k">=</span> <span class="pl-c1">true</span>)
+<span class="pl-c1">printmodel</span>.(interestingrules; show_metrics <span class="pl-k">=</span> (; round_digits <span class="pl-k">=</span> <span class="pl-c1">2</span>));</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Credits</h2><a id="user-content-credits" class="anchor" aria-label="Permalink: Credits" href="#credits"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><em>ModalDecisionLists.jl</em> lives within the <a href="https://github.com/aclai-lab/Sole.jl"><em>Sole.jl</em></a> framework for <em>symbolic machine learning</em>.</p>
+</article></div>

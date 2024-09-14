@@ -1,0 +1,212 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">KolmogorovArnold.jl</h1><a id="user-content-kolmogorovarnoldjl" class="anchor" aria-label="Permalink: KolmogorovArnold.jl" href="#kolmogorovarnoldjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/vpuri3/KolmogorovArnold.jl/actions/workflows/CI.yml?query=branch%3Amaster"><img src="https://github.com/vpuri3/KolmogorovArnold.jl/actions/workflows/CI.yml/badge.svg?branch=master" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">Julia implementation of the <a href="https://arxiv.org/abs/2404.19756" rel="nofollow">Kolmogorov-Arnold network</a>
+for the <a href="https://lux.csail.mit.edu/stable/" rel="nofollow"><code>Lux.jl</code></a> framework.
+This implementation is based on <a href="https://github.com/Blealtan/efficient-kan">efficient-kan</a>
+and <a href="https://github.com/ZiyaoLi/fast-kan">'FastKAN'</a> which resolve the performance
+issues with the <a href="https://github.com/KindXiaoming/pykan">original implementation</a>.
+Key implementation details here are:</p>
+<ul dir="auto">
+<li>We fix our grid to be in <code>[-1, 1]</code> and normalize the the input to lie in that interval with <code>tanh</code> or <code>NNlib.tanh_fast</code>.</li>
+<li>We use radial basis functions in place of the spline basis as the former is very efficient to evaluate.</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Random, KolmogorovArnold
+rng = Random.default_rng()
+
+in_dim, out_dim, grid_len = 4, 4, 8
+layer = KDense(in_dim, out_dim, grid_len)
+p, st = Lux.setup(rng, layer)
+
+x = rand32(rng, in_dim, 10)
+y = layer(x, p, st)"><pre><span class="pl-k">using</span> Random, KolmogorovArnold
+rng <span class="pl-k">=</span> Random<span class="pl-k">.</span><span class="pl-c1">default_rng</span>()
+
+in_dim, out_dim, grid_len <span class="pl-k">=</span> <span class="pl-c1">4</span>, <span class="pl-c1">4</span>, <span class="pl-c1">8</span>
+layer <span class="pl-k">=</span> <span class="pl-c1">KDense</span>(in_dim, out_dim, grid_len)
+p, st <span class="pl-k">=</span> Lux<span class="pl-k">.</span><span class="pl-c1">setup</span>(rng, layer)
+
+x <span class="pl-k">=</span> <span class="pl-c1">rand32</span>(rng, in_dim, <span class="pl-c1">10</span>)
+y <span class="pl-k">=</span> <span class="pl-c1">layer</span>(x, p, st)</pre></div>
+<p dir="auto">We compare the performance of KAN with an MLP that has the same number of parameters (see <code>examples/eg1.jl</code>).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Lux, KolmogorovArnold
+using CUDA, LuxDeviceUtils
+
+CUDA.allowscalar(false)
+device = Lux.gpu_device()
+
+rng = Random.default_rng()
+Random.seed!(rng, 0)
+
+x = rand32(rng, 1, 1000) |&gt; device
+
+# define MLP, KANs
+
+mlp = Chain(
+    Dense(1, 128, tanh),
+    Dense(128, 128, tanh),
+    Dense(128, 1),
+) # 16_897 parameters plus 0 states.
+
+basis_func = rbf # rbf, rswaf, iqf (radial basis funcs, reflection switch activation funcs, inverse quadratic funcs)
+normalizer = softsign # sigmoid(_fast), tanh(_fast), softsign
+
+kan1 = Chain(
+    KDense( 1, 40, 10; use_base_act = true, basis_func, normalizer),
+    KDense(40, 40, 10; use_base_act = true, basis_func, normalizer),
+    KDense(40,  1, 10; use_base_act = true, basis_func, normalizer),
+) # 18_490 parameters plus 30 states.
+
+kan2 = Chain(
+    KDense( 1, 40, 10; use_base_act = false, basis_func, normalizer),
+    KDense(40, 40, 10; use_base_act = false, basis_func, normalizer),
+    KDense(40,  1, 10; use_base_act = false, basis_func, normalizer),
+) # 16_800 parameters plus 30 states.
+
+# set up experiment
+pM , stM  = Lux.setup(rng, mlp)
+pK1, stK1 = Lux.setup(rng, kan1)
+pK2, stK2 = Lux.setup(rng, kan2)
+
+pM  = ComponentArray(pM) |&gt; device
+pK1 = ComponentArray(pK1) |&gt; device
+pK2 = ComponentArray(pK2) |&gt; device
+
+stM, stK1, stK2 = device(stM), device(stK1), device(stK2)
+
+# Forward pass
+@btime CUDA.@sync $mlp( $x, $pM , $stM)  # 46.645 μs (267 allocations: 6.88 KiB)
+@btime CUDA.@sync $kan1($x, $pK1, $stK1) # 244.895 μs (1298 allocations: 31.16 KiB) 
+@btime CUDA.@sync $kan2($x, $pK2, $stK2) # 148.830 μs (887 allocations: 21.08 KiB)
+
+# Backward pass
+
+f_mlp(p)  = mlp( x, p, stM )[1] |&gt; sum
+f_kan1(p) = kan1(x, p, stK1)[1] |&gt; sum
+f_kan2(p) = kan2(x, p, stK2)[1] |&gt; sum
+
+@btime CUDA.@sync Zygote.gradient($f_mlp , $pM)  # 541.759 μs (2343 allocations: 70.77 KiB)
+@btime CUDA.@sync Zygote.gradient($f_kan1, $pK1) # 1.471 ms (6396 allocations: 171.08 KiB)
+@btime CUDA.@sync Zygote.gradient($f_kan2, $pK2) # 1.046 ms (4314 allocations: 123.08 KiB)
+"><pre><span class="pl-k">using</span> Lux, KolmogorovArnold
+<span class="pl-k">using</span> CUDA, LuxDeviceUtils
+
+CUDA<span class="pl-k">.</span><span class="pl-c1">allowscalar</span>(<span class="pl-c1">false</span>)
+device <span class="pl-k">=</span> Lux<span class="pl-k">.</span><span class="pl-c1">gpu_device</span>()
+
+rng <span class="pl-k">=</span> Random<span class="pl-k">.</span><span class="pl-c1">default_rng</span>()
+Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(rng, <span class="pl-c1">0</span>)
+
+x <span class="pl-k">=</span> <span class="pl-c1">rand32</span>(rng, <span class="pl-c1">1</span>, <span class="pl-c1">1000</span>) <span class="pl-k">|&gt;</span> device
+
+<span class="pl-c"><span class="pl-c">#</span> define MLP, KANs</span>
+
+mlp <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(
+    <span class="pl-c1">Dense</span>(<span class="pl-c1">1</span>, <span class="pl-c1">128</span>, tanh),
+    <span class="pl-c1">Dense</span>(<span class="pl-c1">128</span>, <span class="pl-c1">128</span>, tanh),
+    <span class="pl-c1">Dense</span>(<span class="pl-c1">128</span>, <span class="pl-c1">1</span>),
+) <span class="pl-c"><span class="pl-c">#</span> 16_897 parameters plus 0 states.</span>
+
+basis_func <span class="pl-k">=</span> rbf <span class="pl-c"><span class="pl-c">#</span> rbf, rswaf, iqf (radial basis funcs, reflection switch activation funcs, inverse quadratic funcs)</span>
+normalizer <span class="pl-k">=</span> softsign <span class="pl-c"><span class="pl-c">#</span> sigmoid(_fast), tanh(_fast), softsign</span>
+
+kan1 <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(
+    <span class="pl-c1">KDense</span>( <span class="pl-c1">1</span>, <span class="pl-c1">40</span>, <span class="pl-c1">10</span>; use_base_act <span class="pl-k">=</span> <span class="pl-c1">true</span>, basis_func, normalizer),
+    <span class="pl-c1">KDense</span>(<span class="pl-c1">40</span>, <span class="pl-c1">40</span>, <span class="pl-c1">10</span>; use_base_act <span class="pl-k">=</span> <span class="pl-c1">true</span>, basis_func, normalizer),
+    <span class="pl-c1">KDense</span>(<span class="pl-c1">40</span>,  <span class="pl-c1">1</span>, <span class="pl-c1">10</span>; use_base_act <span class="pl-k">=</span> <span class="pl-c1">true</span>, basis_func, normalizer),
+) <span class="pl-c"><span class="pl-c">#</span> 18_490 parameters plus 30 states.</span>
+
+kan2 <span class="pl-k">=</span> <span class="pl-c1">Chain</span>(
+    <span class="pl-c1">KDense</span>( <span class="pl-c1">1</span>, <span class="pl-c1">40</span>, <span class="pl-c1">10</span>; use_base_act <span class="pl-k">=</span> <span class="pl-c1">false</span>, basis_func, normalizer),
+    <span class="pl-c1">KDense</span>(<span class="pl-c1">40</span>, <span class="pl-c1">40</span>, <span class="pl-c1">10</span>; use_base_act <span class="pl-k">=</span> <span class="pl-c1">false</span>, basis_func, normalizer),
+    <span class="pl-c1">KDense</span>(<span class="pl-c1">40</span>,  <span class="pl-c1">1</span>, <span class="pl-c1">10</span>; use_base_act <span class="pl-k">=</span> <span class="pl-c1">false</span>, basis_func, normalizer),
+) <span class="pl-c"><span class="pl-c">#</span> 16_800 parameters plus 30 states.</span>
+
+<span class="pl-c"><span class="pl-c">#</span> set up experiment</span>
+pM , stM  <span class="pl-k">=</span> Lux<span class="pl-k">.</span><span class="pl-c1">setup</span>(rng, mlp)
+pK1, stK1 <span class="pl-k">=</span> Lux<span class="pl-k">.</span><span class="pl-c1">setup</span>(rng, kan1)
+pK2, stK2 <span class="pl-k">=</span> Lux<span class="pl-k">.</span><span class="pl-c1">setup</span>(rng, kan2)
+
+pM  <span class="pl-k">=</span> <span class="pl-c1">ComponentArray</span>(pM) <span class="pl-k">|&gt;</span> device
+pK1 <span class="pl-k">=</span> <span class="pl-c1">ComponentArray</span>(pK1) <span class="pl-k">|&gt;</span> device
+pK2 <span class="pl-k">=</span> <span class="pl-c1">ComponentArray</span>(pK2) <span class="pl-k">|&gt;</span> device
+
+stM, stK1, stK2 <span class="pl-k">=</span> <span class="pl-c1">device</span>(stM), <span class="pl-c1">device</span>(stK1), <span class="pl-c1">device</span>(stK2)
+
+<span class="pl-c"><span class="pl-c">#</span> Forward pass</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> <span class="pl-k">$</span><span class="pl-c1">mlp</span>( <span class="pl-k">$</span>x, <span class="pl-k">$</span>pM , <span class="pl-k">$</span>stM)  <span class="pl-c"><span class="pl-c">#</span> 46.645 μs (267 allocations: 6.88 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> <span class="pl-k">$</span><span class="pl-c1">kan1</span>(<span class="pl-k">$</span>x, <span class="pl-k">$</span>pK1, <span class="pl-k">$</span>stK1) <span class="pl-c"><span class="pl-c">#</span> 244.895 μs (1298 allocations: 31.16 KiB) </span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> <span class="pl-k">$</span><span class="pl-c1">kan2</span>(<span class="pl-k">$</span>x, <span class="pl-k">$</span>pK2, <span class="pl-k">$</span>stK2) <span class="pl-c"><span class="pl-c">#</span> 148.830 μs (887 allocations: 21.08 KiB)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Backward pass</span>
+
+<span class="pl-en">f_mlp</span>(p)  <span class="pl-k">=</span> <span class="pl-c1">mlp</span>( x, p, stM )[<span class="pl-c1">1</span>] <span class="pl-k">|&gt;</span> sum
+<span class="pl-en">f_kan1</span>(p) <span class="pl-k">=</span> <span class="pl-c1">kan1</span>(x, p, stK1)[<span class="pl-c1">1</span>] <span class="pl-k">|&gt;</span> sum
+<span class="pl-en">f_kan2</span>(p) <span class="pl-k">=</span> <span class="pl-c1">kan2</span>(x, p, stK2)[<span class="pl-c1">1</span>] <span class="pl-k">|&gt;</span> sum
+
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(<span class="pl-k">$</span>f_mlp , <span class="pl-k">$</span>pM)  <span class="pl-c"><span class="pl-c">#</span> 541.759 μs (2343 allocations: 70.77 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(<span class="pl-k">$</span>f_kan1, <span class="pl-k">$</span>pK1) <span class="pl-c"><span class="pl-c">#</span> 1.471 ms (6396 allocations: 171.08 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(<span class="pl-k">$</span>f_kan2, <span class="pl-k">$</span>pK2) <span class="pl-c"><span class="pl-c">#</span> 1.046 ms (4314 allocations: 123.08 KiB)</span>
+</pre></div>
+<p dir="auto">The performance of KANs improves significantly with <code>use_base_act = false</code>.
+Although KANs are currently 2-3x slower than an MLPs with the same number of parameters,
+the promise with this architecture is that a small KAN can potentially do the work of a much bigger MLP.
+More experiments need to be done to assess the validity of this claim.</p>
+<p dir="auto">This package will be actively developed for the time-being.
+Once a stable version is figured out, we can consider opening a PR on <a href="https://github.com/LuxDL/Lux.jl"><code>Lux.jl</code></a>.
+Feel fre to open issues or create PRs in the meantime with features, comparisons, or performance improvements.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Custom gradients</h2><a id="user-content-custom-gradients" class="anchor" aria-label="Permalink: Custom gradients" href="#custom-gradients"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Writing custom gradients for the activation function has led to substantial speedup in the backward pass (see <code>examples/eg2.jl</code>).</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="N, G = 5000, 10
+
+x = LinRange(-1, 1, N) |&gt; Array |&gt; device
+z = LinRange(-1, 1, G) |&gt; Array |&gt; device
+d = 2 / (G-1)
+
+f_rbf(z)   = rbf(  x, z', d) |&gt; sum
+f_rswaf(z) = rswaf(x, z', d) |&gt; sum
+f_iqf(z)   = iqf(  x, z', d) |&gt; sum
+
+# forward pass
+@btime CUDA.@sync $f_rbf($z)   # 55.566 μs (294 allocations: 7.78 KiB)
+@btime CUDA.@sync $f_rswaf($z) # 57.112 μs (294 allocations: 7.78 KiB)
+@btime CUDA.@sync $f_iqf($z)   # 55.368 μs (294 allocations: 7.78 KiB)
+
+# backward pass
+@btime CUDA.@sync Zygote.gradient($f_rbf  , $z) # 188.456 μs (1045 allocations: 27.62 KiB)
+@btime CUDA.@sync Zygote.gradient($f_rswaf, $z) # 212.419 μs (1071 allocations: 28.30 KiB)
+@btime CUDA.@sync Zygote.gradient($f_iqf  , $z) # 201.568 μs (1045 allocations: 27.62 KiB)
+
+# without custom gradients
+# RBF  : 250.313 μs (1393 allocations: 35.95 KiB)
+# RSWAF: 282.864 μs (1389 allocations: 36.62 KiB)
+# IQF  : 333.843 μs (1628 allocations: 42.70 KiB)"><pre>N, G <span class="pl-k">=</span> <span class="pl-c1">5000</span>, <span class="pl-c1">10</span>
+
+x <span class="pl-k">=</span> <span class="pl-c1">LinRange</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span>, N) <span class="pl-k">|&gt;</span> Array <span class="pl-k">|&gt;</span> device
+z <span class="pl-k">=</span> <span class="pl-c1">LinRange</span>(<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span>, G) <span class="pl-k">|&gt;</span> Array <span class="pl-k">|&gt;</span> device
+d <span class="pl-k">=</span> <span class="pl-c1">2</span> <span class="pl-k">/</span> (G<span class="pl-k">-</span><span class="pl-c1">1</span>)
+
+<span class="pl-en">f_rbf</span>(z)   <span class="pl-k">=</span> <span class="pl-c1">rbf</span>(  x, z<span class="pl-k">'</span>, d) <span class="pl-k">|&gt;</span> sum
+<span class="pl-en">f_rswaf</span>(z) <span class="pl-k">=</span> <span class="pl-c1">rswaf</span>(x, z<span class="pl-k">'</span>, d) <span class="pl-k">|&gt;</span> sum
+<span class="pl-en">f_iqf</span>(z)   <span class="pl-k">=</span> <span class="pl-c1">iqf</span>(  x, z<span class="pl-k">'</span>, d) <span class="pl-k">|&gt;</span> sum
+
+<span class="pl-c"><span class="pl-c">#</span> forward pass</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> <span class="pl-k">$</span><span class="pl-c1">f_rbf</span>(<span class="pl-k">$</span>z)   <span class="pl-c"><span class="pl-c">#</span> 55.566 μs (294 allocations: 7.78 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> <span class="pl-k">$</span><span class="pl-c1">f_rswaf</span>(<span class="pl-k">$</span>z) <span class="pl-c"><span class="pl-c">#</span> 57.112 μs (294 allocations: 7.78 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> <span class="pl-k">$</span><span class="pl-c1">f_iqf</span>(<span class="pl-k">$</span>z)   <span class="pl-c"><span class="pl-c">#</span> 55.368 μs (294 allocations: 7.78 KiB)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> backward pass</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(<span class="pl-k">$</span>f_rbf  , <span class="pl-k">$</span>z) <span class="pl-c"><span class="pl-c">#</span> 188.456 μs (1045 allocations: 27.62 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(<span class="pl-k">$</span>f_rswaf, <span class="pl-k">$</span>z) <span class="pl-c"><span class="pl-c">#</span> 212.419 μs (1071 allocations: 28.30 KiB)</span>
+<span class="pl-c1">@btime</span> CUDA<span class="pl-k">.</span><span class="pl-c1">@sync</span> Zygote<span class="pl-k">.</span><span class="pl-c1">gradient</span>(<span class="pl-k">$</span>f_iqf  , <span class="pl-k">$</span>z) <span class="pl-c"><span class="pl-c">#</span> 201.568 μs (1045 allocations: 27.62 KiB)</span>
+
+<span class="pl-c"><span class="pl-c">#</span> without custom gradients</span>
+<span class="pl-c"><span class="pl-c">#</span> RBF  : 250.313 μs (1393 allocations: 35.95 KiB)</span>
+<span class="pl-c"><span class="pl-c">#</span> RSWAF: 282.864 μs (1389 allocations: 36.62 KiB)</span>
+<span class="pl-c"><span class="pl-c">#</span> IQF  : 333.843 μs (1628 allocations: 42.70 KiB)</span></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">TODO</h2><a id="user-content-todo" class="anchor" aria-label="Permalink: TODO" href="#todo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>Grid update with linear least sq solve</li>
+<li>devise good initialization schemes. RBF coefficients and base activation weights are currently initialized with <code>WeightInitializers.glorot_uniform</code>.</li>
+<li>figure out what are good optimization strategies (choice of optimizer, learning rate decay, etc)</li>
+</ul>
+</article></div>

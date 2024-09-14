@@ -1,0 +1,173 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">StringArt.jl</h2><a id="user-content-stringartjl" class="anchor" aria-label="Permalink: StringArt.jl" href="#stringartjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/david_01.png"><img src="examples/david_01.png" alt="David by Michelangelo" width="300px" style="max-width: 100%;"></a>
+</p>
+<p dir="auto">This script implements a simplified version of the <a href="https://en.wikipedia.org/wiki/String_art" rel="nofollow">String Art</a> greedy algorithm. Given an image, it attempts to create a similar representation using a single thread wound around a circle of nails, effectively constructing an image using only lines. This technique is probably most well-know for the artistic works of <a href="https://www.saatchiart.com/vrellis" rel="nofollow">Petros Vrllis</a>.</p>
+<p dir="auto">Most implementations often require high-contrast images, and still the results can vary significantly from one image to another. In this version, I've tweaked the algorithm parameters to <strong>enhance the contrast and detail in the final output</strong>. While this adjustment impacts performance, it remains usable.</p>
+<p dir="auto">Additionally, the script features a command-line interface (CLI) with various tweakable parameters, option flags, <strong>RGB color mode</strong> and you can also save the <strong>GIF animation</strong> with easy. Feel free to explore these options to customize the output according to your preferences, if you want to reuse the code or call it somewhere else, you should look at <code>StringArt.run</code>.</p>
+<p dir="auto"><strong>Useful Resources:</strong></p>
+<ul dir="auto">
+<li><a href="https://www.youtube.com/watch?v=WGccIFf6MF8" rel="nofollow">The Mathematics of String Art Video</a></li>
+</ul>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Algorithm</h3><a id="user-content-algorithm" class="anchor" aria-label="Permalink: Algorithm" href="#algorithm"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ol dir="auto">
+<li><strong>Setup:</strong></li>
+</ol>
+<ul dir="auto">
+<li>Load the source image and create an empty output image.</li>
+<li>Calculate pin positions and all possible lines between 2 pins.</li>
+</ul>
+<ol start="2" dir="auto">
+<li><strong>Iteration Step:</strong></li>
+</ol>
+<ul dir="auto">
+<li>Choose a pin (P).</li>
+<li>Create all possible lines connecting P to the other pins in the circle.</li>
+<li>Calculate the error between each lines and the source image.</li>
+<li>Find the line (L) that gives the minimum error.</li>
+<li>Update the output image adding L, and the source image subtracting L.</li>
+<li>Set the pin to be opposite point in the line L.</li>
+</ul>
+<p dir="auto"><strong>Line Generating Function:</strong>
+One-pixel-width lines (or any square/stair-like lines) do not yield good results. Experimentation with different line functions is essential here. I ended up choosing to apply the Gaussian Blur Kernel to the line. It's simple, and it works (also, it eliminates the need to fine-tune other parameters).</p>
+<p dir="auto"><strong>Line Pixel Strength:</strong>
+Opt for low line pixel values to create nuanced shades of gray in the output image.</p>
+<p dir="auto"><strong>Choose Pin:</strong>
+Randomizing the pin position periodically (every N steps) tends to give better results.</p>
+<p dir="auto"><strong>Error Function:</strong>
+Arguably the most critical part of the algorithm. You should minimize the error here and not any other metric (I lost a lot of time doing that...). The best function that I found was the squared difference between the source image and the line (but the performance takes a considerable hit here).</p>
+<p dir="auto"><strong>Excluding Already Visited Lines:</strong>
+While excluding used lines each iteration improves performance, it results in a more diffuse and noisy image. In this implementation, visited lines are retained. If you prefer the noisy style, just uncomment the lines with <code>filter!</code>.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Requirements</h3><a id="user-content-requirements" class="anchor" aria-label="Permalink: Requirements" href="#requirements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The Libraries:</p>
+<ul dir="auto">
+<li>ArgParse</li>
+<li>Images</li>
+<li>Logging</li>
+<li>Memoize</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Usage</h3><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# basic
+$ julia -O3 -t 8 main.jl -i [input image] -o [output image]
+
+# suggested
+$ julia -O3 -t 8 main.jl -s 720 --steps 2000 -i [input image] -o [output image]
+
+# alter the image resolution
+$ julia -O3 -t 8 main.jl -s 800 -i [input image] -o [output image]
+
+# RGB color mode
+$ julia -O3 -t 8 main.jl --color -i [input image] -o [output image]
+
+#  RGB color mode with custom colors
+$ julia -O3 -t 8 main.jl --color --colors &quot;#FFFF33,#33FFFF&quot; -i [input image] -o [output image]
+
+# Saves GIF output
+$ julia -O3 -t 8 main.jl --gif -i [input image] -o [output image]
+"><pre><span class="pl-c"><span class="pl-c">#</span> basic</span>
+$ julia -O3 -t 8 main.jl -i [input image] -o [output image]
+
+<span class="pl-c"><span class="pl-c">#</span> suggested</span>
+$ julia -O3 -t 8 main.jl -s 720 --steps 2000 -i [input image] -o [output image]
+
+<span class="pl-c"><span class="pl-c">#</span> alter the image resolution</span>
+$ julia -O3 -t 8 main.jl -s 800 -i [input image] -o [output image]
+
+<span class="pl-c"><span class="pl-c">#</span> RGB color mode</span>
+$ julia -O3 -t 8 main.jl --color -i [input image] -o [output image]
+
+<span class="pl-c"><span class="pl-c">#</span>  RGB color mode with custom colors</span>
+$ julia -O3 -t 8 main.jl --color --colors <span class="pl-s"><span class="pl-pds">"</span>#FFFF33,#33FFFF<span class="pl-pds">"</span></span> -i [input image] -o [output image]
+
+<span class="pl-c"><span class="pl-c">#</span> Saves GIF output</span>
+$ julia -O3 -t 8 main.jl --gif -i [input image] -o [output image]
+</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Debugging Utilities</h3><a id="user-content-debugging-utilities" class="anchor" aria-label="Permalink: Debugging Utilities" href="#debugging-utilities"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# plot pins used in the image
+$ julia utils.jl -f plot_pins -i [input image] -o [output image]
+
+# plot color channel for a given color and input image
+$ julia utils.jl -f plot_colors --colors &quot;#FF0000&quot; -i [input image] -o [output image]"><pre><span class="pl-c"><span class="pl-c">#</span> plot pins used in the image</span>
+$ julia utils.jl -f plot_pins -i [input image] -o [output image]
+
+<span class="pl-c"><span class="pl-c">#</span> plot color channel for a given color and input image</span>
+$ julia utils.jl -f plot_colors --colors <span class="pl-s"><span class="pl-pds">"</span>#FF0000<span class="pl-pds">"</span></span> -i [input image] -o [output image]</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Parameters</h3><a id="user-content-parameters" class="anchor" aria-label="Permalink: Parameters" href="#parameters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="usage: main.jl -i INPUT [-o OUTPUT] [-s SIZE] [-n PINS]
+               [--steps STEPS] [--gif] [--color] [--verbose] [-h]
+
+optional arguments:
+  -i, --input INPUT    input image path
+  -o, --output OUTPUT  output image path whiteout extension (default:
+                       &quot;output&quot;)
+  -s, --size SIZE      output image size in pixels (type: Int64,
+                       default: 512)
+  -n, --pins PINS      number of pins to use in canvas (type: Int64,
+                       default: 180)
+  --steps STEPS        number of algorithm iterations (type: Int64,
+                       default: 1000)
+  --gif                Save output as a GIF
+  --color              RGB mode
+  --colors             HEX code of colors to use in RGB mode
+  --verbose            verbose mode
+  -h, --help           show this help message and exit"><pre>usage: main.jl -i INPUT [-o OUTPUT] [-s SIZE] [-n PINS]
+               [--steps STEPS] [--gif] [--color] [--verbose] [-h]
+
+optional arguments:
+  -i, --input INPUT    input image path
+  -o, --output OUTPUT  output image path whiteout extension (default:
+                       <span class="pl-s"><span class="pl-pds">"</span>output<span class="pl-pds">"</span></span>)
+  -s, --size SIZE      output image size <span class="pl-k">in</span> pixels (type: Int64,
+                       default: 512)
+  -n, --pins PINS      number of pins to use <span class="pl-k">in</span> canvas (type: Int64,
+                       default: 180)
+  --steps STEPS        number of algorithm iterations (type: Int64,
+                       default: 1000)
+  --gif                Save output as a GIF
+  --color              RGB mode
+  --colors             HEX code of colors to use <span class="pl-k">in</span> RGB mode
+  --verbose            verbose mode
+  -h, --help           show this <span class="pl-c1">help</span> message and <span class="pl-c1">exit</span></pre></div>
+<blockquote>
+<p dir="auto">keep the number of pins bellow 250 and the image size bellow 1000.</p>
+</blockquote>
+<blockquote>
+<p dir="auto">the number of iteration steps is dependent on the image size. For size between 500 and 800, 2000 iteration is more than enough.</p>
+</blockquote>
+<blockquote>
+<p dir="auto">GIF mode with custom colors RGB mode is not supported</p>
+</blockquote>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Gallery</h3><a id="user-content-gallery" class="anchor" aria-label="Permalink: Gallery" href="#gallery"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/david_02.png"><img src="examples/david_02.png" alt="David by Michelangelo" width="400px" style="max-width: 100%;"></a>
+</p>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/einstein.png"><img src="examples/einstein.png" alt="Albert Einstein" width="400px" style="max-width: 100%;"></a>
+</p>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/eye.png"><img src="examples/eye.png" alt="Eye" width="400px" style="max-width: 100%;"></a>
+</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">RGB Mode</h4><a id="user-content-rgb-mode" class="anchor" aria-label="Permalink: RGB Mode" href="#rgb-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/venus.png"><img src="examples/venus.png" alt="Birth of Venus" width="400px" style="max-width: 100%;"></a>
+</p>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/lady.png"><img src="examples/lady.png" alt="Lady with an Ermine" width="400px" style="max-width: 100%;"></a>
+</p>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/lucifer.png"><img src="examples/lucifer.png" alt="The Fallen Angel" width="400px" style="max-width: 100%;"></a>
+</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Animation</h4><a id="user-content-animation" class="anchor" aria-label="Permalink: Animation" href="#animation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p align="center" dir="auto">
+  <a target="_blank" rel="noopener noreferrer" href="examples/david.gif"><img src="examples/david.gif" alt="David Gif" width="400px" data-animated-image="" style="max-width: 100%;"></a>
+</p>
+<hr>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">TODO</h3><a id="user-content-todo" class="anchor" aria-label="Permalink: TODO" href="#todo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> GIF mode</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox" checked=""> Optimize Memory Usage</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Enhance Image Contrast and Remove Background</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Support Custom Colors in GIF mode</li>
+<li class="task-list-item"><input type="checkbox" id="" disabled="" class="task-list-item-checkbox"> Port Code to the GPU</li>
+</ul>
+</article></div>

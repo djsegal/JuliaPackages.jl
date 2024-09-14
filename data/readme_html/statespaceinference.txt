@@ -1,0 +1,117 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">StateSpaceInference</h1><a id="user-content-statespaceinference" class="anchor" aria-label="Permalink: StateSpaceInference" href="#statespaceinference"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/charlesknipp/StateSpaceInference.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/charlesknipp/StateSpaceInference.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">An intuitive approach to joint estimation of state space models. This package seeks to extend the framework defined by SSMProblems.jl specifically with parameter estimation in mind.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Defining the State Space Model</h2><a id="user-content-defining-the-state-space-model" class="anchor" aria-label="Permalink: Defining the State Space Model" href="#defining-the-state-space-model"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Since this package extends SSMProblems.jl, state spaces are defined in a nearly identical fashion. The exception being linear Gaussian state spaces, which are defined by their linear system.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="x[t+1] = A*x[t] + ε[t]      s.t.    ε[t] ~ N(0,Q)
+  y[t] = B*x[t] + η[t]      s.t.    η[t] ~ N(0,R)"><pre class="notranslate"><code>x[t+1] = A*x[t] + ε[t]      s.t.    ε[t] ~ N(0,Q)
+  y[t] = B*x[t] + η[t]      s.t.    η[t] ~ N(0,R)
+</code></pre></div>
+<p dir="auto">For example, one can define the local level model, with 2 parameters <code>(ση², σε²)</code> and a diffuse prior, like so:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function LocalLevel(params::NamedTuple{(:ση², :σε²)})
+    return LinearGaussianStateSpaceModel(
+        [0.0], [1.e6;;],
+        [1.0;;], zeros(1), [params.σε²;;],
+        [1.0;;], [params.ση²;;]
+    )
+end"><pre><span class="pl-k">function</span> <span class="pl-en">LocalLevel</span>(params<span class="pl-k">::</span><span class="pl-c1">NamedTuple{(:ση², :σε²)}</span>)
+    <span class="pl-k">return</span> <span class="pl-c1">LinearGaussianStateSpaceModel</span>(
+        [<span class="pl-c1">0.0</span>], [<span class="pl-c1">1.e6</span>;;],
+        [<span class="pl-c1">1.0</span>;;], <span class="pl-c1">zeros</span>(<span class="pl-c1">1</span>), [params<span class="pl-k">.</span>σε²;;],
+        [<span class="pl-c1">1.0</span>;;], [params<span class="pl-k">.</span>ση²;;]
+    )
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">And subsequently parameterize it with a named tuple for legibility.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="θ = (ση²=0.7, σε²=0.2)
+model = LocalLevel(θ)"><pre>θ <span class="pl-k">=</span> (ση²<span class="pl-k">=</span><span class="pl-c1">0.7</span>, σε²<span class="pl-k">=</span><span class="pl-c1">0.2</span>)
+model <span class="pl-k">=</span> <span class="pl-c1">LocalLevel</span>(θ)</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Filtering</h2><a id="user-content-filtering" class="anchor" aria-label="Permalink: Filtering" href="#filtering"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The estimation of latent states, and unbiased log evidence, is calculated via filtering. For the linear Gaussian model, the Kalman filter yields an analytical solution to the problem. For non-linearities, the bootstrap particle filter is readily available.</p>
+<p dir="auto">Using the above model, one can extract a tuple of final state particles (or a <code>Gaussian</code> in the case of the Kalman filter) and the log evidence.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="states, log_evidence = sample(rng, model, y, KF())"><pre>states, log_evidence <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, model, y, <span class="pl-c1">KF</span>())</pre></div>
+<p dir="auto">Instead of calling the wrapper, this can also be done iteratively using <code>filter_step!()</code> to update filtered states over time. For demonstration, one can program a bootstrap particle filter using the following:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# 1024 partilces, resampled at every time step
+filter = PF(1024, 1.0)
+
+# sample from the prior
+particles, log_evidence = filter_step!(rng, model, filter)
+
+# transition particles through observations
+for t in eachindex(observations)
+    particles, log_marginal = filter_step!(
+        rng, model, particles, observations[t], filter;
+        save_history = true
+    )
+    log_evidence += log_marginal
+end"><pre><span class="pl-c"><span class="pl-c">#</span> 1024 partilces, resampled at every time step</span>
+filter <span class="pl-k">=</span> <span class="pl-c1">PF</span>(<span class="pl-c1">1024</span>, <span class="pl-c1">1.0</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> sample from the prior</span>
+particles, log_evidence <span class="pl-k">=</span> <span class="pl-c1">filter_step!</span>(rng, model, filter)
+
+<span class="pl-c"><span class="pl-c">#</span> transition particles through observations</span>
+<span class="pl-k">for</span> t <span class="pl-k">in</span> <span class="pl-c1">eachindex</span>(observations)
+    particles, log_marginal <span class="pl-k">=</span> <span class="pl-c1">filter_step!</span>(
+        rng, model, particles, observations[t], filter;
+        save_history <span class="pl-k">=</span> <span class="pl-c1">true</span>
+    )
+    log_evidence <span class="pl-k">+=</span> log_marginal
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">In addition to filtering methods, we can achieve particle smoothing using either particle geneology like so:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="particles, _  = sample(rng, model, y, PF(1024, 1.0); save_history=true)
+approx_smooth = geneology(particles)"><pre>particles, _  <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, model, y, <span class="pl-c1">PF</span>(<span class="pl-c1">1024</span>, <span class="pl-c1">1.0</span>); save_history<span class="pl-k">=</span><span class="pl-c1">true</span>)
+approx_smooth <span class="pl-k">=</span> <span class="pl-c1">geneology</span>(particles)</pre></div>
+<p dir="auto">Alternatively, forward-filtering backwards-sampling (FFBS) uses backwards simulation to achieve a smooth approximation.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# optionally pass FFBS(N) to set the number of recorded trajectories
+ffbs_smooth = smooth(rng, model, y, PF(1024, 1.0))"><pre><span class="pl-c"><span class="pl-c">#</span> optionally pass FFBS(N) to set the number of recorded trajectories</span>
+ffbs_smooth <span class="pl-k">=</span> <span class="pl-c1">smooth</span>(rng, model, y, <span class="pl-c1">PF</span>(<span class="pl-c1">1024</span>, <span class="pl-c1">1.0</span>))</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Parameter Estimation</h2><a id="user-content-parameter-estimation" class="anchor" aria-label="Permalink: Parameter Estimation" href="#parameter-estimation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To estimate this models parameters, we have to pass a function which takes a single vector as an input, and impose a prior to that function's inputs. This behavior mimics that of AdvancedMH.jl, but designed to only allocate what is necessary for parameter estimation.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function local_level(params::AbstractVector)
+    θ = NamedTuple{(:ση², :σε²)}(params)
+    return LocalLevel(θ; initial_covariance = 1.0)
+end
+
+prior = product_distribution(
+    LogNormal(),
+    LogNormal()
+)"><pre><span class="pl-k">function</span> <span class="pl-en">local_level</span>(params<span class="pl-k">::</span><span class="pl-c1">AbstractVector</span>)
+    θ <span class="pl-k">=</span> <span class="pl-c1">NamedTuple</span><span class="pl-c1">{(:ση², :σε²)}</span>(params)
+    <span class="pl-k">return</span> <span class="pl-c1">LocalLevel</span>(θ; initial_covariance <span class="pl-k">=</span> <span class="pl-c1">1.0</span>)
+<span class="pl-k">end</span>
+
+prior <span class="pl-k">=</span> <span class="pl-c1">product_distribution</span>(
+    <span class="pl-c1">LogNormal</span>(),
+    <span class="pl-c1">LogNormal</span>()
+)</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Particle Markov Chain Monte Carlo</h3><a id="user-content-particle-markov-chain-monte-carlo" class="anchor" aria-label="Permalink: Particle Markov Chain Monte Carlo" href="#particle-markov-chain-monte-carlo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To estimate parameters in a stable, but time consuming manner, we can employ a Particle Marginal Metropolis Hastings (PMMH) sampler. For simplicity, we stick to a random walk proposal, which ensures parameter estimates fall within the support of the prior.</p>
+<p dir="auto">We perform parameter estimation via PMMH like so, throwing out the first 1000 draws:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="rw_kernel = θ -&gt; MvNormal(θ, (0.1)*I(2))
+sampler = PMMH(5_000, rw_kernel, local_level, prior)
+
+# we can also use a particle filter here too
+post = sample(rng, sampler, y, KF(); burn_in = 1_000)"><pre>rw_kernel <span class="pl-k">=</span> θ <span class="pl-k">-&gt;</span> <span class="pl-c1">MvNormal</span>(θ, (<span class="pl-c1">0.1</span>)<span class="pl-k">*</span><span class="pl-c1">I</span>(<span class="pl-c1">2</span>))
+sampler <span class="pl-k">=</span> <span class="pl-c1">PMMH</span>(<span class="pl-c1">5_000</span>, rw_kernel, local_level, prior)
+
+<span class="pl-c"><span class="pl-c">#</span> we can also use a particle filter here too</span>
+post <span class="pl-k">=</span> <span class="pl-c1">sample</span>(rng, sampler, y, <span class="pl-c1">KF</span>(); burn_in <span class="pl-k">=</span> <span class="pl-c1">1_000</span>)</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Sequential Monte Carlo</h3><a id="user-content-sequential-monte-carlo" class="anchor" aria-label="Permalink: Sequential Monte Carlo" href="#sequential-monte-carlo"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For a more efficient sampler, we can employ the density tempered Sequential Monte Carlo (SMC) algorithm of (Duan-Fulop, 2015). Since SMC can also be done online, we must define it's sampler slightly differently:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# we use a PMMH step for particle rejuvenation with chain length set to 5 by default
+sampler = SMC(256, PF(1024, 1.0); chain_length = 8)
+post = batch_tempered_smc(rng, sampler, y, local_level, prior)"><pre><span class="pl-c"><span class="pl-c">#</span> we use a PMMH step for particle rejuvenation with chain length set to 5 by default</span>
+sampler <span class="pl-k">=</span> <span class="pl-c1">SMC</span>(<span class="pl-c1">256</span>, <span class="pl-c1">PF</span>(<span class="pl-c1">1024</span>, <span class="pl-c1">1.0</span>); chain_length <span class="pl-k">=</span> <span class="pl-c1">8</span>)
+post <span class="pl-k">=</span> <span class="pl-c1">batch_tempered_smc</span>(rng, sampler, y, local_level, prior)</pre></div>
+<p dir="auto">For online estimation via SMC, we look to SMC² by (Chopin, 2013). This algorithm propagates particles forward as new information is revealed; therefore we can design an iterative process using the <code>smc_iter()</code> function like so:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="particles = initialize_particles(rng, model, prior, smc)
+for t in eachindex(y)
+    particles = smc_iter(rng, sampler, particles, y[1:t], local_level, prior)
+    # [record and process particles here]
+end"><pre>particles <span class="pl-k">=</span> <span class="pl-c1">initialize_particles</span>(rng, model, prior, smc)
+<span class="pl-k">for</span> t <span class="pl-k">in</span> <span class="pl-c1">eachindex</span>(y)
+    particles <span class="pl-k">=</span> <span class="pl-c1">smc_iter</span>(rng, sampler, particles, y[<span class="pl-c1">1</span><span class="pl-k">:</span>t], local_level, prior)
+    <span class="pl-c"><span class="pl-c">#</span> [record and process particles here]</span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">Where particles can be recorded or processed at each iteration.</p>
+</article></div>

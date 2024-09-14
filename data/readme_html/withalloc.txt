@@ -1,0 +1,157 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">WithAlloc</h1><a id="user-content-withalloc" class="anchor" aria-label="Permalink: WithAlloc" href="#withalloc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+
+<p dir="auto"><a href="https://github.com/ACEsuit/WithAlloc.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/ACEsuit/WithAlloc.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">This package implements a very small extension to <a href="https://github.com/MasonProtter/Bumper.jl">Bumper.jl</a>. Bumper strongly enourages (almost enforces) that it is used purely from within <code>@no_escape</code> blocks. Bumper-allocating an array in a function and passing it back to the caller should generally be avoided. This results in a common pattern:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@no_escape begin 
+   # determine the type and size a required array
+   T, N = determine_array(x1, x2, x3)
+   # preallocate some arrays
+   A = @alloc(T, N)
+   # do a computation on A 
+   calculate_something!(A, x1, x2, x3)
+end "><pre><span class="pl-c1">@no_escape</span> <span class="pl-k">begin</span> 
+   <span class="pl-c"><span class="pl-c">#</span> determine the type and size a required array</span>
+   T, N <span class="pl-k">=</span> <span class="pl-c1">determine_array</span>(x1, x2, x3)
+   <span class="pl-c"><span class="pl-c">#</span> preallocate some arrays</span>
+   A <span class="pl-k">=</span> <span class="pl-c1">@alloc</span>(T, N)
+   <span class="pl-c"><span class="pl-c">#</span> do a computation on A </span>
+   <span class="pl-c1">calculate_something!</span>(A, x1, x2, x3)
+<span class="pl-k">end</span> </pre></div>
+<p dir="auto">The goal of <code>WithAlloc.jl</code> is to replace the above 3 lines with</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@no_escape begin 
+   A = @withalloc calculate_something!(x1, x2, x3)
+end"><pre><span class="pl-c1">@no_escape</span> <span class="pl-k">begin</span> 
+   A <span class="pl-k">=</span> <span class="pl-c1">@withalloc</span> <span class="pl-c1">calculate_something!</span>(x1, x2, x3)
+<span class="pl-k">end</span></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Preliminary Documentation</h3><a id="user-content-preliminary-documentation" class="anchor" aria-label="Permalink: Preliminary Documentation" href="#preliminary-documentation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For now, there are just a few simple use-case examples. Proper documentation will follow once the packages has been tested a bit and there is some agreement it will be long-term useful.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using WithAlloc, LinearAlgebra, Bumper 
+
+# simple allocating operation
+B = randn(5,10)
+C = randn(10, 3)
+A1 = B * C
+
+# we wrap mul! into a new function so we don't become pirates...
+mymul!(A, B, C) = mul!(A, B, C)
+
+# tell `WithAlloc` how to allocate memory for `mymul!`
+WithAlloc.whatalloc(::typeof(mymul!), B, C) = 
+          (promote_type(eltype(B), eltype(C)), size(B, 1), size(C, 2))
+
+# the &quot;naive use&quot; of automated pre-allocation could look like this: 
+# This is essentially the code that the macro @withalloc generates
+@no_escape begin 
+   A2_alloc_info = WithAlloc.whatalloc(mymul!, B, C)
+   A2 = @alloc(A2_alloc_info...)
+   mymul!(A2, B, C)
+
+   @show A2 ≈ A1
+end
+
+# but the same pattern will be repreated over and over so ... 
+@no_escape begin 
+   A3 = @withalloc mymul!(B, C)
+   @show A3 ≈ A1 
+end
+
+# ------------------------------------------------------------------------
+
+# Multiple arrays is handled via tuples: 
+
+B = randn(5,10)
+C = randn(10, 3)
+D = randn(10, 5)
+A1 = B * C 
+A2 = B * D
+
+mymul2!(A1, A2, B, C, D) = mul!(A1, B, C), mul!(A2, B, D)
+
+function WithAlloc.whatalloc(::typeof(mymul2!), B, C, D) 
+   T1 = promote_type(eltype(B), eltype(C)) 
+   T2 = promote_type(eltype(B), eltype(D))
+   return ( (T1, size(B, 1), size(C, 2)), 
+            (T2, size(B, 1), size(D, 2)) )
+end
+
+@no_escape begin 
+   A1b, A2b = WithAlloc.@withalloc mymul2!(B, C, D)
+   @show A1 ≈ A1b, A2 ≈ A2b   # true, true 
+end"><pre><span class="pl-k">using</span> WithAlloc, LinearAlgebra, Bumper 
+
+<span class="pl-c"><span class="pl-c">#</span> simple allocating operation</span>
+B <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">5</span>,<span class="pl-c1">10</span>)
+C <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">10</span>, <span class="pl-c1">3</span>)
+A1 <span class="pl-k">=</span> B <span class="pl-k">*</span> C
+
+<span class="pl-c"><span class="pl-c">#</span> we wrap mul! into a new function so we don't become pirates...</span>
+<span class="pl-en">mymul!</span>(A, B, C) <span class="pl-k">=</span> <span class="pl-c1">mul!</span>(A, B, C)
+
+<span class="pl-c"><span class="pl-c">#</span> tell `WithAlloc` how to allocate memory for `mymul!`</span>
+WithAlloc<span class="pl-k">.</span><span class="pl-en">whatalloc</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(mymul!), B, C) <span class="pl-k">=</span> 
+          (<span class="pl-c1">promote_type</span>(<span class="pl-c1">eltype</span>(B), <span class="pl-c1">eltype</span>(C)), <span class="pl-c1">size</span>(B, <span class="pl-c1">1</span>), <span class="pl-c1">size</span>(C, <span class="pl-c1">2</span>))
+
+<span class="pl-c"><span class="pl-c">#</span> the "naive use" of automated pre-allocation could look like this: </span>
+<span class="pl-c"><span class="pl-c">#</span> This is essentially the code that the macro @withalloc generates</span>
+<span class="pl-c1">@no_escape</span> <span class="pl-k">begin</span> 
+   A2_alloc_info <span class="pl-k">=</span> WithAlloc<span class="pl-k">.</span><span class="pl-c1">whatalloc</span>(mymul!, B, C)
+   A2 <span class="pl-k">=</span> <span class="pl-c1">@alloc</span>(A2_alloc_info<span class="pl-k">...</span>)
+   <span class="pl-c1">mymul!</span>(A2, B, C)
+
+   <span class="pl-c1">@show</span> A2 <span class="pl-k">≈</span> A1
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> but the same pattern will be repreated over and over so ... </span>
+<span class="pl-c1">@no_escape</span> <span class="pl-k">begin</span> 
+   A3 <span class="pl-k">=</span> <span class="pl-c1">@withalloc</span> <span class="pl-c1">mymul!</span>(B, C)
+   <span class="pl-c1">@show</span> A3 <span class="pl-k">≈</span> A1 
+<span class="pl-k">end</span>
+
+<span class="pl-c"><span class="pl-c">#</span> ------------------------------------------------------------------------</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Multiple arrays is handled via tuples: </span>
+
+B <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">5</span>,<span class="pl-c1">10</span>)
+C <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">10</span>, <span class="pl-c1">3</span>)
+D <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">10</span>, <span class="pl-c1">5</span>)
+A1 <span class="pl-k">=</span> B <span class="pl-k">*</span> C 
+A2 <span class="pl-k">=</span> B <span class="pl-k">*</span> D
+
+<span class="pl-en">mymul2!</span>(A1, A2, B, C, D) <span class="pl-k">=</span> <span class="pl-c1">mul!</span>(A1, B, C), <span class="pl-c1">mul!</span>(A2, B, D)
+
+<span class="pl-k">function</span> WithAlloc<span class="pl-k">.</span><span class="pl-en">whatalloc</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(mymul2!), B, C, D) 
+   T1 <span class="pl-k">=</span> <span class="pl-c1">promote_type</span>(<span class="pl-c1">eltype</span>(B), <span class="pl-c1">eltype</span>(C)) 
+   T2 <span class="pl-k">=</span> <span class="pl-c1">promote_type</span>(<span class="pl-c1">eltype</span>(B), <span class="pl-c1">eltype</span>(D))
+   <span class="pl-k">return</span> ( (T1, <span class="pl-c1">size</span>(B, <span class="pl-c1">1</span>), <span class="pl-c1">size</span>(C, <span class="pl-c1">2</span>)), 
+            (T2, <span class="pl-c1">size</span>(B, <span class="pl-c1">1</span>), <span class="pl-c1">size</span>(D, <span class="pl-c1">2</span>)) )
+<span class="pl-k">end</span>
+
+<span class="pl-c1">@no_escape</span> <span class="pl-k">begin</span> 
+   A1b, A2b <span class="pl-k">=</span> WithAlloc<span class="pl-k">.</span><span class="pl-c1">@withalloc</span> <span class="pl-c1">mymul2!</span>(B, C, D)
+   <span class="pl-c1">@show</span> A1 <span class="pl-k">≈</span> A1b, A2 <span class="pl-k">≈</span> A2b   <span class="pl-c"><span class="pl-c">#</span> true, true </span>
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">This approach should become non-allocating, which we can quickly check.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using WithAlloc, LinearAlgebra, Bumper 
+
+mymul!(A, B, C) = mul!(A, B, C)
+
+WithAlloc.whatalloc(::typeof(mymul!), B, C) = 
+          (promote_type(eltype(B), eltype(C)), size(B, 1), size(C, 2))
+
+nalloc = let B = randn(5,10), C = randn(10, 3)
+   @allocated sum( @withalloc mymul!(B, C) )
+end          
+
+@show nalloc  # 0 "><pre><span class="pl-k">using</span> WithAlloc, LinearAlgebra, Bumper 
+
+<span class="pl-en">mymul!</span>(A, B, C) <span class="pl-k">=</span> <span class="pl-c1">mul!</span>(A, B, C)
+
+WithAlloc<span class="pl-k">.</span><span class="pl-en">whatalloc</span>(<span class="pl-k">::</span><span class="pl-c1">typeof</span>(mymul!), B, C) <span class="pl-k">=</span> 
+          (<span class="pl-c1">promote_type</span>(<span class="pl-c1">eltype</span>(B), <span class="pl-c1">eltype</span>(C)), <span class="pl-c1">size</span>(B, <span class="pl-c1">1</span>), <span class="pl-c1">size</span>(C, <span class="pl-c1">2</span>))
+
+nalloc <span class="pl-k">=</span> <span class="pl-k">let</span> B <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">5</span>,<span class="pl-c1">10</span>), C <span class="pl-k">=</span> <span class="pl-c1">randn</span>(<span class="pl-c1">10</span>, <span class="pl-c1">3</span>)
+   <span class="pl-c1">@allocated</span> <span class="pl-c1">sum</span>( <span class="pl-c1">@withalloc</span> <span class="pl-c1">mymul!</span>(B, C) )
+<span class="pl-k">end</span>          
+
+<span class="pl-c1">@show</span> nalloc  <span class="pl-c"><span class="pl-c">#</span> 0 </span></pre></div>
+</article></div>

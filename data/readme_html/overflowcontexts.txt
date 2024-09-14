@@ -1,87 +1,170 @@
-<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 dir="auto"><a id="user-content-overflowcontextsjl" class="anchor" aria-hidden="true" href="#overflowcontextsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a>OverflowContexts.jl</h1>
-<p dir="auto">This package conceptually extends <code>CheckedArithmetic.jl</code> to provide the following overall features:</p>
-<ol dir="auto">
-<li>Ability to set a Module-level default to overflow-checked or overflow-permissive operations.</li>
-<li>Ability to specify whether a block of code should use overflow-checked or overflow-permissive operations regardless of the default.</li>
-</ol>
-<p dir="auto">Together, these provide checked and unchecked contexts, as in other languages like C#:
-<a href="https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/checked-and-unchecked" rel="nofollow">https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/checked-and-unchecked</a></p>
-<p dir="auto"><code>@default_checked</code> and <code>@default_unchecked</code> create shadow copies of the <code>+</code>, <code>-</code>, <code>*</code>, <code>^</code>, and <code>abs</code> functions that redirect to overflow-checked
-or overflow-permissive operations, respectively, within the module it was executed in. All non-integer arguments are passed through to their
-respective Base methods.</p>
-<p dir="auto">The expression-level <code>@checked</code> and <code>@unchecked</code> rewrite instances of <code>+</code>, <code>-</code>, <code>*</code>, <code>^</code>, and <code>abs</code> functions, to functions specific to the
-checked or permissive operation, and thus are not affected by switching the default. Symbols for the functions will also be replaced, to support
-calls like <code>foldl(+, v)</code>. If these macros are nested, the lowest level takes precedence so that an unchecked context can be nested inside a checked
-context and vice versa.</p>
-<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using OverflowContexts
-x = typemax(Int) # 9223372036854775807
-x + 1 # -9223372036854775808
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">OverflowContexts.jl</h1><a id="user-content-overflowcontextsjl" class="anchor" aria-label="Permalink: OverflowContexts.jl" href="#overflowcontextsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">OverflowContexts provides easy manipulation of (integer, or any type that opts-in) arithmetic modes.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Justification</h2><a id="user-content-justification" class="anchor" aria-label="Permalink: Justification" href="#justification"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">By default, Julia generally uses overflowing (unchecked) integer math (other than division methods), which silently wraps around from the maximum to the minimum value when it gets too large or small, respectively. This choice is because checking for overflow is slower and means that any integer arithmetic could throw an exception, which the compiler would need to account for.</p>
+<p dir="auto">With base Julia, if a user wishes to use checked arithmetic, they would need to bring in <code>Base.Checked</code> and explicitly use e.g., <code>checked_add(x, y)</code> rather than the natural operator. This is cumbersome, but we can use Julia's metaprogramming features to remove this overhead.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Expression Macros</h2><a id="user-content-expression-macros" class="anchor" aria-label="Permalink: Expression Macros" href="#expression-macros"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Using the macros in OverflowContexts, an expression or code block can be rewritten to replace operators and certain methods (<code>+</code>, <code>-</code>, <code>*</code>, <code>^</code>, <code>abs</code>) on the fly with appropriate method calls:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@checked -typemin(Int64)
+# Expands to `OverflowContexts.checked_neg(typemin(Int64))`
+# Throws `ERROR: OverflowError: 0 - -9223372036854775808 overflowed for type Int64`
 
-@default_checked
-x + 1 # ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64
+@checked typemax(Int64) + 1
+# Expands to `OverflowContexts.checked_add(typemax(Int64), 1)`
+# Throws `ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64`
 
-@unchecked x * 2 # -2
+@checked typemin(Int64) - 1
+# Expands to `OverflowContexts.checked_sub(typemin(Int64), 1)`
+# Throws `ERROR: OverflowError: -9223372036854775807 + 1 overflowed for type Int64`
 
-@unchecked begin
-    x * 2 # -2
-    @checked x + 1 # ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64
+@checked typemax(Int64) * 2
+# Expands to `OverflowContexts.checked_mul(typemax(Int64), 2)`
+# Throws `ERROR: OverflowError: 9223372036854775807 * 2 overflowed for type Int64`
+
+@checked typemax(Int64) ^ 2
+# Expands to `OverflowContexts.checked_pow(typemax(Int64), 2)`
+# Throws `ERROR: OverflowError: 9223372036854775807 * 9223372036854775807overflowed for type Int64`
+
+@checked abs(typemin(Int64))
+# Expands to `OverflowContexts.checked_abs(typemin(Int64))`
+# Throws `ERROR: OverflowError: checked arithmetic: cannot compute |x| for x = -9223372036854775808::Int64`"><pre><span class="pl-c1">@checked</span> <span class="pl-k">-</span><span class="pl-c1">typemin</span>(Int64)
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_neg(typemin(Int64))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 0 - -9223372036854775808 overflowed for type Int64`</span>
+
+<span class="pl-c1">@checked</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">+</span> <span class="pl-c1">1</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_add(typemax(Int64), 1)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64`</span>
+
+<span class="pl-c1">@checked</span> <span class="pl-c1">typemin</span>(Int64) <span class="pl-k">-</span> <span class="pl-c1">1</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_sub(typemin(Int64), 1)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: -9223372036854775807 + 1 overflowed for type Int64`</span>
+
+<span class="pl-c1">@checked</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">*</span> <span class="pl-c1">2</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_mul(typemax(Int64), 2)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 9223372036854775807 * 2 overflowed for type Int64`</span>
+
+<span class="pl-c1">@checked</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">^</span> <span class="pl-c1">2</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_pow(typemax(Int64), 2)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 9223372036854775807 * 9223372036854775807overflowed for type Int64`</span>
+
+<span class="pl-c1">@checked</span> <span class="pl-c1">abs</span>(<span class="pl-c1">typemin</span>(Int64))
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_abs(typemin(Int64))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: checked arithmetic: cannot compute |x| for x = -9223372036854775808::Int64`</span></pre></div>
+<p dir="auto">Code blocks can also be nested, with the innermost block taking priority:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@checked begin
+    @unchecked typemax(Int64) * 2
 end
-
-@default_unchecked
-x + 1 # -9223372036854775808
-
-d() = x + 1; c() = d(); b() = c(); a() = b();
-
-a() #-9223372036854775808
-@checked a() # doesn't cross function boundary; no OverflowError
-
-@default_checked
-a() # ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64
-
-@unchecked a() # doesn't cross function boundary; still throws OverflowError
-@default_unchecked
-
-a()  # -9223372036854775808
-
-# rewrite a symbol
-@checked foldl(+, (typemax(Int), 1))
-
-# assignment operators
-a = typemax(Int)
-@checked a += 1"><pre><span class="pl-k">using</span> OverflowContexts
-x <span class="pl-k">=</span> <span class="pl-c1">typemax</span>(Int) <span class="pl-c"><span class="pl-c">#</span> 9223372036854775807</span>
-x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> -9223372036854775808</span>
-
-<span class="pl-c1">@default_checked</span>
-x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64</span>
-
-<span class="pl-c1">@unchecked</span> x <span class="pl-k">*</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> -2</span>
-
-<span class="pl-c1">@unchecked</span> <span class="pl-k">begin</span>
-    x <span class="pl-k">*</span> <span class="pl-c1">2</span> <span class="pl-c"><span class="pl-c">#</span> -2</span>
-    <span class="pl-c1">@checked</span> x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64</span>
+# Expands to `OverflowContexts.unchecked_mul(typemax(Int64), 2)`
+# Evaluates to `-2`"><pre><span class="pl-c1">@checked</span> <span class="pl-k">begin</span>
+    <span class="pl-c1">@unchecked</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">*</span> <span class="pl-c1">2</span>
 <span class="pl-k">end</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.unchecked_mul(typemax(Int64), 2)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `-2`</span></pre></div>
+<p dir="auto">This package also adds a saturating mode, where values accumulate at the maximum and minimum for the type:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@saturating -typemin(Int64)
+# Expands to `OverflowContexts.saturating_neg(typemin(Int64))`
+# Evaluates to `typemax(Int64)`
 
-<span class="pl-c1">@default_unchecked</span>
-x <span class="pl-k">+</span> <span class="pl-c1">1</span> <span class="pl-c"><span class="pl-c">#</span> -9223372036854775808</span>
+@saturating typemax(Int64) + 1
+# Expands to `OverflowContexts.saturating_add(typemax(Int64), 1)`
+# Evaluates to `typemax(Int64)`
 
-<span class="pl-en">d</span>() <span class="pl-k">=</span> x <span class="pl-k">+</span> <span class="pl-c1">1</span>; <span class="pl-en">c</span>() <span class="pl-k">=</span> <span class="pl-en">d</span>(); <span class="pl-en">b</span>() <span class="pl-k">=</span> <span class="pl-en">c</span>(); <span class="pl-en">a</span>() <span class="pl-k">=</span> <span class="pl-c1">b</span>();
+@saturating typemin(Int64) - 1
+# Expands to `OverflowContexts.saturating_sub(typemin(Int64), 1)`
+# Evaluates to `typemin(Int64)`
 
-<span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span>-9223372036854775808</span>
-<span class="pl-c1">@checked</span> <span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span> doesn't cross function boundary; no OverflowError</span>
+@saturating typemax(Int64) * 2
+# Expands to `OverflowContexts.saturating_mul(typemax(Int64), 2)`
+# Evaluates to `typemax(Int64)`
 
-<span class="pl-c1">@default_checked</span>
-<span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span> ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64</span>
+@saturating typemax(Int64) ^ 2
+# Expands to `OverflowContexts.saturating_pow(typemax(Int64), 2)`
+# Evaluates to `typemax(Int64)`
 
-<span class="pl-c1">@unchecked</span> <span class="pl-c1">a</span>() <span class="pl-c"><span class="pl-c">#</span> doesn't cross function boundary; still throws OverflowError</span>
-<span class="pl-c1">@default_unchecked</span>
+@saturating abs(typemin(Int64))
+# Expands to `OverflowContexts.checked_abs(typemin(Int64))`
+# Evaluates to `typemax(Int64)`"><pre><span class="pl-c1">@saturating</span> <span class="pl-k">-</span><span class="pl-c1">typemin</span>(Int64)
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.saturating_neg(typemin(Int64))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `typemax(Int64)`</span>
 
-<span class="pl-c1">a</span>()  <span class="pl-c"><span class="pl-c">#</span> -9223372036854775808</span>
+<span class="pl-c1">@saturating</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">+</span> <span class="pl-c1">1</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.saturating_add(typemax(Int64), 1)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `typemax(Int64)`</span>
 
-<span class="pl-c"><span class="pl-c">#</span> rewrite a symbol</span>
-<span class="pl-c1">@checked</span> <span class="pl-c1">foldl</span>(<span class="pl-k">+</span>, (<span class="pl-c1">typemax</span>(Int), <span class="pl-c1">1</span>))
+<span class="pl-c1">@saturating</span> <span class="pl-c1">typemin</span>(Int64) <span class="pl-k">-</span> <span class="pl-c1">1</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.saturating_sub(typemin(Int64), 1)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `typemin(Int64)`</span>
 
-<span class="pl-c"><span class="pl-c">#</span> assignment operators</span>
-a <span class="pl-k">=</span> <span class="pl-c1">typemax</span>(Int)
-<span class="pl-c1">@checked</span> a <span class="pl-k">+=</span> <span class="pl-c1">1</span></pre></div>
+<span class="pl-c1">@saturating</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">*</span> <span class="pl-c1">2</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.saturating_mul(typemax(Int64), 2)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `typemax(Int64)`</span>
+
+<span class="pl-c1">@saturating</span> <span class="pl-c1">typemax</span>(Int64) <span class="pl-k">^</span> <span class="pl-c1">2</span>
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.saturating_pow(typemax(Int64), 2)`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `typemax(Int64)`</span>
+
+<span class="pl-c1">@saturating</span> <span class="pl-c1">abs</span>(<span class="pl-c1">typemin</span>(Int64))
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_abs(typemin(Int64))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `typemax(Int64)`</span></pre></div>
+<p dir="auto">Broadcasted operators/methods, elementwise array operators, and assignment operators are also rewritten:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@checked .-fill(typemin(Int64), 2)
+# Expands to `OverflowContexts.checked_neg.(fill(typemin(Int64), 2))`
+# Throws `ERROR: OverflowError: 0 - -9223372036854775808 overflowed for type Int64`
+
+@checked fill(typemax(Int64), 2) + fill(1, 2)
+# Expands to `OverflowContexts.checked_add(fill(typemax(Int64), 2), fill(1, 2))`
+# Throws `ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64`
+
+a = fill(1, 2)
+@saturating a += fill(typemax(Int64), 2)
+# Expands to `a = OverflowContexts.saturating_add(a, fill(typemax(Int64), 2))`
+# Evaluates to `[typemax(Int64), typemax(Int64)]`"><pre><span class="pl-c1">@checked</span> <span class="pl-k">.-</span><span class="pl-c1">fill</span>(<span class="pl-c1">typemin</span>(Int64), <span class="pl-c1">2</span>)
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_neg.(fill(typemin(Int64), 2))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 0 - -9223372036854775808 overflowed for type Int64`</span>
+
+<span class="pl-c1">@checked</span> <span class="pl-c1">fill</span>(<span class="pl-c1">typemax</span>(Int64), <span class="pl-c1">2</span>) <span class="pl-k">+</span> <span class="pl-c1">fill</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+<span class="pl-c"><span class="pl-c">#</span> Expands to `OverflowContexts.checked_add(fill(typemax(Int64), 2), fill(1, 2))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64`</span>
+
+a <span class="pl-k">=</span> <span class="pl-c1">fill</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>)
+<span class="pl-c1">@saturating</span> a <span class="pl-k">+=</span> <span class="pl-c1">fill</span>(<span class="pl-c1">typemax</span>(Int64), <span class="pl-c1">2</span>)
+<span class="pl-c"><span class="pl-c">#</span> Expands to `a = OverflowContexts.saturating_add(a, fill(typemax(Int64), 2))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `[typemax(Int64), typemax(Int64)]`</span></pre></div>
+<p dir="auto">Functions passed as an argument are also supported:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@saturating map(-, fill(typemin(Int64), 2))
+# Expands to `map(OverflowContexts.saturating_neg, fill(typemin(Int64), 2))`
+# Evaluates to `[typemax(Int64), typemax(Int64)]`"><pre><span class="pl-c1">@saturating</span> <span class="pl-c1">map</span>(<span class="pl-k">-</span>, <span class="pl-c1">fill</span>(<span class="pl-c1">typemin</span>(Int64), <span class="pl-c1">2</span>))
+<span class="pl-c"><span class="pl-c">#</span> Expands to `map(OverflowContexts.saturating_neg, fill(typemin(Int64), 2))`</span>
+<span class="pl-c"><span class="pl-c">#</span> Evaluates to `[typemax(Int64), typemax(Int64)]`</span></pre></div>
+<p dir="auto">Division-related operators and methods (<code>÷</code>, <code>div</code>, <code>fld</code>, <code>cld</code>, <code>%</code>, <code>rem</code>, <code>mod</code>), in contrast, are checked by default in Julia. This is primarily because the LLVM compiler deems division by 0, or <code>-typemin(T) ÷ -one(T)</code> to be undefined behavior. Also, integer division on CPUs are generally quite slow and so this choice doesn't make much difference for performance. This package provides unchecked and saturating variants of these methods. The main benefit of the unchecked methods is that they are guaranteed to not throw an exception, however the result of a bad division should not be relied on. The saturating variant defines division by zero by treating <code>typemin(T)</code> and <code>typemax(T)</code> as saturating towards infinity, and returning <code>0</code> for <code>0 ÷ 0</code>. The saturating remainder methods produce complementary values.</p>
+<p dir="auto">Julia has a more complex <code>div</code> API than is supported here (e.g. supporting rounding modes) but this package just covers the two-argument methods available inside <code>Base.Checked</code>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Module Default Macros</h2><a id="user-content-module-default-macros" class="anchor" aria-label="Permalink: Module Default Macros" href="#module-default-macros"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">If you are writing a module and desire to set the default type of arithemtic for the module, place e.g., <code>@default_unchecked</code>, <code>@default_checked</code>, <code>@default_saturating</code> at the top of the module. This macro defines module-local copies of all of the supported arithemtic operators and methods, mapping them to the appropriate <code>unchecked</code>, <code>checked_</code>, or <code>saturating_</code> methods. The defaults do not affect anything inside the expression/block-level macros. These defaults may also be used on the REPL to switch between modes, although keep in mind that it will also cause previous methods defined on the REPL (in the <code>Main</code> module) to be recompiled with the new default.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="module Foo
+    using OverflowContexts
+    @default_checked
+    bar(x, y) = x + y
+    baz(x, y) = @saturating x + y
+end
+Foo.bar(typemax(Int64), 1)
+# Throws `ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64`
+Foo.baz(typemax(Int64), 1)
+# Returns `typemax(Int64)`"><pre><span class="pl-k">module</span> Foo
+    <span class="pl-k">using</span> OverflowContexts
+    <span class="pl-c1">@default_checked</span>
+    <span class="pl-en">bar</span>(x, y) <span class="pl-k">=</span> x <span class="pl-k">+</span> y
+    <span class="pl-en">baz</span>(x, y) <span class="pl-k">=</span> <span class="pl-c1">@saturating</span> x <span class="pl-k">+</span> y
+<span class="pl-k">end</span>
+Foo<span class="pl-k">.</span><span class="pl-c1">bar</span>(<span class="pl-c1">typemax</span>(Int64), <span class="pl-c1">1</span>)
+<span class="pl-c"><span class="pl-c">#</span> Throws `ERROR: OverflowError: 9223372036854775807 + 1 overflowed for type Int64`</span>
+Foo<span class="pl-k">.</span><span class="pl-c1">baz</span>(<span class="pl-c1">typemax</span>(Int64), <span class="pl-c1">1</span>)
+<span class="pl-c"><span class="pl-c">#</span> Returns `typemax(Int64)`</span></pre></div>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Custom Numeric Types Support</h1><a id="user-content-custom-numeric-types-support" class="anchor" aria-label="Permalink: Custom Numeric Types Support" href="#custom-numeric-types-support"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">If you are implementing your own <code>Number</code> types, this package should just work for you so long as you extend the Base operators and the Base.Checked <code>checked_</code> methods. For <code>saturating_</code>, your package will need to either take OverflowContexts as a dependency or a weak dependency with a package extension in order to import the <code>saturating_</code> methods, until/unless Julia implements them directly.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Related Packages</h2><a id="user-content-related-packages" class="anchor" aria-label="Permalink: Related Packages" href="#related-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><a href="https://github.com/JuliaMath/CheckedArithmetic.jl">CheckedArithmetic.jl</a> - Predescessor to this package with more limited functionality, but also provides a utility to promote types for safer accumulators.</li>
+<li><a href="https://github.com/JeffreySarnoff/SaferIntegers.jl">SaferIntegers.jl</a> - Uses the type system to enforce overflow checking even in code you don't control. OverflowContexts does not override this behavior, so they can work together well.</li>
+<li><a href="https://github.com/JuliaMath/FixedPointNumbers.jl">FixedPointNumbers.jl</a> - Defines a non-integer decimal type that isn't floating point, and demonstrates how a new number type can naturally work with OverflowContexts.</li>
+</ul>
 </article></div>

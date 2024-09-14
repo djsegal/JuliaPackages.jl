@@ -1,0 +1,181 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">AdjustCRC</h1><a id="user-content-adjustcrc" class="anchor" aria-label="Permalink: AdjustCRC" href="#adjustcrc"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/JuliaIO/AdjustCRC.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/JuliaIO/AdjustCRC.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">This module exports two functions, <code>adjust_crc</code> and <code>adjust_crc!</code>,
+which allow you to write 4 bytes to a file or array in order to
+adjust the <a href="https://en.wikipedia.org/wiki/Cyclic_redundancy_check" rel="nofollow">32-bit CRC checksum</a>
+(either <a href="https://github.com/JuliaIO/CRC32.jl">CRC32</a> or
+<a href="https://docs.julialang.org/en/v1/stdlib/CRC32c/" rel="nofollow">CRC32c</a>)
+to equal any desired value.</p>
+<p dir="auto">This is useful, for example, to store the checksum of data within
+the data itself, or simply to set the checksum to be a hard-coded
+value like <code>0x01020304</code> for ease of later checks.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Functions</h2><a id="user-content-functions" class="anchor" aria-label="Permalink: Functions" href="#functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="adjust_crc!(crc, a::AbstractVector{UInt8}, wantcrc::UInt32, fixpos::Integer)"><pre class="notranslate"><code>adjust_crc!(crc, a::AbstractVector{UInt8}, wantcrc::UInt32, fixpos::Integer)
+</code></pre></div>
+<p dir="auto">Write 4 bytes to <code>a[fixpos:fixpos+3]</code> so that <code>crc(a)</code> becomes equal to <code>wantcrc</code>.
+This is especially useful if you want to store the checksum of some data <em>within
+the data</em> itself, or simply to set the crc to an arbitrary predetermined value.
+Here, <code>crc</code> is a function that computes a 32-bit CRC checksum:
+either <code>crc32c</code> from the <a href="https://docs.julialang.org/en/v1/stdlib/CRC32c/" rel="nofollow">CRC32c standard library</a> or <code>crc32</code>
+from the <a href="https://github.com/JuliaIO/CRC32.jl">CRC32.jl package</a>.</p>
+<p dir="auto">Note that the <code>adjust_crc!</code> function is most efficient when <code>fixpos</code> is
+close to the end of the array <code>a</code>, and is slowest for <code>fixpos</code> near the beginning.
+(Though in all cases the cost should scale linearly with <code>length(a)</code>.)
+See also <code>adjust_crc</code>, below, to append similar padding bytes to the end of
+a file or I/O stream (which has the advantage of not requiring you to read the
+entire file into memory at once).</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="adjust_crc(crc, filename::AbstractString, wantcrc::UInt32)
+adjust_crc(crc, io::IO, wantcrc::UInt32)"><pre class="notranslate"><code>adjust_crc(crc, filename::AbstractString, wantcrc::UInt32)
+adjust_crc(crc, io::IO, wantcrc::UInt32)
+</code></pre></div>
+<p dir="auto">Write 4 bytes of "padding" to the <em>end</em> of the the I/O stream <code>io</code>
+(which <em>must</em> be seekable and read/write) or the file <code>filename</code>, in order
+to cause the <code>crc</code> checksum of the whole stream/file to equal <code>wantcrc</code>.
+Here, <code>crc</code> is a function that computes a 32-bit CRC checksum:
+either <code>crc32c</code> from the <code>CRC32c</code> standard library or <code>crc32</code>
+from the <a href="https://github.com/JuliaIO/CRC32.jl">CRC32.jl package</a>.</p>
+<p dir="auto">(This is mainly useful if you want to store the checksum of the file <em>within the file</em>:
+simply set <code>wantcrc</code> to be an arbitrary number, such as <code>rand(UInt32)</code>, store it within
+the file as desired, and then call <code>adjust_crc</code> to write padding bytes that force
+the checksum to match <code>wantcrc</code>.  Even more simply, you could force all of your files
+to have a checksum that matches a hard-coded value like <code>0x01020304</code>, in which case you
+don't need to store the checksum in the file itself.)
+See also <code>adjust_crc!</code>, above, to write similar padding bytes to an arbitrary
+position within an array.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Examples</h2><a id="user-content-examples" class="anchor" aria-label="Permalink: Examples" href="#examples"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For example, suppose that we are writing some data to a file, and want to force the
+file's CRC-32c checksum to be <code>0x01020304</code>, using the <a href="https://docs.julialang.org/en/v1/stdlib/CRC32c/" rel="nofollow">CRC32c standard library</a> (which should usually be the fastest CRC available in Julia).
+Then we can use <code>adjust_crc</code> to append 4 bytes which force this checksum, either while
+we have the file still open or afterwards given the filename:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using AdjustCRC, CRC32c
+
+julia&gt; open(&quot;foo.dat&quot;, &quot;w+&quot;) do io   # create/open foo.dat for reading and writing
+           println(io, &quot;Hello, world!\n&quot;)
+           adjust_crc(crc32c, io, 0x01020304)
+       end
+IOStream(&lt;file foo.dat&gt;)
+
+julia&gt; open(crc32c, &quot;foo.dat&quot;) # check the CRC-32c checksum of the file &quot;foo.dat&quot;
+0x01020304
+
+julia&gt; read(&quot;foo.dat&quot;, String) # note that it has 4 bytes of &quot;garbage&quot; at the end
+&quot;Hello, world!\n\n\xf3B_\xe4&quot;"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> AdjustCRC, CRC32c
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">open</span>(<span class="pl-s"><span class="pl-pds">"</span>foo.dat<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>w+<span class="pl-pds">"</span></span>) <span class="pl-k">do</span> io   <span class="pl-c"><span class="pl-c">#</span> create/open foo.dat for reading and writing</span>
+           <span class="pl-c1">println</span>(io, <span class="pl-s"><span class="pl-pds">"</span>Hello, world!<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>)
+           <span class="pl-c1">adjust_crc</span>(crc32c, io, <span class="pl-c1">0x01020304</span>)
+       <span class="pl-k">end</span>
+<span class="pl-c1">IOStream</span>(<span class="pl-k">&lt;</span>file foo<span class="pl-k">.</span>dat<span class="pl-k">&gt;</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">open</span>(crc32c, <span class="pl-s"><span class="pl-pds">"</span>foo.dat<span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> check the CRC-32c checksum of the file "foo.dat"</span>
+<span class="pl-c1">0x01020304</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">read</span>(<span class="pl-s"><span class="pl-pds">"</span>foo.dat<span class="pl-pds">"</span></span>, String) <span class="pl-c"><span class="pl-c">#</span> note that it has 4 bytes of "garbage" at the end</span>
+<span class="pl-s"><span class="pl-pds">"</span>Hello, world!<span class="pl-cce">\n\n\x</span>f3B_<span class="pl-cce">\x</span>e4<span class="pl-pds">"</span></span></pre></div>
+<p dir="auto">You can also pass a filename to <code>adjust_crc</code> to modify a file after the fact:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; adjust_crc(crc32c, &quot;foo.dat&quot;, 0x05060708)
+IOStream(&lt;file foo.dat&gt;)
+
+julia&gt; open(crc32c, &quot;foo.dat&quot;) # check that it has the new checksum
+0x05060708
+
+julia&gt; read(&quot;foo.dat&quot;, String) # another 4 bytes of &quot;garbage&quot; have been appended
+&quot;Hello, world!\n\n\xf3B_\xe4ޕ\x15\e&quot;"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">adjust_crc</span>(crc32c, <span class="pl-s"><span class="pl-pds">"</span>foo.dat<span class="pl-pds">"</span></span>, <span class="pl-c1">0x05060708</span>)
+<span class="pl-c1">IOStream</span>(<span class="pl-k">&lt;</span>file foo<span class="pl-k">.</span>dat<span class="pl-k">&gt;</span>)
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">open</span>(crc32c, <span class="pl-s"><span class="pl-pds">"</span>foo.dat<span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> check that it has the new checksum</span>
+<span class="pl-c1">0x05060708</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">read</span>(<span class="pl-s"><span class="pl-pds">"</span>foo.dat<span class="pl-pds">"</span></span>, String) <span class="pl-c"><span class="pl-c">#</span> another 4 bytes of "garbage" have been appended</span>
+<span class="pl-s"><span class="pl-pds">"</span>Hello, world!<span class="pl-cce">\n\n\x</span>f3B_<span class="pl-cce">\x</span>e4ޕ<span class="pl-cce">\x</span>15<span class="pl-cce">\e</span><span class="pl-pds">"</span></span></pre></div>
+<p dir="auto">The <code>adjust_crc</code> function always appends 4 bytes to the <em>end</em> of a file or stream
+in order to change the CRC to the desired value.   If you have an array of bytes,
+you can also write these 4 "garbage" bytes <em>anywhere</em> in the array to adjust its
+CRC using the <code>adjust_crc!</code> function.  For example, the following overwrites 4 bytes of
+the string <code>"Hello, world!"</code> starting at the 8th byte (<code>'w'</code>) to make the checksum
+equal <code>0x01020304</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; bytes = Vector{UInt8}(&quot;Hello, world!&quot;) # a string converted to mutable bytes
+13-element Vector{UInt8}:
+ 0x48
+ 0x65
+ 0x6c
+ 0x6c
+ 0x6f
+ 0x2c
+ 0x20
+ 0x77
+ 0x6f
+ 0x72
+ 0x6c
+ 0x64
+ 0x21
+
+julia&gt; adjust_crc!(crc32c, bytes, 0x01020304, 8) # adjust CRC to 0x01020304 via bytes[8:11]
+13-element Vector{UInt8}:
+ 0x48
+ 0x65
+ 0x6c
+ 0x6c
+ 0x6f
+ 0x2c
+ 0x20
+ 0xf3
+ 0xe7
+ 0xf1
+ 0xe6
+ 0x64
+ 0x21
+
+julia&gt; s = String(bytes) # let's view the new bytes as a string; note the 4 &quot;garbage&quot; bytes
+&quot;Hello, \xf3\xe7\xf1\xe6d!&quot;
+
+julia&gt; crc32c(s) # check that it has the desired CRC
+0x01020304"><pre>julia<span class="pl-k">&gt;</span> bytes <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{UInt8}</span>(<span class="pl-s"><span class="pl-pds">"</span>Hello, world!<span class="pl-pds">"</span></span>) <span class="pl-c"><span class="pl-c">#</span> a string converted to mutable bytes</span>
+<span class="pl-c1">13</span><span class="pl-k">-</span>element Vector{UInt8}<span class="pl-k">:</span>
+ <span class="pl-c1">0x48</span>
+ <span class="pl-c1">0x65</span>
+ <span class="pl-c1">0x6c</span>
+ <span class="pl-c1">0x6c</span>
+ <span class="pl-c1">0x6f</span>
+ <span class="pl-c1">0x2c</span>
+ <span class="pl-c1">0x20</span>
+ <span class="pl-c1">0x77</span>
+ <span class="pl-c1">0x6f</span>
+ <span class="pl-c1">0x72</span>
+ <span class="pl-c1">0x6c</span>
+ <span class="pl-c1">0x64</span>
+ <span class="pl-c1">0x21</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">adjust_crc!</span>(crc32c, bytes, <span class="pl-c1">0x01020304</span>, <span class="pl-c1">8</span>) <span class="pl-c"><span class="pl-c">#</span> adjust CRC to 0x01020304 via bytes[8:11]</span>
+<span class="pl-c1">13</span><span class="pl-k">-</span>element Vector{UInt8}<span class="pl-k">:</span>
+ <span class="pl-c1">0x48</span>
+ <span class="pl-c1">0x65</span>
+ <span class="pl-c1">0x6c</span>
+ <span class="pl-c1">0x6c</span>
+ <span class="pl-c1">0x6f</span>
+ <span class="pl-c1">0x2c</span>
+ <span class="pl-c1">0x20</span>
+ <span class="pl-c1">0xf3</span>
+ <span class="pl-c1">0xe7</span>
+ <span class="pl-c1">0xf1</span>
+ <span class="pl-c1">0xe6</span>
+ <span class="pl-c1">0x64</span>
+ <span class="pl-c1">0x21</span>
+
+julia<span class="pl-k">&gt;</span> s <span class="pl-k">=</span> <span class="pl-c1">String</span>(bytes) <span class="pl-c"><span class="pl-c">#</span> let's view the new bytes as a string; note the 4 "garbage" bytes</span>
+<span class="pl-s"><span class="pl-pds">"</span>Hello, <span class="pl-cce">\x</span>f3<span class="pl-cce">\x</span>e7<span class="pl-cce">\x</span>f1<span class="pl-cce">\x</span>e6d!<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">crc32c</span>(s) <span class="pl-c"><span class="pl-c">#</span> check that it has the desired CRC</span>
+<span class="pl-c1">0x01020304</span></pre></div>
+<p dir="auto">All of the above examples used the CRC-32c checksum by passing the <code>crc32c</code> argument.
+You can instead do the same thing with the CRC-32 (ISO 3309 / ITU-T V.42 / CRC-32-IEEE)
+checksum by doing <code>using CRC32</code> (from <a href="https://github.com/JuliaIO/CRC32.jl">CRC32.jl</a>)
+and passing <code>crc32</code> instead.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Acknowledgements</h2><a id="user-content-acknowledgements" class="anchor" aria-label="Permalink: Acknowledgements" href="#acknowledgements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This package was written by <a href="https://math.mit.edu/~stevenj/" rel="nofollow">Steven G. Johnson</a> based
+on the algorithm described in:</p>
+<ul dir="auto">
+<li>Martin Stigge, Henryk Plötz, Wolf Müller, and Jens-Peter Redlich, <a href="https://sar.informatik.hu-berlin.de/research/publications/SAR-PR-2006-05/SAR-PR-2006-05_.pdf" rel="nofollow">Reversing CRC – Theory and Practice</a>, HU Berlin Public Report SAR-PR-2006-05 (May 2006).</li>
+</ul>
+<p dir="auto">as suggested <a href="https://stackoverflow.com/questions/1514040/reversing-crc32" rel="nofollow">on StackOverflow</a>.</p>
+</article></div>

@@ -1,0 +1,495 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a id="user-content-vkcurve"></a></p>
+<p dir="auto"><a id="user-content-vkcurve-1"></a></p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">VKcurve</h1><a id="user-content-vkcurve" class="anchor" aria-label="Permalink: VKcurve" href="#vkcurve"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><a href="index.md#VKcurve">VKcurve</a></li>
+</ul>
+<p dir="auto"><a id="user-content-vkcurve" href="#VKcurve">#</a>
+<strong><code>VKcurve</code></strong> — <em>Module</em>.</p>
+<p dir="auto">This is a port to Julia of the GAP3 package VKcurve written by David Bessis and Jean Michel in 2002.</p>
+<p dir="auto">The  main function  computes the  fundamental group  of the complement of a complex  algebraic curve in <code>ℂ²</code>, using an implementation of the Van Kampen method (see for example</p>
+<p dir="auto">D. Cheniot. "Une démonstration du théorème de   Zariski sur les sections hyperplanes d'une hypersurface projective et du   théorème de Van Kampen sur le groupe fondamental du   complémentaire d'une courbe projective plane." Compositio Math., 27:141–158, 1973.</p>
+<p dir="auto">for  a clear and modernized account of this method). Here is an example for curves given by the zeroes of two-variable polynomials in <code>x</code> and <code>y</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; using Chevie, VKcurve
+
+julia&gt; @Mvp x,y
+
+julia&gt; fundamental_group(x^2-y^3)
+Presentation: 2 generators, 1 relator, total length 6
+1: bab=aba
+
+julia&gt; fundamental_group((x+y)*(x-y*im)*(x+2*y))
+Presentation: 3 generators, 2 relators, total length 12
+1: abc=bca
+2: cab=abc"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; using Chevie, VKcurve
+
+julia&gt; @Mvp x,y
+
+julia&gt; fundamental_group(x^2-y^3)
+Presentation: 2 generators, 1 relator, total length 6
+1: bab=aba
+
+julia&gt; fundamental_group((x+y)*(x-y*im)*(x+2*y))
+Presentation: 3 generators, 2 relators, total length 12
+1: abc=bca
+2: cab=abc
+</code></pre></div>
+<p dir="auto">Here  we define the variables and then  give the curves as argument. Though approximate  calculations are used  at various places,  they are controlled and  the final result is exact; technically speaking, the computations use <code>Rational{BigInt}</code> or <code>Complex{Rational{BigInt}}</code> since the precision given by  floats  in  unsufficient.  It  might  be  possible  to use intervals of bigfloats  to make faster  computations, but it  would make the programming more  difficult.  If  you  have  a  polynomial with float coefficients, you should convert the coefficients to <code>Complex{Rational{BigInt}}</code> (if they are of  any integer or rational type, or of type <code>Complex{&lt;:Integer}</code> they will be converted internally to <code>Complex{Rational{BigInt}}</code>).</p>
+<p dir="auto">The  output  is  a  <code>struct</code>  which  contains lots of information about the computation,  including a  presentation of  the computed fundamental group, which is what is displayed by default when printing it.</p>
+<p dir="auto">Our  motivation  for  writing  this  package  in  2002 was to find explicit presentations  for  generalized  braid  groups  attached to certain complex reflection  groups. Though presentations  were known for  almost all cases, six  exceptional cases were missing (in the notations of Shephard and Todd, these  cases are  <code>G₂₄</code>, <code>G₂₇</code>,  <code>G₂₉</code>, <code>G₃₁</code>,  <code>G₃₃</code> and <code>G₃₄</code>). Since the existence of nice presentations for braid groups was proved (non-constructively) in</p>
+<p dir="auto">D. Bessis. "Zariski theorems and diagrams for braid groups.", Invent. Math. 145:487–507, 2001</p>
+<p dir="auto">it  was upsetting not to  know them explicitly. In  the absence of any good grip  on the  geometry of  these six  examples, brute force (using VKcurve) gave  us we  have obtained  presentations for  all of  them (they have been confirmed  by less computational methods  since). These computations can be reproduced by <code>fundamental_group(VKcurve.data[i])</code> where <code>i∈{23,24,27,29,31,33,34}</code>.</p>
+<p dir="auto">If  you  are  not  interested  in  the  details  of  the  algorithm, and if 'fundamental_group' as in the above examples gives you satisfactory answers in a reasonable time, then you do not need to read this manual any further.</p>
+<p dir="auto">To  implement the algorithms, we needed  to write auxiliary facilities, for instance  find  <code>Complex{Rational}</code>  approximations  of  zeros  of  complex polynomials,  or work  with piecewise  linear braids,  which may  be useful facilities  on their own. These are documented in this manual.</p>
+<p dir="auto">Before  discussing  our  actual  implementation,  let  us  give an informal summary  of the mathematical  background. Our strategy  is adapted from the one  originally described in the 1930's by Van Kampen. Let <code>C</code> be an affine algebraic  curve, given as the  set of zeros in  <code>ℂ²</code> of a non-zero reduced polynomial  <code>P(x,y)</code>.  The  problem  is  to  compute  a presentation of the fundamental  group of  <code>ℂ²-C</code>. Consider  <code>P</code> as  a polynomial  in <code>x</code>, with coefficients  in the ring  of polynomials in  <code>y</code>, that is <code>P=α₀(y)xⁿ+α₁(y) xⁿ⁻¹+…+αₙ₋₁(y)x+αₙ(y)</code>, where the <code>αᵢ∈ℂ[y]</code>. Let <code>Δ(y)</code> be the discriminant of  <code>P</code> or, in other words, the resultant  of <code>P</code> and <code>∂P/∂x</code>. Since <code>P</code> is reduced,  <code>Δ</code> is non-zero. Let <code>y₁,…,y_d</code> be the roots of the corresponding reduced polynomial <code>Δ_{red}</code>. For a generic value of <code>y</code>, the polynomial in <code>x</code>  given by  <code>P(x,y)</code> has  <code>n</code> distinct  roots. When  <code>y=yⱼ</code>, with <code>j</code> in <code>1,…,d</code>,  we  are  in  exactly  one  of  the  following  situations: either <code>P(x,yⱼ)=0</code>  (we then say that  <code>yⱼ</code> is bad), or  <code>P(x,yⱼ)</code> has a number of roots  in  <code>x</code>  strictly  smaller  than  <code>n</code>.  Fix  <code>y₀</code> in <code>ℂ-{y₁,…,y_d}</code>. Consider  the projection <code>p:  ℂ²→ ℂ, (x,y)↦  y</code>. It restricts  to a locally trivial  fibration with base space <code>B=ℂ-{y₁,…,y_d}</code> and fibers homeomorphic to  the complex plane with  <code>n</code> points removed. We  denote by <code>E</code> the total space <code>p⁻¹(B)</code> and by <code>F</code> the fiber over <code>y₀</code>. The fundamental group of <code>F</code> is  isomorphic to the free group on <code>n</code> generators. Let <code>γ₁,…,γ_d</code> be loops in  the  pointed  space  <code>(B,y₀)</code>  representing  a  generating  system  for <code>π₁(B,y₀)</code>.  By trivializing  the pullback  of <code>p</code>  along <code>γᵢ</code>,  one gets a (well-defined  up to  isotopy) homeomorphism  of <code>F</code>,  and a (well-defined) automorphism <code>φᵢ</code> of the fundamental group of <code>F</code>, identified with the free group <code>Fₙ</code> by the choice of a generating system <code>f₁,…,fₙ</code>. An effective way of  computing <code>φᵢ</code> is by following the solutions in <code>x</code> of <code>P(x,y)=0</code>, when <code>y</code>  moves along <code>φᵢ</code>. This defines a loop in the space of configuration of <code>n</code>  points in a plane, hence an element  <code>bᵢ</code> of the braid group <code>Bₙ</code> (via an  identification of <code>Bₙ</code> with the fundamental group of this configuration space).  Let <code>φ</code> be the Hurwitz action of  <code>Bₙ</code> on <code>Fₙ</code>. All choices can be made in such a way that <code>φᵢ=φ(bᵢ)</code>. The theorem of Van Kampen asserts that, if  there are  no bad  roots of  the discriminant,  a presentation  for the fundamental group of <code>ℂ²-C</code> is <code>⟨f₁,…,fₙ∣∀i,j,φᵢ(fⱼ)=fⱼ⟩</code>. A variant of the above presentation (see 'VKquotient') can be used to deal with bad roots of the discriminant.</p>
+<p dir="auto">This algorithm is implemented in the following way.</p>
+<ul dir="auto">
+<li>As input, we have a polynomial <code>P</code>. We reduce <code>P</code> if it was not.</li>
+<li>The discriminant <code>Δ</code> of <code>P</code> with respect to <code>x</code>, a polynomial in <code>y</code>, is computed.</li>
+<li>The  roots  of  <code>Δ</code>  are  approximated,  via  the  following procedure. First,  we reduce <code>Δ</code> and get  <code>Δ_{red}</code> (generating the radical of the ideal  generated  by  <code>Δ</code>).  The  roots  <code>{y₁,…,y_d}</code>  of <code>Δ_{red}</code> are separated   by  'separate_roots'   (which  uses   Newton's  method  and continuous fraction aprroximations).</li>
+<li>Loops around  these roots  are computed  by 'loops<em>around</em>punctures'. This  function first computes  some sort of  honeycomb, consisting of a set  <code>S</code> of  affine segments,  isolating the  <code>yᵢ</code>. Since  it makes the computation  of the monodromy  more effective, each  inner segment is a fragment  of the mediatrix of two roots of <code>Δ</code>. Then a vertex of one of the  segments is chosen as a basepoint, and the function returns a list of  lists of oriented segments  in <code>S</code>: each list of segments encodes a piecewise linear loop <code>γᵢ</code> circling one of <code>yᵢ</code>.</li>
+<li>For each  segment in  <code>S</code>, we  compute the  monodromy braid obtained by following  the solutions in <code>x</code> of  <code>P(x,y)=0</code> when <code>y</code> moves along the segment. By default, this monodromy braid is computed by <code>follow_monodromy</code>. The strategy is to compute a piecewise-linear braid approximating  the actual monodromy geometric braid. The approximations are controlled. The piecewise-linear braid is constructed step-by-step, by  computations of linear pieces. As soon as new piece is constructed, it  is converted  into an  element of  <code>Bₙ</code> and  multiplied; therefore, though  the braid may consist of a  huge number of pieces, the function <code>follow_monodromy</code>   works  with  constant  memory.  The  package  also contains  a variant  <code>approx_follow_monodromy</code>, which  runs faster, but without guarantee on the result (see below).</li>
+<li>The monodromy braids <code>bᵢ</code> corresponding  to the loops <code>γᵢ</code> are obtained by  multiplying the monodromy braids  of the correponding segments. The action  of these elements of <code>Bₙ</code> on the free group <code>Fₙ</code> is computed by 'hurwitz'  and the resulting  presentation of the  fundamental group is computed  by 'VKquotient'. It happens for  some large problems that the whole process fails here, because the braids <code>bᵢ</code> obtained are too long and  the  computation  of  the  action  on  <code>Fₙ</code> requires thus too much memory.  We have been  able to solve  such problems when  they occur by calling  at  this  stage  our  function  'shrink'  which  finds smaller generators  for the  subgroup of  <code>Bₙ</code> generated  by the  <code>bᵢ</code> (see the description  in <code>Chevie.Garside</code>). This function is called if 'VK.shrinkBraid==true'.</li>
+<li>Finally, the presentation is simplified by 'simplify'. This function is a   heuristic   function   for   simplifying   presentations.   It   is non-deterministic.</li>
+</ul>
+<p dir="auto">From  the algorithmic point of view, memory should not be an issue, but the procedure  may  take  a  lot  of  CPU  time  (the  critical  part being the computation  of the monodromy braids  by 'follow*monodromy'). For instance, an  empirical study with  the curves <code>x²-yⁿ</code>  suggests that the needed time grows  exponentially with <code>n</code>.  The variable <code>VK.approx*monodromy</code>controls which  monodromy function  is used.  The default  value of this variable is<code>false</code>,  which means that<code>follow*monodromy</code>will be used. If the variable is  set to<code>true</code>then<code>approx*follow*monodromy</code>will  be used, where the approximations  are no longer  controlled. Therefore presentations obtained while<code>VK.approx*monodromy</code>is set  to 'true' are  not certified. However, though it is likely that there exists examples for which<code>approx*follow*monodromy</code> actually returns incorrect answers, we still have not seen one.</p>
+<p dir="auto"><a id="user-content-chevie.semisimple.fundamental_group-tuple{mvp}" href="#Chevie.Semisimple.fundamental_group-Tuple{Mvp}">#</a>
+<strong><code>Chevie.Semisimple.fundamental_group</code></strong> — <em>Method</em>.</p>
+<p dir="auto"><code>fundamental_group(curve::Mvp; verbose=0)</code></p>
+<p dir="auto"><code>curve</code> should be an <code>Mvp</code> in <code>x</code> and <code>y</code> representing an equation <code>f(x,y)</code> for  a  curve  in  <code>ℂ²</code>.  The  coefficients  should be integers, rationals, gaussian  integers or  gaussian rationals.  The result  is a  record with a certain number of fields which record steps in the computation described in this introduction:</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @Mvp x,y
+
+julia&gt; r=fundamental_group(x^2-y^3)
+Presentation: 2 generators, 1 relator, total length 6
+1: bab=aba
+
+julia&gt; propertynames(r)
+(:curve, :ismonic, :prop, :rawPresentation, :B, :basepoint, :dispersal, :monodromy, :discyFactored, :segments, :braids, :roots, :nonVerticalPart, :discy, :zeros, :curveVerticalPart, :points, :loops, :presentation)
+
+julia&gt; r.curve # the given equation
+Mvp{Rational{BigInt}}: (1//1)x²+(-1//1)y³
+
+julia&gt; Pol(:y);r.discy # its discriminant wrt x
+Pol{Rational{BigInt}}: (1//1)y
+
+julia&gt; r.roots  # roots of the discriminant
+1-element Vector{Rational{BigInt}}:
+ 0//1
+
+julia&gt; r.points # for points, segments and loops see loops_around_punctures
+4-element Vector{Complex{Rational{BigInt}}}:
+  0//1 - 1//1*im
+ -1//1 + 0//1*im
+  1//1 + 0//1*im
+  0//1 + 1//1*im
+
+julia&gt; r.segments
+4-element Vector{Vector{Int64}}:
+ [1, 2]
+ [1, 3]
+ [2, 4]
+ [3, 4]
+
+julia&gt; r.loops
+1-element Vector{Vector{Int64}}:
+ [4, -3, -1, 2]
+
+julia&gt; r.zeros # zeroes of curve(y=pt) when pt runs over r.points
+4-element Vector{Vector{Complex{Rational{BigInt}}}}:
+ [5741//8119 + 5741//8119*im, -5741//8119 - 5741//8119*im]
+ [0//1 + 1//1*im, 0//1 - 1//1*im]
+ [1//1 + 0//1*im, -1//1 + 0//1*im]
+ [-5741//8119 + 5741//8119*im, 5741//8119 - 5741//8119*im]
+
+julia&gt; r.monodromy # monodromy around each r.segment
+4-element Vector{GarsideElt{Perm{Int16}, BraidMonoid{Perm{Int16}, CoxSym{Int16}}}}:
+ (Δ)⁻¹
+ Δ
+ .
+ Δ
+
+julia&gt; r.braids # monodromy around each r.loop
+1-element Vector{GarsideElt{Perm{Int16}, BraidMonoid{Perm{Int16}, CoxSym{Int16}}}}:
+ Δ³"><pre>julia&gt; <span class="pl-c1">@Mvp</span> x,y
+
+julia&gt; r<span class="pl-k">=</span><span class="pl-c1">fundamental_group</span>(x<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">-</span>y<span class="pl-k">^</span><span class="pl-c1">3</span>)
+Presentation: 2 generators, 1 relator, total length 6
+1: bab=aba
+
+julia&gt; <span class="pl-c1">propertynames</span>(r)
+(:curve, :ismonic, :prop, :rawPresentation, :B, :basepoint, :dispersal, :monodromy, :discyFactored, :segments, :braids, :roots, :nonVerticalPart, :discy, :zeros, :curveVerticalPart, :points, :loops, :presentation)
+
+julia&gt; r<span class="pl-k">.</span>curve <span class="pl-c"><span class="pl-c">#</span> the given equation</span>
+Mvp{Rational{BigInt}}: (1//1)x²+(-1//1)y³
+
+julia&gt; <span class="pl-c1">Pol</span>(<span class="pl-c1">:y</span>);r<span class="pl-k">.</span>discy <span class="pl-c"><span class="pl-c">#</span> its discriminant wrt x</span>
+Pol{Rational{BigInt}}: (1//1)y
+
+julia&gt; r<span class="pl-k">.</span>roots  <span class="pl-c"><span class="pl-c">#</span> roots of the discriminant</span>
+1-element Vector{Rational{BigInt}}:
+ 0//1
+
+julia&gt; r<span class="pl-k">.</span>points <span class="pl-c"><span class="pl-c">#</span> for points, segments and loops see loops_around_punctures</span>
+4-element Vector{Complex{Rational{BigInt}}}:
+  0//1 - 1//1*im
+ -1//1 + 0//1*im
+  1//1 + 0//1*im
+  0//1 + 1//1*im
+
+julia&gt; r<span class="pl-k">.</span>segments
+4-element Vector{Vector{Int64}}:
+ [1, 2]
+ [1, 3]
+ [2, 4]
+ [3, 4]
+
+julia&gt; r<span class="pl-k">.</span>loops
+1-element Vector{Vector{Int64}}:
+ [4, -3, -1, 2]
+
+julia&gt; r<span class="pl-k">.</span>zeros <span class="pl-c"><span class="pl-c">#</span> zeroes of curve(y=pt) when pt runs over r.points</span>
+4-element Vector{Vector{Complex{Rational{BigInt}}}}:
+ [5741//8119 + 5741//8119*im, -5741//8119 - 5741//8119*im]
+ [0//1 + 1//1*im, 0//1 - 1//1*im]
+ [1//1 + 0//1*im, -1//1 + 0//1*im]
+ [-5741//8119 + 5741//8119*im, 5741//8119 - 5741//8119*im]
+
+julia&gt; r<span class="pl-k">.</span>monodromy <span class="pl-c"><span class="pl-c">#</span> monodromy around each r.segment</span>
+4-element Vector{GarsideElt{Perm{Int16}, BraidMonoid{Perm{Int16}, CoxSym{Int16}}}}:
+ (Δ)⁻¹
+ Δ
+ .
+ Δ
+
+julia&gt; r<span class="pl-k">.</span>braids <span class="pl-c"><span class="pl-c">#</span> monodromy around each r.loop</span>
+1-element Vector{GarsideElt{Perm{Int16}, BraidMonoid{Perm{Int16}, CoxSym{Int16}}}}:
+ Δ³</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; display_balanced(r.presentation) # printing of r by default
+1: bab=aba"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; display_balanced(r.presentation) # printing of r by default
+1: bab=aba
+</code></pre></div>
+<p dir="auto">The  keyword argument <code>verbose</code> triggers the  display of information on the progress of the computation. It is recommended to set it at 1 or 2 when the computation seems to take a long time without doing anything. <code>verbose</code> set at  0 is the default and prints nothing; set at 1 it shows which segment is currently  active,  and  set  at  2  it  traces the computation inside each segment.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; fundamental_group(x^2-y^3,verbose=1);
+# There are 4 segments in 1 loops
+# follow_monodromy along segment 1/4  in   8 steps/  0.012sec got B(-1)
+# follow_monodromy along segment 2/4  in   8 steps/ 0.00752sec got B(1)
+# follow_monodromy along segment 3/4  in   8 steps/ 0.00557sec got B()
+# follow_monodromy along segment 4/4  in   8 steps/ 0.00457sec got B(1)
+# Computing monodromy braids along loops
+[r.B(1,1,1),]
+#I total length 3 maximal length 3
+
+Presentation: 2 generators, 1 relator, total length 6"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; fundamental_group(x^2-y^3,verbose=1);
+# There are 4 segments in 1 loops
+# follow_monodromy along segment 1/4  in   8 steps/  0.012sec got B(-1)
+# follow_monodromy along segment 2/4  in   8 steps/ 0.00752sec got B(1)
+# follow_monodromy along segment 3/4  in   8 steps/ 0.00557sec got B()
+# follow_monodromy along segment 4/4  in   8 steps/ 0.00457sec got B(1)
+# Computing monodromy braids along loops
+[r.B(1,1,1),]
+#I total length 3 maximal length 3
+
+Presentation: 2 generators, 1 relator, total length 6
+</code></pre></div>
+<p dir="auto"><a id="user-content-vkcurve.simp" href="#VKcurve.simp">#</a>
+<strong><code>VKcurve.simp</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.simp(t::Real;prec=10^-15,type=BigInt)</code></p>
+<p dir="auto">simplest fraction of type <code>Rational{T}</code> approximating <code>t</code> closer than prec.</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; VKcurve.simp(float(π);prec=10^-6)
+355//113"><pre>julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">simp</span>(<span class="pl-c1">float</span>(π);prec<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">^-</span><span class="pl-c1">6</span>)
+355//113</pre></div>
+<p dir="auto"><a id="user-content-vkcurve.newtonroot" href="#VKcurve.NewtonRoot">#</a>
+<strong><code>VKcurve.NewtonRoot</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.NewtonRoot(p::Pol,initial_guess,precision::Real;showall=false,show=false,lim=800)</code></p>
+<p dir="auto">Here   <code>p</code>  is   a  polynomial   with  <code>Rational</code>   or  <code>Complex{Rational}</code> coefficients.  The function  computes an  approximation to  a root  of <code>p</code>, guaranteed of distance closer than <code>precision</code> to an actual root. The first approximation  used is <code>initial</code>.  A possibility is  that the Newton method starting  from <code>initial</code> does not converge  (the number of iterations after which  this is decided  is controlled by  <code>lim</code>); then the function returns <code>nothing</code>.  Otherwise the function returns a pair: the approximation found, and an upper bound on the distance between that approximation and an actual root.  The point of returning  an upper bound is  that it is usually better than the asked-for <code>precision</code>. For the precision estimate a good reference is</p>
+<p dir="auto">J.  Hubbard, D. Schleicher,  and S. Sutherland.  "How to find  all roots of complex polynomials by Newton's method.", Invent. Math. 146:1–33, 2001.</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; p=Pol([1,0,1])
+Pol{Int64}: y²+1
+
+julia&gt; VKcurve.NewtonRoot(p,1+im,10^-7)
+(0//1 + 1//1*im, 3.3333333333333337e-10)"><pre>julia&gt; p<span class="pl-k">=</span><span class="pl-c1">Pol</span>([<span class="pl-c1">1</span>,<span class="pl-c1">0</span>,<span class="pl-c1">1</span>])
+Pol{Int64}: y²+1
+
+julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">NewtonRoot</span>(p,<span class="pl-c1">1</span><span class="pl-k">+</span>im,<span class="pl-c1">10</span><span class="pl-k">^-</span><span class="pl-c1">7</span>)
+(0//1 + 1//1*im, 3.3333333333333337e-10)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; VKcurve.NewtonRoot(p,1,10^-7;show=true)
+****** Non-Convergent Newton after 800 iterations ******
+p=y²+1 initial=-1.0 prec=1.0000000000000004e-7"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; VKcurve.NewtonRoot(p,1,10^-7;show=true)
+****** Non-Convergent Newton after 800 iterations ******
+p=y²+1 initial=-1.0 prec=1.0000000000000004e-7
+</code></pre></div>
+<p dir="auto"><a id="user-content-vkcurve.separate_roots" href="#VKcurve.separate_roots">#</a>
+<strong><code>VKcurve.separate_roots</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.separate_roots(p::Pol, safety)</code></p>
+<p dir="auto">Here  <code>p</code> is  a complex  polynomial. The  result is  a list  <code>l</code> of complex numbers  representing approximations to the roots  of <code>p</code>, such that if <code>d</code> is  the minimum distance between two elements  of <code>l</code>, then there is a root of  <code>p</code> within  radius <code>d/(2*safety)</code>  of any  element of  <code>l</code>. This is not possible when <code>p</code> has multiple roots, in which case <code>nothing</code> is returned.</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; @Pol q
+Pol{Int64}: q
+
+julia&gt; VKcurve.separate_roots(q^2+1,100)
+2-element Vector{Complex{Rational{BigInt}}}:
+ 0//1 + 1//1*im
+ 0//1 - 1//1*im
+
+julia&gt; VKcurve.separate_roots((q-1)^2,100)
+
+julia&gt; VKcurve.separate_roots(q^3-1,100)
+3-element Vector{Complex{Rational{BigInt}}}:
+ -1//2 - 181//209*im
+  1//1 + 0//1*im
+ -1//2 + 181//209*im"><pre>julia&gt; <span class="pl-c1">@Pol</span> q
+Pol{Int64}: q
+
+julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">separate_roots</span>(q<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">+</span><span class="pl-c1">1</span>,<span class="pl-c1">100</span>)
+2-element Vector{Complex{Rational{BigInt}}}:
+ 0//1 + 1//1*im
+ 0//1 - 1//1*im
+
+julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">separate_roots</span>((q<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span><span class="pl-c1">2</span>,<span class="pl-c1">100</span>)
+
+julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">separate_roots</span>(q<span class="pl-k">^</span><span class="pl-c1">3</span><span class="pl-k">-</span><span class="pl-c1">1</span>,<span class="pl-c1">100</span>)
+3-element Vector{Complex{Rational{BigInt}}}:
+ -1//2 - 181//209*im
+  1//1 + 0//1*im
+ -1//2 + 181//209*im</pre></div>
+<p dir="auto"><a id="user-content-vkcurve.find_roots" href="#VKcurve.find_roots">#</a>
+<strong><code>VKcurve.find_roots</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.find_roots(p::Pol, approx)</code></p>
+<p dir="auto"><code>p</code>  should have rational or  <code>Complex{Rational} coefficients. The function returns  'Complex' rational  approximations to  the roots  of</code>p<code>which are better  than</code>approx<code>(a  positive  rational).  Contrary to the functions</code>separate_roots`,  etc... described in the  previous chapter, this function handles  quite  well  polynomials  with  multiple  roots.  We  rely  on the algorithms explained in detail in cite{HSS01}.</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; VKcurve.find_roots((Pol()-1)^5,1/1000)
+5-element Vector{Complex{Rational{BigInt}}}:
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+
+julia&gt; l=VKcurve.find_roots(Pol()^3-1,10^-5)
+3-element Vector{Complex{Rational{BigInt}}}:
+ -1//2 - 16296//18817*im
+  1//1 + 0//1*im
+ -1//2 + 16296//18817*im
+
+julia&gt; round.(Complex{Float64}.(l.^3);sigdigits=3)
+3-element Vector{ComplexF64}:
+ 1.0 - 1.83e-9im
+ 1.0 + 0.0im
+ 1.0 + 1.83e-9im"><pre>julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">find_roots</span>((<span class="pl-c1">Pol</span>()<span class="pl-k">-</span><span class="pl-c1">1</span>)<span class="pl-k">^</span><span class="pl-c1">5</span>,<span class="pl-c1">1</span><span class="pl-k">/</span><span class="pl-c1">1000</span>)
+5-element Vector{Complex{Rational{BigInt}}}:
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+ 1//1 + 0//1*im
+
+julia&gt; l<span class="pl-k">=</span>VKcurve<span class="pl-k">.</span><span class="pl-c1">find_roots</span>(<span class="pl-c1">Pol</span>()<span class="pl-k">^</span><span class="pl-c1">3</span><span class="pl-k">-</span><span class="pl-c1">1</span>,<span class="pl-c1">10</span><span class="pl-k">^-</span><span class="pl-c1">5</span>)
+3-element Vector{Complex{Rational{BigInt}}}:
+ -1//2 - 16296//18817*im
+  1//1 + 0//1*im
+ -1//2 + 16296//18817*im
+
+julia&gt; <span class="pl-c1">round</span>.(<span class="pl-c1">Complex</span><span class="pl-c1">{Float64}</span>.(l<span class="pl-k">.^</span><span class="pl-c1">3</span>);sigdigits<span class="pl-k">=</span><span class="pl-c1">3</span>)
+3-element Vector{ComplexF64}:
+ 1.0 - 1.83e-9im
+ 1.0 + 0.0im
+ 1.0 + 1.83e-9im</pre></div>
+<p dir="auto"><a id="user-content-vkcurve.nearest_pair" href="#VKcurve.nearest_pair">#</a>
+<strong><code>VKcurve.nearest_pair</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.nearest_pair(v::Vector{&lt;:Complex})</code></p>
+<p dir="auto">returns  a pair whose first element is the minimum distance (in the complex plane)  between two elements  of <code>v</code>, and  the second is  a pair of indices <code>[i,j]</code> such that <code>v[i],v[j]</code> achieves this minimum.</p>
+<p dir="auto">julia&gt; nearest_pair([1+im,0,1]) 1=&gt;[1,3]</p>
+<p dir="auto"><a id="user-content-vkcurve.dist_seg" href="#VKcurve.dist_seg">#</a>
+<strong><code>VKcurve.dist_seg</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>dist_seg(z,a,b)</code> distance (in the complex plane) of <code>z</code> to segment <code>[a,b]</code></p>
+<p dir="auto"><a id="user-content-vkcurve.loops_around_punctures" href="#VKcurve.loops_around_punctures">#</a>
+<strong><code>VKcurve.loops_around_punctures</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.loops_around_punctures(points)</code></p>
+<p dir="auto"><code>points</code>  should  be  a  list  of  complex  numbers.  The function computes piecewise-linear  loops representing generators of the fundamental group of <code>ℂ -{points}</code>.</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; VKcurve.loops_around_punctures([0])
+1-element Vector{Vector{Complex{Int64}}}:
+ [1 + 0im, 0 + 1im, -1 + 0im, 0 - 1im, 1 + 0im]"><pre>julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">loops_around_punctures</span>([<span class="pl-c1">0</span>])
+1-element Vector{Vector{Complex{Int64}}}:
+ [1 + 0im, 0 + 1im, -1 + 0im, 0 - 1im, 1 + 0im]</pre></div>
+<p dir="auto">Guarantees on the result: for  a set <code>Z</code> of zeroes and <code>z∈Z</code>, let <code>R(z):=dist(z,Z-z)/2</code>. The input of <code>points</code>  is a set <code>Z</code> of approximate zeroes of <code>r.discy</code> such that for any <code>z</code>  one  of  the  zeroes  is  closer  than  <code>R(z)/S</code> where <code>S</code> is a global constant   of  the  program   (in  practice  we   may  take  <code>S=100</code>).  Let <code>d=inf_{z∈Z}(R(z))</code>;   we  return   points  with   denominator  <code>10^-k</code>  or <code>10^-k&lt;d/S'</code> (in practive we take <code>S'=100</code>) and such that the distance of a segment to a zero of <code>r.discy</code> is guaranteed <code>&gt;= d-d/S'-d/S</code>.</p>
+<p dir="auto"><a id="user-content-vkcurve.convert_loops" href="#VKcurve.convert_loops">#</a>
+<strong><code>VKcurve.convert_loops</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.convert_loops(ll)</code></p>
+<p dir="auto">The  input is a list  of loops, each a  list of complex numbers representing the vertices of the loop.</p>
+<p dir="auto">The output is a named tuple with fields</p>
+<ul dir="auto">
+<li><code>points</code>: a list of complex  numbers.</li>
+<li><code>segments</code>:  a list of oriented segments, each of them  encoded by the list of the positions in 'points' of  its two endpoints.</li>
+<li><code>loops</code>: a list of loops. Each loops is a list  of integers representing a  piecewise  linear  loop,  obtained  by  concatenating the <code>segments</code> indexed  by the  integers, where  a negative  integer is  used when the opposed orientation of the segment is taken.</li>
+</ul>
+<p dir="auto"><a id="user-content-vkcurve.follow_monodromy" href="#VKcurve.follow_monodromy">#</a>
+<strong><code>VKcurve.follow_monodromy</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.follow_monodromy(r,segno)</code> This  function computes the  monodromy braid of  the solution in  <code>x</code> of an equation   <code>P(x,y)=0</code>  along   a  segment   <code>[y₀,y₁]</code>.  It   is  called  by <code>fundamental_group</code>  for each  segment in  turn. The  first argument is the record containing intermediate information computed by <code>fundamental_group</code>. The second argument is the index of the segment in <code>r.segments</code>.</p>
+<p dir="auto">The function returns an element of the ambient braid group <code>r.B</code>.</p>
+<p dir="auto">This function has no reason to be called directly by the user, so we do not illustrate  its behavior. Instead,  we explain what  is displayed on screen when the user sets <code>verbose=2</code>.</p>
+<p dir="auto">What is quoted below is an excerpt of what is printed during the execution of</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; fundamental_group((x+3*y)*(x+y-1)*(x-y),verbose=2)
+......
+segment 1/16 step   1 time=0           ?2?1?3
+segment 1/16 step   2 time=0.2         R2. ?3
+segment 1/16 step   3 time=0.48        R2. ?2
+segment 1/16 step   4 time=0.74        ?2R1?2
+segment 1/16 step   5 time=0.94        R1. ?2
+======================================
+==    Nontrivial braiding B(2)      ==
+======================================
+segment 1/16 step   6 time=0.bc        R1. ?1
+segment 1/16 step   7 time=0.d8        . ?0. 
+segment 1/16 step   8 time=0.dc        ?1R0?1
+# follow_monodromy(segment 1/16) in   8 steps/ 0.0209sec got B(2)"><pre lang="julia_rep1" class="notranslate"><code>julia&gt; fundamental_group((x+3*y)*(x+y-1)*(x-y),verbose=2)
+......
+segment 1/16 step   1 time=0           ?2?1?3
+segment 1/16 step   2 time=0.2         R2. ?3
+segment 1/16 step   3 time=0.48        R2. ?2
+segment 1/16 step   4 time=0.74        ?2R1?2
+segment 1/16 step   5 time=0.94        R1. ?2
+======================================
+==    Nontrivial braiding B(2)      ==
+======================================
+segment 1/16 step   6 time=0.bc        R1. ?1
+segment 1/16 step   7 time=0.d8        . ?0. 
+segment 1/16 step   8 time=0.dc        ?1R0?1
+# follow_monodromy(segment 1/16) in   8 steps/ 0.0209sec got B(2)
+</code></pre></div>
+<p dir="auto"><code>follow_monodromy</code>  computes its  results by  subdividing the  segment into smaller  subsegments on which the  approximations are controlled. It starts at  one end and moves subsegment after  subsegment. A new line is displayed at each step.</p>
+<p dir="auto">The  first column indicates which segment  is studied. The second column is the  number of iterations  so far (number  of subsegments). In our example, <code>follow_monodromy</code>  had  to  cut  the  segment  into  <code>8</code> subsegments. Each subsegment  has its own length. The cumulative length at a given step, as a fraction  of the total  length of the  segment, is displayed after <code>time=</code>. This  gives a rough  indication of the  time left before  completion of the computation of the monodromy of this segment. The segment is completed when this fraction reaches <code>1</code>.</p>
+<p dir="auto">The  last column has  to do with  the piecewise-linear approximation of the geometric  monodromy  braid.  It  is  subdivided  into sub-columns for each string.  In the example above, there are  three strings. At each step, some strings are fixed (they are indicated by <code>.</code> in the corresponding column). A  symbol like <code>R5</code> or <code>?3</code> indicates  that the string is moving. The exact meaning   of  the  symbol  has  to   do  with  the  complexity  of  certain sub-computations.</p>
+<p dir="auto">As  some strings are moving, it  happens that their real projections cross. When  such a crossing occurs, it  is detected and the corresponding element of  <code>Bₙ</code> is displayed (<code>Nontrivial braiding  =</code>...). The monodromy braid is the  product of these  elements of <code>Bₙ</code>,  multiplied in the  order in which they occur.</p>
+<p dir="auto"><a id="user-content-vkcurve.approx_follow_monodromy" href="#VKcurve.approx_follow_monodromy">#</a>
+<strong><code>VKcurve.approx_follow_monodromy</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.approx_follow_monodromy(&lt;r&gt;,&lt;segno&gt;,&lt;pr&gt;)</code></p>
+<p dir="auto">This function  computes an approximation  of the monodromy braid  of the solution in <code>x</code>  of an equation <code>P(x,y)=0</code> along  a segment <code>[y₀,y₁]</code>. It is called  by <code>fundamental_group</code>, once for each of  the segments. The first  argument is  a  global record,  similar to  the  one produced  by <code>fundamental_group</code>  (see the  documentation of  this function)  but only containing intermediate information. The second argument is the position of the segment in <code>r.segments</code>.</p>
+<p dir="auto">Contrary  to <code>follow_monodromy</code>, <code>approx_follow_monodromy</code> does not control the approximations; it just uses a heuristic for how much to move along the segment  between linear braid computations, and this heuristic may possibly fail.  However, we have  not yet found  an example for  which the result is actually  incorrect, and thus  the existence is  justified by the fact that for  some difficult  computations, it  is sometimes  many times faster than <code>follow_monodromy</code>. We illustrate its typical output when <code>verbose=2</code>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; VK.approx_monodromy=true
+
+julia&gt; fundamental_group((x+3*y)*(x+y-1)*(x-y);verbose=2)
+
+  ....
+
+546 ***rejected
+447&lt;15/16&gt;mindist=2.55 step=0.5 total=0 logdisc=0.55 ***rejected
+435&lt;15/16&gt;mindist=2.55 step=0.25 total=0 logdisc=0.455 ***rejected
+334&lt;15/16&gt;mindist=2.55 step=0.125 total=0 logdisc=0.412 ***rejected
+334&lt;15/16&gt;mindist=2.55 step=0.0625 total=0 logdisc=0.393
+334&lt;15/16&gt;mindist=2.55 step=0.0625 total=0.0625 logdisc=0.412
+334&lt;15/16&gt;mindist=2.56 step=0.0625 total=0.125 logdisc=0.433
+334&lt;15/16&gt;mindist=2.57 step=0.0625 total=0.1875 logdisc=0.455
+334&lt;15/16&gt;mindist=2.58 step=0.0625 total=0.25 logdisc=0.477
+======================================
+==    Nontrivial braiding B(2)      ==
+======================================
+334&lt;15/16&gt;mindist=2.6 step=0.0625 total=0.3125 logdisc=0.501
+334&lt;15/16&gt;mindist=2.63 step=0.0625 total=0.375 logdisc=0.525
+334&lt;15/16&gt;mindist=2.66 step=0.0625 total=0.4375 logdisc=0.55
+334&lt;15/16&gt;mindist=2.69 step=0.0625 total=0.5 logdisc=0.576
+334&lt;15/16&gt;mindist=2.72 step=0.0625 total=0.5625 logdisc=0.602
+334&lt;15/16&gt;mindist=2.76 step=0.0625 total=0.625 logdisc=0.628
+334&lt;15/16&gt;mindist=2.8 step=0.0625 total=0.6875 logdisc=0.655
+334&lt;15/16&gt;mindist=2.85 step=0.0625 total=0.75 logdisc=0.682
+334&lt;15/16&gt;mindist=2.9 step=0.0625 total=0.8125 logdisc=0.709
+334&lt;15/16&gt;mindist=2.95 step=0.0625 total=0.875 logdisc=0.736
+334&lt;15/16&gt;mindist=3.01 step=0.0625 total=0.9375 logdisc=0.764
+# Minimal distance==2.55
+# Minimal step==0.0625==-0.0521 + 0.0104im
+# Adaptivity==10
+monodromy[15]=[2]
+
+# segment 15/16 Time==0.002741098403930664sec"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; VK.approx_monodromy=true
+
+julia&gt; fundamental_group((x+3*y)*(x+y-1)*(x-y);verbose=2)
+
+  ....
+
+546 ***rejected
+447&lt;15/16&gt;mindist=2.55 step=0.5 total=0 logdisc=0.55 ***rejected
+435&lt;15/16&gt;mindist=2.55 step=0.25 total=0 logdisc=0.455 ***rejected
+334&lt;15/16&gt;mindist=2.55 step=0.125 total=0 logdisc=0.412 ***rejected
+334&lt;15/16&gt;mindist=2.55 step=0.0625 total=0 logdisc=0.393
+334&lt;15/16&gt;mindist=2.55 step=0.0625 total=0.0625 logdisc=0.412
+334&lt;15/16&gt;mindist=2.56 step=0.0625 total=0.125 logdisc=0.433
+334&lt;15/16&gt;mindist=2.57 step=0.0625 total=0.1875 logdisc=0.455
+334&lt;15/16&gt;mindist=2.58 step=0.0625 total=0.25 logdisc=0.477
+======================================
+==    Nontrivial braiding B(2)      ==
+======================================
+334&lt;15/16&gt;mindist=2.6 step=0.0625 total=0.3125 logdisc=0.501
+334&lt;15/16&gt;mindist=2.63 step=0.0625 total=0.375 logdisc=0.525
+334&lt;15/16&gt;mindist=2.66 step=0.0625 total=0.4375 logdisc=0.55
+334&lt;15/16&gt;mindist=2.69 step=0.0625 total=0.5 logdisc=0.576
+334&lt;15/16&gt;mindist=2.72 step=0.0625 total=0.5625 logdisc=0.602
+334&lt;15/16&gt;mindist=2.76 step=0.0625 total=0.625 logdisc=0.628
+334&lt;15/16&gt;mindist=2.8 step=0.0625 total=0.6875 logdisc=0.655
+334&lt;15/16&gt;mindist=2.85 step=0.0625 total=0.75 logdisc=0.682
+334&lt;15/16&gt;mindist=2.9 step=0.0625 total=0.8125 logdisc=0.709
+334&lt;15/16&gt;mindist=2.95 step=0.0625 total=0.875 logdisc=0.736
+334&lt;15/16&gt;mindist=3.01 step=0.0625 total=0.9375 logdisc=0.764
+# Minimal distance==2.55
+# Minimal step==0.0625==-0.0521 + 0.0104im
+# Adaptivity==10
+monodromy[15]=[2]
+
+# segment 15/16 Time==0.002741098403930664sec
+</code></pre></div>
+<p dir="auto">Here  at each step the following  information is displayed: first, how many iterations  of the Newton  method were necessary  to compute each  of the 3 roots  of the current polynomial  <code>f(x,y₀)</code> if we are  looking at the point <code>y₀</code> of the segment. Then, which segment we are dealing with (here the 15th of  16 in all).  Then the minimum  distance between two  roots of <code>f(x,y₀)</code> (used  in our heuristic). Then the current  step in fractions of the length of  the segment we are looking at, and the total fraction of the segment we have  done. Finally,  the decimal  logarithm of  the absolute  value of the discriminant  at the  current point  (used in  the heuristic).  Finally, an indication  if  the  heuristic  predicts  that  we  should  halve  the step <code>***rejected</code> or that we may double it <code>***up</code>.</p>
+<p dir="auto">The function returns an element of the ambient braid group <code>r.B</code>.</p>
+<p dir="auto"><a id="user-content-vkcurve.lbraid2braid" href="#VKcurve.Lbraid2braid">#</a>
+<strong><code>VKcurve.Lbraid2braid</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.Lbraid2braid(v1,v2,B)</code></p>
+<p dir="auto">This function converts  the linear braid joining the points in <code>v1</code> to the corresponding ones in <code>v2</code> into an element of the braid group.</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; B=BraidMonoid(coxsym(3))
+BraidMonoid(𝔖 ₃)
+
+julia&gt; VKcurve.Lbraid2braid([1+im,2+im,3+im],[2+im,1+2im,4-6im],B)
+1"><pre>julia&gt; B<span class="pl-k">=</span><span class="pl-c1">BraidMonoid</span>(<span class="pl-c1">coxsym</span>(<span class="pl-c1">3</span>))
+BraidMonoid(𝔖 ₃)
+
+julia&gt; VKcurve<span class="pl-k">.</span><span class="pl-c1">Lbraid2braid</span>([<span class="pl-c1">1</span><span class="pl-k">+</span>im,<span class="pl-c1">2</span><span class="pl-k">+</span>im,<span class="pl-c1">3</span><span class="pl-k">+</span>im],[<span class="pl-c1">2</span><span class="pl-k">+</span>im,<span class="pl-c1">1</span><span class="pl-k">+</span><span class="pl-c1">2im</span>,<span class="pl-c1">4</span><span class="pl-k">-</span><span class="pl-c1">6im</span>],B)
+1</pre></div>
+<p dir="auto">The lists <code>v1</code> and <code>v2</code> must have the same length, say <code>n</code>. Then <code>B</code> should be  <code>BraidMonoid(coxsym(n))</code>, the braid group  on <code>n</code> strings. The elements of  <code>v1</code> (resp. <code>v2</code>)  should be <code>n</code>  distinct complex rational numbers. We use the Brieskorn basepoint, namely the contractible set <code>C+iV_ℝ</code> where <code>C</code> is  a real chamber; therefore the endpoints  need not be equal. The strings defined  by <code>v1</code> and <code>v2</code> should be  non-crossing. When the numbers in <code>v1</code> (resp.  <code>v2</code>)  have  distinct  real  parts,  the  real picture of the braid defines a unique element of <code>B</code>. When some real parts are equal, we apply a lexicographical  desingularization, corresponding to a rotation of <code>v1</code> and <code>v2</code> by an arbitrary small positive angle.</p>
+<p dir="auto"><a id="user-content-vkcurve.vkquotient" href="#VKcurve.VKquotient">#</a>
+<strong><code>VKcurve.VKquotient</code></strong> — <em>Function</em>.</p>
+<p dir="auto"><code>VKcurve.VKquotient(braids)</code></p>
+<p dir="auto">The  input <code>braids</code> is a list <code>b₁,…,bn</code>, living in the braid group on <code>m</code> strings. Each <code>bᵢ</code> defines by Hurwitz action an automorphism <code>φᵢ</code> of the free group <code>Fₙ</code>. The function returns the group defined by the abstract presentation: <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="41b6da480a28f0081f08a0bc6c22326c">$&amp;lt; f₁,…,fₙ ∣ ∀ i,j φᵢ(fⱼ)=fⱼ &amp;gt;$</math-renderer></p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; B=BraidMonoid(coxsym(3))
+BraidMonoid(𝔖 ₃)
+
+julia&gt; g=VKcurve.VKquotient([B(1,1,1),B(2)])
+FreeGroup(a,b,c)/[b⁻¹a⁻¹baba⁻¹,b⁻¹a⁻¹b⁻¹aba,.,.,cb⁻¹,c⁻¹b]
+
+julia&gt; p=Presentation(g)
+Presentation: 3 generators, 4 relators, total length 16"><pre>julia&gt; B<span class="pl-k">=</span><span class="pl-c1">BraidMonoid</span>(<span class="pl-c1">coxsym</span>(<span class="pl-c1">3</span>))
+BraidMonoid(𝔖 ₃)
+
+julia&gt; g<span class="pl-k">=</span>VKcurve<span class="pl-k">.</span><span class="pl-c1">VKquotient</span>([<span class="pl-c1">B</span>(<span class="pl-c1">1</span>,<span class="pl-c1">1</span>,<span class="pl-c1">1</span>),<span class="pl-c1">B</span>(<span class="pl-c1">2</span>)])
+FreeGroup(a,b,c)/[b⁻¹a⁻¹baba⁻¹,b⁻¹a⁻¹b⁻¹aba,.,.,cb⁻¹,c⁻¹b]
+
+julia&gt; p<span class="pl-k">=</span><span class="pl-c1">Presentation</span>(g)
+Presentation: 3 generators, 4 relators, total length 16</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="julia&gt; display_balanced(p)
+1: c=b
+2: b=c
+3: bab=aba
+4: aba=bab
+
+julia&gt; simplify(p)
+Presentation: 2 generators, 1 relator, total length 6
+Presentation: 2 generators, 1 relator, total length 6
+
+julia&gt; display_balanced(p)
+1: bab=aba"><pre lang="julia-rep1" class="notranslate"><code>julia&gt; display_balanced(p)
+1: c=b
+2: b=c
+3: bab=aba
+4: aba=bab
+
+julia&gt; simplify(p)
+Presentation: 2 generators, 1 relator, total length 6
+Presentation: 2 generators, 1 relator, total length 6
+
+julia&gt; display_balanced(p)
+1: bab=aba
+</code></pre></div>
+</article></div>

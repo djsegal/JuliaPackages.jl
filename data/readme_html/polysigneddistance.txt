@@ -1,0 +1,102 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">PolySignedDistance.jl</h1><a id="user-content-polysigneddistancejl" class="anchor" aria-label="Permalink: PolySignedDistance.jl" href="#polysigneddistancejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A package for ray tracing/point-in-polygon queries and SDF/Approximate-SDF computation in Julia using N-dimensional triangulated surfaces.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Ray Tracing</h2><a id="user-content-ray-tracing" class="anchor" aria-label="Permalink: Ray Tracing" href="#ray-tracing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To build a surface for ray tracing, one may use:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using PolySignedDistance: RayTracing
+
+surf = RayTracing.Surface(
+    points, # matrix (ndims, npts)
+    simplices; # matrix (ndims, nsimps)
+    leaf_size = 10,
+    ray_reference = nothing,
+    reference_isin = false,
+    digits = 12
+)"><pre class="notranslate"><code>using PolySignedDistance: RayTracing
+
+surf = RayTracing.Surface(
+    points, # matrix (ndims, npts)
+    simplices; # matrix (ndims, nsimps)
+    leaf_size = 10,
+    ray_reference = nothing,
+    reference_isin = false,
+    digits = 12
+)
+</code></pre></div>
+<ul dir="auto">
+<li><code>points</code> indicates surface points;</li>
+<li><code>simplices</code> indicates simplices in the triangulated surface;</li>
+<li><code>leaf_size</code> indicates a max. leaf size for the bounding box tree;</li>
+<li><code>ray_reference</code> indicates a standard reference (origin) point for the ray tracing. Defaults to a point far away from the surface if <code>nothing</code>;</li>
+<li><code>reference_isin</code>: whether said ray reference is within the surface;</li>
+<li><code>digits</code>: number of digits for point merging precision. We advise the user not to change this.</li>
+</ul>
+<p dir="auto">For a point-in-polygon query, you can use <code>RayTracing.isin</code>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="flag = isin(
+    surf, point
+) # true if within solid"><pre class="notranslate"><code>flag = isin(
+    surf, point
+) # true if within solid
+</code></pre></div>
+<p dir="auto">To optimize the queries, one may use a custom ray tracing origin closer to the query point as:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="flag = isin(
+    surf, point;
+    origin = [-1, 2, 0], # example
+    origin_isin = true # for reference
+)"><pre class="notranslate"><code>flag = isin(
+    surf, point;
+    origin = [-1, 2, 0], # example
+    origin_isin = true # for reference
+)
+</code></pre></div>
+<p dir="auto">To find a list of intersected simplex indices and the corresponding intersection points, you may also use:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="face_inds, int_points = crossed_faces(surf, p1, p2)
+
+@show size(int_points)
+# (ndims, npoints)"><pre class="notranslate"><code>face_inds, int_points = crossed_faces(surf, p1, p2)
+
+@show size(int_points)
+# (ndims, npoints)
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">SDFs and Approximate SDFs</h2><a id="user-content-sdfs-and-approximate-sdfs" class="anchor" aria-label="Permalink: SDFs and Approximate SDFs" href="#sdfs-and-approximate-sdfs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For a signed distance function calculation, one may use:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using PolySignedDistance
+
+tree = SDFTree(
+    points,
+    simplices;
+    leaf_size = 10, # for search trees
+    is_open = false, # if true, an open domain (distance is positive in the outside. Defs. to false)
+)
+
+x = rand(size(points, 1)) # random point
+
+dist, proj = tree(x)
+
+# dist: distance to surface (signed)
+# proj: projection upon surface
+
+# or, for open manifolds without spending time with the point in polygon query
+
+dist, proj = projection_and_distance(tree, x)"><pre class="notranslate"><code>using PolySignedDistance
+
+tree = SDFTree(
+    points,
+    simplices;
+    leaf_size = 10, # for search trees
+    is_open = false, # if true, an open domain (distance is positive in the outside. Defs. to false)
+)
+
+x = rand(size(points, 1)) # random point
+
+dist, proj = tree(x)
+
+# dist: distance to surface (signed)
+# proj: projection upon surface
+
+# or, for open manifolds without spending time with the point in polygon query
+
+dist, proj = projection_and_distance(tree, x)
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">WARNING!</h2><a id="user-content-warning" class="anchor" aria-label="Permalink: WARNING!" href="#warning"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The SDF estimation algorithms hereby implemented do not yield correct results if zero-area simplices or repeated points are provided. Checking and fixing their existence in the input geometry is up to the user.</p>
+</article></div>

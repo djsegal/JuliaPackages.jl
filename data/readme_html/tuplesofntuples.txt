@@ -1,0 +1,119 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">TuplesOfNTuples.jl</h1><a id="user-content-tuplesofntuplesjl" class="anchor" aria-label="Permalink: TuplesOfNTuples.jl" href="#tuplesofntuplesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A Julia package for converting non-uniform <code>Tuple</code>s into a <code>Tuple</code> of <code>NTuple</code>s.</p>
+<p dir="auto">This package allows users to effectively index into a non-homogeneous tuple with dynamic indexes in a type-stable (and gpu-friendly) way, assuming that the given tuple can be transformed a-priori into a <code>TupleOfNTuples</code>. Here is an example:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import TuplesOfNTuples as ToNT
+
+function example!(dtup, f, N::Int, counter)
+    for i in 1:N # cannot be unrolled
+
+        c = ToNT.inner_dispatch(f, dtup, i)
+        c(counter) # effectively calls f(tup[i], counter)
+
+        # This unrolls to:
+        #
+        #      if hasindex(tup.sparse_ntuples[1], i)
+        #          fun(tup.sparse_ntuples[1][i], args...)
+        #      elseif hasindex(tup.sparse_ntuples[2], i)
+        #          fun(tup.sparse_ntuples[2][i], args...)
+        #      elseif ...
+        #      end
+        #
+        #  where tup.sparse_ntuples[j][i] is equivalent to tup[i]
+        #
+        # Two important points about this design are:
+        #  - tup.sparse_ntuples[1] is inferred, because 1 is not a dynamic index
+        #  - tup.sparse_ntuples[1][i] is inferred, because tup.sparse_ntuples[1] an NTuple
+    end
+    return nothing
+end
+
+struct Foo1 end
+struct Foo2 end
+struct Foo3 end
+struct Foo4 end
+
+function f!(::Foo1, counter)
+    counter[1] += 1
+    return nothing
+end
+function f!(::Foo2, counter)
+    counter[1] += 100
+    return nothing
+end
+function f!(::Foo3, counter)
+    counter[1] += 1000
+    return nothing
+end
+function f!(::Foo4, counter)
+    counter[1] += 10000
+    return nothing
+end
+
+tup = (Foo1(), Foo2(), Foo3(), Foo4())
+dtup = ToNT.TupleOfNTuples(tup)
+
+counter = Int[0]
+example!(dtup, f!, length(tup), counter)
+using Test
+@test counter[1] == sum((1, 100, 1000, 10000))
+
+id = ToNT.inner_dispatch(f!, dtup, 1)
+@inferred id(counter)"><pre><span class="pl-k">import</span> TuplesOfNTuples as ToNT
+
+<span class="pl-k">function</span> <span class="pl-en">example!</span>(dtup, f, N<span class="pl-k">::</span><span class="pl-c1">Int</span>, counter)
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>N <span class="pl-c"><span class="pl-c">#</span> cannot be unrolled</span>
+
+        c <span class="pl-k">=</span> ToNT<span class="pl-k">.</span><span class="pl-c1">inner_dispatch</span>(f, dtup, i)
+        <span class="pl-c1">c</span>(counter) <span class="pl-c"><span class="pl-c">#</span> effectively calls f(tup[i], counter)</span>
+
+        <span class="pl-c"><span class="pl-c">#</span> This unrolls to:</span>
+        <span class="pl-c"><span class="pl-c">#</span></span>
+        <span class="pl-c"><span class="pl-c">#</span>      if hasindex(tup.sparse_ntuples[1], i)</span>
+        <span class="pl-c"><span class="pl-c">#</span>          fun(tup.sparse_ntuples[1][i], args...)</span>
+        <span class="pl-c"><span class="pl-c">#</span>      elseif hasindex(tup.sparse_ntuples[2], i)</span>
+        <span class="pl-c"><span class="pl-c">#</span>          fun(tup.sparse_ntuples[2][i], args...)</span>
+        <span class="pl-c"><span class="pl-c">#</span>      elseif ...</span>
+        <span class="pl-c"><span class="pl-c">#</span>      end</span>
+        <span class="pl-c"><span class="pl-c">#</span></span>
+        <span class="pl-c"><span class="pl-c">#</span>  where tup.sparse_ntuples[j][i] is equivalent to tup[i]</span>
+        <span class="pl-c"><span class="pl-c">#</span></span>
+        <span class="pl-c"><span class="pl-c">#</span> Two important points about this design are:</span>
+        <span class="pl-c"><span class="pl-c">#</span>  - tup.sparse_ntuples[1] is inferred, because 1 is not a dynamic index</span>
+        <span class="pl-c"><span class="pl-c">#</span>  - tup.sparse_ntuples[1][i] is inferred, because tup.sparse_ntuples[1] an NTuple</span>
+    <span class="pl-k">end</span>
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+
+<span class="pl-k">struct</span> Foo1 <span class="pl-k">end</span>
+<span class="pl-k">struct</span> Foo2 <span class="pl-k">end</span>
+<span class="pl-k">struct</span> Foo3 <span class="pl-k">end</span>
+<span class="pl-k">struct</span> Foo4 <span class="pl-k">end</span>
+
+<span class="pl-k">function</span> <span class="pl-en">f!</span>(<span class="pl-k">::</span><span class="pl-c1">Foo1</span>, counter)
+    counter[<span class="pl-c1">1</span>] <span class="pl-k">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> <span class="pl-en">f!</span>(<span class="pl-k">::</span><span class="pl-c1">Foo2</span>, counter)
+    counter[<span class="pl-c1">1</span>] <span class="pl-k">+=</span> <span class="pl-c1">100</span>
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> <span class="pl-en">f!</span>(<span class="pl-k">::</span><span class="pl-c1">Foo3</span>, counter)
+    counter[<span class="pl-c1">1</span>] <span class="pl-k">+=</span> <span class="pl-c1">1000</span>
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+<span class="pl-k">function</span> <span class="pl-en">f!</span>(<span class="pl-k">::</span><span class="pl-c1">Foo4</span>, counter)
+    counter[<span class="pl-c1">1</span>] <span class="pl-k">+=</span> <span class="pl-c1">10000</span>
+    <span class="pl-k">return</span> <span class="pl-c1">nothing</span>
+<span class="pl-k">end</span>
+
+tup <span class="pl-k">=</span> (<span class="pl-c1">Foo1</span>(), <span class="pl-c1">Foo2</span>(), <span class="pl-c1">Foo3</span>(), <span class="pl-c1">Foo4</span>())
+dtup <span class="pl-k">=</span> ToNT<span class="pl-k">.</span><span class="pl-c1">TupleOfNTuples</span>(tup)
+
+counter <span class="pl-k">=</span> Int[<span class="pl-c1">0</span>]
+<span class="pl-c1">example!</span>(dtup, f!, <span class="pl-c1">length</span>(tup), counter)
+<span class="pl-k">using</span> Test
+<span class="pl-c1">@test</span> counter[<span class="pl-c1">1</span>] <span class="pl-k">==</span> <span class="pl-c1">sum</span>((<span class="pl-c1">1</span>, <span class="pl-c1">100</span>, <span class="pl-c1">1000</span>, <span class="pl-c1">10000</span>))
+
+id <span class="pl-k">=</span> ToNT<span class="pl-k">.</span><span class="pl-c1">inner_dispatch</span>(f!, dtup, <span class="pl-c1">1</span>)
+<span class="pl-c1">@inferred</span> <span class="pl-c1">id</span>(counter)</pre></div>
+</article></div>

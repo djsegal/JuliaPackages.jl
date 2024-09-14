@@ -1,0 +1,181 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">CirculantAttention</h1><a id="user-content-circulantattention" class="anchor" aria-label="Permalink: CirculantAttention" href="#circulantattention"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://nikopj.github.io/CirculantAttention.jl/stable/" rel="nofollow"><img src="https://camo.githubusercontent.com/31126cd56c42376320c59ea685a7ca65ff3a83d09a66363ed7115f882be1222c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d737461626c652d626c75652e737667" alt="Stable" data-canonical-src="https://img.shields.io/badge/docs-stable-blue.svg" style="max-width: 100%;"></a>
+<a href="https://nikopj.github.io/CirculantAttention.jl/dev/" rel="nofollow"><img src="https://camo.githubusercontent.com/45c316268f541933640ad68f61395986888f4d46bc9641b40e53d337576c6456/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d6465762d626c75652e737667" alt="Dev" data-canonical-src="https://img.shields.io/badge/docs-dev-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/nikopj/CirculantAttention.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/nikopj/CirculantAttention.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">Circulant-Sparse Attention (CircAtt) performs Query-Key-Value scaled attention with a sliding-window mask,</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="228fc12308d68175bd948d00c02133b4">$$
+Y = \mathrm{rowsoftmax}(M \circ QK^T / \mathrm{sqrt}(\tau))V,
+$$</math-renderer></p>
+<p dir="auto">where <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="228fc12308d68175bd948d00c02133b4">$\tau$</math-renderer> is the number of channels and <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="228fc12308d68175bd948d00c02133b4">$M$</math-renderer> is a mask with a circulant sparsity pattern or block-circulant with
+circulant blocks (BCCB) sparsity pattern for 1D and 2D signals, respectively.
+This sparsity pattern is the result of only computing similarities between <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="228fc12308d68175bd948d00c02133b4">$q$</math-renderer>
+and <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="228fc12308d68175bd948d00c02133b4">$k$</math-renderer> in a sliding window with circular boundary extensions.</p>
+<p dir="auto">Sliding-window based attention may be preferable to patch-based attention by
+not producing boundary artifacts and always centering similarity computations
+on the pixel of interest. Our implementation is <em>only CUDA compatible</em> (no CPU compat.), and,</p>
+<ul dir="auto">
+<li>Has a fast implementation with custom CUDA kernels.</li>
+<li>Is fully differentiable.</li>
+<li>Allows multi-head attention.</li>
+<li>Supports dot-product similarity and distance similarity (L2).</li>
+<li>Supports complex-valued tensors.</li>
+<li><strong>NOTE</strong>: window-size is restricted to ODD NUMBERs for the time being. This means the window is evenly centered on the key pixel.</li>
+</ul>
+<p dir="auto">CirculantAttention.jl is based on
+<a href="https://github.com/JuliaGPU/CUDA.jl">CUDA.jl</a>'s CuSparseArrayCSR object, which
+allows multi-dimensional sparse arrays in the compressed-sparse-row format.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Quickstart</h2><a id="user-content-quickstart" class="anchor" aria-label="Permalink: Quickstart" href="#quickstart"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CUDA
+using NNlib              # for softmax
+using CirculantAttention # aliased to CircAtt
+
+H, W, C, B = 128, 96, 64, 2
+ws, nheads = 15, 4
+q = CUDA.randn(H, W, C, B) # HWCB
+k = CUDA.randn(H, W, C, B) # HWCB
+v = CUDA.randn(H, W, C, B) # HWCB"><pre><span class="pl-k">using</span> CUDA
+<span class="pl-k">using</span> NNlib              <span class="pl-c"><span class="pl-c">#</span> for softmax</span>
+<span class="pl-k">using</span> CirculantAttention <span class="pl-c"><span class="pl-c">#</span> aliased to CircAtt</span>
+
+H, W, C, B <span class="pl-k">=</span> <span class="pl-c1">128</span>, <span class="pl-c1">96</span>, <span class="pl-c1">64</span>, <span class="pl-c1">2</span>
+ws, nheads <span class="pl-k">=</span> <span class="pl-c1">15</span>, <span class="pl-c1">4</span>
+q <span class="pl-k">=</span> CUDA<span class="pl-k">.</span><span class="pl-c1">randn</span>(H, W, C, B) <span class="pl-c"><span class="pl-c">#</span> HWCB</span>
+k <span class="pl-k">=</span> CUDA<span class="pl-k">.</span><span class="pl-c1">randn</span>(H, W, C, B) <span class="pl-c"><span class="pl-c">#</span> HWCB</span>
+v <span class="pl-k">=</span> CUDA<span class="pl-k">.</span><span class="pl-c1">randn</span>(H, W, C, B) <span class="pl-c"><span class="pl-c">#</span> HWCB</span></pre></div>
+<p dir="auto">Compute circulant attention with latent (image-)tensors q, k, v, with a window-size of <code>ws</code>,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="y, A = circulant_attention(q, k, v, ws)                  # defaults to dot-product attention
+y, A = circulant_attention(DotSimilarity(), q, k, v, ws) # manutally set to dot-product attention
+y, A = circulant_attention(DistanceSimilarity(), q, k, v, ws)
+size(y) # (H, W, C, 2)
+size(A) # (12288, 12288, 1, 2) == (HW, HW, 1, B)"><pre>y, A <span class="pl-k">=</span> <span class="pl-c1">circulant_attention</span>(q, k, v, ws)                  <span class="pl-c"><span class="pl-c">#</span> defaults to dot-product attention</span>
+y, A <span class="pl-k">=</span> <span class="pl-c1">circulant_attention</span>(<span class="pl-c1">DotSimilarity</span>(), q, k, v, ws) <span class="pl-c"><span class="pl-c">#</span> manutally set to dot-product attention</span>
+y, A <span class="pl-k">=</span> <span class="pl-c1">circulant_attention</span>(<span class="pl-c1">DistanceSimilarity</span>(), q, k, v, ws)
+<span class="pl-c1">size</span>(y) <span class="pl-c"><span class="pl-c">#</span> (H, W, C, 2)</span>
+<span class="pl-c1">size</span>(A) <span class="pl-c"><span class="pl-c">#</span> (12288, 12288, 1, 2) == (HW, HW, 1, B)</span></pre></div>
+<p dir="auto">This returns the output tensor (<code>y</code>) and adjacency matrix (<code>A</code>).
+<code>circulant_attention</code> is equivalent to performing scaled circulant similarity followed by normalization
+and application of the attention matrix,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="t = sqrt(size(q, 3))
+S = circulant_similarity(DistanceSimilarity(), q ./ sqrt(t), k ./ sqrt(t), ws)
+display(S)"><pre>t <span class="pl-k">=</span> <span class="pl-c1">sqrt</span>(<span class="pl-c1">size</span>(q, <span class="pl-c1">3</span>))
+S <span class="pl-k">=</span> <span class="pl-c1">circulant_similarity</span>(<span class="pl-c1">DistanceSimilarity</span>(), q <span class="pl-k">./</span> <span class="pl-c1">sqrt</span>(t), k <span class="pl-k">./</span> <span class="pl-c1">sqrt</span>(t), ws)
+<span class="pl-c1">display</span>(S)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Circulant{Float32, 4, 15, 2, CUDA.CUSPARSE.CuSparseArrayCSR{Float32, Int32, 4}} with kernel-length 15, spatial-size (128, 96), and data,
+12288×12288×1×2 CUDA.CUSPARSE.CuSparseArrayCSR{Float32, Int32, 4} with 5529600 stored entries:
+[:, :, 1, 1] =
+⎡⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣿⎤
+⎢⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⎥
+⎢⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠈⠙⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣄⡀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⎥
+⎢⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⎥
+⎣⣿⣿⣶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⎦
+
+[:, :, 1, 2] =
+⎡⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣿⎤
+⎢⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⎥
+⎢⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠈⠙⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣄⡀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⎥
+⎢⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⎥
+⎣⣿⣿⣶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⎦"><pre class="notranslate"><code>Circulant{Float32, 4, 15, 2, CUDA.CUSPARSE.CuSparseArrayCSR{Float32, Int32, 4}} with kernel-length 15, spatial-size (128, 96), and data,
+12288×12288×1×2 CUDA.CUSPARSE.CuSparseArrayCSR{Float32, Int32, 4} with 5529600 stored entries:
+[:, :, 1, 1] =
+⎡⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣿⎤
+⎢⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⎥
+⎢⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠈⠙⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣄⡀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⎥
+⎢⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⎥
+⎣⣿⣿⣶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⎦
+
+[:, :, 1, 2] =
+⎡⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣿⎤
+⎢⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⎥
+⎢⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠈⠙⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⢿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣄⡀⠀⠀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣄⡀⠀⠀⎥
+⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⣤⠀⎥
+⎢⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢿⣿⣿⣿⣿⣷⎥
+⎣⣿⣿⣶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢿⣿⣿⣿⎦
+</code></pre></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="B = NNlib.softmax(S)
+u = B ⊗ v # \otimes, equivalent to u = circulant_attention(A, v)
+u ≈ y     # true"><pre>B <span class="pl-k">=</span> NNlib<span class="pl-k">.</span><span class="pl-c1">softmax</span>(S)
+u <span class="pl-k">=</span> B <span class="pl-k">⊗</span> v <span class="pl-c"><span class="pl-c">#</span> \otimes, equivalent to u = circulant_attention(A, v)</span>
+u <span class="pl-k">≈</span> y     <span class="pl-c"><span class="pl-c">#</span> true</span></pre></div>
+<p dir="auto">We can additionally perform multi-head attention,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="y, A = circulant_mh_attention(DotSimilarity(), q, k, v, ws, nheads) 
+size(y) # (H, W, C, B)
+size(A) # (HW, HW, nheads, B)"><pre>y, A <span class="pl-k">=</span> <span class="pl-c1">circulant_mh_attention</span>(<span class="pl-c1">DotSimilarity</span>(), q, k, v, ws, nheads) 
+<span class="pl-c1">size</span>(y) <span class="pl-c"><span class="pl-c">#</span> (H, W, C, B)</span>
+<span class="pl-c1">size</span>(A) <span class="pl-c"><span class="pl-c">#</span> (HW, HW, nheads, B)</span></pre></div>
+<p dir="auto">and addition and broadcasted multiplication with Circulant matrices,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="u, B = circulant_mh_attention(DotSimilarity(), y, y, y, ws, nheads) 
+m = CUDA.randn(1, 1, 4, 2) # (1, 1, nheads, B)
+C = A + m*B
+w = C ⨷ u # \Otimes, circulant multihead attention
+size(w)   # HWCB"><pre>u, B <span class="pl-k">=</span> <span class="pl-c1">circulant_mh_attention</span>(<span class="pl-c1">DotSimilarity</span>(), y, y, y, ws, nheads) 
+m <span class="pl-k">=</span> CUDA<span class="pl-k">.</span><span class="pl-c1">randn</span>(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">4</span>, <span class="pl-c1">2</span>) <span class="pl-c"><span class="pl-c">#</span> (1, 1, nheads, B)</span>
+C <span class="pl-k">=</span> A <span class="pl-k">+</span> m<span class="pl-k">*</span>B
+w <span class="pl-k">=</span> C <span class="pl-k">⨷</span> u <span class="pl-c"><span class="pl-c">#</span> \Otimes, circulant multihead attention</span>
+<span class="pl-c1">size</span>(w)   <span class="pl-c"><span class="pl-c">#</span> HWCB</span></pre></div>
+<p dir="auto">Circulant matrices can also be summed along dimensions,</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="sum(C; dims=1) # (1, HW, nheads, B)
+sum(C; dims=2) # (HW, 1, nheads, B)
+sum(C; dims=3) # (HW, HW, 1, B)
+sum(C; dims=4) # (HW, HW, nheads, 1)"><pre><span class="pl-c1">sum</span>(C; dims<span class="pl-k">=</span><span class="pl-c1">1</span>) <span class="pl-c"><span class="pl-c">#</span> (1, HW, nheads, B)</span>
+<span class="pl-c1">sum</span>(C; dims<span class="pl-k">=</span><span class="pl-c1">2</span>) <span class="pl-c"><span class="pl-c">#</span> (HW, 1, nheads, B)</span>
+<span class="pl-c1">sum</span>(C; dims<span class="pl-k">=</span><span class="pl-c1">3</span>) <span class="pl-c"><span class="pl-c">#</span> (HW, HW, 1, B)</span>
+<span class="pl-c1">sum</span>(C; dims<span class="pl-k">=</span><span class="pl-c1">4</span>) <span class="pl-c"><span class="pl-c">#</span> (HW, HW, nheads, 1)</span></pre></div>
+<p dir="auto">and concatendated (when sensible),</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="D = cat(A, B; dims=3) # (HW, HW, 2nheads, B)"><pre>D <span class="pl-k">=</span> <span class="pl-c1">cat</span>(A, B; dims<span class="pl-k">=</span><span class="pl-c1">3</span>) <span class="pl-c"><span class="pl-c">#</span> (HW, HW, 2nheads, B)</span></pre></div>
+<p dir="auto">See <code>src/array.jl</code> for more details.</p>
+</article></div>

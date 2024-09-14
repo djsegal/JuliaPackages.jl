@@ -1,0 +1,124 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">VLLimitOrderBook.jl</h1><a id="user-content-vllimitorderbookjl" class="anchor" aria-label="Permalink: VLLimitOrderBook.jl" href="#vllimitorderbookjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>VLLimitOrderBook.jl</code> is a package that simulates the dynamics of an <a href="https://www.investopedia.com/terms/o/order-book.asp" rel="nofollow">Order Book</a>. An order book is an electronic list of buy and sell orders for a specific security, which is used to help illustrate the dynamics for that security. This package was based on the previous work of <a href="https://github.com/p-casgrain">p-casgrain Philippe Casgrain</a> and <a href="https://github.com/dm13450">dm13450 Dean</a> in the package <a href="https://github.com/p-casgrain/LimitOrderBook.jl">LimitOrderBook.jl</a>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Overview</h2><a id="user-content-overview" class="anchor" aria-label="Permalink: Overview" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The original package has the following features:</p>
+<ul dir="auto">
+<li>Submit and cancel limit orders and submit market orders.</li>
+<li>Inspect the order book information and statistics.</li>
+<li>Save the order book state to a CSV file.</li>
+</ul>
+<p dir="auto">Additionally, the package has fixed the following bugs in the original implementation:</p>
+<ul dir="auto">
+<li>The order book does not track specific users, causing the relevant account to not get updated when an order is matched and removed from the order book.</li>
+<li>The order book may allow cross-match limit orders on one side of the book. This is not allowed on most major exchanges. In this package model, we will throw error if such conditions are met.</li>
+</ul>
+<p dir="auto">Based on original package, the following features have been added or modified:</p>
+<ul dir="auto">
+<li>The ability to load the order book state from a CSV file.</li>
+<li>Improved code testing coverage.</li>
+<li>Includes benchmarks for performance evaluation.</li>
+<li>Validates accuracy and correctness of the order book from data feed messages from <a href="https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHSpecification.pdf" rel="nofollow">Nasdaq TotalViewITCH</a>, a direct data feed product offered by The Nasdaq Stock Market, LLC.</li>
+</ul>
+<p dir="auto">Based on data feed messages from Nasdaq TotalViewITCH, we also make following changes to enhance the functionality,</p>
+<ul dir="auto">
+<li>We have added Display &amp; Non-Display field to the Order Struct. This is because orders at the same price level may have different priorities based on their Display &amp; Non-Display features. Orders with display feature always have a higher execution priority than Non-Display orders, even if display order have joined orderbook at a later time. This will help us ensure that orders are executed in the right order.</li>
+<li>We have changed the OrderTrait to be non-static and mutable variable. This is because different orders may have different order traits, and there is no way to distinguish this difference from the order feed of Nasdaq. Therefore, we needed to make changes according to specific data feed messages to ensure that we can handle order executed correctly.</li>
+<li>We have also added an "allowlocking" boolean field in the OrderTrait. This field is necessary because some orders, such as pegged orders, will allow prices to lock between bid/ask prices (bid/ask price reached a same level). We cannot know this until we receive specific messages from the data feed, i.e when order are executed at different prices. So we need to make changes according to specific data feed messages to ensure that we can handle these types of orders.</li>
+<li>We have modified the order to be a mutable structure. This will enable us to make changes to the original order object rather than generating a new object, which will enhance the performance and efficiency of our system</li>
+</ul>
+<p dir="auto">FAQ:</p>
+<p dir="auto"><strong>Why notification is removed in the latest commit of the code?</strong></p>
+<ul dir="auto">
+<li>We did implement notification feature in the earlier <a href="https://github.com/Renruize12306/VLLimitOrderBook.jl/commit/d1773488d154122ad3fe3fe9dc8ca21d96438453">commits</a>, but we then find the that cross matching between bid/ask price is uncommon, it also lower the matching profiency of Limit Order Book. Hence, we simply remove this feature in the later iterations.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Folder Structure</h2><a id="user-content-folder-structure" class="anchor" aria-label="Permalink: Folder Structure" href="#folder-structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="VLLimitOrderBook.jl
+│
+└───src (Julia source code for main package)
+│
+└───test 
+    │
+    └───performance_evaluation (performance evaluation for the limit order book)
+    │
+    └───validation (validation and error analysis with the Nasdaq historical data)
+    │
+    └───runtests.jl (test code for the logic correctness)"><pre class="notranslate"><code>VLLimitOrderBook.jl
+│
+└───src (Julia source code for main package)
+│
+└───test 
+    │
+    └───performance_evaluation (performance evaluation for the limit order book)
+    │
+    └───validation (validation and error analysis with the Nasdaq historical data)
+    │
+    └───runtests.jl (test code for the logic correctness)
+</code></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Install</h3><a id="user-content-install" class="anchor" aria-label="Permalink: Install" href="#install"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import Pkg; Pkg.add(url=&quot;https://github.com/Renruize12306/VLLimitOrderBook.jl.git&quot;)"><pre><span class="pl-k">import</span> Pkg; Pkg<span class="pl-k">.</span><span class="pl-c1">add</span>(url<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>https://github.com/Renruize12306/VLLimitOrderBook.jl.git<span class="pl-pds">"</span></span>)</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Example</h3><a id="user-content-example" class="anchor" aria-label="Permalink: Example" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using VLLimitOrderBook
+using Dates
+using Base.Iterators: zip, cycle, take
+
+# # Define the types for order size, price, transaction ID, account ID, order creation time, IP address, and port
+# Define the types for order size, price, order ID, and account ID
+MyLOBType = OrderBook{Float64, Float64, Int64, Int64}
+
+# Initialize an empty order book and unmatched order book process
+ob = MyLOBType()
+
+# Create a deterministic limit order generator
+orderid_iter = Base.Iterators.countfrom(1)
+sign_iter = cycle([1, -1, 1, -1])
+side_iter = (s &gt; 0 ? SELL_ORDER : BUY_ORDER for s in sign_iter)
+spread_iter = cycle([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]*1e-2)
+price_iter = (Float32(99.0 + sgn*δ) for (δ, sgn) in zip(spread_iter, sign_iter))
+size_iter = cycle([10, 11, 20, 21, 30, 31, 40, 41, 50, 51])
+
+# Zip them all together
+lmt_order_info_iter = zip(orderid_iter, price_iter, size_iter, side_iter)
+
+order_info_lst = take(lmt_order_info_iter, 6)
+
+# Submit limit orders
+for (orderid, price, size, side) in order_info_lst
+    submit_limit_order!(ob,orderid,side,price,size,10101)
+    print(orderid, ' ',side,' ',price,'\n')
+end"><pre><span class="pl-k">using</span> VLLimitOrderBook
+<span class="pl-k">using</span> Dates
+<span class="pl-k">using</span> Base<span class="pl-k">.</span>Iterators<span class="pl-k">:</span> zip, cycle, take
+
+<span class="pl-c"><span class="pl-c">#</span> # Define the types for order size, price, transaction ID, account ID, order creation time, IP address, and port</span>
+<span class="pl-c"><span class="pl-c">#</span> Define the types for order size, price, order ID, and account ID</span>
+MyLOBType <span class="pl-k">=</span> OrderBook{Float64, Float64, Int64, Int64}
+
+<span class="pl-c"><span class="pl-c">#</span> Initialize an empty order book and unmatched order book process</span>
+ob <span class="pl-k">=</span> <span class="pl-c1">MyLOBType</span>()
+
+<span class="pl-c"><span class="pl-c">#</span> Create a deterministic limit order generator</span>
+orderid_iter <span class="pl-k">=</span> Base<span class="pl-k">.</span>Iterators<span class="pl-k">.</span><span class="pl-c1">countfrom</span>(<span class="pl-c1">1</span>)
+sign_iter <span class="pl-k">=</span> <span class="pl-c1">cycle</span>([<span class="pl-c1">1</span>, <span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-k">-</span><span class="pl-c1">1</span>])
+side_iter <span class="pl-k">=</span> (s <span class="pl-k">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">?</span> SELL_ORDER <span class="pl-k">:</span> BUY_ORDER <span class="pl-k">for</span> s <span class="pl-k">in</span> sign_iter)
+spread_iter <span class="pl-k">=</span> <span class="pl-c1">cycle</span>([<span class="pl-c1">1</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>, <span class="pl-c1">4</span>, <span class="pl-c1">5</span>, <span class="pl-c1">5</span>, <span class="pl-c1">6</span>, <span class="pl-c1">6</span>]<span class="pl-k">*</span><span class="pl-c1">1e-2</span>)
+price_iter <span class="pl-k">=</span> (<span class="pl-c1">Float32</span>(<span class="pl-c1">99.0</span> <span class="pl-k">+</span> sgn<span class="pl-k">*</span>δ) <span class="pl-k">for</span> (δ, sgn) <span class="pl-k">in</span> <span class="pl-c1">zip</span>(spread_iter, sign_iter))
+size_iter <span class="pl-k">=</span> <span class="pl-c1">cycle</span>([<span class="pl-c1">10</span>, <span class="pl-c1">11</span>, <span class="pl-c1">20</span>, <span class="pl-c1">21</span>, <span class="pl-c1">30</span>, <span class="pl-c1">31</span>, <span class="pl-c1">40</span>, <span class="pl-c1">41</span>, <span class="pl-c1">50</span>, <span class="pl-c1">51</span>])
+
+<span class="pl-c"><span class="pl-c">#</span> Zip them all together</span>
+lmt_order_info_iter <span class="pl-k">=</span> <span class="pl-c1">zip</span>(orderid_iter, price_iter, size_iter, side_iter)
+
+order_info_lst <span class="pl-k">=</span> <span class="pl-c1">take</span>(lmt_order_info_iter, <span class="pl-c1">6</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Submit limit orders</span>
+<span class="pl-k">for</span> (orderid, price, size, side) <span class="pl-k">in</span> order_info_lst
+    <span class="pl-c1">submit_limit_order!</span>(ob,orderid,side,price,size,<span class="pl-c1">10101</span>)
+    <span class="pl-c1">print</span>(orderid, <span class="pl-s"><span class="pl-pds">'</span> <span class="pl-pds">'</span></span>,side,<span class="pl-s"><span class="pl-pds">'</span> <span class="pl-pds">'</span></span>,price,<span class="pl-s"><span class="pl-pds">'</span><span class="pl-cce">\n</span><span class="pl-pds">'</span></span>)
+<span class="pl-k">end</span></pre></div>
+<p dir="auto"><strong>To inspect the order book</strong></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="ob"><pre>ob</pre></div>
+<p dir="auto"><strong>An example to matching a market order</strong></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="submit_market_order!(ob, BUY_ORDER, 10)"><pre><span class="pl-c1">submit_market_order!</span>(ob, BUY_ORDER, <span class="pl-c1">10</span>)</pre></div>
+<p dir="auto"><strong>An example to inspect orderbook statistics</strong></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="book_depth_info(ob)"><pre><span class="pl-c1">book_depth_info</span>(ob)</pre></div>
+</article></div>

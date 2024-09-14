@@ -1,0 +1,84 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">HampelOutliers.jl</h1><a id="user-content-hampeloutliersjl" class="anchor" aria-label="Permalink: HampelOutliers.jl" href="#hampeloutliersjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This package provides a basic Julia implementation of the Hampel filter<sup><a href="#user-content-fn-1-a1dbea1ef50c12634dbd612b9b550e90" id="user-content-fnref-1-a1dbea1ef50c12634dbd612b9b550e90" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup>, which is a robust method for detecting and replacing outliers in a univariate time series. Compared to convolutional filters, the Hampel filter is less likely to smooth edges and better at removing isolated spikes without affecting the rest of the data. But it is tunably less aggressive than a standard median filter.</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="demo_comparison.svg"><img src="demo_comparison.svg" alt="" style="max-width: 100%;"></a></p>
+<p dir="auto">Given the values <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$x_1, x_2,\dots,$</math-renderer> the Hampel filter replaces elements <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$x_k$</math-renderer> such that</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$$|x_k - m| &gt; t S,$$</math-renderer></p>
+<p dir="auto">where <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$m$</math-renderer> is the median of the elements, <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$t$</math-renderer> is a positive parameter (often set to 2 or 3), and <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$S$</math-renderer> is a measure of dispersion. Typically, flagged elements are replaced by the median of the non-flagged elements.</p>
+<p dir="auto">By default, the spread <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$S$</math-renderer> is the median absolute deviation (MAD) of the data, normalized by about 1.48 so that it becomes an unbiased estimator of the standard deviation for normally distributed values.</p>
+<p dir="auto">For <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$t=0$</math-renderer>, the Hampel filter is equivalent to the median filter. As <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$t$</math-renderer> increases, the Hampel filter becomes more tolerant of outliers. For example:</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using HampelOutliers, Statistics, StatsBase
+julia&gt; x = collect(1:11); x[5] = -6;
+julia&gt; m, S = median(x), mad(x, normalize=true)
+(6.0, 4.447806655516805)"><pre>julia&gt; <span class="pl-k">using</span> HampelOutliers, Statistics, StatsBase
+julia&gt; x <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">11</span>); x[<span class="pl-c1">5</span>] <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">6</span>;
+julia&gt; m, S <span class="pl-k">=</span> <span class="pl-c1">median</span>(x), <span class="pl-c1">mad</span>(x, normalize<span class="pl-k">=</span><span class="pl-c1">true</span>)
+(6.0, 4.447806655516805)</pre></div>
+<p dir="auto">At the default threshold, <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$t=2$</math-renderer>, the Hampel filter flags the outlier at index 5:</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; findall( Hampel.identify(x) )
+1-element Vector{Int64}:
+ 5"><pre>julia&gt; <span class="pl-c1">findall</span>( Hampel<span class="pl-k">.</span><span class="pl-c1">identify</span>(x) )
+1-element Vector{Int64}:
+ 5</pre></div>
+<p dir="auto">If we change the threshold to <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$t=3$</math-renderer>, however, the outlier is accepted:</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; findall( Hampel.identify(x, threshold=3) )
+Int64[]"><pre>julia&gt; <span class="pl-c1">findall</span>( Hampel<span class="pl-k">.</span><span class="pl-c1">identify</span>(x, threshold<span class="pl-k">=</span><span class="pl-c1">3</span>) )
+Int64[]</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Windowing and weighting</h2><a id="user-content-windowing-and-weighting" class="anchor" aria-label="Permalink: Windowing and weighting" href="#windowing-and-weighting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">In the context of a time series, the Hampel filter criterion and replacement is usually applied in a moving window fashion. For this package, the window length is always odd, and you specify the half-width. For example,</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; x = @. cos((0:10) / 5);
+julia&gt; x[[5, 6]] .= [9, -3];
+julia&gt; findall( Hampel.filter(x, 1) .!= x )
+Int64[]
+
+julia&gt; findall( Hampel.filter(x, 2) .!= x )
+2-element Vector{Int64}:
+ 5
+ 6"><pre>julia&gt; x <span class="pl-k">=</span> <span class="pl-c1">@.</span> <span class="pl-c1">cos</span>((<span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">10</span>) <span class="pl-k">/</span> <span class="pl-c1">5</span>);
+julia&gt; x[[<span class="pl-c1">5</span>, <span class="pl-c1">6</span>]] .<span class="pl-k">=</span> [<span class="pl-c1">9</span>, <span class="pl-k">-</span><span class="pl-c1">3</span>];
+julia&gt; <span class="pl-c1">findall</span>( Hampel<span class="pl-k">.</span><span class="pl-c1">filter</span>(x, <span class="pl-c1">1</span>) <span class="pl-k">.!=</span> x )
+Int64[]
+
+julia&gt; <span class="pl-c1">findall</span>( Hampel<span class="pl-k">.</span><span class="pl-c1">filter</span>(x, <span class="pl-c1">2</span>) <span class="pl-k">.!=</span> x )
+2-element Vector{Int64}:
+ 5
+ 6</pre></div>
+<p dir="auto">One may also specify integer weights <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$w_1, w_2, \dots, w_{2K+1}$</math-renderer> that specify a number of repetitions of each value to be used within the window for median and spread calculations. For example, if the weights are <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$[1, 2, 3, 1, 1]$</math-renderer>, then the original windowed values <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$[-1, -2, -3, -4, -5]$</math-renderer> are expanded to</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$$
+[-1, -2, -2, -3, -3, -3, -4, -5]
+$$</math-renderer></p>
+<p dir="auto">before the median and spread are calculated.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Recursive application</h2><a id="user-content-recursive-application" class="anchor" aria-label="Permalink: Recursive application" href="#recursive-application"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">If replaced values are used immediately in the calculations for following values, the filter is called <em>recursive</em>. That is, if <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$x_1,\dots,x_{i-1}$</math-renderer> have been replaced by <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$y_1,\dots,y_{i-1}$</math-renderer>, then the values used for determining <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$y_{i}$</math-renderer> in a window of width <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$2K+1$</math-renderer> are <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1dbea1ef50c12634dbd612b9b550e90">$y_{i-K},\dots,y_{i-1},x_{i},\dots,x_{i+K}$</math-renderer>.</p>
+<p dir="auto">You can accomplish the recursive form by using the mutating <code>Hampel.filter!</code>, as shown here:</p>
+<div class="highlight highlight-source-julia-console notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; t = 0:40;
+julia&gt; x = @. sign(cos(3t)) + 0.1*sin(t/4);
+julia&gt; y = Hampel.filter(x, 4);  # nonrecursive
+julia&gt; count(x .!= y)
+8
+
+julia&gt; Hampel.filter!(x, x, 4);  # recursive
+julia&gt; count(x .!= y)
+17"><pre>julia&gt; t <span class="pl-k">=</span> <span class="pl-c1">0</span><span class="pl-k">:</span><span class="pl-c1">40</span>;
+julia&gt; x <span class="pl-k">=</span> <span class="pl-c1">@.</span> <span class="pl-c1">sign</span>(<span class="pl-c1">cos</span>(<span class="pl-c1">3</span>t)) <span class="pl-k">+</span> <span class="pl-c1">0.1</span><span class="pl-k">*</span><span class="pl-c1">sin</span>(t<span class="pl-k">/</span><span class="pl-c1">4</span>);
+julia&gt; y <span class="pl-k">=</span> Hampel<span class="pl-k">.</span><span class="pl-c1">filter</span>(x, <span class="pl-c1">4</span>);  <span class="pl-c"><span class="pl-c">#</span> nonrecursive</span>
+julia&gt; <span class="pl-c1">count</span>(x <span class="pl-k">.!=</span> y)
+8
+
+julia&gt; Hampel<span class="pl-k">.</span><span class="pl-c1">filter!</span>(x, x, <span class="pl-c1">4</span>);  <span class="pl-c"><span class="pl-c">#</span> recursive</span>
+julia&gt; <span class="pl-c1">count</span>(x <span class="pl-k">.!=</span> y)
+17</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Boundary conditions</h2><a id="user-content-boundary-conditions" class="anchor" aria-label="Permalink: Boundary conditions" href="#boundary-conditions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">At the ends of the sequence, the window refers to fictitious values that are outside the sequence. The <code>boundary</code> keyword argument specifies how these situations are handled. The options are:</p>
+<ul dir="auto">
+<li><code>:truncate</code> (the default) means that the window is truncated at the ends of the sequence.</li>
+<li><code>:repeat</code> means that the sequence is extended by repeating the first and last values.</li>
+<li><code>:reflect</code> means that the sequence is extended by reflecting across the boundaries.</li>
+</ul>
+<section data-footnotes="" class="footnotes"><h2 id="footnote-label" class="sr-only" dir="auto">Footnotes</h2>
+<ol dir="auto">
+<li id="user-content-fn-1-a1dbea1ef50c12634dbd612b9b550e90">
+<p dir="auto">J Astola, P Kuosmanen, Fundamentals of nonlinear digital filtering (CRC Press, Boca Raton, FL, USA, 1997) <a href="#user-content-fnref-1-a1dbea1ef50c12634dbd612b9b550e90" data-footnote-backref="" aria-label="Back to reference 1" class="data-footnote-backref">↩</a></p>
+</li>
+</ol>
+</section>
+</article></div>

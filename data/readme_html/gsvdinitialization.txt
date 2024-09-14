@@ -1,0 +1,118 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">GsvdInitialization</h1><a id="user-content-gsvdinitialization" class="anchor" aria-label="Permalink: GsvdInitialization" href="#gsvdinitialization"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/HolyLab/GsvdInitialization.jl/actions/workflows/CI.yml"><img src="https://github.com/HolyLab/GsvdInitialization.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/HolyLab/GsvdInitialization.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/062abde113e6ab08391b6db4097df37780c008dc9730fda2ae3e79f3b9385a6b/68747470733a2f2f636f6465636f762e696f2f67682f486f6c794c61622f47737664496e697469616c697a6174696f6e2e6a6c2f67726170682f62616467652e7376673f746f6b656e3d4c78715243735a49766e" alt="codecov" data-canonical-src="https://codecov.io/gh/HolyLab/GsvdInitialization.jl/graph/badge.svg?token=LxqRCsZIvn" style="max-width: 100%;"></a></p>
+<p dir="auto">This package implements the technique in the paper <a href="https://arxiv.org/abs/2408.08260" rel="nofollow">GSVD-NMF: Recovering Missing Features in
+Non-negative Matrix Factorization</a>.
+It is used to recover Non-negative matrix factorization(NMF) components from an initial lower-rank factorization by exploiting the generalized singular value decomposition (GSVD) between existing NMF results and the SVD of X.
+This method allows the incremental expansion of the number of components, which can be convenient and effective for interactive analysis of large-scale data.</p>
+<p dir="auto">See also <a href="https://github.com/HolyLab/NMFMerge.jl">NMFMerge</a> for the converse operation. Together, the two result in a substantial improvement in the quality and consistency of NMF factorization.</p>
+<hr>
+<p dir="auto">Demo:</p>
+<p dir="auto">To run this demo, NMF.jl and LinearAlgebra.jl are also required.</p>
+<p dir="auto">Install and load packages (type <code>]</code> at the <code>julia&gt;</code> prompt to enter <code>pkg&gt;</code> mode):</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; add GsvdInitialization;
+julia&gt; using GsvdInitialization, NMF, LinearAlgebra;"><pre>pkg<span class="pl-k">&gt;</span> add GsvdInitialization;
+julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> GsvdInitialization, NMF, LinearAlgebra;</pre></div>
+<p dir="auto">Generating grouth truth with 10 features.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; include(&quot;demo/generate_ground_truth.jl&quot;)
+julia&gt; W_GT, H_GT = generate_ground_truth();
+julia&gt; X = W_GT*H_GT;"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c1">include</span>(<span class="pl-s"><span class="pl-pds">"</span>demo/generate_ground_truth.jl<span class="pl-pds">"</span></span>)
+julia<span class="pl-k">&gt;</span> W_GT, H_GT <span class="pl-k">=</span> <span class="pl-c1">generate_ground_truth</span>();
+julia<span class="pl-k">&gt;</span> X <span class="pl-k">=</span> W_GT<span class="pl-k">*</span>H_GT;</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="demo/GroundTruth.png"><img src="demo/GroundTruth.png" alt="Sample Figure" width="400" style="max-width: 100%;"></a></p>
+<p dir="auto">Running standard NMF(HALS) using NNDSVD as initialization on X. Here, we're taking a couple of precautions to try to ensure the best possible result from NMF:</p>
+<ul dir="auto">
+<li>we disable premature convergence by setting <code>maxiter</code> to something that is practically infinite</li>
+<li>we use the full <code>svd</code>, rather than <code>rsvd</code>, for initializing NNDSVD, as <code>svd</code> gives higher-quality results than <code>rsvd</code>
+Despite these precautions, we'll see that the NMF result leaves much to be desired:</li>
+</ul>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; result_hals = nnmf(X, 10; init=:nndsvd, alg = :cd, tol = 1e-4, maxiter=10^12, initdata = svd(X));
+julia&gt; sum(abs2, X-result_hals.W*result_hals.H)/sum(abs2, X)
+0.0999994991270576"><pre>julia<span class="pl-k">&gt;</span> result_hals <span class="pl-k">=</span> <span class="pl-c1">nnmf</span>(X, <span class="pl-c1">10</span>; init<span class="pl-k">=</span><span class="pl-c1">:nndsvd</span>, alg <span class="pl-k">=</span> <span class="pl-c1">:cd</span>, tol <span class="pl-k">=</span> <span class="pl-c1">1e-4</span>, maxiter<span class="pl-k">=</span><span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">12</span>, initdata <span class="pl-k">=</span> <span class="pl-c1">svd</span>(X));
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">sum</span>(abs2, X<span class="pl-k">-</span>result_hals<span class="pl-k">.</span>W<span class="pl-k">*</span>result_hals<span class="pl-k">.</span>H)<span class="pl-k">/</span><span class="pl-c1">sum</span>(abs2, X)
+<span class="pl-c1">0.0999994991270576</span></pre></div>
+<p dir="auto">The result is given by</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="demo/ResultHals.png"><img src="demo/ResultHals.png" alt="Sample Figure" width="400" style="max-width: 100%;"></a></p>
+<p dir="auto">This factorization is not perfect as two components are the same and two features share one component.
+Then, running GSVD-NMF on X (also using NNSVD as initialization) and computing the new reconstruction error:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="Wgsvd, Hgsvd = gsvdnmf(X, 9=&gt;10; alg = :cd, tol_final = 1e-4, tol_intermediate = 1e-2, maxiter = 10^12);
+julia&gt; sum(abs2, X-Wgsvd*Hgsvd)/sum(abs2, X)
+1.2322603074132593e-10"><pre>Wgsvd, Hgsvd <span class="pl-k">=</span> <span class="pl-c1">gsvdnmf</span>(X, <span class="pl-c1">9</span><span class="pl-k">=&gt;</span><span class="pl-c1">10</span>; alg <span class="pl-k">=</span> <span class="pl-c1">:cd</span>, tol_final <span class="pl-k">=</span> <span class="pl-c1">1e-4</span>, tol_intermediate <span class="pl-k">=</span> <span class="pl-c1">1e-2</span>, maxiter <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">12</span>);
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">sum</span>(abs2, X<span class="pl-k">-</span>Wgsvd<span class="pl-k">*</span>Hgsvd)<span class="pl-k">/</span><span class="pl-c1">sum</span>(abs2, X)
+<span class="pl-c1">1.2322603074132593e-10</span></pre></div>
+<p dir="auto">An imperfect factorization from <code>nnmf</code> alone was augmented by <code>gsvdnmf</code> to a perfect factorization.
+Here are the new components:</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="demo/ResultGsvdNMF.png"><img src="demo/ResultGsvdNMF.png" alt="Sample Figure" width="400" style="max-width: 100%;"></a></p>
+<hr>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Functions</h2><a id="user-content-functions" class="anchor" aria-label="Permalink: Functions" href="#functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">W, H = <strong>gsvdnmf</strong>(X::AbstractMatrix, ncomponents::Pair{Int,Int};
+tol_final=1e-4,
+tol_intermediate=1e-4,
+kwargs...)</p>
+<p dir="auto">Perform "GSVD-NMF" on the data matrix <code>X</code>.</p>
+<p dir="auto">Arguments:</p>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>X</code>: non-negative data matrix</p>
+</li>
+<li>
+<p dir="auto"><code>ncomponents</code>: in the form of <code>n1 =&gt; n2</code>, augments from <code>n1</code> components to <code>n2</code>components,
+where <code>n1</code> is the number of components for initial NMF (under-complete NMF), and <code>n2</code> is the number of
+components for final NMF.</p>
+</li>
+</ul>
+<p dir="auto">Alternatively, <code>ncomponents</code> can be an integer denoting the number of components for final NMF.
+In this case, <code>gsvdnmf</code> defaults to augment components on initial NMF solution by 1.</p>
+<p dir="auto">Keyword arguments:</p>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>tol_final</code>: The tolerence of final NMF, default:<code>10^{-4}</code></p>
+</li>
+<li>
+<p dir="auto"><code>tol_intermediate</code>: The tolerence of initial NMF (under-complete NMF), default: tol_final</p>
+</li>
+</ul>
+<p dir="auto">Other keyword arguments are passed to <code>NMF.nnmf</code>.</p>
+<hr>
+<p dir="auto">W, H = <strong>gsvdnmf</strong>(X::AbstractMatrix, W::AbstractMatrix, H::AbstractMatrix, f;
+n2 = size(first(f), 2),
+tol_nmf=1e-4,
+kwargs...)</p>
+<p dir="auto">Augment <code>W</code> and <code>H</code> to have <code>n2</code> components, subsequently polished by NMF.</p>
+<p dir="auto">Arguments:</p>
+<ul dir="auto">
+<li>
+<p dir="auto"><code>X</code>: non-negative data matrix</p>
+</li>
+<li>
+<p dir="auto"><code>W</code> and <code>H</code>: initial NMF factorization</p>
+</li>
+<li>
+<p dir="auto"><code>n2</code>: the number of components in augmented factorization</p>
+</li>
+<li>
+<p dir="auto"><code>f</code>: SVD (or Truncated SVD) of <code>X</code></p>
+</li>
+</ul>
+<p dir="auto">Keyword arguments:</p>
+<ul dir="auto">
+<li><code>tol_nmf</code>: the tolerance of  NMF polishing step, default: 1e-4</li>
+</ul>
+<p dir="auto">Other keyword arguments are passed to <code>NMF.nnmf</code>.</p>
+<hr>
+<p dir="auto">Wadd, Hadd, S = <strong>gsvdrecover</strong>(X, W0, H0, kadd, f)</p>
+<p dir="auto">Augment components for <code>W</code> and <code>H</code> without polishing by NMF.</p>
+<p dir="auto">Outputs:</p>
+<p dir="auto"><code>Wadd</code>: augmented NMF solution</p>
+<p dir="auto"><code>Hadd</code>: augmented NMF solution</p>
+<p dir="auto"><code>S</code>: generalized singular values for the <code>kadd</code> augmented components</p>
+<p dir="auto">Arguments:</p>
+<p dir="auto"><code>X</code>: non-nagetive 2D data matrix</p>
+<p dir="auto"><code>W0</code>: NMF solution</p>
+<p dir="auto"><code>H0</code>: NMF solution</p>
+<p dir="auto"><code>kadd</code>: number of new components</p>
+<p dir="auto"><code>f</code>: SVD (or Truncated SVD) of <code>X</code></p>
+<hr>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Citation</h2><a id="user-content-citation" class="anchor" aria-label="Permalink: Citation" href="#citation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Thanks for citing this work! See the "Cite this repository" link in the "About" bar for format options.</p>
+</article></div>

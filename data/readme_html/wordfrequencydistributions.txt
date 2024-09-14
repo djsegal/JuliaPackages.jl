@@ -1,0 +1,89 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">WordFrequencyDistributions</h1><a id="user-content-wordfrequencydistributions" class="anchor" aria-label="Permalink: WordFrequencyDistributions" href="#wordfrequencydistributions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A Julia implementation of some of the techniques for estimating and analyzing word frequency statistics, from R. Harald Baayen's book <em>Word Frequency Distributions</em> (Springer, 2001).</p>
+<p dir="auto">Operations center around the <code>Corpus</code> struct, which was designed to provide excellent performance over a range of operations that the book discusses.</p>
+<p dir="auto">A <code>Corpus</code> may be a single text (the text of a novel, for example) or a collection of documents. However, in either case, the words are simply stored as a single homogenous entity, and the document divisions (if any) are not recoverable or of interest. (There are ways that you can get at the document divisions if you need to -- see <code>partitions</code> and <code>intervals</code> in the usage section below.)</p>
+<p dir="auto">Two demos are provided in the <code>examples</code> folder in this repo.</p>
+<p dir="auto">Update: As of version 0.4, a <code>Corpus</code> can be used not only for strings but for any arbitrary type, such as ngrams. Specifically, the struct is parameterized by two types <code>T1</code> (the type of the thing being counted) and <code>T2 &lt;: Integer</code> for internal representation of distinct elements. The number of distinct things being counted (e.g. tokens) must not exceed <code>typemax(T2)</code>. The default is <code>Corpus{String, UInt16}</code>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Notation</h2><a id="user-content-notation" class="anchor" aria-label="Permalink: Notation" href="#notation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Function and field names were chosen as a compromise between fidelity to Baayen's notation in the book, and the goal of having a nice, consistent interface to all the functions. I apologize for having violated style conventions by using capitals for some function names (V, N, etc), but otherwise I would have had to impose a very different naming scheme of my own, and that seemed contrary to my goals here. So, functions in this package are designed to resemble equations from the book as much as possible.</p>
+<p dir="auto">The main exception is where the book names something like <code>V(N)</code> (where N is the number of tokens in a corpus); in this package, I implement that as <code>V(c::Corpus)</code>, where the corpus <code>c</code> encapsulates <code>N</code>, among other things.</p>
+<p dir="auto">Another deviation from Baayen's notation is that in cases of interpolation or extrapolation of vocabulary size, Baayen uses N_0 to represent the size of the corpus on which the estimate is conditioned and N for the sample size at which to interpolate or extrapolate. Instead, I let <code>N</code> keep its original meaning (the number of tokens in a corpus), and I use <code>t</code> (for "text time") to denote the point at the text, measured in tokens, at which to interpolate/extrapolate.</p>
+<p dir="auto">Finally, in cases where Baayen names things such as the "characteristic constants" Yule's <em>K</em>, Simpson's <em>D</em>, Zipf size <em>Z</em>, etc., I've instead named these functions all <code>C</code> for characteristic constant and provided trait-based dispatch to distinguish them, such as <code>C(::Yule, args...)</code> and <code>C(::Simpson, args...)</code>, to emphasize their similar nature and to reduce the alphabet-soup aspect of the interface somewhat.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">If you have a vector of strings called <code>text</code> (e.g. tokenized from a document), constructing a <code>Corpus</code> struct is simple:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="c = Corpus(text)"><pre class="notranslate"><code>c = Corpus(text)
+</code></pre></div>
+<p dir="auto">Some basic operations:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="N(c)        # the number of tokens in `c`
+V(c)        # the number of distinct words (types) in `c`
+V(999, c)   # the number of types in `c` occurring exactly 999 times
+g(999, c)   # the number of types occurring at least 999 times
+spectrum(c) # accessor for the whole frequency spectrum V(m, c)"><pre class="notranslate"><code>N(c)        # the number of tokens in `c`
+V(c)        # the number of distinct words (types) in `c`
+V(999, c)   # the number of types in `c` occurring exactly 999 times
+g(999, c)   # the number of types occurring at least 999 times
+spectrum(c) # accessor for the whole frequency spectrum V(m, c)
+</code></pre></div>
+<p dir="auto">To evaluate statistics on a smaller sample, such as on the first 1000 words of <code>c</code>, you would subset your corpus like this:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="smaller_corpus = c[1:1000]
+V(smaller_corpus) # get the size of the vocabulary in the reduced corpus
+N(smaller_corpus) # the total number of words in the reduced corpus (1000)"><pre class="notranslate"><code>smaller_corpus = c[1:1000]
+V(smaller_corpus) # get the size of the vocabulary in the reduced corpus
+N(smaller_corpus) # the total number of words in the reduced corpus (1000)
+</code></pre></div>
+<p dir="auto">You can also sample or permute a corpus. The difference is only one of notation; <code>permute</code> here is just a complete reordering of the word occurrences. These two operations are the same:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="sampled_corpus = sample(c, N(c); replace = false)
+permuted_corpus = permute(c)"><pre class="notranslate"><code>sampled_corpus = sample(c, N(c); replace = false)
+permuted_corpus = permute(c)
+</code></pre></div>
+<p dir="auto">You can break your corpus up into a vector of 20 smaller ones via:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="chunks = partition(c; k = 20)"><pre class="notranslate"><code>chunks = partition(c; k = 20)
+</code></pre></div>
+<p dir="auto">Or, if you you have specific points at which you want to split the corpus, then instead of passing <code>k</code> you can specify the <code>endpoints</code> of each split yourself. This will split <code>c</code> into a vector of three corpora:  tokens 1 through 99, tokens 100 through 999, and tokens 1000 through the end:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="chunks = partition(c; endpoints = [99, 999, N(c)])"><pre class="notranslate"><code>chunks = partition(c; endpoints = [99, 999, N(c)])
+</code></pre></div>
+<p dir="auto">A related operation is getting a certain number of equispaced points in the corpus, e.g. 20:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="equispaced_points = intervals(c; k = 20)"><pre class="notranslate"><code>equispaced_points = intervals(c; k = 20)
+</code></pre></div>
+<p dir="auto">For sample and population statistics relating to your corpus, the general pattern of functions offered is as follows: <code>𝑓([::Estimator,] args...; kwargs...)</code>. If you omit the first argument, an <code>Estimator</code>, then the operation is performed empirically on the observed sample. Otherwise, you may supply an <code>Estimator</code> for which an estimation method is defined. Here are a few different ways to compute the number of distinct tokens (types) that occur exactly once in a corpus <code>c</code>.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="# actual number of words in the observed sample that occur exactly once:
+V(1, c)
+
+# Gale and Sampson's Zipfian smoother to derive a theoretical value of V(1, c):
+V(GaleSampson(), 1, c)
+
+# binomial expectation for the value of V(1, c), conditioned on the full corpus `c` 
+# and interpolated at &quot;text time&quot; t = 10602 (i.e. ~10k words into the corpus):
+V(BinomialExpectation(), 1, c; t = 10602)"><pre class="notranslate"><code># actual number of words in the observed sample that occur exactly once:
+V(1, c)
+
+# Gale and Sampson's Zipfian smoother to derive a theoretical value of V(1, c):
+V(GaleSampson(), 1, c)
+
+# binomial expectation for the value of V(1, c), conditioned on the full corpus `c` 
+# and interpolated at "text time" t = 10602 (i.e. ~10k words into the corpus):
+V(BinomialExpectation(), 1, c; t = 10602)
+</code></pre></div>
+<p dir="auto">A couple of loss functions are implemented, which you can use like this:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="# set up a couple of higher-order functions which we'll compare below:
+observed = (m, c) -&gt; V(m, c[1:10602])
+expected = (m, c) -&gt; V(BinomialExpectation(), m, c; t = 10602)
+
+# calculate the MSE of using the binomial expectation of V(m, c) relative to
+# the actual observed value, over the range of spectrum elements 1 through 15:
+loss(MSE(), c; y = observed, yhat = expected, spectra = 1:15)
+
+# as above, but use the relative MSE variant, &quot;MSEr&quot; (equation 3.2 from Baayen):
+loss(MSEr(), c; y = observed, yhat = expected, spectra = 1:15)"><pre class="notranslate"><code># set up a couple of higher-order functions which we'll compare below:
+observed = (m, c) -&gt; V(m, c[1:10602])
+expected = (m, c) -&gt; V(BinomialExpectation(), m, c; t = 10602)
+
+# calculate the MSE of using the binomial expectation of V(m, c) relative to
+# the actual observed value, over the range of spectrum elements 1 through 15:
+loss(MSE(), c; y = observed, yhat = expected, spectra = 1:15)
+
+# as above, but use the relative MSE variant, "MSEr" (equation 3.2 from Baayen):
+loss(MSEr(), c; y = observed, yhat = expected, spectra = 1:15)
+</code></pre></div>
+<p dir="auto"><a href="https://github.com/myersm0/WordFrequencyDistributions.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/myersm0/WordFrequencyDistributions.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+</article></div>

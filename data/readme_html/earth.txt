@@ -1,0 +1,291 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Earth/MARS</h1><a id="user-content-earthmars" class="anchor" aria-label="Permalink: Earth/MARS" href="#earthmars"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This is a Julia implementation of a regression modeling procedure
+that is similar to Jerome Friedman's 1991 Multivariate Adaptive
+Regression Splines (MARS), which is also known as Earth for
+trademark reasons.</p>
+<p dir="auto">The forward (basis-construction) phase used here should be identical
+to the original MARS procedure.  The original MARS used backward
+selection for model pruning, but this implementation uses the Lasso,
+which was not invented yet at the time that MARS was conceived.</p>
+<p dir="auto">See the <a href="examples">examples</a> folder for additional examples of using
+Earth to build regression models.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The following example has three explanatory variables (x1, x2, x3)
+with an additive mean structure.  The additive contribution of x1 is
+quadratic, the additive contribution of x2 is linear, and x3 does
+not contribute to the mean structure.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
+
+rng = StableRNG(123)
+n = 500
+X = randn(rng, n, 3)
+Ey = X[:, 1].^2 - X[:, 2]
+y = Ey + randn(rng, n);"><pre><span class="pl-k">using</span> Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
+
+rng <span class="pl-k">=</span> <span class="pl-c1">StableRNG</span>(<span class="pl-c1">123</span>)
+n <span class="pl-k">=</span> <span class="pl-c1">500</span>
+X <span class="pl-k">=</span> <span class="pl-c1">randn</span>(rng, n, <span class="pl-c1">3</span>)
+Ey <span class="pl-k">=</span> X[:, <span class="pl-c1">1</span>]<span class="pl-k">.</span><span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">-</span> X[:, <span class="pl-c1">2</span>]
+y <span class="pl-k">=</span> Ey <span class="pl-k">+</span> <span class="pl-c1">randn</span>(rng, n);</pre></div>
+<p dir="auto">First we fit a model using Earth, constraining the "order" to 1,
+which will be discussed further below.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="cfg = EarthConfig(; maxorder=1)
+md1 = fit(EarthModel, X, y; config=cfg, verbosity=1)"><pre>cfg <span class="pl-k">=</span> <span class="pl-c1">EarthConfig</span>(; maxorder<span class="pl-k">=</span><span class="pl-c1">1</span>)
+md1 <span class="pl-k">=</span> <span class="pl-c1">fit</span>(EarthModel, X, y; config<span class="pl-k">=</span>cfg, verbosity<span class="pl-k">=</span><span class="pl-c1">1</span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="     Coef    Std coef    Term
+    -2.550       --      intercept
+    -1.529      -0.773   intercept * h(v1 - 0.206)
+     1.776       1.173   intercept * h(0.206 - v1)
+    -0.425      -0.226   intercept * h(v2 - 0.171)
+     0.648       0.420   intercept * h(0.171 - v2)
+     1.181       1.063   intercept * h(v1 - -1.247)
+     0.426       0.842   intercept * h(v1 - -1.247) * h(v1 - -0.199)
+    -0.126      -0.107   intercept * h(v3 - -0.994)
+    -0.197      -0.055   intercept * h(-0.994 - v3)
+     0.038       0.081   intercept * h(v3 - -0.994) * h(v3 - -0.633)
+    -0.045      -0.055   intercept * h(0.171 - v2) * h(-0.175 - v2)
+"><pre class="notranslate"><code>     Coef    Std coef    Term
+    -2.550       --      intercept
+    -1.529      -0.773   intercept * h(v1 - 0.206)
+     1.776       1.173   intercept * h(0.206 - v1)
+    -0.425      -0.226   intercept * h(v2 - 0.171)
+     0.648       0.420   intercept * h(0.171 - v2)
+     1.181       1.063   intercept * h(v1 - -1.247)
+     0.426       0.842   intercept * h(v1 - -1.247) * h(v1 - -0.199)
+    -0.126      -0.107   intercept * h(v3 - -0.994)
+    -0.197      -0.055   intercept * h(-0.994 - v3)
+     0.038       0.081   intercept * h(v3 - -0.994) * h(v3 - -0.633)
+    -0.045      -0.055   intercept * h(0.171 - v2) * h(-0.175 - v2)
+
+</code></pre></div>
+<p dir="auto">The representation of the model displayed above shows all of the
+terms, and how each term is constructed as a product of hinges.  It
+also gives the raw and standardized coefficients for each term.  The
+standardized coefficient adjusts for the variance of the term and is
+a better indicator of how much the term contributes to the model.</p>
+<p dir="auto">To visualize the fitted and true mean structures, we can consider
+the fitted conditional mean of Y as a function of x1, holding x2
+fixed at zero.  The true value of this function is <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1b9d265793ebbdc233a55882a8226e7">$Ey = x_1^2$</math-renderer>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x = -2:0.2:2
+X1 = [x zeros(length(x)) zeros(length(x))]
+y1 = predict(md1, X1)
+
+p = plot(x, y1, xlabel=L&quot;$x_1$&quot;, ylabel=L&quot;$y$&quot;, label=L&quot;$E[y | x_1, x_2=0]$&quot;,
+         size=(400, 300))
+p = plot!(p, x, x.^2, label=L&quot;$y = x_1^2$&quot;)
+Plots.savefig(p, &quot;../assets/readme1.svg&quot;)"><pre>x <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">0.2</span><span class="pl-k">:</span><span class="pl-c1">2</span>
+X1 <span class="pl-k">=</span> [x <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x)) <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x))]
+y1 <span class="pl-k">=</span> <span class="pl-c1">predict</span>(md1, X1)
+
+p <span class="pl-k">=</span> <span class="pl-c1">plot</span>(x, y1, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$x_1$<span class="pl-pds">"</span></span>, ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y$<span class="pl-pds">"</span></span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$E[y | x_1, x_2=0]$<span class="pl-pds">"</span></span>,
+         size<span class="pl-k">=</span>(<span class="pl-c1">400</span>, <span class="pl-c1">300</span>))
+p <span class="pl-k">=</span> <span class="pl-c1">plot!</span>(p, x, x<span class="pl-k">.^</span><span class="pl-c1">2</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y = x_1^2$<span class="pl-pds">"</span></span>)
+Plots<span class="pl-k">.</span><span class="pl-c1">savefig</span>(p, <span class="pl-s"><span class="pl-pds">"</span>../assets/readme1.svg<span class="pl-pds">"</span></span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="&quot;/home/kshedden/Projects/julia/Earth.jl/assets/readme1.svg&quot;"><pre class="notranslate"><code>"/home/kshedden/Projects/julia/Earth.jl/assets/readme1.svg"
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="assets/readme1.svg"><img src="assets/readme1.svg" alt="Example plot 1" style="max-width: 100%;"></a></p>
+<p dir="auto">We can also consider the fitted conditional mean of y as a function
+of x2, holding x1 fixed at zero.  The true value of this function is
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="a1b9d265793ebbdc233a55882a8226e7">$Ey = -x_2$</math-renderer>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="x = -2:0.2:2
+X2 = [zeros(length(x)) x zeros(length(x))]
+y2 = predict(md1, X2)
+
+p = plot(x, y2, label=L&quot;$E[y | x_1=0, x_2, x_3=0]$&quot;, xlabel=L&quot;$x_2$&quot;, ylabel=L&quot;$y$&quot;,
+         size=(400, 300))
+p = plot!(p, x, -x, label=L&quot;$y = -x_2$&quot;)
+Plots.savefig(p, &quot;../assets/readme2.svg&quot;)"><pre>x <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">0.2</span><span class="pl-k">:</span><span class="pl-c1">2</span>
+X2 <span class="pl-k">=</span> [<span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x)) x <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x))]
+y2 <span class="pl-k">=</span> <span class="pl-c1">predict</span>(md1, X2)
+
+p <span class="pl-k">=</span> <span class="pl-c1">plot</span>(x, y2, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$E[y | x_1=0, x_2, x_3=0]$<span class="pl-pds">"</span></span>, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$x_2$<span class="pl-pds">"</span></span>, ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y$<span class="pl-pds">"</span></span>,
+         size<span class="pl-k">=</span>(<span class="pl-c1">400</span>, <span class="pl-c1">300</span>))
+p <span class="pl-k">=</span> <span class="pl-c1">plot!</span>(p, x, <span class="pl-k">-</span>x, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y = -x_2$<span class="pl-pds">"</span></span>)
+Plots<span class="pl-k">.</span><span class="pl-c1">savefig</span>(p, <span class="pl-s"><span class="pl-pds">"</span>../assets/readme2.svg<span class="pl-pds">"</span></span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="&quot;/home/kshedden/Projects/julia/Earth.jl/assets/readme2.svg&quot;"><pre class="notranslate"><code>"/home/kshedden/Projects/julia/Earth.jl/assets/readme2.svg"
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="assets/readme2.svg"><img src="assets/readme2.svg" alt="Example plot 1" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Specifying the model structure</h2><a id="user-content-specifying-the-model-structure" class="anchor" aria-label="Permalink: Specifying the model structure" href="#specifying-the-model-structure"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">There are several ways to control the structure of the model fit by
+Earth.  Above we set <code>maxorder=1</code>, which produces an additive fit,
+meaning that each term in the fitted mean structure involves only
+one of the original variables.  By default, the maximum "degree" of
+any term in the fitted model is two, meaning that each term can
+include up to two hinges involving the same variable.  The
+constraints <code>maxorder=1</code> and <code>maxdegree=2</code> allow Earth to exactly
+represent the true mean structure in this example.</p>
+<p dir="auto">Next we refit the model using Earth, but allowing up to two-way
+interactions (even though no two-way interactions are present).  In
+spite of the added (but unneeded) flexibility, we still do a good
+job capturing the mean structure.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="cfg = EarthConfig(; maxorder=2, maxdegree=2)
+md2 = fit(EarthModel, X, y; config=cfg)
+
+x = -2:0.2:2
+X1 = [x zeros(length(x)) zeros(length(x))]
+y1 = predict(md2, X1)
+p = plot(x, y1, xlabel=L&quot;$x_1$&quot;, ylabel=L&quot;$y$&quot;, label=L&quot;$E[y | x_1, x_2=0, x_3=0]$&quot;,
+         size=(400, 300))
+p = plot!(p, x, x.^2, label=L&quot;$y = x_1^2$&quot;)
+Plots.savefig(p, &quot;../assets/readme3.svg&quot;)"><pre>cfg <span class="pl-k">=</span> <span class="pl-c1">EarthConfig</span>(; maxorder<span class="pl-k">=</span><span class="pl-c1">2</span>, maxdegree<span class="pl-k">=</span><span class="pl-c1">2</span>)
+md2 <span class="pl-k">=</span> <span class="pl-c1">fit</span>(EarthModel, X, y; config<span class="pl-k">=</span>cfg)
+
+x <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">0.2</span><span class="pl-k">:</span><span class="pl-c1">2</span>
+X1 <span class="pl-k">=</span> [x <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x)) <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x))]
+y1 <span class="pl-k">=</span> <span class="pl-c1">predict</span>(md2, X1)
+p <span class="pl-k">=</span> <span class="pl-c1">plot</span>(x, y1, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$x_1$<span class="pl-pds">"</span></span>, ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y$<span class="pl-pds">"</span></span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$E[y | x_1, x_2=0, x_3=0]$<span class="pl-pds">"</span></span>,
+         size<span class="pl-k">=</span>(<span class="pl-c1">400</span>, <span class="pl-c1">300</span>))
+p <span class="pl-k">=</span> <span class="pl-c1">plot!</span>(p, x, x<span class="pl-k">.^</span><span class="pl-c1">2</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y = x_1^2$<span class="pl-pds">"</span></span>)
+Plots<span class="pl-k">.</span><span class="pl-c1">savefig</span>(p, <span class="pl-s"><span class="pl-pds">"</span>../assets/readme3.svg<span class="pl-pds">"</span></span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="&quot;/home/kshedden/Projects/julia/Earth.jl/assets/readme3.svg&quot;"><pre class="notranslate"><code>"/home/kshedden/Projects/julia/Earth.jl/assets/readme3.svg"
+</code></pre></div>
+<p dir="auto">Perhaps we may wish to specify a model in which each variable can
+contribute main effects, but only the first two variables may have
+an interaction.  This can be accomplished as follows.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="constraints = Set([[true, false, false], [false, true, false], [false, false, true], [true, true, false]])
+cfg = EarthConfig(; maxorder=2, maxdegree=2, constraints=constraints)
+md3 = fit(EarthModel, X, y; config=cfg)"><pre>constraints <span class="pl-k">=</span> <span class="pl-c1">Set</span>([[<span class="pl-c1">true</span>, <span class="pl-c1">false</span>, <span class="pl-c1">false</span>], [<span class="pl-c1">false</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>], [<span class="pl-c1">false</span>, <span class="pl-c1">false</span>, <span class="pl-c1">true</span>], [<span class="pl-c1">true</span>, <span class="pl-c1">true</span>, <span class="pl-c1">false</span>]])
+cfg <span class="pl-k">=</span> <span class="pl-c1">EarthConfig</span>(; maxorder<span class="pl-k">=</span><span class="pl-c1">2</span>, maxdegree<span class="pl-k">=</span><span class="pl-c1">2</span>, constraints<span class="pl-k">=</span>constraints)
+md3 <span class="pl-k">=</span> <span class="pl-c1">fit</span>(EarthModel, X, y; config<span class="pl-k">=</span>cfg)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="     Coef    Std coef    Term
+    -2.619       --      intercept
+    -1.637      -0.828   intercept * h(v1 - 0.206)
+     1.796       1.186   intercept * h(0.206 - v1)
+    -0.380      -0.202   intercept * h(v2 - 0.171)
+     0.615       0.399   intercept * h(0.171 - v2)
+     1.210       1.089   intercept * h(v1 - -1.247)
+     0.468       0.926   intercept * h(v1 - -1.247) * h(v1 - -0.199)
+    -0.351      -0.066   intercept * h(v1 - 0.206) * h(-0.747 - v2)
+    -0.049      -0.043   intercept * h(v1 - 0.206) * h(v2 - -0.747) * h(v1 - 0.784)
+    -0.833      -0.044   intercept * h(v1 - 0.206) * h(v2 - -0.747) * h(0.784 - v1) * h(v2 - 0.283)
+    -0.115      -0.098   intercept * h(v3 - -0.994)
+    -0.200      -0.055   intercept * h(-0.994 - v3)
+     0.037       0.079   intercept * h(v3 - -0.994) * h(v3 - -0.633)
+"><pre class="notranslate"><code>     Coef    Std coef    Term
+    -2.619       --      intercept
+    -1.637      -0.828   intercept * h(v1 - 0.206)
+     1.796       1.186   intercept * h(0.206 - v1)
+    -0.380      -0.202   intercept * h(v2 - 0.171)
+     0.615       0.399   intercept * h(0.171 - v2)
+     1.210       1.089   intercept * h(v1 - -1.247)
+     0.468       0.926   intercept * h(v1 - -1.247) * h(v1 - -0.199)
+    -0.351      -0.066   intercept * h(v1 - 0.206) * h(-0.747 - v2)
+    -0.049      -0.043   intercept * h(v1 - 0.206) * h(v2 - -0.747) * h(v1 - 0.784)
+    -0.833      -0.044   intercept * h(v1 - 0.206) * h(v2 - -0.747) * h(0.784 - v1) * h(v2 - 0.283)
+    -0.115      -0.098   intercept * h(v3 - -0.994)
+    -0.200      -0.055   intercept * h(-0.994 - v3)
+     0.037       0.079   intercept * h(v3 - -0.994) * h(v3 - -0.633)
+
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="assets/readme3.svg"><img src="assets/readme3.svg" alt="Example plot 3" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Assessing goodness of fit</h2><a id="user-content-assessing-goodness-of-fit" class="anchor" aria-label="Permalink: Assessing goodness of fit" href="#assessing-goodness-of-fit"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">First we generate a new dataset using a population structure that is
+not additive.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="rng = StableRNG(123)
+n = 1000
+X = randn(rng, n, 3)
+Ey = X[:, 1].^2 + X[:, 1] .* X[:, 2]
+y = Ey  + randn(rng, n)
+
+md4 = fit(EarthModel, X, y)"><pre>rng <span class="pl-k">=</span> <span class="pl-c1">StableRNG</span>(<span class="pl-c1">123</span>)
+n <span class="pl-k">=</span> <span class="pl-c1">1000</span>
+X <span class="pl-k">=</span> <span class="pl-c1">randn</span>(rng, n, <span class="pl-c1">3</span>)
+Ey <span class="pl-k">=</span> X[:, <span class="pl-c1">1</span>]<span class="pl-k">.</span><span class="pl-k">^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> X[:, <span class="pl-c1">1</span>] <span class="pl-k">.*</span> X[:, <span class="pl-c1">2</span>]
+y <span class="pl-k">=</span> Ey  <span class="pl-k">+</span> <span class="pl-c1">randn</span>(rng, n)
+
+md4 <span class="pl-k">=</span> <span class="pl-c1">fit</span>(EarthModel, X, y)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="     Coef    Std coef    Term
+    -0.548       --      intercept
+    -0.347      -0.212   intercept * h(0.052 - v1)
+     0.491       0.382   intercept * h(v1 - 0.052) * h(v2 - -0.800)
+    -0.482      -0.104   intercept * h(v1 - 0.052) * h(-0.800 - v2)
+    -0.381      -0.068   intercept * h(0.052 - v1) * h(v2 - 1.254)
+     0.478       0.464   intercept * h(0.052 - v1) * h(1.254 - v2)
+     0.453       0.477   intercept * h(0.052 - v1) * h(-0.334 - v1)
+     0.352       0.304   intercept * h(v1 - 0.052) * h(v1 - 0.467)
+     0.057       0.073   intercept * h(v1 - 0.052) * h(v1 - 0.467) * h(v3 - -1.296)
+"><pre class="notranslate"><code>     Coef    Std coef    Term
+    -0.548       --      intercept
+    -0.347      -0.212   intercept * h(0.052 - v1)
+     0.491       0.382   intercept * h(v1 - 0.052) * h(v2 - -0.800)
+    -0.482      -0.104   intercept * h(v1 - 0.052) * h(-0.800 - v2)
+    -0.381      -0.068   intercept * h(0.052 - v1) * h(v2 - 1.254)
+     0.478       0.464   intercept * h(0.052 - v1) * h(1.254 - v2)
+     0.453       0.477   intercept * h(0.052 - v1) * h(-0.334 - v1)
+     0.352       0.304   intercept * h(v1 - 0.052) * h(v1 - 0.467)
+     0.057       0.073   intercept * h(v1 - 0.052) * h(v1 - 0.467) * h(v3 - -1.296)
+
+</code></pre></div>
+<p dir="auto">One way to assess how well we have fit the mean structure is by
+considering the mean squared error (MSE). If we have closely
+captured the mean structure, then the MSE should be close to the
+residual variance, which is 1.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="res = residuals(md4)
+mean(res.^2)"><pre>res <span class="pl-k">=</span> <span class="pl-c1">residuals</span>(md4)
+<span class="pl-c1">mean</span>(res<span class="pl-k">.^</span><span class="pl-c1">2</span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="0.9632415036129839"><pre class="notranslate"><code>0.9632415036129839
+</code></pre></div>
+<p dir="auto">Below we plot three conditional mean functions of the form E[y |
+x_1, x_2=f, x_3=0] for fixed values of f=0, 1, 2.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="function make_plot(md)
+    x = -2:0.2:2
+    p = nothing
+    yy = []
+    cols = [&quot;orange&quot;, &quot;purple&quot;, &quot;lime&quot;]
+    for (j,f) in enumerate([0, 1, 2])
+        X1 = [x f*ones(length(x)) zeros(length(x))]
+        yp = predict(md, X1)
+        p = if j == 1
+            plot(x, x.^2 + f*x, xlabel=L&quot;$x$&quot;, ylabel=L&quot;$y$&quot;, label=L&quot;$E[y | x_1, x_2=%$f]$&quot;,
+                 color=cols[j], size=(400, 300))
+        else
+            plot!(p, x, x.^2 + f*x, color=cols[j], label=L&quot;$E[y | x_1, x_2=%$f]$&quot;)
+        end
+        plot!(p, x, yp, color=cols[j], ls=:dash, label=L&quot;$\hat{E}[y | x_1, x_2=%$f]$&quot;)
+    end
+    Plots.savefig(p, &quot;../assets/readme4.svg&quot;)
+end
+
+make_plot(md4)"><pre><span class="pl-k">function</span> <span class="pl-en">make_plot</span>(md)
+    x <span class="pl-k">=</span> <span class="pl-k">-</span><span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">0.2</span><span class="pl-k">:</span><span class="pl-c1">2</span>
+    p <span class="pl-k">=</span> <span class="pl-c1">nothing</span>
+    yy <span class="pl-k">=</span> []
+    cols <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>orange<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>purple<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>lime<span class="pl-pds">"</span></span>]
+    <span class="pl-k">for</span> (j,f) <span class="pl-k">in</span> <span class="pl-c1">enumerate</span>([<span class="pl-c1">0</span>, <span class="pl-c1">1</span>, <span class="pl-c1">2</span>])
+        X1 <span class="pl-k">=</span> [x f<span class="pl-k">*</span><span class="pl-c1">ones</span>(<span class="pl-c1">length</span>(x)) <span class="pl-c1">zeros</span>(<span class="pl-c1">length</span>(x))]
+        yp <span class="pl-k">=</span> <span class="pl-c1">predict</span>(md, X1)
+        p <span class="pl-k">=</span> <span class="pl-k">if</span> j <span class="pl-k">==</span> <span class="pl-c1">1</span>
+            <span class="pl-c1">plot</span>(x, x<span class="pl-k">.^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> f<span class="pl-k">*</span>x, xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$x$<span class="pl-pds">"</span></span>, ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$y$<span class="pl-pds">"</span></span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$E[y | x_1, x_2=%$f]$<span class="pl-pds">"</span></span>,
+                 color<span class="pl-k">=</span>cols[j], size<span class="pl-k">=</span>(<span class="pl-c1">400</span>, <span class="pl-c1">300</span>))
+        <span class="pl-k">else</span>
+            <span class="pl-c1">plot!</span>(p, x, x<span class="pl-k">.^</span><span class="pl-c1">2</span> <span class="pl-k">+</span> f<span class="pl-k">*</span>x, color<span class="pl-k">=</span>cols[j], label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$E[y | x_1, x_2=%$f]$<span class="pl-pds">"</span></span>)
+        <span class="pl-k">end</span>
+        <span class="pl-c1">plot!</span>(p, x, yp, color<span class="pl-k">=</span>cols[j], ls<span class="pl-k">=</span><span class="pl-c1">:dash</span>, label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$<span class="pl-cce">\h</span>at{E}[y | x_1, x_2=%$f]$<span class="pl-pds">"</span></span>)
+    <span class="pl-k">end</span>
+    Plots<span class="pl-k">.</span><span class="pl-c1">savefig</span>(p, <span class="pl-s"><span class="pl-pds">"</span>../assets/readme4.svg<span class="pl-pds">"</span></span>)
+<span class="pl-k">end</span>
+
+<span class="pl-c1">make_plot</span>(md4)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="&quot;/home/kshedden/Projects/julia/Earth.jl/assets/readme4.svg&quot;"><pre class="notranslate"><code>"/home/kshedden/Projects/julia/Earth.jl/assets/readme4.svg"
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="assets/readme4.svg"><img src="assets/readme4.svg" alt="Example plot 4" style="max-width: 100%;"></a></p>
+<p dir="auto">Below we plot the generalized r-squared statistic against the number
+of model terms (the degrees of freedom in the model) during the
+forward phase of model construction.  The true (population)
+r-squared value is also plotted.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="p = plot(md4.nterms, gr2(md4), label=L&quot;Estimated $r^2$&quot;, size=(400, 300),
+         xlabel=&quot;Number of terms&quot;, ylabel=L&quot;$r^2$&quot;)
+p = plot!(p, md4.nterms, cor(Ey, y)^2*ones(length(md4.nterms)), label=L&quot;True $r^2$&quot;)
+Plots.savefig(p, &quot;../assets/readme5.svg&quot;)"><pre>p <span class="pl-k">=</span> <span class="pl-c1">plot</span>(md4<span class="pl-k">.</span>nterms, <span class="pl-c1">gr2</span>(md4), label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>Estimated $r^2$<span class="pl-pds">"</span></span>, size<span class="pl-k">=</span>(<span class="pl-c1">400</span>, <span class="pl-c1">300</span>),
+         xlabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>Number of terms<span class="pl-pds">"</span></span>, ylabel<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>$r^2$<span class="pl-pds">"</span></span>)
+p <span class="pl-k">=</span> <span class="pl-c1">plot!</span>(p, md4<span class="pl-k">.</span>nterms, <span class="pl-c1">cor</span>(Ey, y)<span class="pl-k">^</span><span class="pl-c1">2</span><span class="pl-k">*</span><span class="pl-c1">ones</span>(<span class="pl-c1">length</span>(md4<span class="pl-k">.</span>nterms)), label<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds"><span class="pl-c1">L</span>"</span>True $r^2$<span class="pl-pds">"</span></span>)
+Plots<span class="pl-k">.</span><span class="pl-c1">savefig</span>(p, <span class="pl-s"><span class="pl-pds">"</span>../assets/readme5.svg<span class="pl-pds">"</span></span>)</pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="&quot;/home/kshedden/Projects/julia/Earth.jl/assets/readme5.svg&quot;"><pre class="notranslate"><code>"/home/kshedden/Projects/julia/Earth.jl/assets/readme5.svg"
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="assets/readme5.svg"><img src="assets/readme5.svg" alt="Example plot 5" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">References</h2><a id="user-content-references" class="anchor" aria-label="Permalink: References" href="#references"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">[1] Multivariate Adaptive Regression Splines, Jerome H. Friedman.
+The Annals of Statistics, Vol. 19, No. 1. (Mar., 1991), pp. 1-67.</p>
+<hr>
+<p dir="auto"><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p>
+</article></div>

@@ -1,0 +1,72 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">LengthFreeStaticMatrices.jl</h1><a id="user-content-lengthfreestaticmatricesjl" class="anchor" aria-label="Permalink: LengthFreeStaticMatrices.jl" href="#lengthfreestaticmatricesjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/brainandforce/LengthFreeStaticMatrices.jl/actions"><img src="https://github.com/brainandforce/LengthFreeStaticMatrices.jl/workflows/CI/badge.svg" alt="CI status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/brainandforce/LengthFreeStaticMatrices.jl/" rel="nofollow"><img src="https://camo.githubusercontent.com/907776c32be92d719d6bdca24c8c107568f9a134f3d1c9993fbb8d4b89b94489/68747470733a2f2f636f6465636f762e696f2f67682f627261696e616e64666f7263652f4c656e677468467265655374617469634d617472696365732e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Codecov" data-canonical-src="https://codecov.io/gh/brainandforce/LengthFreeStaticMatrices.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/JuliaTesting/Aqua.jl"><img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg" alt="Aqua.jl" style="max-width: 100%;"></a></p>
+<p dir="auto">Have you ever wanted to include a <code>SMatrix</code> as a field for a struct, but realized that you need to
+include a separate length parameter in order to create a pure bits type?</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using StaticArrays
+
+julia&gt; struct Test{M,N,T}
+           matrix::SMatrix{M,N,T}
+       end
+
+julia&gt; isbitstype(Test{2,3,Int})
+false
+
+julia&gt; struct AnotherTest{M,N,T,L}
+           matrix::SMatrix{M,N,T,L}
+       end
+
+julia&gt; isbitstype(AnotherTest{2,3,Int,6})
+true"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> StaticArrays
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> Test{M,N,T}
+           matrix<span class="pl-k">::</span><span class="pl-c1">SMatrix{M,N,T}</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">isbitstype</span>(Test{<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,Int})
+<span class="pl-c1">false</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> AnotherTest{M,N,T,L}
+           matrix<span class="pl-k">::</span><span class="pl-c1">SMatrix{M,N,T,L}</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">isbitstype</span>(AnotherTest{<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,Int,<span class="pl-c1">6</span>})
+<span class="pl-c1">true</span></pre></div>
+<p dir="auto">The problem is that Julia cannot automatically infer that <code>L = M*N</code>, as there is no way to constrain
+type variables to be numeric values, or to perform operations such as multiplication with them. For
+all the compiler knows, <code>L</code> could be any value (or even a type).</p>
+<p dir="auto">This package solves this problem by introducing a new type, <code>LSMatrix{M,N,T}</code>, which stores its data
+in an <code>NTuple{M,NTuple{N,T}}</code>. We also provide the alias <code>SquareLSMatrix{D,T}</code> for square matrices.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using LengthFreeStaticMatrices
+
+julia&gt; struct YetAnotherTest{M,N,T}
+           matrix::LSMatrix{M,N,T}
+       end
+
+julia&gt; isbitstype(YetAnotherTest{2,3,Int})
+true"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> LengthFreeStaticMatrices
+
+julia<span class="pl-k">&gt;</span> <span class="pl-k">struct</span> YetAnotherTest{M,N,T}
+           matrix<span class="pl-k">::</span><span class="pl-c1">LSMatrix{M,N,T}</span>
+       <span class="pl-k">end</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">isbitstype</span>(YetAnotherTest{<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,Int})
+<span class="pl-c1">true</span></pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Why would you use this?</h2><a id="user-content-why-would-you-use-this" class="anchor" aria-label="Permalink: Why would you use this?" href="#why-would-you-use-this"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">A type which is a sufficiently small set of pure bits can be stored inline rather than as references
+to individually allocated objects.</p>
+<p dir="auto">There is no expected performance gain over <code>StaticArrays.SMatrix</code> on its own (and as this package is
+quite new, there is likely room for performance improvements in the implementation); the intent is
+to allow for the optimization of data structures which contain small matrices without having to leak
+an unnecessary type parameter.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Performance</h2><a id="user-content-performance" class="anchor" aria-label="Permalink: Performance" href="#performance"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">We haven't benchmarked this implementation yet, but a brief glance of LLVM bitcode suggests that the
+performance should be on par with <code>SMatrix</code>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Acknowledgements</h2><a id="user-content-acknowledgements" class="anchor" aria-label="Permalink: Acknowledgements" href="#acknowledgements"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This functionality was originally implemented by <a href="https://github.com/thchr/">Thomas Christensen</a> for
+the <a href="https://github.com/thchr/Crystalline.jl">Crystalline.jl</a> package for square matrices.</p>
+<p dir="auto"><a href="https://github.com/JuliaLang/julia/issues/8472" data-hovercard-type="issue" data-hovercard-url="/JuliaLang/julia/issues/8472/hovercard">This issue</a> on the Julia repository may be of
+interest if you're interested in a language-level solution to the issue of computing dependent type
+parameters.</p>
+</article></div>

@@ -1,0 +1,82 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">UnionCollections.jl</h1><a id="user-content-unioncollectionsjl" class="anchor" aria-label="Permalink: UnionCollections.jl" href="#unioncollectionsjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Efficient collections (arrays and dictionaries) with <code>Union</code> element types. Compared to <code>Vector{Union{...}}</code>, more operations are type-stable: most notably, <code>map()</code>.</p>
+<p dir="auto">Under the hood, elements of different types are stored in separate sub-collections. This allows for operations on the collection as a whole to be type-stable, while <code>X[i]</code> fundamentally remain type-unstable.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Usage</h1><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# create a regular vector and a union vector:
+julia&gt; V = Union{Int, String}[1, 2, &quot;x&quot;, 3, &quot;yy&quot;]
+5-element Vector{Union{Int64, String}} &lt;...&gt;
+
+julia&gt; A = unioncollection(V)
+5-element UnionVector{Union{Int64, String}} &lt;...&gt;
+
+# these two work basically the same, but the union vector is more efficient
+## Vector:
+
+julia&gt; map(x -&gt; x^3, V)
+5-element Vector{Any}:
+  1
+  8
+   &quot;xxx&quot;
+ 27
+   &quot;yyyyyy&quot;
+
+julia&gt; @code_warntype map(x -&gt; x^3, V)
+Body::Union{Vector{Any}, Vector{Int64}, Vector{String}}
+
+julia&gt; @btime map(x -&gt; x^2, map(x -&gt; x^3, $V))
+  3.445 μs (19 allocations: 792 bytes)
+
+## UnionVector:
+
+julia&gt; map(x -&gt; x^3, A)
+5-element UnionVector{Union{Int64, String}, Tuple{Vector{Int64}, Vector{String}}}:
+  1
+  8
+   &quot;xxx&quot;
+ 27
+   &quot;yyyyyy&quot;
+
+julia&gt; @code_warntype map(x -&gt; x^3, A)
+Body::UnionVector{Union{Int64, String}}
+
+julia&gt; @btime map(x -&gt; x^2, map(x -&gt; x^3, $A))
+  197.597 ns (8 allocations: 392 bytes)"><pre><span class="pl-c"><span class="pl-c">#</span> create a regular vector and a union vector:</span>
+julia<span class="pl-k">&gt;</span> V <span class="pl-k">=</span> Union{Int, String}[<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-s"><span class="pl-pds">"</span>x<span class="pl-pds">"</span></span>, <span class="pl-c1">3</span>, <span class="pl-s"><span class="pl-pds">"</span>yy<span class="pl-pds">"</span></span>]
+<span class="pl-c1">5</span><span class="pl-k">-</span>element Vector{Union{Int64, String}} <span class="pl-k">&lt;</span><span class="pl-k">...</span><span class="pl-k">&gt;</span>
+
+julia<span class="pl-k">&gt;</span> A <span class="pl-k">=</span> <span class="pl-c1">unioncollection</span>(V)
+<span class="pl-c1">5</span><span class="pl-k">-</span>element UnionVector{Union{Int64, String}} <span class="pl-k">&lt;</span><span class="pl-k">...</span><span class="pl-k">&gt;</span>
+
+<span class="pl-c"><span class="pl-c">#</span> these two work basically the same, but the union vector is more efficient</span>
+<span class="pl-c"><span class="pl-c">#</span># Vector:</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">3</span>, V)
+<span class="pl-c1">5</span><span class="pl-k">-</span>element Vector{Any}<span class="pl-k">:</span>
+  <span class="pl-c1">1</span>
+  <span class="pl-c1">8</span>
+   <span class="pl-s"><span class="pl-pds">"</span>xxx<span class="pl-pds">"</span></span>
+ <span class="pl-c1">27</span>
+   <span class="pl-s"><span class="pl-pds">"</span>yyyyyy<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_warntype</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">3</span>, V)
+Body<span class="pl-k">::</span><span class="pl-c1">Union{Vector{Any}, Vector{Int64}, Vector{String}}</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">2</span>, <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">3</span>, <span class="pl-k">$</span>V))
+  <span class="pl-c1">3.445</span> μs (<span class="pl-c1">19</span> allocations<span class="pl-k">:</span> <span class="pl-c1">792</span> bytes)
+
+<span class="pl-c"><span class="pl-c">#</span># UnionVector:</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">3</span>, A)
+<span class="pl-c1">5</span><span class="pl-k">-</span>element UnionVector{Union{Int64, String}, Tuple{Vector{Int64}, Vector{String}}}<span class="pl-k">:</span>
+  <span class="pl-c1">1</span>
+  <span class="pl-c1">8</span>
+   <span class="pl-s"><span class="pl-pds">"</span>xxx<span class="pl-pds">"</span></span>
+ <span class="pl-c1">27</span>
+   <span class="pl-s"><span class="pl-pds">"</span>yyyyyy<span class="pl-pds">"</span></span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@code_warntype</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">3</span>, A)
+Body<span class="pl-k">::</span><span class="pl-c1">UnionVector{Union{Int64, String}}</span>
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">@btime</span> <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">2</span>, <span class="pl-c1">map</span>(x <span class="pl-k">-&gt;</span> x<span class="pl-k">^</span><span class="pl-c1">3</span>, <span class="pl-k">$</span>A))
+  <span class="pl-c1">197.597</span> ns (<span class="pl-c1">8</span> allocations<span class="pl-k">:</span> <span class="pl-c1">392</span> bytes)</pre></div>
+</article></div>

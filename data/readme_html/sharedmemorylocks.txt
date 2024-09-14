@@ -1,0 +1,48 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">SharedMemoryLocks</h1><a id="user-content-sharedmemorylocks" class="anchor" aria-label="Permalink: SharedMemoryLocks" href="#sharedmemorylocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/andreyz4k/SharedMemoryLocks.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/andreyz4k/SharedMemoryLocks.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a></p>
+<p dir="auto">This package provides a class for a lock that can be shared between different processes on a local machine. It is a SpinLock that uses a SharedArray that is memory-mapped between processes, preserving atomicity. This lock is non-reentrant, meaning that recursive use will result in a deadlock.</p>
+<p dir="auto">Usage:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pids = addprocs(2)
+@everywhere using SharedMemoryLocks
+
+push!(pids, myid())
+l = SharedMemoryLock(pids)
+arr = SharedArray{Int}(1, init = 0, pids = pids)
+
+function calc(l, arr)
+    for i in 1:100
+        lock(l)
+        v = arr[1]
+        sleep(0.000000001)
+        arr[1] = v + 1
+        unlock(l)
+    end
+end
+
+f1 = @spawnat pids[1] calc(l, arr)
+f2 = @spawnat pids[2] calc(l, arr)
+fetch(f1)
+fetch(f2)
+@test arr[1] == 200"><pre>pids <span class="pl-k">=</span> <span class="pl-c1">addprocs</span>(<span class="pl-c1">2</span>)
+<span class="pl-c1">@everywhere</span> <span class="pl-k">using</span> SharedMemoryLocks
+
+<span class="pl-c1">push!</span>(pids, <span class="pl-c1">myid</span>())
+l <span class="pl-k">=</span> <span class="pl-c1">SharedMemoryLock</span>(pids)
+arr <span class="pl-k">=</span> <span class="pl-c1">SharedArray</span><span class="pl-c1">{Int}</span>(<span class="pl-c1">1</span>, init <span class="pl-k">=</span> <span class="pl-c1">0</span>, pids <span class="pl-k">=</span> pids)
+
+<span class="pl-k">function</span> <span class="pl-en">calc</span>(l, arr)
+    <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>
+        <span class="pl-c1">lock</span>(l)
+        v <span class="pl-k">=</span> arr[<span class="pl-c1">1</span>]
+        <span class="pl-c1">sleep</span>(<span class="pl-c1">0.000000001</span>)
+        arr[<span class="pl-c1">1</span>] <span class="pl-k">=</span> v <span class="pl-k">+</span> <span class="pl-c1">1</span>
+        <span class="pl-c1">unlock</span>(l)
+    <span class="pl-k">end</span>
+<span class="pl-k">end</span>
+
+f1 <span class="pl-k">=</span> <span class="pl-c1">@spawnat</span> pids[<span class="pl-c1">1</span>] <span class="pl-c1">calc</span>(l, arr)
+f2 <span class="pl-k">=</span> <span class="pl-c1">@spawnat</span> pids[<span class="pl-c1">2</span>] <span class="pl-c1">calc</span>(l, arr)
+<span class="pl-c1">fetch</span>(f1)
+<span class="pl-c1">fetch</span>(f2)
+<span class="pl-c1">@test</span> arr[<span class="pl-c1">1</span>] <span class="pl-k">==</span> <span class="pl-c1">200</span></pre></div>
+</article></div>

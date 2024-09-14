@@ -1,0 +1,155 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">RustyObjectStore.jl</h1><a id="user-content-rustyobjectstorejl" class="anchor" aria-label="Permalink: RustyObjectStore.jl" href="#rustyobjectstorejl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/RelationalAI/RustyObjectStore.jl/actions/workflows/CI.yml"><img src="https://github.com/RelationalAI/RustyObjectStore.jl/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a></p>
+<p dir="auto">RustyObjectStore.jl is a Julia package for getting and putting data in cloud object stores, such as Azure Blob Storage and AWS S3.
+It is built on top of the Rust <a href="https://docs.rs/object_store/" rel="nofollow">object_store crate</a>.
+It provides a minimal API and focusses on high throughput.</p>
+<p dir="auto"><em>The package is under active development.</em></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Usage</h2><a id="user-content-usage" class="anchor" aria-label="Permalink: Usage" href="#usage"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The object_store runtime must be started before any requests are sent.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using RustyObjectStore
+init_object_store()"><pre><span class="pl-k">using</span> RustyObjectStore
+<span class="pl-c1">init_object_store</span>()</pre></div>
+<p dir="auto">Requests are sent via calling <code>put_object</code> or <code>get_object!</code>, providing the location of the object to put/get, either the data to send or a buffer that will receive data, and credentials.
+For <code>put_object</code> the data must be a vector of bytes (<code>UInt8</code>).
+For <code>get_object!</code> the buffer must be a vector into which bytes (<code>UInt8</code>) can be written.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using RustyObjectStore: get_object!, put_object, AzureConfig
+
+config = AzureConfig(
+    storage_account_name=&quot;my_account&quot;,
+    container_name=&quot;my_container&quot;,
+    storage_account_key=&quot;my_key&quot;
+)
+input = &quot;1,2,3,4,5,6,7,8,9,0\n&quot; ^ 5  #  100 B
+
+nbytes_written = put_object(codeunits(input), &quot;path/to/example.csv&quot;, config)
+@assert nbytes_written == 100
+
+buffer = Vector{UInt8}(undef, 1000)  # 1000 B
+@assert sizeof(buffer) &gt; sizeof(input)
+
+nbytes_read = get_object!(buffer, &quot;path/to/example.csv&quot;, config)
+@assert nbytes_read == 100
+@assert String(buffer[1:nbytes_read]) == input"><pre><span class="pl-k">using</span> RustyObjectStore<span class="pl-k">:</span> get_object!, put_object, AzureConfig
+
+config <span class="pl-k">=</span> <span class="pl-c1">AzureConfig</span>(
+    storage_account_name<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>my_account<span class="pl-pds">"</span></span>,
+    container_name<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>my_container<span class="pl-pds">"</span></span>,
+    storage_account_key<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>my_key<span class="pl-pds">"</span></span>
+)
+input <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>1,2,3,4,5,6,7,8,9,0<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> <span class="pl-k">^</span> <span class="pl-c1">5</span>  <span class="pl-c"><span class="pl-c">#</span>  100 B</span>
+
+nbytes_written <span class="pl-k">=</span> <span class="pl-c1">put_object</span>(<span class="pl-c1">codeunits</span>(input), <span class="pl-s"><span class="pl-pds">"</span>path/to/example.csv<span class="pl-pds">"</span></span>, config)
+<span class="pl-c1">@assert</span> nbytes_written <span class="pl-k">==</span> <span class="pl-c1">100</span>
+
+buffer <span class="pl-k">=</span> <span class="pl-c1">Vector</span><span class="pl-c1">{UInt8}</span>(undef, <span class="pl-c1">1000</span>)  <span class="pl-c"><span class="pl-c">#</span> 1000 B</span>
+<span class="pl-c1">@assert</span> <span class="pl-c1">sizeof</span>(buffer) <span class="pl-k">&gt;</span> <span class="pl-c1">sizeof</span>(input)
+
+nbytes_read <span class="pl-k">=</span> <span class="pl-c1">get_object!</span>(buffer, <span class="pl-s"><span class="pl-pds">"</span>path/to/example.csv<span class="pl-pds">"</span></span>, config)
+<span class="pl-c1">@assert</span> nbytes_read <span class="pl-k">==</span> <span class="pl-c1">100</span>
+<span class="pl-c1">@assert</span> <span class="pl-c1">String</span>(buffer[<span class="pl-c1">1</span><span class="pl-k">:</span>nbytes_read]) <span class="pl-k">==</span> input</pre></div>
+<p dir="auto">One-time global configuration can be set using a StaticConfig object passed to init_object_store():</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="test_config = StaticConfig(
+    n_threads=0,
+    cache_capacity=20,
+    cache_ttl_secs=30 * 60,
+    cache_tti_secs=5 * 60,
+    multipart_put_threshold=8 * 1024 * 1024,
+    multipart_get_threshold=8 * 1024 * 1024,
+    multipart_get_part_size=8 * 1024 * 1024,
+    concurrency_limit=512
+)
+init_object_store(test_config)"><pre>test_config <span class="pl-k">=</span> <span class="pl-c1">StaticConfig</span>(
+    n_threads<span class="pl-k">=</span><span class="pl-c1">0</span>,
+    cache_capacity<span class="pl-k">=</span><span class="pl-c1">20</span>,
+    cache_ttl_secs<span class="pl-k">=</span><span class="pl-c1">30</span> <span class="pl-k">*</span> <span class="pl-c1">60</span>,
+    cache_tti_secs<span class="pl-k">=</span><span class="pl-c1">5</span> <span class="pl-k">*</span> <span class="pl-c1">60</span>,
+    multipart_put_threshold<span class="pl-k">=</span><span class="pl-c1">8</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>,
+    multipart_get_threshold<span class="pl-k">=</span><span class="pl-c1">8</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>,
+    multipart_get_part_size<span class="pl-k">=</span><span class="pl-c1">8</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span> <span class="pl-k">*</span> <span class="pl-c1">1024</span>,
+    concurrency_limit<span class="pl-k">=</span><span class="pl-c1">512</span>
+)
+<span class="pl-c1">init_object_store</span>(test_config)</pre></div>
+<p dir="auto">n_threads is the number of rust executor threads to use. The default 0 means to use threads equal
+to the number of cores.</p>
+<p dir="auto">cache_capacity is the size of the LRU cache rust uses to cache connection objects. Here a connection
+means a unique combination of destination URL, credentials, and per-connection configuration such as
+timeouts; it does not mean an HTTP connection.</p>
+<p dir="auto">cache_ttl_secs is the time-to-live in seconds for the rust connection cache. Using 0 will disable
+ttl eviction.</p>
+<p dir="auto">cache_tti_secs is the time in seconds that a connection can be idle before it is removed from the
+rust cache. Using 0 will disable tti eviction.</p>
+<p dir="auto">multipart_put_threshold is the size in bytes for which any put request over this size will use a
+multipart upload. The put part size is determined by the rust object_store implementation, which
+uses 10MB.</p>
+<p dir="auto">multipart_get_threshold and multipart_get_part_size configure automatic multipart gets. The part
+size can be greater than the threshold without breaking anything, but it may not make sense to do so.
+The default 8MB for these values was borrowed from CloudStore.jl.</p>
+<p dir="auto">concurrency_limit is the max number of concurrent Rust tasks that will be allowed for requests.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Design</h2><a id="user-content-design" class="anchor" aria-label="Permalink: Design" href="#design"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Packaging</h4><a id="user-content-packaging" class="anchor" aria-label="Permalink: Packaging" href="#packaging"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The Rust <a href="https://github.com/apache/arrow-rs/tree/master/object_store">object_store</a> crate does not provide a C API, so we have defined a C API in <a href="https://github.com/relationalAI/object_store_ffi">object_store_ffi</a>.
+RustyObjectStore.jl depends on <a href="https://github.com/JuliaBinaryWrappers/object_store_ffi_jll.jl">object_store_ffi_jll.jl</a> to provides a pre-built object_store_ffi library, and calls into the native library via <code>@ccall</code>.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Rust/Julia Interaction</h4><a id="user-content-rustjulia-interaction" class="anchor" aria-label="Permalink: Rust/Julia Interaction" href="#rustjulia-interaction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Julia calls into the native library providing a libuv condition variable and then waits on that variable.
+In the native code, the request from Julia is passed into a queue that is processed by a Rust spawned task.
+Once the request to cloud storage is complete, Rust signals the condition variable.
+In this way, the requests are asynchronous all the way up to Julia and the network processing is handled in the context of native thread pool.</p>
+<p dir="auto">For a GET request, Julia provides a buffer for the native library to write into.
+This requires Julia to know a suitable size before-hand and requires the native library to do an extra memory copy, but the upside is that Julia controls the lifetime of the memory.</p>
+<p dir="auto">The library provides a way for Julia code to be notifed about a panic on a Rust thread through the <code>on_rust_panic</code> argument of <code>init_object_store</code>.
+The default behavior is to log the stack trace (if enabled through RUST_BACKTRACE) and exit the process.
+The general recommendation is to treat Rust panics as fatal because Julia tasks may hang due to not being notified.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Threading Model</h4><a id="user-content-threading-model" class="anchor" aria-label="Permalink: Threading Model" href="#threading-model"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Rust object_store uses the <a href="https://docs.rs/tokio" rel="nofollow">tokio</a> async runtime. By default tokio sets up a worker thread pool with a number of threads equal to the number of cores.
+This is configurable using the StaticConfig n_threads option described above.</p>
+<p dir="auto">The unit of scheduling for tokio is a task, and tasks are created by spawn calls. Tasks must be non-blocking and use async/await for I/O operations,
+which also serve as yield points for the cooperative concurrency between tasks. There is work stealing of tasks among the worker thread pools.</p>
+<p dir="auto">In object_store_ffi we use buffer_unordered to create a task for each request from Julia (up to a configurable concurrency limit) and allow them to be processed in any order.
+The concurrency limit is configurable using the StaticConfig concurrency_limit option described above.</p>
+<p dir="auto">Julia will call into object_store_ffi providing a libuv condition variable and then wait on that variable.
+In the Rust code, the request from Julia is passed into a queue that is processed by a Rust spawned task. Once the request to cloud storage is complete,
+Rust signals the condition variable. In this way, the requests are asynchronous all the way up to Julia and the network processing is handled in the context of Rust thread pool.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Developement</h2><a id="user-content-developement" class="anchor" aria-label="Permalink: Developement" href="#developement"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">When working on RustyObjectStore.jl you can either use <a href="https://github.com/JuliaBinaryWrappers/object_store_ffi_jll.jl">object_store_ffi_jll.jl</a> or use a local build of <a href="https://github.com/relationalAI/object_store_ffi">object_store_ffi</a>.
+Using object_store_ffi_jll.jl is just like using any other Julia package.
+For example, you can change object_store_ffi_jll.jl version by updating the Project.toml <code>compat</code> entry and running <code>Pkg.update</code> to get the latest compatible release,
+or <code>Pkg.develop</code> to use an unreleased version.</p>
+<p dir="auto">Alternatively, you can use a local build of object_store_ffi library by setting the <code>OBJECT_STORE_LIB</code> environment variable to the location of the build.
+For example, if you have the object_store_ffi repository at <code>~/repos/object_store_ffi</code> and build the library by running <code>cargo build --release</code> from the base of that repository,
+then you could use that local build by setting <code>OBJECT_STORE_LIB="~/repos/object_store_ffi/target/release"</code>.</p>
+<p dir="auto">The <code>OBJECT_STORE_LIB</code> environment variable is intended to be used only for local development.
+The library path is set at package precompile time, so if the environment variable is changed RustyObjectStore.jl must recompile for the change to take effect.
+You can check the location of the library in use by inspecting <code>RustyObjectStore.rust_lib</code>.</p>
+<p dir="auto">Since RustyObjectStore.jl is the primary user of object_store_ffi, the packages should usually be developed alongside one another.
+For example, updating object_store_ffi and then testing out the changes in RustyObjectStore.jl.
+A new release of object_store_ffi should usually be followed by a new release of object_store_ffi_jll.jl, and then a new release RustyObjectStore.jl.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Testing</h4><a id="user-content-testing" class="anchor" aria-label="Permalink: Testing" href="#testing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Tests use the <a href="https://github.com/JuliaTesting/ReTestItems.jl">ReTestItems.jl</a> test framework.</p>
+<p dir="auto">Run tests using the package manager Pkg.jl like:</p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="$ julia --project -e 'using Pkg; Pkg.test()'"><pre>$ julia --project -e <span class="pl-s"><span class="pl-pds">'</span>using Pkg; Pkg.test()<span class="pl-pds">'</span></span></pre></div>
+<p dir="auto">or after starting in a Julia session started with <code>julia --project</code>:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; # press ] to enter the Pkg REPL mode
+
+(RustyObjectStore) pkg&gt; test"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-c"><span class="pl-c">#</span> press ] to enter the Pkg REPL mode</span>
+
+(RustyObjectStore) pkg<span class="pl-k">&gt;</span> test</pre></div>
+<p dir="auto">Alternatively, tests can be run using ReTestItems.jl directly, which supports running individual tests.
+For example:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; using ReTestItems
+
+julia&gt; runtests(&quot;test/azure_api_tests.jl&quot;; name=&quot;AzureCredentials&quot;)"><pre>julia<span class="pl-k">&gt;</span> <span class="pl-k">using</span> ReTestItems
+
+julia<span class="pl-k">&gt;</span> <span class="pl-c1">runtests</span>(<span class="pl-s"><span class="pl-pds">"</span>test/azure_api_tests.jl<span class="pl-pds">"</span></span>; name<span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>AzureCredentials<span class="pl-pds">"</span></span>)</pre></div>
+<p dir="auto">If <code>OBJECT_STORE_LIB</code> is set, then running tests locally will use the specified local build of the object_store_ffi library, rather than the version installed by object_store_ffi_jll.jl.
+This is useful for testing out changes to object_store_ffi.</p>
+<p dir="auto">Adding new tests is done by writing test code in a <code>@testitem</code> in a file suffixed <code>*_tests.jl</code>.
+See the existing <a href="./test">tests</a> or the <a href="https://github.com/JuliaTesting/ReTestItems.jl/#writing-tests">ReTestItems documentation</a> for examples.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Release Process</h4><a id="user-content-release-process" class="anchor" aria-label="Permalink: Release Process" href="#release-process"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">New releases of RustyObjectStore.jl can be made by incrementing the version number in the Project.toml file following <a href="semver.org">Semantic Versioning</a>,
+and then commenting on the commit that should be released with <code>@JuliaRegistrator register</code>
+(see <a href="https://github.com/RelationalAI/RustyObjectStore.jl/commit/1b1ba5a198e76afe37f75a1d07e701deb818869c#comments">example</a>).
+The <a href="https://github.com/JuliaRegistries/Registrator.jl">JuliaRegistrator</a> bot will reply to the comment and automatically open a PR to the <a href="https://github.com/JuliaRegistries/General/">General</a> package registry, that should then automatically be merged within a few minutes.
+Once that PR to General is merged the new version of RustyObjectStore.jl is available, and the TagBot Github Action will make add a Git tag and a GitHub release for the new version.</p>
+<p dir="auto">RustyObjectStore.jl uses the object_store_ffi library via depending on object_store_ffi_jll.jl which installs pre-built binaries.
+So when a new release of object_store_ffi is made, we need there to be a new release of object_store_ffi_jll.jl before we can make a release of RustyObjectStore.jl that uses the latest object_store_ffi.</p>
+</article></div>

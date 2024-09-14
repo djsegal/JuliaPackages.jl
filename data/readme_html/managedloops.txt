@@ -1,0 +1,181 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">ManagedLoops</h1><a id="user-content-managedloops" class="anchor" aria-label="Permalink: ManagedLoops" href="#managedloops"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/ClimFlows/ManagedLoops/actions/workflows/CI.yml"><img src="https://github.com/ClimFlows/ManagedLoops/actions/workflows/CI.yml/badge.svg" alt="CI" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/ClimFlows/ManagedLoops" rel="nofollow"><img src="https://camo.githubusercontent.com/723d1d814042f7066ef8a29c83f91e462fb14e2d6392d483ab3d05b41ab974c1/68747470733a2f2f636f6465636f762e696f2f67682f436c696d466c6f77732f4d616e616765644c6f6f70732f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Code Coverage" data-canonical-src="https://codecov.io/gh/ClimFlows/ManagedLoops/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto"><code>ManagedLoops</code> defines an API to separate the task of writing loops from the task of defining how to
+execute the loops (e.g. using SIMD, multiple threads, or on a GPU). In addition it provides convenience macros
+<code>@unroll</code> to unroll loops whose length is known at <em>parse</em> time and <code>@vec</code> to mark loops as suitable for SIMD vectorization.</p>
+<p dir="auto">The API is based on the abstract type <code>LoopManager</code> and its descendents, and on the function <code>offload</code>.
+Manager types deriving from <code>LoopManager</code> offer different iteration strategies, see package <a href="https://github.com/ClimFlows/LoopManagers.jl"><code>LoopManagers</code></a>.
+Function <code>offload</code> may be called directly (lower-level API), or may hide behind the <code>@loops</code> macro (higher-level API).</p>
+<p dir="auto"><code>ManagedLoops</code> is very lightweight and depends only on <code>MacroTools</code>. Thus, making it a dependency of your "provider" modules, where number-crunching routines are defined, is very cheap. <a href="https://github.com/ClimFlows/LoopManagers.jl"><code>LoopManagers</code></a> is a more heavyweight package, but only "consumer" modules, those which create loop managers and pass them to functions, need to depend on it.</p>
+<p dir="auto">Furthermore the high-level API is designed to have a small entry cost (loops must be placed in loop-only functions) and a zero exit cost:</p>
+<ul dir="auto">
+<li>If do not want to depend on <code>LoopManagers</code>,  pass <code>nothing</code> as the first argument of <code>@loops</code> functions and they will work "normally", as if <code>@loops</code> and <code>@vec</code> were not there.</li>
+<li>If you decide to drop <code>ManagedLoops</code> altogether, simply remove <code>@loops</code> and <code>@vec</code> and your code just works.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">High-level user API</h2><a id="user-content-high-level-user-api" class="anchor" aria-label="Permalink: High-level user API" href="#high-level-user-api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Single loop</h3><a id="user-content-single-loop" class="anchor" aria-label="Permalink: Single loop" href="#single-loop"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    using LoopManagers: @loops, @vec
+
+    @loops function loop1!(_, x, y) # do not omit the unused first argument !
+        let irange = eachindex(x,y)
+            @vec for i in irange   # signals that this loop supports vectorization
+                # do some work at index i
+                # when indexing arrays, `i` should always be innermost (first) due to `@vec`
+            end
+        end
+    end
+
+    loop!(x,y) = loop1!(nothing, x, y) # plain loop, no manager needed
+    loop1!(mgr::LoopManager, x, y) # loops are &quot;managed&quot; by `mgr`, provided for instance by `LoopManagers`"><pre>    <span class="pl-k">using</span> LoopManagers<span class="pl-k">:</span> <span class="pl-c1">@loops</span>, <span class="pl-c1">@vec</span>
+
+    <span class="pl-c1">@loops</span> <span class="pl-k">function</span> <span class="pl-en">loop1!</span>(_, x, y) <span class="pl-c"><span class="pl-c">#</span> do not omit the unused first argument !</span>
+        <span class="pl-k">let</span> irange <span class="pl-k">=</span> <span class="pl-c1">eachindex</span>(x,y)
+            <span class="pl-c1">@vec</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> irange   <span class="pl-c"><span class="pl-c">#</span> signals that this loop supports vectorization</span>
+                <span class="pl-c"><span class="pl-c">#</span> do some work at index i</span>
+                <span class="pl-c"><span class="pl-c">#</span> when indexing arrays, `i` should always be innermost (first) due to `@vec`</span>
+            <span class="pl-k">end</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-en">loop!</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">loop1!</span>(<span class="pl-c1">nothing</span>, x, y) <span class="pl-c"><span class="pl-c">#</span> plain loop, no manager needed</span>
+    <span class="pl-c1">loop1!</span>(mgr<span class="pl-k">::</span><span class="pl-c1">LoopManager</span>, x, y) <span class="pl-c"><span class="pl-c">#</span> loops are "managed" by `mgr`, provided for instance by `LoopManagers`</span></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Two nested loops</h3><a id="user-content-two-nested-loops" class="anchor" aria-label="Permalink: Two nested loops" href="#two-nested-loops"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    @loops function loop2!(_, x, y)
+        let (irange, jrange) = axes(x) # these ranges are &quot;managed&quot;
+            # we can have an outer loop here, whose range will not be &quot;managed&quot;
+            for j in jrange
+                # do some computation shared by all indices i
+                @vec for i in irange
+                    # do some work at index i, j
+                    # we can have a non-managed inner loop here
+                end
+            end
+        end
+    end
+
+    loop2!(nothing, x, y)
+    loop2!(mgr::LoopManager, x, y)"><pre>    <span class="pl-c1">@loops</span> <span class="pl-k">function</span> <span class="pl-en">loop2!</span>(_, x, y)
+        <span class="pl-k">let</span> (irange, jrange) <span class="pl-k">=</span> <span class="pl-c1">axes</span>(x) <span class="pl-c"><span class="pl-c">#</span> these ranges are "managed"</span>
+            <span class="pl-c"><span class="pl-c">#</span> we can have an outer loop here, whose range will not be "managed"</span>
+            <span class="pl-k">for</span> j <span class="pl-k">in</span> jrange
+                <span class="pl-c"><span class="pl-c">#</span> do some computation shared by all indices i</span>
+                <span class="pl-c1">@vec</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> irange
+                    <span class="pl-c"><span class="pl-c">#</span> do some work at index i, j</span>
+                    <span class="pl-c"><span class="pl-c">#</span> we can have a non-managed inner loop here</span>
+                <span class="pl-k">end</span>
+            <span class="pl-k">end</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-c1">loop2!</span>(<span class="pl-c1">nothing</span>, x, y)
+    <span class="pl-c1">loop2!</span>(mgr<span class="pl-k">::</span><span class="pl-c1">LoopManager</span>, x, y)</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Current limitations</h3><a id="user-content-current-limitations" class="anchor" aria-label="Permalink: Current limitations" href="#current-limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">"supports vectorization" means no conditional branching / flow control inside the loop. Ternary expressions <code>a ? b : c</code> and <code>if-then-else</code> expressions may be used if prepended with the <code>@vec</code> macro, e.g.:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    @vec for i in irange
+        x[i] = @vec if y[i]&gt;0 ; log(y[i]) ; else zero(y[i]); end
+        x[i] = @vec y[i]&gt;0 ? log(y[i]) : zero(y[i])
+    end"><pre>    <span class="pl-c1">@vec</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> irange
+        x[i] <span class="pl-k">=</span> <span class="pl-c1">@vec</span> <span class="pl-k">if</span> y[i]<span class="pl-k">&gt;</span><span class="pl-c1">0</span> ; <span class="pl-c1">log</span>(y[i]) ; <span class="pl-k">else</span> <span class="pl-c1">zero</span>(y[i]); <span class="pl-k">end</span>
+        x[i] <span class="pl-k">=</span> <span class="pl-c1">@vec</span> y[i]<span class="pl-k">&gt;</span><span class="pl-c1">0</span> <span class="pl-k">?</span> <span class="pl-c1">log</span>(y[i]) <span class="pl-k">:</span> <span class="pl-c1">zero</span>(y[i])
+    <span class="pl-k">end</span></pre></div>
+<p dir="auto">Type annotations are not supported with <code>@loops</code>. This limitation could be relaxed with some work.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Under the hood</h2><a id="user-content-under-the-hood" class="anchor" aria-label="Permalink: Under the hood" href="#under-the-hood"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The <code>@loops</code> macro expands to something similar to the following.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Single loop</h3><a id="user-content-single-loop-1" class="anchor" aria-label="Permalink: Single loop" href="#single-loop-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    function loop1!(irange, x, y)
+        @vec for i in irange
+            # do some work at index i
+        end
+    end
+
+    loop1!(mgr, x, y) = offload(loop1!, mgr, eachindex(x,y), x, y)"><pre>    <span class="pl-k">function</span> <span class="pl-en">loop1!</span>(irange, x, y)
+        <span class="pl-c1">@vec</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> irange
+            <span class="pl-c"><span class="pl-c">#</span> do some work at index i</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-en">loop1!</span>(mgr, x, y) <span class="pl-k">=</span> <span class="pl-c1">offload</span>(loop1!, mgr, <span class="pl-c1">eachindex</span>(x,y), x, y)</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Two nested loops</h3><a id="user-content-two-nested-loops-1" class="anchor" aria-label="Permalink: Two nested loops" href="#two-nested-loops-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    function loop2!((irange, jrange), x, y)
+        for j in jrange
+            # do some computation shared by all indices i
+            @vec for i irange
+                # do some work at index i
+            end
+        end
+    end
+
+    loop2!(mgr, x, y) = offload(loop2!, mgr, axes(x), x, y)"><pre>    <span class="pl-k">function</span> <span class="pl-en">loop2!</span>((irange, jrange), x, y)
+        <span class="pl-k">for</span> j <span class="pl-k">in</span> jrange
+            <span class="pl-c"><span class="pl-c">#</span> do some computation shared by all indices i</span>
+            <span class="pl-c1">@vec</span> <span class="pl-k">for</span> i irange
+                <span class="pl-c"><span class="pl-c">#</span> do some work at index i</span>
+            <span class="pl-k">end</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span>
+
+    <span class="pl-en">loop2!</span>(mgr, x, y) <span class="pl-k">=</span> <span class="pl-c1">offload</span>(loop2!, mgr, <span class="pl-c1">axes</span>(x), x, y)</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Other</h2><a id="user-content-other" class="anchor" aria-label="Permalink: Other" href="#other"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Managed broadcast</h3><a id="user-content-managed-broadcast" class="anchor" aria-label="Permalink: Managed broadcast" href="#managed-broadcast"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Broadcast expressions such as <code>@. x = sin(y)</code> are semantically equivalent to loops. To manage the implied loop with <code>mgr::LoopManager</code>, use:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@. mgr[x] = sin(y)"><pre><span class="pl-c1">@.</span> mgr[x] <span class="pl-k">=</span> <span class="pl-c1">sin</span>(y)</pre></div>
+<p dir="auto">or, if <code>x</code> is a function argument, pass <code>mgr[x]</code> instead of <code>x</code>. Since this works by specializing functions in Base Julia,
+this can be used with function defined in modules that are not using <code>LoopManagers</code> at all.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# function definition, possibly in a module that knows nothing about LoopManagers
+f!(x,y) = @. x = sin(y)
+
+# elsewhere call f(x,y) as usual
+f!(x,y)
+# we can also let `mgr::LoopManager` control the loops
+f!(mgr[x], y)"><pre><span class="pl-c"><span class="pl-c">#</span> function definition, possibly in a module that knows nothing about LoopManagers</span>
+<span class="pl-en">f!</span>(x,y) <span class="pl-k">=</span> <span class="pl-c1">@.</span> x <span class="pl-k">=</span> <span class="pl-c1">sin</span>(y)
+
+<span class="pl-c"><span class="pl-c">#</span> elsewhere call f(x,y) as usual</span>
+<span class="pl-c1">f!</span>(x,y)
+<span class="pl-c"><span class="pl-c">#</span> we can also let `mgr::LoopManager` control the loops</span>
+<span class="pl-c1">f!</span>(mgr[x], y)</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">@unroll macro</h3><a id="user-content-unroll-macro" class="anchor" aria-label="Permalink: @unroll macro" href="#unroll-macro"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>@unroll (x^2 for x in (1,2,3))</code> expands to <code>(1^2, 2^2, 3^2)</code>.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    @unroll for x in 1:3
+        myfun(x)
+    end"><pre>    <span class="pl-c1">@unroll</span> <span class="pl-k">for</span> x <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">3</span>
+        <span class="pl-c1">myfun</span>(x)
+    <span class="pl-k">end</span></pre></div>
+<p dir="auto">expands to :</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    myfun(1)
+    myfun(2)
+    myfun(3)"><pre>    <span class="pl-c1">myfun</span>(<span class="pl-c1">1</span>)
+    <span class="pl-c1">myfun</span>(<span class="pl-c1">2</span>)
+    <span class="pl-c1">myfun</span>(<span class="pl-c1">3</span>)</pre></div>
+<p dir="auto">Only tuples and ranges with elements or bounds known at <em>parse time</em> are supported. To use this macro with type parameters, one may use generated functions.</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="    @generated function fun(x::MyType{N}) where N
+        quote
+            @vec for i in 1:$N
+                otherfun(i, x)
+            end
+        end
+    end"><pre>    <span class="pl-c1">@generated</span> <span class="pl-k">function</span> <span class="pl-en">fun</span>(x<span class="pl-k">::</span><span class="pl-c1">MyType{N}</span>) <span class="pl-k">where</span> N
+        <span class="pl-k">quote</span>
+            <span class="pl-c1">@vec</span> <span class="pl-k">for</span> i <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-k">$</span>N
+                <span class="pl-c1">otherfun</span>(i, x)
+            <span class="pl-k">end</span>
+        <span class="pl-k">end</span>
+    <span class="pl-k">end</span></pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Experimental</h3><a id="user-content-experimental" class="anchor" aria-label="Permalink: Experimental" href="#experimental"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><code>ManagedLoops</code> also defines <code>parallel</code>, <code>barrier</code>, <code>master</code>, <code>share</code> to support
+OpenMP-like execution with long-lived threads. This is currently experimental and not more performant than short-lived threads launched at each outer loop.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Change Log</h2><a id="user-content-change-log" class="anchor" aria-label="Permalink: Change Log" href="#change-log"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">0.1.7</h3><a id="user-content-017" class="anchor" aria-label="Permalink: 0.1.7" href="#017"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>@vec</code> for ternary operator. <code>@vec a ? b : c</code> now expands to <code>choose(a, ()-&gt;b, ()-&gt;c)</code></li>
+</ul>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">0.1.6</h3><a id="user-content-016" class="anchor" aria-label="Permalink: 0.1.6" href="#016"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li><code>@vec</code> for <code>if-then-else</code> expressions. <code>@vec if a ; b ; else c ; end</code> now expands to <code>choose(a, ()-&gt;b, ()-&gt;c)</code>. <code>choose(a, B, C)</code> evaluates only <code>B()</code> (resp. <code>C()</code>) when <code>a</code> is all <code>true</code> (resp. all <code>false</code>). Otherwise both are evaluated and blended.</li>
+</ul>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">0.1.5</h3><a id="user-content-015" class="anchor" aria-label="Permalink: 0.1.5" href="#015"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ul dir="auto">
+<li>support for "managed broadcasting": if the l.h.s of a broadcast expression <code>@. lhs = rhs</code> is of the form <code>lhs = mgr[array]</code> then the broadcast loop is managed by <code>mgr</code>. Limited to 4D arrays for the moment.</li>
+</ul>
+</article></div>

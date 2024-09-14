@@ -1,0 +1,75 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">KroneckerProductKernels</h1><a id="user-content-kroneckerproductkernels" class="anchor" aria-label="Permalink: KroneckerProductKernels" href="#kroneckerproductkernels"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/langfzac/KroneckerProductKernels.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/langfzac/KroneckerProductKernels.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/langfzac/KroneckerProductKernels.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/503bdabfaba3b0386f0f7038e3f5719db1fb8d3b10083c36f393797c8ecbc53d/68747470733a2f2f636f6465636f762e696f2f67682f6c616e67667a61632f4b726f6e65636b657250726f647563744b65726e656c732e6a6c2f67726170682f62616467652e7376673f746f6b656e3d544d574d334934304f39" alt="codecov" data-canonical-src="https://codecov.io/gh/langfzac/KroneckerProductKernels.jl/graph/badge.svg?token=TMWM3I40O9" style="max-width: 100%;"></a></p>
+<p dir="auto">A Julia package for computing 2D GPs with Kronecker product kernels. Based on <a href="https://github.com/markfortune/luas"><code>luas</code></a> from <a href="https://ui.adsabs.harvard.edu/abs/2024arXiv240215204F/abstract" rel="nofollow">Fortune et al. 2024</a>. This package uses the <a href="https://github.com/JuliaGaussianProcesses/KernelFunctions.jl"><code>KernelFunctions.jl</code></a> and <a href="https://github.com/JuliaGaussianProcesses/AbstractGPs.jl"><code>AbstractGPs.jl</code></a> interfaces, which works with inference tools such as <a href="https://github.com/TuringLang/Turing.jl"><code>Turing.jl</code></a>. Kernel matrix evaluations rely on <a href="https://github.com/MichielStock/Kronecker.jl"><code>Kronecker.jl</code></a> for fast computation and low-memory overhead.</p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">Example</h1><a id="user-content-example" class="anchor" aria-label="Permalink: Example" href="#example"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using AbstractGPs, KernelFunction, KroneckerProductKernels
+using LinearAlgebra, Random; Random.seed!(1234)
+using Kronecker: ⊗ # \otimes&lt;tab&gt;
+
+# Create a KernelKroneckerProduct using standard KernelFunctions kernels
+k1 = 0.1 * Matern52Kernel()
+k2 = SqExponentialKernel() ∘ ScaleTransform(0.4) # \circ&lt;tab&gt; -&gt; ∘
+kernel = KernelKroneckerProduct(k1, k2)
+
+# And get an AbstractGP
+f = GP(kernel)
+
+# Inputs must be structured in a particular way
+# Need a set of 2nd dimension values for every 1st dimension value
+# Inputs should be sorted by the first dimension
+X1 = collect(0.0:1:100)
+X2 = collect(0.0:1:5)
+X = vcat([[x1 x2] for x1 in X1 for x2 in X2]...)
+
+# We can now get a FiniteGP
+# Either with a uniform, diagonal covariance
+fx = f(RowVecs(X), 0.1)
+
+# Or with a non-uniform, diagonal covariance
+# This must be provided as a KroneckerProduct
+C1 = Diagonal(rand(length(X1)))
+C2 = Diagonal(rand(length(X2)))
+C = C1 ⊗ C2
+fx = f(RowVecs(X), C)
+
+# Now, we can draw from the GP
+Y = rand(fx)
+
+# And evaluate the logpdf
+logpdf(fx, Y)"><pre><span class="pl-k">using</span> AbstractGPs, KernelFunction, KroneckerProductKernels
+<span class="pl-k">using</span> LinearAlgebra, Random; Random<span class="pl-k">.</span><span class="pl-c1">seed!</span>(<span class="pl-c1">1234</span>)
+<span class="pl-k">using</span> Kronecker<span class="pl-k">:</span> <span class="pl-k">⊗</span> <span class="pl-c"><span class="pl-c">#</span> \otimes&lt;tab&gt;</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Create a KernelKroneckerProduct using standard KernelFunctions kernels</span>
+k1 <span class="pl-k">=</span> <span class="pl-c1">0.1</span> <span class="pl-k">*</span> <span class="pl-c1">Matern52Kernel</span>()
+k2 <span class="pl-k">=</span> <span class="pl-c1">SqExponentialKernel</span>() <span class="pl-k">∘</span> <span class="pl-c1">ScaleTransform</span>(<span class="pl-c1">0.4</span>) <span class="pl-c"><span class="pl-c">#</span> \circ&lt;tab&gt; -&gt; ∘</span>
+kernel <span class="pl-k">=</span> <span class="pl-c1">KernelKroneckerProduct</span>(k1, k2)
+
+<span class="pl-c"><span class="pl-c">#</span> And get an AbstractGP</span>
+f <span class="pl-k">=</span> <span class="pl-c1">GP</span>(kernel)
+
+<span class="pl-c"><span class="pl-c">#</span> Inputs must be structured in a particular way</span>
+<span class="pl-c"><span class="pl-c">#</span> Need a set of 2nd dimension values for every 1st dimension value</span>
+<span class="pl-c"><span class="pl-c">#</span> Inputs should be sorted by the first dimension</span>
+X1 <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">0.0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">100</span>)
+X2 <span class="pl-k">=</span> <span class="pl-c1">collect</span>(<span class="pl-c1">0.0</span><span class="pl-k">:</span><span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">5</span>)
+X <span class="pl-k">=</span> <span class="pl-c1">vcat</span>([[x1 x2] <span class="pl-k">for</span> x1 <span class="pl-k">in</span> X1 <span class="pl-k">for</span> x2 <span class="pl-k">in</span> X2]<span class="pl-k">.</span><span class="pl-k">..</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> We can now get a FiniteGP</span>
+<span class="pl-c"><span class="pl-c">#</span> Either with a uniform, diagonal covariance</span>
+fx <span class="pl-k">=</span> <span class="pl-c1">f</span>(<span class="pl-c1">RowVecs</span>(X), <span class="pl-c1">0.1</span>)
+
+<span class="pl-c"><span class="pl-c">#</span> Or with a non-uniform, diagonal covariance</span>
+<span class="pl-c"><span class="pl-c">#</span> This must be provided as a KroneckerProduct</span>
+C1 <span class="pl-k">=</span> <span class="pl-c1">Diagonal</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">length</span>(X1)))
+C2 <span class="pl-k">=</span> <span class="pl-c1">Diagonal</span>(<span class="pl-c1">rand</span>(<span class="pl-c1">length</span>(X2)))
+C <span class="pl-k">=</span> C1 <span class="pl-k">⊗</span> C2
+fx <span class="pl-k">=</span> <span class="pl-c1">f</span>(<span class="pl-c1">RowVecs</span>(X), C)
+
+<span class="pl-c"><span class="pl-c">#</span> Now, we can draw from the GP</span>
+Y <span class="pl-k">=</span> <span class="pl-c1">rand</span>(fx)
+
+<span class="pl-c"><span class="pl-c">#</span> And evaluate the logpdf</span>
+<span class="pl-c1">logpdf</span>(fx, Y)</pre></div>
+</article></div>

@@ -1,0 +1,205 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">SpectralMeasures.jl</h1><a id="user-content-spectralmeasuresjl" class="anchor" aria-label="Permalink: SpectralMeasures.jl" href="#spectralmeasuresjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">SpectralMeasures.jl is a Julia package for computing spectra and spectral measures of self-adjoint operators with structured, infinite-dimensional matrix representations. The package enables a canonical eigendecomposition for these operators, and a functional calculus too. A key point to make is that all of this is done in tailor-made data structures representing structured infinite-dimensional operators, with no error-inducing, finite-dimensional truncations.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Overview</h2><a id="user-content-overview" class="anchor" aria-label="Permalink: Overview" href="#overview"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Syntactically, the familiar function for matrices, <code>eig</code>, will be implemented for as many operators as we can. It returns a multiplication operator, <code>D</code>, which acts on <code>Fun</code>s whose domain is the spectrum of the operator, and "spectral map", <code>U</code>, which takes vectors to <code>Fun</code>s in the same <code>Space</code> as the that associated with <code>D</code>. In Julia code, this means that if you have an operator <code>A</code>, and type</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="D,U = eigen(A)"><pre class="notranslate"><code>D,U = eigen(A)
+</code></pre></div>
+<p dir="auto">then the following identity holds (to machine precision):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="A = U \ D * U"><pre class="notranslate"><code>A = U \ D * U
+</code></pre></div>
+<p dir="auto">This is analogous to what happens in finite dimensional linear algebra, where <code>D</code> is a diagonal matrix and <code>U</code> is the matrix of eigenvectors (transposed). You can also try <code>eigvals(A)</code> or <code>spectrum(A)</code> to return the spectrum of <code>A</code> as an ApproxFun <code>Domain</code> type.</p>
+<p dir="auto">The operators <code>D</code> and <code>U</code> enable a functional calculus. The following is the application of the operator <code>exp(1.3*A)</code> to a random vector.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="v = randn(100)
+expAtv = U \ exp(1.3*D) *  U * v"><pre class="notranslate"><code>v = randn(100)
+expAtv = U \ exp(1.3*D) *  U * v
+</code></pre></div>
+<p dir="auto">Also, specific to infinite-dimensional operators, there is a function called <code>spectralmeasure</code>. This function produces either a <code>Fun</code> or a <code>RatFun</code> (a quotient of two <code>Fun</code>s), representing a measure supported on the spectrum of the operator --- specifically, a representation of the spectral measure from the Spectral Theorem for selfadjoint operators. At a discrete eigenvalue of the operator, the spectral measure has a Dirac delta.</p>
+<p dir="auto">The implementation of the package is based on a combination of connection coefficient matrices between orthogonal polynomials (See Webb-Olver 2018, "Spectra of Jacobi operators via connection coefficients matrices") and infinite dimensional QL iterations (See Olver-Webb 2018, "The infinite dimensional QL algorithm"  (in prep.)).</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Tridiagonal operators</h2><a id="user-content-tridiagonal-operators" class="anchor" aria-label="Permalink: Tridiagonal operators" href="#tridiagonal-operators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">PertToeplitz</h3><a id="user-content-perttoeplitz" class="anchor" aria-label="Permalink: PertToeplitz" href="#perttoeplitz"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The type <code>SymTriPertToeplitz</code> implements an operator whose matrix is symmetric, tridiagonal, which is a finite-rank perturbation of a Toeplitz operator. The following is an example construction.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using SpectralMeasures
+A = SymTriPertToeplitz([0.1;-0.1;1.2],[1.4;1.2],0.,0.5)"><pre class="notranslate"><code>using SpectralMeasures
+A = SymTriPertToeplitz([0.1;-0.1;1.2],[1.4;1.2],0.,0.5)
+</code></pre></div>
+<p dir="auto">The data structure represents the infinite matrix,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="A = [ 0.1  1.4        
+      1.4 -0.1  1.2
+           1.2  1.2  0.5
+                0.5  0.0  0.5
+                     0.5  0.0  ⋱
+                           ⋱  ⋱ ]"><pre class="notranslate"><code>A = [ 0.1  1.4        
+      1.4 -0.1  1.2
+           1.2  1.2  0.5
+                0.5  0.0  0.5
+                     0.5  0.0  ⋱
+                           ⋱  ⋱ ]
+</code></pre></div>
+<p dir="auto">Simple commands like <code>A*randn(100)</code> and <code>A[2017,2018]</code> work as you would expect.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Eigendecomposition and functional calculus</h4><a id="user-content-eigendecomposition-and-functional-calculus" class="anchor" aria-label="Permalink: Eigendecomposition and functional calculus" href="#eigendecomposition-and-functional-calculus"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The spectrum of <code>A</code> can be computed using the <code>eigvals</code> function. <code>spectrum</code> can also be used.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="eigvals(A)"><pre class="notranslate"><code>eigvals(A)
+</code></pre></div>
+<p dir="auto">returns a <code>Domain</code> type,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Point(-1.7082248431502554) ∪ Point(2.2839756035160352) ∪ 【-1.0,1.0】"><pre class="notranslate"><code>Point(-1.7082248431502554) ∪ Point(2.2839756035160352) ∪ 【-1.0,1.0】
+</code></pre></div>
+<p dir="auto">The spectrum of this particular operator consists of two discrete eigenvalues and continuous spectrum on the interval [-1,1].</p>
+<p dir="auto">You can use familiar syntax to compute an eigendecomposition:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="D,U = eigen(A)"><pre class="notranslate"><code>D,U = eigen(A)
+</code></pre></div>
+<p dir="auto">The first output, <code>D</code>, is a multiplication operator, which multiplies <code>Fun</code>s with space <code>PointSpace([-1.70822…,2.28398…]) ∪ Ultraspherical(1)</code>. It has matrix representation,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="D = [ -1.70822  0.0      0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  ⋯
+       0.0      2.28398  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.5  0.0  0.0  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.5  0.0  0.5  0.0  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.5  0.0  0.5  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.5  0.0  0.5  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.5  0.0  0.5  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.0  0.5  0.0  0.5  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.0  0.0  0.5  0.0  0.5  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.0  0.0  0.0  0.5  0.0  ⋱
+        ⋮        ⋱        ⋱    ⋱   ⋱   ⋱    ⋱   ⋱   ⋱    ⋱  ⋱ ]"><pre class="notranslate"><code>D = [ -1.70822  0.0      0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  ⋯
+       0.0      2.28398  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.5  0.0  0.0  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.5  0.0  0.5  0.0  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.5  0.0  0.5  0.0  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.5  0.0  0.5  0.0  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.5  0.0  0.5  0.0  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.0  0.5  0.0  0.5  0.0  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.0  0.0  0.5  0.0  0.5  ⋱
+       0.0      0.0      0.0  0.0  0.0  0.0  0.0  0.0  0.5  0.0  ⋱
+        ⋮        ⋱        ⋱    ⋱   ⋱   ⋱    ⋱   ⋱   ⋱    ⋱  ⋱ ]
+</code></pre></div>
+<p dir="auto">The second output, <code>U</code> is a an operator which maps vectors to <code>Fun</code>s in that space. It has matrix representation,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="U = [ -0.575073   0.742758   -0.324516    0.104914   -0.0339182   0.0109656   -0.00354511   0.00114611   -0.000370532   0.000119791  ⋱
+       0.368164   0.57433     0.711466    0.164031    0.0378177   0.00871899   0.00201019   0.000463455   0.000106851   2.46348e-5   ⋱
+      -1.07598    0.160981    1.1016     -3.23631     1.29719     0.217432    -0.0841252    9.59302e-16   4.7358e-16    2.61726e-16  ⋱
+       0.235551  -0.401105   -0.206107    2.39879    -3.01888     1.21307      0.217432    -0.0841252     1.21084e-15   5.3256e-16   ⋱
+                  0.0841252  -0.160117    0.0113248   2.31467    -3.01888      1.21307      0.217432     -0.0841252     1.23512e-15  ⋱
+                              0.0350522  -0.244242    0.0113248   2.31467     -3.01888      1.21307       0.217432     -0.0841252    ⋱
+                                          0.0350522  -0.244242    0.0113248    2.31467     -3.01888       1.21307       0.217432     ⋱
+                                                      0.0350522  -0.244242     0.0113248    2.31467      -3.01888       1.21307      ⋱
+                                                                  0.0350522   -0.244242     0.0113248     2.31467      -3.01888      ⋱
+                                                                               0.0350522   -0.244242      0.0113248     2.31467      ⋱
+                                                                                             ⋱             ⋱            ⋱          ⋱ ]"><pre class="notranslate"><code>U = [ -0.575073   0.742758   -0.324516    0.104914   -0.0339182   0.0109656   -0.00354511   0.00114611   -0.000370532   0.000119791  ⋱
+       0.368164   0.57433     0.711466    0.164031    0.0378177   0.00871899   0.00201019   0.000463455   0.000106851   2.46348e-5   ⋱
+      -1.07598    0.160981    1.1016     -3.23631     1.29719     0.217432    -0.0841252    9.59302e-16   4.7358e-16    2.61726e-16  ⋱
+       0.235551  -0.401105   -0.206107    2.39879    -3.01888     1.21307      0.217432    -0.0841252     1.21084e-15   5.3256e-16   ⋱
+                  0.0841252  -0.160117    0.0113248   2.31467    -3.01888      1.21307      0.217432     -0.0841252     1.23512e-15  ⋱
+                              0.0350522  -0.244242    0.0113248   2.31467     -3.01888      1.21307       0.217432     -0.0841252    ⋱
+                                          0.0350522  -0.244242    0.0113248    2.31467     -3.01888       1.21307       0.217432     ⋱
+                                                      0.0350522  -0.244242     0.0113248    2.31467      -3.01888       1.21307      ⋱
+                                                                  0.0350522   -0.244242     0.0113248     2.31467      -3.01888      ⋱
+                                                                               0.0350522   -0.244242      0.0113248     2.31467      ⋱
+                                                                                             ⋱             ⋱            ⋱          ⋱ ]
+</code></pre></div>
+<p dir="auto">The operator <code>A - U \ D * U</code> has entries which are approximately zero to machine precision.</p>
+<p dir="auto">Functions of <code>A</code> applied to a vector can be computed as follows.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="f = x -&gt; exp(1.4im*x)
+v = randn(100)
+fAv = U \ f(D) * U * v"><pre class="notranslate"><code>f = x -&gt; exp(1.4im*x)
+v = randn(100)
+fAv = U \ f(D) * U * v
+</code></pre></div>
+<p dir="auto">The key point to note is that no finite-dimensional truncation has occurred; the entire structured operators have been used at each stage of the computation.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">Spectral measure and resolvent</h4><a id="user-content-spectral-measure-and-resolvent" class="anchor" aria-label="Permalink: Spectral measure and resolvent" href="#spectral-measure-and-resolvent"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">We can compute the spectral measure of <code>A</code>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="μ = spectralmeasure(A)"><pre class="notranslate"><code>μ = spectralmeasure(A)
+</code></pre></div>
+<p dir="auto">μ is a RationalFun from the RatFun package, and has Dirac deltas at the discrete eigenvalues of A. Let us plot this.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="using Plots
+plot(μ)"><pre class="notranslate"><code>using Plots
+plot(μ)
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/spectralmeasure.png"><img src="images/spectralmeasure.png" width="400px" style="max-width: 100%;"></a></p>
+<p dir="auto">We can also plot the resolvent of the operator (which is the Cauchy transform of the spectral measure):</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="r = principalresolvent(A)
+using ComplexPhasePortrait
+Z = linspace(-3, 3, 600)' .+ linspace(3,-3,600)*im
+plot(portrait(r(Z),PTstepmod); xlims=(-3,3), ylims=(-3,3), aspect_ratio=1)"><pre class="notranslate"><code>r = principalresolvent(A)
+using ComplexPhasePortrait
+Z = linspace(-3, 3, 600)' .+ linspace(3,-3,600)*im
+plot(portrait(r(Z),PTstepmod); xlims=(-3,3), ylims=(-3,3), aspect_ratio=1)
+</code></pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/principalresolvent.png"><img src="images/principalresolvent.png" width="400px" style="max-width: 100%;"></a></p>
+<p dir="auto">This plot is a Wegert plot, a.k.a. a complex phase portrait. See <a href="https://github.com/JuliaHolomorphic/ComplexPhasePortrait.jl">here</a> for an explanation.</p>
+<div class="markdown-heading" dir="auto"><h4 class="heading-element" dir="auto">QL iterations</h4><a id="user-content-ql-iterations" class="anchor" aria-label="Permalink: QL iterations" href="#ql-iterations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">We can compute a QL decomposition in the expected way. However, note that QL decompositions do not exist if the continuous spectrum contains zero (see Olver-Webb 2018, "The infinite dimensional QL algorithm"). Therefore, we must use a shift.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Q,L = ql(A+1.7082248431502554)"><pre class="notranslate"><code>Q,L = ql(A+1.7082248431502554)
+</code></pre></div>
+<p dir="auto">The operators <code>Q</code> and <code>L</code> are stored in their entirety as structured operators of type <code>HessenbergUnitary</code> and <code>PertToeplitz</code>, respectively.</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="Q = [ -0.575073      0.818102
+       0.742758      0.52211       0.41918
+      -0.324516     -0.228114      0.859147      0.323294
+       0.104914      0.0737479    -0.277758      0.895481     0.323294
+      -0.0339182    -0.0238423     0.0897975    -0.289504     0.895481     0.323294
+       0.0109656     0.00770808   -0.029031      0.093595    -0.289504     0.895481     0.323294
+      -0.00354511   -0.00249198    0.00938557   -0.0302588    0.093595    -0.289504     0.895481    0.323294
+       0.00114611    0.000805644  -0.0030343     0.00978249  -0.0302588    0.093595    -0.289504    0.895481   0.323294
+      -0.000370532  -0.00026046    0.000980974  -0.00316262   0.00978249  -0.0302588    0.093595   -0.289504   0.895481  0.323294
+       0.000119791   8.42053e-5   -0.000317143   0.00102246  -0.00316262   0.00978249  -0.0302588   0.093595  -0.289504  0.895481  ⋱
+        ⋱             ⋱            ⋱             ⋱           ⋱            ⋱           ⋱           ⋱         ⋱       ⋱        ⋱ ]
+
+L = [ 2.22045e-16
+      2.21027      1.71128
+      0.586852     1.70511   2.86273
+                   0.387953  1.38795   1.54658
+                             0.161647  1.0       1.54658
+                                       0.161647  1.0       1.54658
+                                                 0.161647  1.0       1.54658
+                                                           0.161647  1.0       1.54658
+                                                                     0.161647  1.0       1.54658
+                                                                               0.161647  1.0      1.54658
+                                                                                          ⋱        ⋱       ⋱ ]"><pre class="notranslate"><code>Q = [ -0.575073      0.818102
+       0.742758      0.52211       0.41918
+      -0.324516     -0.228114      0.859147      0.323294
+       0.104914      0.0737479    -0.277758      0.895481     0.323294
+      -0.0339182    -0.0238423     0.0897975    -0.289504     0.895481     0.323294
+       0.0109656     0.00770808   -0.029031      0.093595    -0.289504     0.895481     0.323294
+      -0.00354511   -0.00249198    0.00938557   -0.0302588    0.093595    -0.289504     0.895481    0.323294
+       0.00114611    0.000805644  -0.0030343     0.00978249  -0.0302588    0.093595    -0.289504    0.895481   0.323294
+      -0.000370532  -0.00026046    0.000980974  -0.00316262   0.00978249  -0.0302588    0.093595   -0.289504   0.895481  0.323294
+       0.000119791   8.42053e-5   -0.000317143   0.00102246  -0.00316262   0.00978249  -0.0302588   0.093595  -0.289504  0.895481  ⋱
+        ⋱             ⋱            ⋱             ⋱           ⋱            ⋱           ⋱           ⋱         ⋱       ⋱        ⋱ ]
+
+L = [ 2.22045e-16
+      2.21027      1.71128
+      0.586852     1.70511   2.86273
+                   0.387953  1.38795   1.54658
+                             0.161647  1.0       1.54658
+                                       0.161647  1.0       1.54658
+                                                 0.161647  1.0       1.54658
+                                                           0.161647  1.0       1.54658
+                                                                     0.161647  1.0       1.54658
+                                                                               0.161647  1.0      1.54658
+                                                                                          ⋱        ⋱       ⋱ ]
+</code></pre></div>
+<p dir="auto">A QL iteration can be performed by forming the operator,</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="A2 = L*Q - 1.7082248431502554I"><pre class="notranslate"><code>A2 = L*Q - 1.7082248431502554I
+</code></pre></div>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="A2 = [ -1.70822      1.81655e-16
+        1.81655e-16  0.993475     0.717334
+                     0.717334     1.46603   0.925505
+                                  0.925505  0.125423   0.5
+                                            0.5       -2.22045e-16   0.5
+                                                       0.5          -2.22045e-16   0.5
+                                                                     0.5          -2.22045e-16   0.5
+                                                                                   0.5          -2.22045e-16   0.5
+                                                                                                 0.5          -2.22045e-16   0.5
+                                                                                                               0.5          -2.22045e-16  ⋱
+                                                                                                                              ⋱           ⋱ ]"><pre class="notranslate"><code>A2 = [ -1.70822      1.81655e-16
+        1.81655e-16  0.993475     0.717334
+                     0.717334     1.46603   0.925505
+                                  0.925505  0.125423   0.5
+                                            0.5       -2.22045e-16   0.5
+                                                       0.5          -2.22045e-16   0.5
+                                                                     0.5          -2.22045e-16   0.5
+                                                                                   0.5          -2.22045e-16   0.5
+                                                                                                 0.5          -2.22045e-16   0.5
+                                                                                                               0.5          -2.22045e-16  ⋱
+                                                                                                                              ⋱           ⋱ ]
+</code></pre></div>
+<p dir="auto">Since the shift was approximately an eigenvalue of <code>A</code>, the (1,2) entry of the QL iterate becomes approximately zero. Repeated iteration will yield convergence just like in the finite dimensional case (see Olver-Webb 2018, "The infinite dimensional QL algorithm" (in prep.))</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Future operators</h2><a id="user-content-future-operators" class="anchor" aria-label="Permalink: Future operators" href="#future-operators"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Tridiagonal bi-infinite PertToeplitz, Tridiagonal PertPeriodic. General banded operators. Work on all of these is currently in progress. Work on continuous Schrödinger operators and nonsymmetric operators is something which may be done in the distant future.</p>
+</article></div>

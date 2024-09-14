@@ -1,0 +1,113 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">NMFMerge</h1><a id="user-content-nmfmerge" class="anchor" aria-label="Permalink: NMFMerge" href="#nmfmerge"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+
+
+<p dir="auto"><a href="https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a>
+<a href="https://codecov.io/gh/HolyLab/NMFMerge.jl" rel="nofollow"><img src="https://camo.githubusercontent.com/c169982f5269eb1b811a5aad92f10796afc70706028a760507515c50125c228c/68747470733a2f2f636f6465636f762e696f2f67682f486f6c794c61622f4e4d464d657267652e6a6c2f6272616e63682f6d61696e2f67726170682f62616467652e737667" alt="Coverage" data-canonical-src="https://codecov.io/gh/HolyLab/NMFMerge.jl/branch/main/graph/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">This package implements the technique in the paper <a href="https://arxiv.org/abs/2408.09013" rel="nofollow">An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization</a>. It is used to project Non-negative matrix factorization(NMF) solutions from a high-dimensional space to lower dimensional space by optimally and sequentially merging NMF component pairs.</p>
+<p dir="auto">This approach is motivated by the idea that convergence of NMF becomes poor when one is forced to make difficult tradeoffs in describing different features of the data matrix; thus, performing an initial factorization with an excessive number of components grants the opportunity to escape such constraints and reliably describe the full behavior of the data matrix. Later, any redundant or noisy components are identified and merged together.</p>
+<p dir="auto">Let's start with a simple demo:</p>
+<p dir="auto">Install the package: type <code>]</code> at the <code>julia&gt;</code> prompt to enter <code>pkg&gt;</code> mode, and type</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pkg&gt; add NMFMerge;"><pre>pkg<span class="pl-k">&gt;</span> add NMFMerge;</pre></div>
+<p dir="auto">We'll use the following ground truth</p>
+<math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="2208623d377373ebd433889ca55e2e97">$$\begin{align}
+        \begin{aligned}
+            \mathbf{W} = \begin{pmatrix}
+                6 &amp; 0 &amp; 4 &amp; 9 \\\
+                0 &amp; 4 &amp; 8 &amp; 3 \\\
+                4 &amp; 4 &amp; 0 &amp; 7 \\\
+                9 &amp; 1 &amp; 1 &amp; 1 \\\
+                0 &amp; 3 &amp; 0 &amp; 4 \\\
+                8 &amp; 1 &amp; 4 &amp; 0 \\\
+                0 &amp; 0 &amp; 4 &amp; 2 \\\
+                0 &amp; 9 &amp; 5 &amp; 5
+            \end{pmatrix}, \quad
+            \mathbf{H}^{\mathrm{T}} = \begin{pmatrix}
+                6 &amp; 0 &amp; 3 &amp; 4 \\\
+                10 &amp; 10 &amp; 5 &amp; 9 \\\
+                8 &amp; 2 &amp; 0 &amp; 10 \\\
+                2 &amp; 9 &amp; 2 &amp; 7 \\\
+                0 &amp; 10 &amp; 4 &amp; 7 \\\
+                1 &amp; 6 &amp; 0 &amp; 0 \\\
+                2 &amp; 0 &amp; 0 &amp; 0 \\\
+                10 &amp; 0 &amp; 8 &amp; 0
+            \end{pmatrix}
+        \end{aligned}
+    \end{align}$$</math-renderer>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using NMF, GsvdInitialization
+using NMFMerge"><pre><span class="pl-k">using</span> NMF, GsvdInitialization
+<span class="pl-k">using</span> NMFMerge</pre></div>
+<p dir="auto">Packages:
+<a href="https://github.com/JuliaStats/NMF.jl">NMF</a>,
+<a href="https://github.com/HolyLab/GsvdInitialization.jl">GsvdInitialization</a></p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; X = W*H
+8×8 Matrix{Int64}:
+ 84  161  138   83   79   6  12   92
+ 36  107   38   73   93  24   0   64
+ 52  143  110   93   89  28   8   40
+ 61  114   84   36   21  15  18   98
+ 16   66   46   55   58  18   0    0
+ 60  110   66   33   26  14  16  112
+ 20   38   20   22   30   0   0   32
+ 35  160   68  126  145  54   0   40"><pre>julia<span class="pl-k">&gt;</span> X <span class="pl-k">=</span> W<span class="pl-k">*</span>H
+<span class="pl-c1">8</span><span class="pl-k">×</span><span class="pl-c1">8</span> Matrix{Int64}<span class="pl-k">:</span>
+ <span class="pl-c1">84</span>  <span class="pl-c1">161</span>  <span class="pl-c1">138</span>   <span class="pl-c1">83</span>   <span class="pl-c1">79</span>   <span class="pl-c1">6</span>  <span class="pl-c1">12</span>   <span class="pl-c1">92</span>
+ <span class="pl-c1">36</span>  <span class="pl-c1">107</span>   <span class="pl-c1">38</span>   <span class="pl-c1">73</span>   <span class="pl-c1">93</span>  <span class="pl-c1">24</span>   <span class="pl-c1">0</span>   <span class="pl-c1">64</span>
+ <span class="pl-c1">52</span>  <span class="pl-c1">143</span>  <span class="pl-c1">110</span>   <span class="pl-c1">93</span>   <span class="pl-c1">89</span>  <span class="pl-c1">28</span>   <span class="pl-c1">8</span>   <span class="pl-c1">40</span>
+ <span class="pl-c1">61</span>  <span class="pl-c1">114</span>   <span class="pl-c1">84</span>   <span class="pl-c1">36</span>   <span class="pl-c1">21</span>  <span class="pl-c1">15</span>  <span class="pl-c1">18</span>   <span class="pl-c1">98</span>
+ <span class="pl-c1">16</span>   <span class="pl-c1">66</span>   <span class="pl-c1">46</span>   <span class="pl-c1">55</span>   <span class="pl-c1">58</span>  <span class="pl-c1">18</span>   <span class="pl-c1">0</span>    <span class="pl-c1">0</span>
+ <span class="pl-c1">60</span>  <span class="pl-c1">110</span>   <span class="pl-c1">66</span>   <span class="pl-c1">33</span>   <span class="pl-c1">26</span>  <span class="pl-c1">14</span>  <span class="pl-c1">16</span>  <span class="pl-c1">112</span>
+ <span class="pl-c1">20</span>   <span class="pl-c1">38</span>   <span class="pl-c1">20</span>   <span class="pl-c1">22</span>   <span class="pl-c1">30</span>   <span class="pl-c1">0</span>   <span class="pl-c1">0</span>   <span class="pl-c1">32</span>
+ <span class="pl-c1">35</span>  <span class="pl-c1">160</span>   <span class="pl-c1">68</span>  <span class="pl-c1">126</span>  <span class="pl-c1">145</span>  <span class="pl-c1">54</span>   <span class="pl-c1">0</span>   <span class="pl-c1">40</span></pre></div>
+<p dir="auto">Running NMF (HALS algorithm) on <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="2208623d377373ebd433889ca55e2e97">$\mathbf{X}$</math-renderer> with NNDSVD initialization</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; f = svd(X);
+julia&gt; result_hals = nnmf(float(X), 4; init=:nndsvd, alg=:cd, initdata=f, maxiter = 10^12, tol = 1e-4);
+julia&gt; result_hals.objvalue/sum(abs2, X)
+0.00019519131697246967"><pre>julia<span class="pl-k">&gt;</span> f <span class="pl-k">=</span> <span class="pl-c1">svd</span>(X);
+julia<span class="pl-k">&gt;</span> result_hals <span class="pl-k">=</span> <span class="pl-c1">nnmf</span>(<span class="pl-c1">float</span>(X), <span class="pl-c1">4</span>; init<span class="pl-k">=</span><span class="pl-c1">:nndsvd</span>, alg<span class="pl-k">=</span><span class="pl-c1">:cd</span>, initdata<span class="pl-k">=</span>f, maxiter <span class="pl-k">=</span> <span class="pl-c1">10</span><span class="pl-k">^</span><span class="pl-c1">12</span>, tol <span class="pl-k">=</span> <span class="pl-c1">1e-4</span>);
+julia<span class="pl-k">&gt;</span> result_hals<span class="pl-k">.</span>objvalue<span class="pl-k">/</span><span class="pl-c1">sum</span>(abs2, X)
+<span class="pl-c1">0.00019519131697246967</span></pre></div>
+<p dir="auto">Running NMF Merge on <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="2208623d377373ebd433889ca55e2e97">$\mathbf{X}$</math-renderer> with NNDSVD initialization</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="julia&gt; result_renmf = nmfmerge(float(X), 5=&gt;4; alg = :cd, maxiter = max_iter);
+julia&gt; result_renmf.objvalue/sum(abs2, X);
+0.00010318497977267333"><pre>julia<span class="pl-k">&gt;</span> result_renmf <span class="pl-k">=</span> <span class="pl-c1">nmfmerge</span>(<span class="pl-c1">float</span>(X), <span class="pl-c1">5</span><span class="pl-k">=&gt;</span><span class="pl-c1">4</span>; alg <span class="pl-k">=</span> <span class="pl-c1">:cd</span>, maxiter <span class="pl-k">=</span> max_iter);
+julia<span class="pl-k">&gt;</span> result_renmf<span class="pl-k">.</span>objvalue<span class="pl-k">/</span><span class="pl-c1">sum</span>(abs2, X);
+<span class="pl-c1">0.00010318497977267333</span></pre></div>
+<p dir="auto">The relative fitting error between NMF solution and ground truth of NMFMerge is about half that of standard NMF. Thus, NMFMerge helps NMF converge to a better local minimum.</p>
+<p dir="auto">The comparison between standard NMF(HALS) and NMFMerge:
+<a target="_blank" rel="noopener noreferrer" href="images/simulation.png"><img src="images/simulation.png" alt="Sample Figure" style="max-width: 100%;"></a></p>
+<p dir="auto">Consistent with the conclusion from the comparision of ralative fitting error, the figure suggests that the results of NMFMerge(Brown) fits the ground truth(Green) better than standard NMF(Magenta). (At 44 points out of 64 points, NMFMerge results are closer to the ground truth.)</p>
+<hr>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Functions</h2><a id="user-content-functions" class="anchor" aria-label="Permalink: Functions" href="#functions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><strong>nmfmerge</strong>(X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+This function performs "NMF-Merge" on 2D data matrix <code>X</code>.</p>
+<p dir="auto">Arguments:</p>
+<p dir="auto"><code>ncomponents::Pair{Int,Int}</code>: in the form of <code>n1 =&gt; n2</code>, merging from <code>n1</code> components to <code>n2</code>components, where <code>n1</code> is the number of components for overcomplete NMF, and <code>n2</code> is the number of components for initial and final NMF.</p>
+<p dir="auto">Alternatively, <code>ncomponents</code> can be an integer denoting the final number of components. In this case, <code>nmfmerge</code> defaults to an approximate 20% component excess before merging.</p>
+<p dir="auto">Keyword arguments:</p>
+<p dir="auto"><code>tol_final</code>： The tolerence of final NMF, default: <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="2208623d377373ebd433889ca55e2e97">$10^{-4}$</math-renderer></p>
+<p dir="auto"><code>tol_intermediate</code>: The tolerence of initial and overcomplete NMF, default: <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="2208623d377373ebd433889ca55e2e97">$\sqrt{\mathrm{tol\_final}}$</math-renderer></p>
+<p dir="auto"><code>W0</code>: initialization of initial NMF, default: <code>nothing</code></p>
+<p dir="auto"><code>H0</code>: initialization of initial NMF, default: <code>nothing</code></p>
+<p dir="auto">If one of <code>W0</code> and <code>H0</code> is <code>nothing</code>, NNDSVD is used for initialization.</p>
+<p dir="auto">Other keywords arguments are passed to <code>NMF.nnmf</code>.</p>
+<hr>
+<p dir="auto">Suppose you have the NMF solution <code>W</code> and <code>H</code> with <code>r</code> componenents, <strong>colmerge2to1pq</strong> function can merge <code>r</code> components to <code>n</code>components. The details of this function is:</p>
+<p dir="auto"><strong>colmerge2to1pq</strong>(W, H, n)</p>
+<p dir="auto">This function merges components in <code>W</code> and <code>H</code> (columns in <code>W</code> and rows in <code>H</code>) from original number of components to <code>n</code> components (<code>n</code>columns and rows left in <code>W</code> and <code>H</code> respectively).</p>
+<p dir="auto">To use this function:
+<code>Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n)</code>, where <code>Wmerge</code> and <code>Hmerge</code> are the merged results with <code>n</code> components. <code>mergeseq</code> is the sequence of merge pair ids <code>(id1, id2)</code>, which is the components id of single merge.</p>
+<hr>
+<p dir="auto">Before merging components, the columns in <code>W</code> are required to be normalized to 1. The normalization can be realized by <strong>colnormalize</strong> function or any other method you like.</p>
+<p dir="auto"><strong>colnormalize</strong>(W, H, p=2)</p>
+<p dir="auto">This function normalize <code>||W[:, i]||_p = 1</code> for <code>i in 1:size(W, 2)</code>. Our manuscript uses <code>p=2</code> throughout.</p>
+<p dir="auto">To use this function:
+<code>Wnormalized, Hnormalized = colnormalize(W, H, p)</code></p>
+<hr>
+<p dir="auto">If you already have a merge sequence and want to merge from <code>size(W, 2)</code> components to <code>n</code> components, you can use the function:</p>
+<p dir="auto"><strong>mergecolumns</strong>(W, H, mergeseq; tracemerge)</p>
+<p dir="auto">keyword argurment <code>tracemerge</code>: save <code>Wmerge</code> and <code>Hmerge</code> at each merge stage if <code>tracemerge=true</code>. default <code>tracemerge=false</code>.</p>
+<p dir="auto">To use this function:</p>
+<p dir="auto"><code>Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge)</code>, where <code>Wmerge</code> and <code>Hmerge</code> are the merged results. <code>WHstage::Vector{Tuple{Matrix, Matrix}}</code> includes the results of each merge stage. <code>WHstage=[]</code> if <code>tracemerge=false</code>. <code>Err::Vector</code> includes merge penalty of each merge stage.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Citation</h2><a id="user-content-citation" class="anchor" aria-label="Permalink: Citation" href="#citation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Thanks for citing this work! See the "Cite this repository" link in the "About" bar for format options.</p>
+</article></div>

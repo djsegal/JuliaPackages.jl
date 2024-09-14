@@ -1,0 +1,341 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">CoralBlox.jl</h1><a id="user-content-coralbloxjl" class="anchor" aria-label="Permalink: CoralBlox.jl" href="#coralbloxjl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://doi.org/10.5281/zenodo.13251118" rel="nofollow"><img src="https://camo.githubusercontent.com/40aa6718d31b51d42d0e9a3a07a7a6c3d9b2acce5c692ffc12e9e3b1709d2877/68747470733a2f2f7a656e6f646f2e6f72672f62616467652f444f492f31302e353238312f7a656e6f646f2e31333235313131382e737667" alt="DOI" data-canonical-src="https://zenodo.org/badge/DOI/10.5281/zenodo.13251118.svg" style="max-width: 100%;"></a></p>
+<hr>
+<p dir="auto">CoralBlox is a coral growth and mortality model. It simulates distinct coral
+<code>FunctionalGroups</code> indirectly competing for a limited space over time. The model does not
+directly consider disturbances such as mortality caused by cyclone, CoTS or heat stress. It
+also does not have representation of anthropogenic restoration and conservation activities
+such as coral seeding or cloud brightening. Such considerations can be included by
+perturbing model state and CoralBlox parameters between time steps.</p>
+<p dir="auto">In CoralBlox, the corals are grouped according to their approximate diameter, forming
+<code>SizeClasses</code>. A <code>SizeClass</code> is defined by a diameter interval, so all corals whose diameter
+lie within the same interval belong to the same <code>SizeClass</code>. Hence, at each timestep, coral
+growth is represented by a displacement in the diameter space. For each functional group,
+corals from distinct <code>SizeClasses</code> have distinct growth rates. Since all corals within the
+same <code>SizeClass</code> and <code>FunctionalGroup</code> have the same growth rate, we can visualize the
+growth as groups of corals moving on the diameter space in blocks. Further details about
+how this growth and mortality are implemented can be found below.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Quick Start</h2><a id="user-content-quick-start" class="anchor" aria-label="Permalink: Quick Start" href="#quick-start"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">This plot was generated using the following script as an example of how CoralBlox can be used:</p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="docs/assets/plain_cb.jpg"><img src="docs/assets/plain_cb.jpg" alt="coral blox plot" style="max-width: 100%;"></a></p>
+<p dir="auto">It is worth noting that in the example script below there are no environmental disturbances
+and all parameters (initial coral cover, size classes bounds, linear extensions and
+survival rates), together with the number of recruits per year, were mocked and adjusted to
+generate the above plot.</p>
+<p dir="auto">Before running the model, one needs to instantiate an Array to hold the coral cover for each
+timestep, <code>FunctionalGroup</code> and <code>SizeClass</code>, and a vector of <code>FunctionalGroup</code>s:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CoralBlox: FunctionalGroup
+
+n_timesteps::Int64 = 100
+n_functional_groups::Int64 = 3
+n_size_classes::Int64 = 4
+
+# Coral cover cache
+C_cover::Array{Float64, 3} = zeros(n_timesteps, n_functional_groups, n_size_classes)
+
+# Habitable area is the maximum possible cover
+habitable_area::Float64 = 1e6
+
+# Each row contains SizeClass' bounds
+size_class_bounds::Matrix{Float64} = [
+    0 0.05 0.8 1.4 1.5;
+    0 0.05 0.5 0.9 1.0;
+    0 0.05 0.5 0.9 1.0
+]
+
+# Mock initial coral cover
+C_cover[1, :, :] = [
+    0.08 0.05 0.02 0.005;
+    0.07 0.06 0.03 0.007;
+    0.05 0.05 0.02 0.003
+] .* habitable_area
+
+# Create functional groups
+functional_groups::Vector{FunctionalGroup} = FunctionalGroup.(
+    eachrow(size_class_bounds[:, 1:end-1]),      # lower bounds
+    eachrow(size_class_bounds[:, 2:end]),        # upper bounds
+    eachrow(C_cover[1, :, :])                # initial coral covers
+)"><pre><span class="pl-k">using</span> CoralBlox<span class="pl-k">:</span> FunctionalGroup
+
+n_timesteps<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">100</span>
+n_functional_groups<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">3</span>
+n_size_classes<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Coral cover cache</span>
+C_cover<span class="pl-k">::</span><span class="pl-c1">Array{Float64, 3}</span> <span class="pl-k">=</span> <span class="pl-c1">zeros</span>(n_timesteps, n_functional_groups, n_size_classes)
+
+<span class="pl-c"><span class="pl-c">#</span> Habitable area is the maximum possible cover</span>
+habitable_area<span class="pl-k">::</span><span class="pl-c1">Float64</span> <span class="pl-k">=</span> <span class="pl-c1">1e6</span>
+
+<span class="pl-c"><span class="pl-c">#</span> Each row contains SizeClass' bounds</span>
+size_class_bounds<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span> <span class="pl-k">=</span> [
+    <span class="pl-c1">0</span> <span class="pl-c1">0.05</span> <span class="pl-c1">0.8</span> <span class="pl-c1">1.4</span> <span class="pl-c1">1.5</span>;
+    <span class="pl-c1">0</span> <span class="pl-c1">0.05</span> <span class="pl-c1">0.5</span> <span class="pl-c1">0.9</span> <span class="pl-c1">1.0</span>;
+    <span class="pl-c1">0</span> <span class="pl-c1">0.05</span> <span class="pl-c1">0.5</span> <span class="pl-c1">0.9</span> <span class="pl-c1">1.0</span>
+]
+
+<span class="pl-c"><span class="pl-c">#</span> Mock initial coral cover</span>
+C_cover[<span class="pl-c1">1</span>, :, :] <span class="pl-k">=</span> [
+    <span class="pl-c1">0.08</span> <span class="pl-c1">0.05</span> <span class="pl-c1">0.02</span> <span class="pl-c1">0.005</span>;
+    <span class="pl-c1">0.07</span> <span class="pl-c1">0.06</span> <span class="pl-c1">0.03</span> <span class="pl-c1">0.007</span>;
+    <span class="pl-c1">0.05</span> <span class="pl-c1">0.05</span> <span class="pl-c1">0.02</span> <span class="pl-c1">0.003</span>
+] <span class="pl-k">.*</span> habitable_area
+
+<span class="pl-c"><span class="pl-c">#</span> Create functional groups</span>
+functional_groups<span class="pl-k">::</span><span class="pl-c1">Vector{FunctionalGroup}</span> <span class="pl-k">=</span> <span class="pl-c1">FunctionalGroup</span>.(
+    <span class="pl-c1">eachrow</span>(size_class_bounds[:, <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">end</span><span class="pl-k">-</span><span class="pl-c1">1</span>]),      <span class="pl-c"><span class="pl-c">#</span> lower bounds</span>
+    <span class="pl-c1">eachrow</span>(size_class_bounds[:, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>]),        <span class="pl-c"><span class="pl-c">#</span> upper bounds</span>
+    <span class="pl-c1">eachrow</span>(C_cover[<span class="pl-c1">1</span>, :, :])                <span class="pl-c"><span class="pl-c">#</span> initial coral covers</span>
+)</pre></div>
+<p dir="auto">In order to run a single timestep, a vector of recruits (representing young corals
+entering the system) and matrices containing growth and survival rates for each
+<code>FunctionalGroup</code> and <code>SizeClass</code> is needed:</p>
+<div class="highlight highlight-source-julia notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="using CoralBlox: linear_extension_scale_factors, max_projected_cover,
+using CoralBlox: timestep!, coral_cover
+
+# Mock linear extensions
+linear_extensions::Matrix{Float64} = [
+    0.004 0.025 0.1 0.0;
+    0.003 0.007 0.005 0.0;
+    0.002 0.004 0.01 0.0
+]
+
+# Mock survival rate
+survival_rate::Matrix{Float64} = [
+    0.5 0.6 0.65 0.8;
+    0.6 0.7 0.8 0.8;
+    0.5 0.8 0.8 0.8
+]
+
+# Caclulate maximum projected cover
+habitable_max_projected_cover = max_projected_cover(
+    linear_extensions,
+    size_class_bounds,
+    habitable_area
+)
+
+# Only apply linear extension scale factor when cover is above the scale_threshold
+# Assuming the effects of competition for space are only relevant when population density
+# is high enough. Note that this is not a requirement of CoralBlox.
+scale_threshold = 0.9 * habitable_area
+
+# Linear extension scale factor
+local linear_extension_scale_factors::Float64
+
+for tstep::Int64 in 2:n_timesteps
+    # Apply scale factor to linear_extension when cover is above scale_threshold to account
+    # for spatial competition when population density is high
+    linear_extension_scale_factors = if sum(C_cover[tstep-1, :, :]) &lt; scale_threshold
+        1
+    else
+        linear_extension_scale_factors(
+            C_cover[tstep-1, :, :],
+            habitable_area,
+            linear_extensions,
+            size_class_bounds,
+            habitable_max_projected_cover,
+        )
+    end
+
+    # Use scale factor to calculate growth to account for spatial competition, as explained
+    growth_rate::Matrix{Float64} = linear_extensions .* linear_extension_scale_factors
+
+    # Mock recruits proportional to each functional group's cover and available space
+    # This mock is for example purposes only
+    available_space::Float64 = habitable_area - sum(C_cover[tstep-1, :, :])
+    available_proportion::Float64 = available_space / habitable_area
+    adults_cover::Vector{Float64} = dropdims(sum(C_cover[tstep-1, :, 2:end], dims=2), dims=2)
+
+    recruits_weights::Vector{Float64} = [0.6, 0.9, 1.5]
+    availability_weight::Float64 = log(2.5, 1.5 + available_proportion)
+
+    # In reality, recruits cover for each functional group would come from a fecundity model
+    recruits::Vector{Float64} = adults_cover .* recruits_weights .* availability_weight
+
+    # Perform timestep
+    timestep!(
+        functional_groups,
+        recruits,
+        growth_rate,
+        survival_rate
+    )
+
+    # Write to the cover matrix
+    coral_cover(functional_groups, @view(C_cover[tstep, :, :]))
+end"><pre><span class="pl-k">using</span> CoralBlox<span class="pl-k">:</span> linear_extension_scale_factors, max_projected_cover,
+<span class="pl-k">using</span> CoralBlox<span class="pl-k">:</span> timestep!, coral_cover
+
+<span class="pl-c"><span class="pl-c">#</span> Mock linear extensions</span>
+linear_extensions<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span> <span class="pl-k">=</span> [
+    <span class="pl-c1">0.004</span> <span class="pl-c1">0.025</span> <span class="pl-c1">0.1</span> <span class="pl-c1">0.0</span>;
+    <span class="pl-c1">0.003</span> <span class="pl-c1">0.007</span> <span class="pl-c1">0.005</span> <span class="pl-c1">0.0</span>;
+    <span class="pl-c1">0.002</span> <span class="pl-c1">0.004</span> <span class="pl-c1">0.01</span> <span class="pl-c1">0.0</span>
+]
+
+<span class="pl-c"><span class="pl-c">#</span> Mock survival rate</span>
+survival_rate<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span> <span class="pl-k">=</span> [
+    <span class="pl-c1">0.5</span> <span class="pl-c1">0.6</span> <span class="pl-c1">0.65</span> <span class="pl-c1">0.8</span>;
+    <span class="pl-c1">0.6</span> <span class="pl-c1">0.7</span> <span class="pl-c1">0.8</span> <span class="pl-c1">0.8</span>;
+    <span class="pl-c1">0.5</span> <span class="pl-c1">0.8</span> <span class="pl-c1">0.8</span> <span class="pl-c1">0.8</span>
+]
+
+<span class="pl-c"><span class="pl-c">#</span> Caclulate maximum projected cover</span>
+habitable_max_projected_cover <span class="pl-k">=</span> <span class="pl-c1">max_projected_cover</span>(
+    linear_extensions,
+    size_class_bounds,
+    habitable_area
+)
+
+<span class="pl-c"><span class="pl-c">#</span> Only apply linear extension scale factor when cover is above the scale_threshold</span>
+<span class="pl-c"><span class="pl-c">#</span> Assuming the effects of competition for space are only relevant when population density</span>
+<span class="pl-c"><span class="pl-c">#</span> is high enough. Note that this is not a requirement of CoralBlox.</span>
+scale_threshold <span class="pl-k">=</span> <span class="pl-c1">0.9</span> <span class="pl-k">*</span> habitable_area
+
+<span class="pl-c"><span class="pl-c">#</span> Linear extension scale factor</span>
+<span class="pl-k">local</span> linear_extension_scale_factors<span class="pl-k">::</span><span class="pl-c1">Float64</span>
+
+<span class="pl-k">for</span> tstep<span class="pl-k">::</span><span class="pl-c1">Int64</span> <span class="pl-k">in</span> <span class="pl-c1">2</span><span class="pl-k">:</span>n_timesteps
+    <span class="pl-c"><span class="pl-c">#</span> Apply scale factor to linear_extension when cover is above scale_threshold to account</span>
+    <span class="pl-c"><span class="pl-c">#</span> for spatial competition when population density is high</span>
+    linear_extension_scale_factors <span class="pl-k">=</span> <span class="pl-k">if</span> <span class="pl-c1">sum</span>(C_cover[tstep<span class="pl-k">-</span><span class="pl-c1">1</span>, :, :]) <span class="pl-k">&lt;</span> scale_threshold
+        <span class="pl-c1">1</span>
+    <span class="pl-k">else</span>
+        <span class="pl-c1">linear_extension_scale_factors</span>(
+            C_cover[tstep<span class="pl-k">-</span><span class="pl-c1">1</span>, :, :],
+            habitable_area,
+            linear_extensions,
+            size_class_bounds,
+            habitable_max_projected_cover,
+        )
+    <span class="pl-k">end</span>
+
+    <span class="pl-c"><span class="pl-c">#</span> Use scale factor to calculate growth to account for spatial competition, as explained</span>
+    growth_rate<span class="pl-k">::</span><span class="pl-c1">Matrix{Float64}</span> <span class="pl-k">=</span> linear_extensions <span class="pl-k">.*</span> linear_extension_scale_factors
+
+    <span class="pl-c"><span class="pl-c">#</span> Mock recruits proportional to each functional group's cover and available space</span>
+    <span class="pl-c"><span class="pl-c">#</span> This mock is for example purposes only</span>
+    available_space<span class="pl-k">::</span><span class="pl-c1">Float64</span> <span class="pl-k">=</span> habitable_area <span class="pl-k">-</span> <span class="pl-c1">sum</span>(C_cover[tstep<span class="pl-k">-</span><span class="pl-c1">1</span>, :, :])
+    available_proportion<span class="pl-k">::</span><span class="pl-c1">Float64</span> <span class="pl-k">=</span> available_space <span class="pl-k">/</span> habitable_area
+    adults_cover<span class="pl-k">::</span><span class="pl-c1">Vector{Float64}</span> <span class="pl-k">=</span> <span class="pl-c1">dropdims</span>(<span class="pl-c1">sum</span>(C_cover[tstep<span class="pl-k">-</span><span class="pl-c1">1</span>, :, <span class="pl-c1">2</span><span class="pl-k">:</span><span class="pl-c1">end</span>], dims<span class="pl-k">=</span><span class="pl-c1">2</span>), dims<span class="pl-k">=</span><span class="pl-c1">2</span>)
+
+    recruits_weights<span class="pl-k">::</span><span class="pl-c1">Vector{Float64}</span> <span class="pl-k">=</span> [<span class="pl-c1">0.6</span>, <span class="pl-c1">0.9</span>, <span class="pl-c1">1.5</span>]
+    availability_weight<span class="pl-k">::</span><span class="pl-c1">Float64</span> <span class="pl-k">=</span> <span class="pl-c1">log</span>(<span class="pl-c1">2.5</span>, <span class="pl-c1">1.5</span> <span class="pl-k">+</span> available_proportion)
+
+    <span class="pl-c"><span class="pl-c">#</span> In reality, recruits cover for each functional group would come from a fecundity model</span>
+    recruits<span class="pl-k">::</span><span class="pl-c1">Vector{Float64}</span> <span class="pl-k">=</span> adults_cover <span class="pl-k">.*</span> recruits_weights <span class="pl-k">.*</span> availability_weight
+
+    <span class="pl-c"><span class="pl-c">#</span> Perform timestep</span>
+    <span class="pl-c1">timestep!</span>(
+        functional_groups,
+        recruits,
+        growth_rate,
+        survival_rate
+    )
+
+    <span class="pl-c"><span class="pl-c">#</span> Write to the cover matrix</span>
+    <span class="pl-c1">coral_cover</span>(functional_groups, <span class="pl-c1">@view</span>(C_cover[tstep, :, :]))
+<span class="pl-k">end</span></pre></div>
+<p dir="auto">The <code>linear_extension_scale_factors</code> calculated at each timestep prevents the corals from outgrowing
+the habitable area, taking into account the simultaneous growth across all functional groups
+and size classes. Details about how this scale factor is calculated and used can be
+found below.</p>
+<p dir="auto">Consideration of external factors that may influence coral growth and mortality
+could be included outside of each <code>timestep!</code> call, potentially informed by a broader
+ecosystem model.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Model details</h2><a id="user-content-model-details" class="anchor" aria-label="Permalink: Model details" href="#model-details"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Consider the area of each colony approximated by the area of a circumference with diameter
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$x$</math-renderer>:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$$
+\begin{equation}
+a(x) = \frac{\pi x^2}{4}
+\end{equation}
+$$</math-renderer></p>
+<p dir="auto">Hence, given a diameter density function <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\lambda(x)$</math-renderer> that represents the number of corals
+with diameter <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$x$</math-renderer>, the area <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C(x_i,x_f)$</math-renderer> covered by corals with diameter between <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$x_i$</math-renderer> and
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$x_f$</math-renderer> is given by the integral:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$$
+\begin{equation}
+C(x_i,x_f) = \int_{x_i}^{x_f} \lambda(x) \frac{\pi x^2}{4} dx
+\end{equation}
+$$</math-renderer></p>
+<p dir="auto">In practice, we work with groups of coral with a constant diameter density over a certain
+diameter interval, that we call <code>CoralBlock</code>. Each <code>CoralBlock</code> is characterized by a
+constant diameter density <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\lambda_{\tau\sigma b}$</math-renderer> (the block's height) and a diameter
+interval <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$[\delta_{\tau\sigma b}^-, \delta_{\tau\sigma b}^+]$</math-renderer>, with size
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\Delta \delta_{\tau\sigma b} = \delta_{\tau\sigma b}^+ - \delta_{\tau\sigma b}^-$</math-renderer> (the
+block's width). The indices <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\tau\sigma b$</math-renderer> refer to the <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$b$</math-renderer>-th block from functional group
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\tau$</math-renderer> and size class <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\sigma$</math-renderer>. Therefore, the area covered by the corals within a coral
+block <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\tau\sigma b$</math-renderer> is given by:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$$
+\begin{equation}
+C_{\tau\sigma b} = \lambda_{\tau\sigma b} \frac{\pi}{12} ((\delta_{\tau\sigma b}^+)^3 - (\delta_{\tau\sigma b}^-)^3)
+\end{equation}
+$$</math-renderer></p>
+<p dir="auto">The following sections explain in more detail how growth and mortality are represented.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">How does mortality work?</h3><a id="user-content-how-does-mortality-work" class="anchor" aria-label="Permalink: How does mortality work?" href="#how-does-mortality-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">At each timestep <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$t$</math-renderer>, before the growth event, we apply a survival rate to each
+<code>CoralBlock</code>. That is done by multiplying each <code>FunctionalGroup</code> and <code>SizeClass</code> survival
+rate <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$(1 - m_{\tau\sigma})$</math-renderer> by each <code>CoralBlock</code> diameter density
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\lambda_{\tau\sigma b; t}$</math-renderer>, so that:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$$
+\begin{equation}
+\lambda_{\tau\sigma b; t} = \lambda_{\tau\sigma b; t-1} (1 - m_{\tau\sigma})
+\end{equation}
+$$</math-renderer></p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">How does growth work?</h3><a id="user-content-how-does-growth-work" class="anchor" aria-label="Permalink: How does growth work?" href="#how-does-growth-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For each <code>FunctionalGroup</code>, we can think of a horizontal axis representing the diameter
+space with its <code>CoralBlock</code>s lined up. Then, a growth event is conceived as the displacement
+of each block in this axis by a factor <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\omega_{\tau\sigma;t}$</math-renderer>, called growth rate, constant
+for each <code>FunctionalGroup</code> <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\tau$</math-renderer> and <code>SizeClass</code> <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\sigma$</math-renderer>. <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\omega_{\tau\sigma;t}$</math-renderer> is
+always smaller than the correspondent <code>SizeClass</code> width
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\Delta d_{\tau\sigma}=d_{\tau\sigma}^+-d_{\tau\sigma}^-$</math-renderer>.</p>
+<p dir="auto">After a growth event we can have one of the three following situations: (1) the entire block
+remains in size class <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\sigma$</math-renderer>; (2) the entire block has moved to size class <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\sigma+1$</math-renderer>; (3)
+part of the block remains in size class <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\sigma$</math-renderer> and part has moved to size class
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\sigma+1$</math-renderer>. In the last case, we break the block in two new blocks, each belonging to only
+a single size class.</p>
+<p dir="auto">In (1), the <code>CoralBlock</code> doesn't cross the frontier between <code>SizeClass</code>es. In this case,
+its movement is constant. In (2) and (3), as soon as part of the block enters the next
+<code>SizeClass</code>, the two parts move with different speeds (one can think of an analogy with a
+mass of water flowing between two pipes with distinct diameters).</p>
+
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">How does the linear extension scale factor work?</h3><a id="user-content-how-does-the-linear-extension-scale-factor-work" class="anchor" aria-label="Permalink: How does the linear extension scale factor work?" href="#how-does-the-linear-extension-scale-factor-work"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Each coral colony has a base growth <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$l_{\tau\sigma}$</math-renderer>, which is an increase in diameter.
+This is referred to as the <em>linear extension</em> and depends on the colony's <code>FunctionalGroup</code>
+and <code>SizeClass</code>. As the available space gets more populated, we assume that growth is
+negatively affected, since there is a competition for resources. Even more, when there's no
+available space left, we want the growth to be zero. To account for that, at each time step
+we multiply all linear extensions by the same scale factor <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\gamma_t$</math-renderer>. This factor takes
+into account not only the leftover space, but also the competition between different
+<code>FunctionalGroup</code>s.</p>
+<p dir="auto">First we calculate a <em>projected cover</em> <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^P_t$</math-renderer>, assuming no space limitation nor
+competition, using the linear extensions directly as growth rates. We also calculate an
+upper bound for the projected cover, called <em>maximum projected cover</em> <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^*$</math-renderer> assuming all
+corals are in the last <code>SizeClass</code> of the <code>FunctionalGroup</code> with the highest linear
+extension, and they growth freely. Two important notes here. First, there are infinite
+possible upper bounds and, although the choice will affect the final scale factor, this
+shouldn't change the final result drastically. Second, to prevent having to run a whole
+timestep twice, for this <em>projected cover</em> (and other calculations related to the scale
+factor) we instead use a simplified version of the model where each block moves by with a
+constant velocity, even when changing <code>SizeClass</code>es.</p>
+<p dir="auto">Next, we calculate an <em>adjusted projected cover</em> <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^A_t$</math-renderer>:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$$
+\begin{equation}
+C^A_t = C_{t-1} + \frac{C^P_{t} - C_{t-1}}{C^*-C_{t-1}}\left(H - C_{t-1}\right)
+\end{equation}
+$$</math-renderer></p>
+<p dir="auto">Where <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$H$</math-renderer> is the habitable area, and <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C_{t-1}$</math-renderer> is the cover on the previous timestep.
+One can easily see that if <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^P_{t} = C^*$</math-renderer>, we have <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^A_t = H$</math-renderer>. In other words, in the
+worst case, the <em>adjusted projected cover</em> is equals the habitable area. For all other
+values of <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^P_t$</math-renderer>, we have <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$C^A_t &amp;lt; H$</math-renderer>, which means that the <em>adjusted projected cover</em> will
+never outgrow the habitable area.</p>
+<p dir="auto">Lastly, we find the scale factor <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$\gamma_t$</math-renderer> that makes the <em>projected cover</em> equal to the
+<em>adjusted projected cover</em>, assuming each <code>CoverBlock</code> growth rate is given by
+<math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$l_{\tau\sigma} \gamma_t$</math-renderer> and the sum of all <code>CoverBlocks</code>. The actual growth rate
+used to run a timestep <math-renderer class="js-inline-math" style="display: inline-block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$t$</math-renderer> is given by:</p>
+<p dir="auto"><math-renderer class="js-display-math" style="display: block" data-static-url="https://github.githubassets.com/static" data-run-id="436aa154fedfd34a150f15d5196764cf">$$
+\begin{equation}
+\omega_{\tau\sigma;t} = l_{\tau\sigma} \gamma_t
+\end{equation}
+$$</math-renderer></p>
+</article></div>

@@ -1,0 +1,181 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">TyJuliaCAPI.jl</h1><a id="user-content-tyjuliacapijl" class="anchor" aria-label="Permalink: TyJuliaCAPI.jl" href="#tyjuliacapijl"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="https://github.com/Suzhou-Tongyuan/TyJuliaCAPI.jl/actions/workflows/Test.yml?query=branch%3Amain"><img src="https://github.com/Suzhou-Tongyuan/TyJuliaCAPI.jl/actions/workflows/Test.yml/badge.svg?branch=main" alt="Build Status" style="max-width: 100%;"></a> <a href="README_ZH.md"><img src="https://camo.githubusercontent.com/ae07376f3fea68a06cc1e39db30224a11600a9ed41061b4b7685c0e285beb41e/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f2545342542382541442545362539362538372d2545362539362538372545362541312541332d626c75652e737667" alt="中文文档" data-canonical-src="https://img.shields.io/badge/%E4%B8%AD%E6%96%87-%E6%96%87%E6%A1%A3-blue.svg" style="max-width: 100%;"></a></p>
+<p dir="auto">TyJuliaCAPI.jl provides a stable C API for Julia.</p>
+<p dir="auto">These APIs are provided in the form of function pointers, and there are two initialization methods:</p>
+<ol dir="auto">
+<li>
+<p dir="auto">If the caller is Julia, Julia obtains C functions from the external language. These C functions accept function pointers passed by Julia, allowing the external language to access these APIs.</p>
+</li>
+<li>
+<p dir="auto">If the caller is an external language, due to the instability and lack of documentation of Julia's official C API, it is difficult to initialize in the same way as in (1). In this case, we can enable a network protocol to transmit function pointers over the network, allowing both two side to access each other's C API (this approach is inspired by MATLAB's interoperability).</p>
+</li>
+</ol>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Motivation</h2><a id="user-content-motivation" class="anchor" aria-label="Permalink: Motivation" href="#motivation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The need for TyJuliaCAPI arises from a technical challenge: <strong>How can Julia interact with other external languages within the same process</strong>?</p>
+<p dir="auto">We have serval projects implemented in C++/C#, and calling Julia from native code is a crucial requirement.</p>
+<p dir="auto">So, how to call Julia from C#: The only solution to this problem is to use the C API.</p>
+<p dir="auto">However, although Julia provides a C API (<a href="https://github.com/JuliaLang/julia/blob/master/src/julia.h">julia.h</a>), these APIs have the following issues:</p>
+<ol dir="auto">
+<li>Lack of documentation.</li>
+<li>Requires an understanding of Julia's lifecycle management and garbage collection mechanism.</li>
+<li>The API is unstable and changes with every version.</li>
+</ol>
+<p dir="auto">We, therefore, believe that the current quality of Julia's C API is insufficient to support product development and maintenance.</p>
+<p dir="auto">And we need a stable and generic Julia C API.</p>
+<p dir="auto">In the past, we have learned a useful technique from <a href="https://github.com/JuliaPy/PythonCall.jl">PythonCall.jl</a> (referred to as GC Pooling), which PythonCall itself used to provide a set of interoperation mechanisms, surpassing similar projects in terms of stability and performance. Following this technique, we have implemented a stable and well-designed C API for Julia, which we call TyJuliaCAPI.</p>
+<p dir="auto">In TyJuliaCAPI, the lifecycle management is adopted in a manner similar to the <a href="https://docs.python.org/3/c-api/stable.html" rel="nofollow">Python Stable C API</a> (the most widely applied and highly regarded C API design): objects are created via the C API with inherent references, and when they are no longer needed, external language references are released by using <code>JLFreeFromMe</code>.</p>
+<div class="highlight highlight-source-c++ notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="JV myJuliaValue;
+
+if (JLEval(&amp;myJuliaValue, NULL, &quot;1 + 1&quot;) != ErrorCode::ok) {
+    // Evaluation failed, handle the error
+}
+
+// Use myJuliaValue without worrying about releasing it
+
+bool doCast = false; // Not using casting
+int64_t myIntValue;
+
+if (JLGetInt32(&amp;myIntValue, myJuliaValue, doCast) != ErrorCode::ok) {
+    // Conversion failed, handle the error
+}
+
+// Use myIntValue
+
+...
+
+// Release when done using
+JLFreeFromMe(myJuliaValue);"><pre>JV myJuliaValue;
+
+if (JLEval(&amp;myJuliaValue, NULL, "1 + 1") != <span class="pl-smi">ErrorCode</span>::ok) {
+    // Evaluation failed, handle the error
+}
+
+// Use myJuliaValue without worrying about releasing it
+
+bool doCast = false; // Not using casting
+int64_t myIntValue;
+
+if (JLGetInt32(&amp;myIntValue, myJuliaValue, doCast) != <span class="pl-smi">ErrorCode</span>::ok) {
+    // Conversion failed, handle the error
+}
+
+// Use myIntValue
+
+...
+
+// Release when done using
+JLFreeFromMe(myJuliaValue);</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">API list</h2><a id="user-content-api-list" class="anchor" aria-label="Permalink: API list" href="#api-list"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">APIs prefixed with the <code>CORE_API</code> macro are fundamental core APIs, while the rest of the APIs can be expressed using the core APIs. However, they are provided separately due to their high level of common usage.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Types</h3><a id="user-content-types" class="anchor" aria-label="Permalink: Types" href="#types"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Types need to be ABI-level compatible.</p>
+<div class="highlight highlight-source-c++ notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="enum struct ErrorCode: uint8_t {
+    ok = 0, error = 1,
+};
+
+enum struct Compare: uint8_t {
+    SEQ = 0, // === operator
+    SNE = 1, // !==
+    // The following are the six common logical operators
+    EQ = 2, NE = 3, LT = 4, LE = 5, GT = 6, GE = 7
+};
+
+struct complex_t {
+    double re;
+    double im;
+};
+
+typedef int64_t JV;
+typedef int64_t JSym;
+
+template&lt;typename T&gt;
+struct List {
+    int64_t len;
+    T* data;
+};
+
+template&lt;typename L, typename R&gt;
+struct Tuple {
+    L l;
+    R r;
+};"><pre>enum struct ErrorCode: uint8_t {
+    ok = 0, error = 1,
+};
+
+enum struct Compare: uint8_t {
+    SEQ = 0, // === operator
+    SNE = 1, // !==
+    // The following are the six common logical operators
+    EQ = 2, NE = 3, LT = 4, LE = 5, GT = 6, GE = 7
+};
+
+struct complex_t {
+    double re;
+    double im;
+};
+
+typedef int64_t JV;
+typedef int64_t JSym;
+
+<span class="pl-k">template</span>&lt;<span class="pl-k">typename</span> T&gt;
+struct List {
+    int64_t len;
+    T* data;
+};
+
+<span class="pl-k">template</span>&lt;<span class="pl-k">typename</span> L, <span class="pl-k">typename</span> R&gt;
+struct Tuple {
+    L l;
+    R r;
+};</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">API</h3><a id="user-content-api" class="anchor" aria-label="Permalink: API" href="#api"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-c++ notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="/* Object Creation and Destruction */
+
+CORE_API void JLFreeFromMe(JV value);
+// ↑ Used by the external language to release the reference to a Julia object in the external language runtime, but does not imply the release of the reference in the Julia runtime.
+// ↑ A null value for `value` does not trigger an error.
+
+/* Enable or Disable Julia Stack Trace Information when Throwing Errors (default is disabled) */
+CORE_API void JLError_EnableBackTraceMsg(bool hasStackTraceMsg);
+
+/* Reflection */
+CORE_API ErrorCode JLEval(JV* out, /* nullable */ JV module, List&lt;char&gt; code);
+CORE_API ErrorCode JLError_FetchMsgSize(int64_t* size);
+CORE_API ErrorCode JLError_FetchMsgStr(JSym* outExcName, List&lt;char&gt; msgBuffer);
+
+/* Object Model */
+/* func(args...; kwargs...) -&gt; out */
+CORE_API ErrorCode JLCall(JV* out, JV func, List&lt;JV&gt; args, List&lt;Tuple&lt;JSym, JV&gt;&gt; kwargs);
+/* func.(args...; kwargs...) -&gt; out */
+CORE_API ErrorCode JLDotCall(JV* out, JV func, List&lt;JV&gt; args, List&lt;Tuple&lt;JSym, JV&gt;&gt; kwargs);
+
+ErrorCode JLCompare(bool* out, Compare cmp, JV a, JV b);"><pre>/* Object Creation and Destruction */
+
+CORE_API void JLFreeFromMe(JV value);
+// ↑ Used by the external language to release the reference to a Julia object in the external language runtime, but does not imply the release of the reference in the Julia runtime.
+// ↑ A null value for `value` does not trigger an error.
+
+/* Enable or Disable Julia Stack Trace Information when Throwing Errors (default is disabled) */
+CORE_API void JLError_EnableBackTraceMsg(bool hasStackTraceMsg);
+
+/* Reflection */
+CORE_API ErrorCode JLEval(JV* out, /* nullable */ JV module, List&lt;char&gt; code);
+CORE_API ErrorCode JLError_FetchMsgSize(int64_t* size);
+CORE_API ErrorCode JLError_FetchMsgStr(JSym* outExcName, List&lt;char&gt; msgBuffer);
+
+/* Object Model */
+/* func(args...; kwargs...) -&gt; out */
+CORE_API ErrorCode JLCall(JV* out, JV func, List&lt;JV&gt; args, List&lt;Tuple&lt;JSym, JV&gt;&gt; kwargs);
+/* func.(args...; kwargs...) -&gt; out */
+CORE_API ErrorCode JLDotCall(JV* out, JV func, List&lt;JV&gt; args, List&lt;Tuple&lt;JSym, JV&gt;&gt; kwargs);
+
+ErrorCode JLCompare(bool* out, Compare cmp, JV a, JV b);</pre></div>
+<p dir="auto">The complete API list can be found in <a href="include/tyjuliacapi-docs.hpp"><code>include/tyjuliacapi.hpp</code></a>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">External Language Binding</h2><a id="user-content-external-language-binding" class="anchor" aria-label="Permalink: External Language Binding" href="#external-language-binding"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Currently, we have implemented a C# language binding generator, which can be found in <code>bindings/csharp.jl</code>.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">To generate bindings for TyJuliaCAPI for C#:</h3><a id="user-content-to-generate-bindings-for-tyjuliacapi-for-c" class="anchor" aria-label="Permalink: To generate bindings for TyJuliaCAPI for C#:" href="#to-generate-bindings-for-tyjuliacapi-for-c"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt; CS_BINDING=/path/to/generated_csharp_file.cs bash build.sh"><pre><span class="pl-k">&gt;</span> CS_BINDING=/path/to/generated_csharp_file.cs bash build.sh</pre></div>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">To generate C declarations:</h3><a id="user-content-to-generate-c-declarations" class="anchor" aria-label="Permalink: To generate C declarations:" href="#to-generate-c-declarations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt; CPP_BINDING_DIR=/dir/to/generated_hpp_files bash build.sh"><pre><span class="pl-k">&gt;</span> CPP_BINDING_DIR=/dir/to/generated_hpp_files bash build.sh</pre></div>
+<p dir="auto">These commands allow you to generate the necessary bindings for TyJuliaCAPI in the specified language, making it accessible and usable in your project.</p>
+</article></div>
